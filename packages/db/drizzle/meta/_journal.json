@@ -141,6 +141,13 @@
       "when": 1791747258872,
       "tag": "0019_magenta_the_watchers",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791759451628,
+      "tag": "0020_ordinary_corsair",
+      "breakpoints": true
     }
   ]
 }

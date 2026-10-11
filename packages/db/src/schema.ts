@@ -115,6 +115,8 @@ export const devices = pgTable(
     createdAt: createdAt(),
     lastSeenAt: timestamp({ withTimezone: true }),
     revokedAt: timestamp({ withTimezone: true }),
+    /** Просмотр из кабинета (этап 16а): родитель смотрит глазами ребёнка — без прогресса, на 2 часа. */
+    preview: boolean().notNull().default(false),
     /** Языки, для которых на телефоне есть голос синтеза речи (ru, en, …); null — ещё не сообщал. */
     speechLangs: text().array(),
     speechCheckedAt: timestamp({ withTimezone: true }),
@@ -142,6 +144,8 @@ export const devicePairings = pgTable('device_pairings', {
   expiresAt: timestamp({ withTimezone: true }).notNull(),
   usedAt: timestamp({ withTimezone: true }),
   deviceId: uuid().references(() => devices.id, { onDelete: 'set null' }),
+  /** Код для просмотра из кабинета, а не для телефона ребёнка. */
+  preview: boolean().notNull().default(false),
 });
 
 // ─── Видео ───────────────────────────────────────────────────────────────────

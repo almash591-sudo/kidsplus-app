@@ -97,6 +97,7 @@ export function kidRoutes(app: FastifyInstance, ctx: Ctx) {
         phrases: await kidPhrases(db, ctx.config.tts, child.gender),
         immersion: child.foreignImmersion,
         serverVoice: ctx.config.tts.providerId !== 'browser',
+        preview: request.device!.preview,
         phrasesEn: await kidPhrases(db, ctx.config.tts, child.gender, 'en'),
       };
     },
@@ -128,6 +129,8 @@ export function kidRoutes(app: FastifyInstance, ctx: Ctx) {
     async (request, reply) => {
       const body = parse(kidEventRequest, request.body);
       const { childId, id: deviceId } = request.device!;
+      // Просмотр из кабинета: прогресс и аналитику ребёнка не трогаем.
+      if (request.device!.preview) return reply.code(204).send();
 
       let sourceId: string | undefined;
       if (body.segmentId) {
