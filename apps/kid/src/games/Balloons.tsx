@@ -2,7 +2,7 @@ import type { BalloonColor } from '@kidsplus/shared/games';
 import { useEffect, useState } from 'react';
 import { fx } from '../fx';
 import { balloonsPrompt, balloonsWrong } from '../phrases';
-import { NUMBERS, praise, say, type GameProps } from './common';
+import { ask, NUMBERS, praise, say, type GameProps } from './common';
 
 const COLORS: Record<BalloonColor, { hex: string }> = {
   red: { hex: '#E8453C' },
@@ -46,7 +46,7 @@ export function Balloons({ spec, phrases, onFinish }: GameProps<'balloons'>) {
   );
   const [score, setScore] = useState(0);
   const finished = score >= spec.count;
-  const prompt = () => say(balloonsPrompt(spec.target));
+  const prompt = () => ask(balloonsPrompt(spec.target));
 
   useEffect(() => {
     void prompt();
@@ -102,14 +102,6 @@ export function Balloons({ spec, phrases, onFinish }: GameProps<'balloons'>) {
           <span key={i} className={i < score ? 'on' : ''} />
         ))}
       </div>
-      <button
-        type="button"
-        className="corner-button ear"
-        aria-label="Повторить задание"
-        onClick={() => void prompt()}
-      >
-        👂
-      </button>
     </div>
   );
 }

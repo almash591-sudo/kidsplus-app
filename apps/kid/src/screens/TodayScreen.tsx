@@ -11,9 +11,11 @@ import {
   DAY_OVER,
   FREE_TIME,
   PAUSED,
+  HINT_TODAY,
   TODAY_GREETING,
 } from '../phrases';
 import { CategoryArt } from '../ui/CategoryArt';
+import { IdleHint } from '../ui/IdleHint';
 import { Icon } from '../ui/icons';
 import { CATEGORY_SHORT } from './HomeScreen';
 
@@ -77,6 +79,8 @@ export function TodayScreen({
     greeted = true;
     void playSequence([ru(TODAY_GREETING)]);
   }, []);
+  // Куда нажать: первый непройденный предмет, а после уроков — свободное время.
+  const next = today.subjects.find((s) => !s.done)?.subject ?? null;
   return (
     <div className="screen tiles categories today" data-testid="today">
       <header className="screen-title" aria-hidden="true">
@@ -96,6 +100,7 @@ export function TodayScreen({
           }}
           data-testid="subject"
           data-subject={s.subject}
+          data-hint={s.subject === next ? '' : undefined}
           data-done={s.done}
           aria-label={CATEGORY_LABELS[s.subject]}
         >
@@ -124,6 +129,7 @@ export function TodayScreen({
             onFree();
           }}
           data-testid="free"
+          data-hint={next === null ? '' : undefined}
           aria-label="Свободное время"
         >
           <span className="tile-badge" aria-hidden="true">
@@ -134,6 +140,7 @@ export function TodayScreen({
           </span>
         </button>
       )}
+      <IdleHint onIdle={() => void playSequence([ru(HINT_TODAY)])} first={9000} />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ODD_PROMPT } from '../phrases';
-import { praise, retry, say, shuffled, type GameProps } from './common';
+import { ask, praise, retry, say, shuffled, type GameProps } from './common';
 import { Pic } from './DragItem';
 import { burstAt } from './juice';
 
@@ -14,7 +14,7 @@ export function Odd({ spec, phrases, onFinish }: GameProps<'odd'>) {
   const cells = useRef<(HTMLButtonElement | null)[]>([]);
 
   useEffect(() => {
-    void say(ODD_PROMPT);
+    void ask(ODD_PROMPT);
   }, [round]);
 
   const choose = (i: number, slot: number) => {
@@ -60,6 +60,7 @@ export function Odd({ spec, phrases, onFinish }: GameProps<'odd'>) {
               .join(' ')}
             data-testid="odd-cell"
             data-index={i}
+            data-hint={!solved && i === r.odd ? '' : undefined}
             style={{ '--i': slot } as React.CSSProperties}
             onClick={() => choose(i, slot)}
           >
@@ -67,14 +68,6 @@ export function Odd({ spec, phrases, onFinish }: GameProps<'odd'>) {
           </button>
         ))}
       </div>
-      <button
-        type="button"
-        className="corner-button ear"
-        aria-label="Повторить задание"
-        onClick={() => void say(ODD_PROMPT)}
-      >
-        👂
-      </button>
     </div>
   );
 }

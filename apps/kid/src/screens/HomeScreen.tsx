@@ -5,8 +5,9 @@ import { categoriesOf } from '../categories';
 import { fx } from '../fx';
 import { GameTile } from '../games/GameTile';
 import { ru } from '../games/common';
-import { CATEGORY_LABELS, categoryPhrase, GREETING } from '../phrases';
+import { CATEGORY_LABELS, categoryPhrase, GREETING, HINT_PICK } from '../phrases';
 import { CategoryArt } from '../ui/CategoryArt';
+import { IdleHint } from '../ui/IdleHint';
 import { Icon } from '../ui/icons';
 
 /** Приветствие — один раз за запуск приложения. */
@@ -90,11 +91,13 @@ export function CategoryScreen({
           }}
           data-testid="category"
           data-category={c}
+          data-hint={i === 0 ? '' : undefined}
           aria-label={CATEGORY_LABELS[c]}
         >
           <CategoryFace category={c} />
         </button>
       ))}
+      <IdleHint onIdle={() => void playSequence([ru(HINT_PICK)])} first={9000} />
     </div>
   );
 }
@@ -146,6 +149,7 @@ export function HomeScreen({
           onClick={() => onPick(i)}
           data-testid="tile"
           data-kind={item.kind}
+          data-hint={i === 0 ? '' : undefined}
           aria-label={
             item.kind === 'deck' ? 'Карточки' : item.kind === 'interactive' ? 'Играть' : 'Смотреть'
           }
@@ -168,6 +172,7 @@ export function HomeScreen({
           )}
         </button>
       ))}
+      <IdleHint onIdle={() => void playSequence([ru(HINT_PICK)])} first={8000} />
     </div>
   );
 }

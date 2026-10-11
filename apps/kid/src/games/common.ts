@@ -20,6 +20,26 @@ export const ru = (text: string): Speech => ({ text, lang: 'ru', audioUrl: null 
 /** Сказать фразы по-русски (новая фраза прерывает предыдущую). */
 export const say = (...texts: string[]) => playSequence(texts.map(ru));
 
+/** Как повторить текущее задание — для кнопки «ушко» и подсказки при бездействии. */
+let repeatTask: (() => unknown) | null = null;
+
+/** Задание игры: сказать и запомнить, чтобы его можно было повторить. */
+export const ask = (...texts: string[]) => askSpeech(texts.map(ru));
+export const askSpeech = (items: Speech[]) => {
+  repeatTask = () => playSequence(items);
+  return playSequence(items);
+};
+/** Запомнить задание, не произнося (например, если оно уже звучит частями). */
+export const setTask = (repeat: (() => unknown) | null) => {
+  repeatTask = repeat;
+};
+/** Повторить задание; false — у игры его нет. */
+export const repeatCurrentTask = () => {
+  if (!repeatTask) return false;
+  repeatTask();
+  return true;
+};
+
 /** Похвала: звук успеха, искры там, где палец, радость маскота и фраза. */
 export const praise = (phrases: KidPhrases, at?: { x: number; y: number }) => {
   fx.success();

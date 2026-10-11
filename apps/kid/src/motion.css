@@ -233,3 +233,91 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ─── Подсказка-палец: куда нажать или куда тянуть ─── */
+.hint-hand {
+  position: fixed;
+  z-index: 1000;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.hint-hand::before {
+  content: '';
+  position: absolute;
+  left: -46px;
+  top: -46px;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  border: 5px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.85);
+  animation: hint-ring 1.1s ease-out infinite;
+}
+
+.hint-hand span {
+  position: absolute;
+  left: -18px;
+  top: 0;
+  font-size: 64px;
+  line-height: 1;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.35));
+  animation: hint-tap 1.1s ease-in-out infinite;
+}
+
+.hint-hand.drag::before {
+  display: none;
+}
+
+.hint-hand.drag span {
+  animation: hint-drag 1.7s ease-in-out infinite;
+}
+
+@keyframes hint-ring {
+  from {
+    transform: scale(0.4);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1.3);
+    opacity: 0;
+  }
+}
+
+@keyframes hint-tap {
+  0%,
+  100% {
+    transform: translateY(18px);
+  }
+  45% {
+    transform: translateY(0) scale(0.92);
+  }
+}
+
+@keyframes hint-drag {
+  0%,
+  10% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0;
+  }
+  20% {
+    transform: translate(0, 0) scale(0.9);
+    opacity: 1;
+  }
+  80% {
+    transform: translate(var(--dx), var(--dy)) scale(0.9);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) scale(1);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hint-hand::before,
+  .hint-hand span {
+    animation: none;
+  }
+}

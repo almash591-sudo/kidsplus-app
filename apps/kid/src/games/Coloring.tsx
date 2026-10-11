@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { fx } from '../fx';
 import { splash } from './juice';
-import { paint, praise, say, type GameProps, type PaintId } from './common';
+import { ask, paint, praise, say, type GameProps, type PaintId } from './common';
 import { Palette } from './Palette';
 import { coloringTask, needColor } from '../phrases';
 import { PICTURES, type Picture } from './pictures';
@@ -60,7 +60,7 @@ export function Coloring({ spec, phrases, onFinish }: GameProps<'coloring'>) {
   const task = (i: number) => coloringTask(spec.picture, i);
 
   useEffect(() => {
-    if (spec.tasks) void say(coloringTask(spec.picture, 0));
+    if (spec.tasks) void ask(coloringTask(spec.picture, 0));
   }, [spec.picture, spec.tasks]);
 
   const onRegion = (id: string) => {
@@ -70,7 +70,7 @@ export function Coloring({ spec, phrases, onFinish }: GameProps<'coloring'>) {
       setFills((f) => ({ ...f, [id]: paint(color).hex }));
       return;
     }
-    if (id !== current.id) return void say(task(step));
+    if (id !== current.id) return void ask(task(step));
     if (color !== current.target) {
       fx.soft();
       return void say(needColor(current.target), task(step));
@@ -83,7 +83,7 @@ export function Coloring({ spec, phrases, onFinish }: GameProps<'coloring'>) {
     if (next >= picture.regions.length) {
       void praise(phrases);
       setTimeout(onFinish, 1200);
-    } else void praise(phrases).then(() => say(task(next)));
+    } else void praise(phrases).then(() => ask(task(next)));
   };
 
   return (
@@ -105,16 +105,6 @@ export function Coloring({ spec, phrases, onFinish }: GameProps<'coloring'>) {
           </button>
         )}
       </div>
-      {current && (
-        <button
-          type="button"
-          className="corner-button ear"
-          aria-label="Повторить задание"
-          onClick={() => void say(task(step))}
-        >
-          👂
-        </button>
-      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { mediaUrl } from '@kidsplus/shared/api';
 import { useEffect, useRef, useState } from 'react';
-import { nice, praise, retry, say, shuffled, type GameProps } from './common';
+import { ask, nice, praise, retry, say, shuffled, type GameProps } from './common';
 import { DragItem, Pic } from './DragItem';
 import { inside } from './useDrag';
 
@@ -15,7 +15,7 @@ export function Sorting({ spec, phrases, onFinish }: GameProps<'sorting'>) {
   const left = items.filter((i) => placed[i.key] === undefined);
 
   useEffect(() => {
-    void say(spec.prompt);
+    void ask(spec.prompt);
   }, [spec.prompt]);
 
   const drop = (key: number, bin: number, p: { x: number; y: number }) => {
@@ -36,6 +36,9 @@ export function Sorting({ spec, phrases, onFinish }: GameProps<'sorting'>) {
     return true;
   };
 
+  /** Подсказка: какую картинку взять и куда положить. */
+  const hint = left[0];
+
   return (
     <div className="game sorting" data-testid="game-sorting">
       <div className="bins">
@@ -47,6 +50,7 @@ export function Sorting({ spec, phrases, onFinish }: GameProps<'sorting'>) {
             }}
             className={got?.bin === i ? 'bin got' : 'bin'}
             data-testid="bin"
+            data-hint-target={hint?.bin === i ? '' : undefined}
             onClick={() => void say(b.name)}
           >
             <img className="bin-icon" src={mediaUrl(b.imageId)} alt="" draggable={false} />
@@ -66,6 +70,7 @@ export function Sorting({ spec, phrases, onFinish }: GameProps<'sorting'>) {
             key={it.key}
             className="item"
             testId="item"
+            data={it === hint ? { hint: '' } : {}}
             style={{ '--i': i } as React.CSSProperties}
             onDrop={(p) => drop(it.key, it.bin, p)}
           >
@@ -73,14 +78,6 @@ export function Sorting({ spec, phrases, onFinish }: GameProps<'sorting'>) {
           </DragItem>
         ))}
       </div>
-      <button
-        type="button"
-        className="corner-button ear"
-        aria-label="Повторить задание"
-        onClick={() => void say(spec.prompt)}
-      >
-        👂
-      </button>
     </div>
   );
 }
