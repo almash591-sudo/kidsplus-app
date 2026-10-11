@@ -1621,6 +1621,38 @@ test.describe('новые игры', () => {
     expect((await spoken(page)).map((s) => s.text)).toContain('Морковка — не зверь.');
   });
 
+  test('бездействие: задание звучит снова, палец показывает верный ответ', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [
+      game(1, {
+        kind: 'odd',
+        rounds: [{ imageIds: [CAT, LION, RABBIT, CARROT], odd: 3 }],
+      }),
+    ];
+    await page.clock.install();
+    await openGame(page);
+    await expect(page.getByTestId('hint-hand')).toHaveCount(0);
+    await page.clock.runFor(7_000);
+    const hand = page.getByTestId('hint-hand');
+    // Сам слой — точка в центре цели (палец и кольцо рисуются вокруг неё).
+    await expect(hand).toBeAttached();
+    await expect(hand.locator('span')).toBeVisible();
+    // Палец — над лишней картинкой.
+    const cell = await page.locator('[data-testid=odd-cell][data-index="3"]').boundingBox();
+    const at = await hand.boundingBox();
+    expect(at!.x).toBeGreaterThanOrEqual(cell!.x - 1);
+    expect(at!.x).toBeLessThanOrEqual(cell!.x + cell!.width + 1);
+    expect((await spoken(page)).filter((s) => s.text === 'Что здесь лишнее?').length).toBe(2);
+    // Касание убирает подсказку; «ушко» повторяет задание.
+    await page.getByTestId('ear').click();
+    await expect(hand).toHaveCount(0);
+    await expect
+      .poll(async () => (await spoken(page)).filter((s) => s.text === 'Что здесь лишнее?').length)
+      .toBe(3);
+  });
+
   test('продолжи ряд: выбираем, что дальше', async ({ page, backend }) => {
     backend.items = [
       game(1, { kind: 'pattern', imageIds: [CAT, LION, RABBIT], patterns: ['ABC'], rounds: 2 }),

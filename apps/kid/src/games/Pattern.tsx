@@ -1,7 +1,7 @@
 import type { Pattern as PatternKind } from '@kidsplus/shared/games';
 import { useEffect, useRef, useState } from 'react';
 import { PATTERN_PROMPT } from '../phrases';
-import { nice, praise, retry, say, shuffled, type GameProps } from './common';
+import { ask, nice, praise, retry, shuffled, type GameProps } from './common';
 import { Pic } from './DragItem';
 
 /**
@@ -39,7 +39,7 @@ export function Pattern({ spec, phrases, onFinish }: GameProps<'pattern'>) {
   const slot = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    void say(PATTERN_PROMPT);
+    void ask(PATTERN_PROMPT);
   }, [round]);
 
   const choose = (id: string) => {
@@ -85,20 +85,13 @@ export function Pattern({ spec, phrases, onFinish }: GameProps<'pattern'>) {
             className={wrong.includes(id) ? 'pattern-option off' : 'pattern-option'}
             data-testid="pattern-option"
             data-image={id}
+            data-hint={!solved && id === r.answer ? '' : undefined}
             onClick={() => choose(id)}
           >
             <Pic id={id} />
           </button>
         ))}
       </div>
-      <button
-        type="button"
-        className="corner-button ear"
-        aria-label="Повторить задание"
-        onClick={() => void say(PATTERN_PROMPT)}
-      >
-        👂
-      </button>
     </div>
   );
 }

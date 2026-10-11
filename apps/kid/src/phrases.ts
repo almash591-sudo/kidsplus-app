@@ -2,7 +2,13 @@
 // заранее просит озвучить на сервере (нейроголосом), когда серверная озвучка включена.
 import { BATTERY_PHRASES } from '@kidsplus/shared/battery';
 import type { KidCategory, KidPlaylist } from '@kidsplus/shared/api';
-import type { BalloonColor, ColoringPicture, GameSpec, TraceShape } from '@kidsplus/shared/games';
+import type {
+  BalloonColor,
+  ColoringPicture,
+  GameKind,
+  GameSpec,
+  TraceShape,
+} from '@kidsplus/shared/games';
 import { NUMBERS, paint, PALETTE } from './games/common';
 import { SORTER } from './games/sorterShapes';
 import { PICTURES } from './games/pictures';
@@ -71,6 +77,35 @@ export const WILL_BE = 'будет';
 export const HOW_MANY = 'Сколько будет?';
 export const SIZE_PROMPT = 'Поставь от маленького к большому!';
 export const WORD_PROMPT = 'Собери слово!';
+
+/** Как играть — для игр без своего задания и для «ушка», если задание ещё не звучало. */
+export const GAME_INTRO: Record<GameKind, string> = {
+  drawing: 'Рисуй пальчиком! Краски — внизу.',
+  coloring: 'Раскрась картинку! Выбери краску и нажми на картинку.',
+  sorting: 'Перетащи каждую картинку в свой домик.',
+  memory: 'Открывай по две картинки и найди одинаковые!',
+  puzzle: 'Собери картинку! Перетащи кусочки на свои места.',
+  tracing: 'Веди пальчиком по точкам.',
+  balloons: 'Лопай шарики — нажимай на них!',
+  counting: 'Посчитай и нажми нужную цифру.',
+  maze: MAZE_PROMPT,
+  shadows: SHADOWS_PROMPT,
+  flashlight: FLASH_PROMPT,
+  moles: MOLES_PROMPT,
+  melody: 'Послушай колокольчики и нажми их так же.',
+  shapes: SORTER_PROMPT,
+  odd: 'Что здесь лишнее? Нажми на эту картинку.',
+  pattern: 'Что будет дальше? Нажми на картинку внизу.',
+  compare: 'Нажми, где больше.',
+  arithmetic: 'Посчитай и нажми ответ.',
+  size: SIZE_PROMPT,
+  sequence: 'Разложи картинки по порядку.',
+  word: 'Собери слово из букв.',
+};
+
+/** Подсказки на экранах выбора — для тех, кто не читает. */
+export const HINT_TODAY = 'Нажми на кружок — начнём!';
+export const HINT_PICK = 'Нажми на любую картинку!';
 
 /** Всё, что может прозвучать в игре. */
 function gamePhrases(spec: GameSpec): string[] {
@@ -152,6 +187,8 @@ export function appPhrases(playlist: KidPlaylist): Phrase[] {
     DAY_OVER,
     PAUSED,
     CAMERA_ENOUGH,
+    HINT_TODAY,
+    HINT_PICK,
     ...Object.values(BATTERY_PHRASES),
     ...(Object.keys(CATEGORY_LABELS) as KidCategory[]).map(categoryPhrase),
     ...PALETTE.map((p) => p.name),
@@ -161,6 +198,7 @@ export function appPhrases(playlist: KidPlaylist): Phrase[] {
   for (const item of playlist.items) {
     if (item.kind === 'interactive') {
       gamePhrases(item.spec).forEach((t) => ru.add(t));
+      ru.add(GAME_INTRO[item.spec.kind]);
       for (const p of gameForeign(item.spec)) {
         if (p.lang === 'ru') ru.add(p.text);
         else out.push(p);

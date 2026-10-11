@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { fx } from '../fx';
 import { MELODY_LISTEN, MELODY_AGAIN, MELODY_YOU } from '../phrases';
-import { praise, say, type GameProps } from './common';
+import { praise, say, setTask, type GameProps } from './common';
 import { burstAt, cheer } from './juice';
 
 const BELL_COLORS = ['#E8453C', '#F59E0B', '#22A55B', '#3B82F6', '#9B5DE5'];
@@ -61,6 +61,18 @@ export function Melody({ spec, phrases, onFinish }: GameProps<'melody'>) {
 
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
+  // «Ушко» в очереди ребёнка — сыграть мелодию ещё раз.
+  useEffect(() => {
+    setTask(
+      phase === 'play'
+        ? () => {
+            setAgain(true);
+            setPhase('listen');
+          }
+        : null,
+    );
+  }, [phase]);
+
   const tap = (i: number) => {
     if (phase !== 'play') return;
     ring(i);
@@ -110,6 +122,7 @@ export function Melody({ spec, phrases, onFinish }: GameProps<'melody'>) {
             className={ringing === i ? 'bell ringing' : 'bell'}
             data-testid="bell"
             data-bell={i}
+            data-hint={phase === 'play' && i === tune[pos] ? '' : undefined}
             data-silent
             aria-label={`Колокольчик ${i + 1}`}
             style={{ '--bell': BELL_COLORS[i], '--i': i } as React.CSSProperties}

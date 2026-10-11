@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { SIZE_PROMPT } from '../phrases';
-import { nice, praise, retry, say, shuffled, type GameProps } from './common';
+import { ask, nice, praise, retry, shuffled, type GameProps } from './common';
 import { DragItem, Pic } from './DragItem';
 import { inside } from './useDrag';
 
@@ -11,7 +11,7 @@ export const sizeScale = (k: number, count: number) => 0.4 + (0.6 * k) / (count 
 export function Size({ spec, phrases, onFinish }: GameProps<'size'>) {
   const [round, setRound] = useState(0);
   useEffect(() => {
-    void say(SIZE_PROMPT);
+    void ask(SIZE_PROMPT);
   }, []);
   return (
     <SizeRound
@@ -57,6 +57,9 @@ function SizeRound(props: {
 
   const box = (k: number) => ({ '--s': sizeScale(k, count), '--i': k }) as React.CSSProperties;
 
+  /** Подсказка: какую картинку взять и куда положить. */
+  const hint = loose.find((k) => !placed.has(k));
+
   return (
     <div className="game size" data-testid="game-size">
       <div className="size-loose">
@@ -67,7 +70,7 @@ function SizeRound(props: {
               key={k}
               className="size-item appear"
               testId="size-item"
-              data={{ size: k }}
+              data={{ size: k, ...(k === hint && { hint: '' }) }}
               style={box(k)}
               onDrop={(p) => drop(k, p)}
             >
@@ -84,6 +87,7 @@ function SizeRound(props: {
             }}
             className={placed.has(k) ? 'size-slot filled' : 'size-slot'}
             data-testid="size-slot"
+            data-hint-target={k === hint ? '' : undefined}
             style={box(k)}
           >
             <Pic id={props.imageId} className={placed.has(k) ? 'size-in' : 'size-ghost'} />

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { nice, praise, retry, say, shuffled, type GameProps } from './common';
+import { ask, nice, praise, retry, shuffled, type GameProps } from './common';
 import { DragItem, Pic } from './DragItem';
 import { inside } from './useDrag';
 
@@ -41,7 +41,7 @@ function SequenceRound(props: {
   const solved = placed.size === props.ids.length;
 
   useEffect(() => {
-    void say(props.prompt);
+    void ask(props.prompt);
   }, [props.prompt]);
 
   const drop = (k: number, p: { x: number; y: number }) => {
@@ -60,6 +60,13 @@ function SequenceRound(props: {
     return true;
   };
 
+  /** Подсказка: какую картинку взять и куда положить. */
+  const hint = loose.find((k) => !used.has(k));
+  const hintSlot =
+    hint === undefined
+      ? -1
+      : props.ids.findIndex((id, i) => !placed.has(i) && id === props.ids[hint]);
+
   return (
     <div className="game sequence" data-testid="game-sequence">
       <div className={solved ? 'seq-slots solved' : 'seq-slots'}>
@@ -73,6 +80,7 @@ function SequenceRound(props: {
               className={placed.has(i) ? 'seq-slot filled' : 'seq-slot'}
               data-testid="seq-slot"
               data-image={id}
+              data-hint-target={i === hintSlot ? '' : undefined}
             >
               {placed.has(i) ? <Pic id={id} /> : <span className="seq-num">{i + 1}</span>}
             </div>
@@ -87,7 +95,7 @@ function SequenceRound(props: {
               key={k}
               className="seq-item appear"
               testId="seq-item"
-              data={{ image: props.ids[k]! }}
+              data={{ image: props.ids[k]!, ...(k === hint && { hint: '' }) }}
               style={{ '--i': i } as React.CSSProperties}
               onDrop={(p) => drop(k, p)}
             >
@@ -95,14 +103,6 @@ function SequenceRound(props: {
             </DragItem>
           ))}
       </div>
-      <button
-        type="button"
-        className="corner-button ear"
-        aria-label="Повторить задание"
-        onClick={() => void say(props.prompt)}
-      >
-        👂
-      </button>
     </div>
   );
 }

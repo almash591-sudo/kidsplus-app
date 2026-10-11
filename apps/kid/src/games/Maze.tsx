@@ -2,7 +2,7 @@ import { mediaUrl } from '@kidsplus/shared/api';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { fx } from '../fx';
 import { MAZE_PROMPT } from '../phrases';
-import { praise, say, svgPoint, type GameProps } from './common';
+import { ask, praise, svgPoint, type GameProps } from './common';
 import { burst, trail } from './juice';
 import { canStep, makeMaze } from './mazeGen';
 
@@ -12,7 +12,7 @@ const CELL = 10;
 export function Maze({ spec, phrases, onFinish }: GameProps<'maze'>) {
   const [round, setRound] = useState(0);
   useEffect(() => {
-    void say(MAZE_PROMPT);
+    void ask(MAZE_PROMPT);
   }, []);
   return (
     <MazeRound
@@ -134,14 +134,6 @@ function MazeRound(props: {
           </g>
         </g>
       </svg>
-      <button
-        type="button"
-        className="corner-button ear"
-        aria-label="Повторить задание"
-        onClick={() => void say(MAZE_PROMPT)}
-      >
-        👂
-      </button>
     </div>
   );
 }

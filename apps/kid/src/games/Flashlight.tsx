@@ -2,7 +2,7 @@ import type { FlashlightScene } from '@kidsplus/shared/games';
 import { useEffect, useRef, useState } from 'react';
 import { fx } from '../fx';
 import { FLASH_PROMPT } from '../phrases';
-import { praise, say, shuffled, type GameProps } from './common';
+import { ask, praise, say, shuffled, type GameProps } from './common';
 import { Pic } from './DragItem';
 import { burst, cheer } from './juice';
 
@@ -28,7 +28,7 @@ export function Flashlight({ spec, phrases, onFinish }: GameProps<'flashlight'>)
   const all = found.size === spec.items.length;
 
   useEffect(() => {
-    void say(FLASH_PROMPT);
+    void ask(FLASH_PROMPT);
   }, []);
 
   const shine = (e: React.PointerEvent) => {

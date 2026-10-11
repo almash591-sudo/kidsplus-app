@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { SHADOWS_PROMPT } from '../phrases';
-import { nice, praise, retry, say, shuffled, type GameProps } from './common';
+import { ask, nice, praise, retry, shuffled, type GameProps } from './common';
 import { DragItem, Pic } from './DragItem';
 import { inside } from './useDrag';
 
@@ -17,7 +17,7 @@ export function Shadows({ spec, phrases, onFinish }: GameProps<'shadows'>) {
   const [rounds] = useState(() => chunk(shuffled(spec.imageIds), spec.perRound));
   const [round, setRound] = useState(0);
   useEffect(() => {
-    void say(SHADOWS_PROMPT);
+    void ask(SHADOWS_PROMPT);
   }, []);
   return (
     <ShadowRound
@@ -61,6 +61,10 @@ function ShadowRound(props: { ids: string[]; onWrong: () => void; onSolved: () =
     return true;
   };
 
+  /** Подсказка: какую картинку взять и куда положить. */
+  const hint = loose.find((it) => !used.has(it.k));
+  const hintSlot = hint && targets.find((t) => t.id === hint.id && !placed.has(t.k))?.k;
+
   return (
     <div className="game shadows" data-testid="game-shadows">
       <div className="shadow-row">
@@ -73,6 +77,7 @@ function ShadowRound(props: { ids: string[]; onWrong: () => void; onSolved: () =
             className={placed.has(t.k) ? 'shadow-slot filled' : 'shadow-slot'}
             data-testid="shadow-slot"
             data-image={t.id}
+            data-hint-target={t.k === hintSlot ? '' : undefined}
             style={{ '--i': i } as React.CSSProperties}
           >
             <Pic id={t.id} className="shadow-img" />
@@ -87,7 +92,7 @@ function ShadowRound(props: { ids: string[]; onWrong: () => void; onSolved: () =
               key={it.k}
               className="shadow-item appear"
               testId="shadow-item"
-              data={{ image: it.id }}
+              data={{ image: it.id, ...(it === hint && { hint: '' }) }}
               style={{ '--i': i } as React.CSSProperties}
               onDrop={(p) => drop(it.k, p)}
             >

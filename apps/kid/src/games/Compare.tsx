@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { COMPARE_LESS, COMPARE_MORE, LESS_THAN, MORE_THAN } from '../phrases';
-import { NUMBERS, praise, retry, say, shuffled, type GameProps } from './common';
+import { ask, NUMBERS, praise, retry, say, shuffled, type GameProps } from './common';
 import { Pic } from './DragItem';
 import { burstAt } from './juice';
 
@@ -30,7 +30,7 @@ export function Compare({ spec, phrases, onFinish }: GameProps<'compare'>) {
   const sides = useRef<(HTMLButtonElement | null)[]>([]);
   const [a, b] = r.pair;
   const answer = r.ask === 'more' ? (a > b ? 0 : 1) : a < b ? 0 : 1;
-  const prompt = () => say(r.ask === 'more' ? COMPARE_MORE : COMPARE_LESS);
+  const prompt = () => ask(r.ask === 'more' ? COMPARE_MORE : COMPARE_LESS);
 
   useEffect(() => {
     void prompt();
@@ -79,6 +79,7 @@ export function Compare({ spec, phrases, onFinish }: GameProps<'compare'>) {
             .filter(Boolean)
             .join(' ')}
           data-testid="compare-side"
+          data-hint={!solved && side === answer ? '' : undefined}
           data-value={n}
           style={{ '--i': side } as React.CSSProperties}
           onClick={() => choose(side)}
@@ -97,14 +98,6 @@ export function Compare({ spec, phrases, onFinish }: GameProps<'compare'>) {
           {solved && spec.mode === 'objects' && <span className="compare-count">{n}</span>}
         </button>
       ))}
-      <button
-        type="button"
-        className="corner-button ear"
-        aria-label="Повторить задание"
-        onClick={() => void prompt()}
-      >
-        👂
-      </button>
     </div>
   );
 }

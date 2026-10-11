@@ -6,7 +6,7 @@ import { stopAudio } from '../audio';
 import { Celebrate } from '../Celebrate';
 import { Balloons } from './Balloons';
 import { Coloring } from './Coloring';
-import type { GameProps } from './common';
+import { repeatCurrentTask, say, setTask, type GameProps } from './common';
 import { Counting } from './Counting';
 import { Drawing } from './Drawing';
 import { Memory } from './Memory';
@@ -30,7 +30,12 @@ import { Size } from './Size';
 import { Word } from './Word';
 import './games.css';
 import './games-more.css';
+import { GAME_INTRO } from '../phrases';
+import { IdleHint } from '../ui/IdleHint';
 import { Icon } from '../ui/icons';
+
+/** Игры без своего задания: как играть — звучит при входе. */
+const SILENT: readonly GameKind[] = ['drawing', 'memory', 'puzzle'];
 
 /** Плагины игр: вид → компонент (параметры проверены схемой gameSpec на сервере). */
 const GAMES: { [K in GameKind]: ComponentType<GameProps<K>> } = {
@@ -71,6 +76,18 @@ export function GameScreen(props: {
 
   useEffect(() => () => stopAudio(), []);
 
+  // Как играть — для игр без своего задания (игры с заданием говорят его сами).
+  useEffect(() => {
+    if (SILENT.includes(spec.kind) || (spec.kind === 'coloring' && !spec.tasks))
+      void say(GAME_INTRO[spec.kind]);
+    return () => setTask(null);
+  }, [spec]);
+
+  /** «Ушко» и подсказка при бездействии: повторить задание, а нет его — как играть. */
+  const remind = () => {
+    if (!repeatCurrentTask()) void say(GAME_INTRO[spec.kind]);
+  };
+
   useEffect(() => {
     if (!finished) return;
     const t = setTimeout(onDone, 1800);
@@ -102,6 +119,18 @@ export function GameScreen(props: {
         />
       )}
       {!finished && <Mascot />}
+      {!finished && <IdleHint onIdle={remind} first={6000} />}
+      {!finished && (
+        <button
+          type="button"
+          className="corner-button ear"
+          aria-label="Повторить задание"
+          onClick={remind}
+          data-testid="ear"
+        >
+          👂
+        </button>
+      )}
       <button
         type="button"
         className="corner-button home"

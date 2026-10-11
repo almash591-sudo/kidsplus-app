@@ -2,7 +2,7 @@ import type { SorterShape } from '@kidsplus/shared/games';
 import { useEffect, useRef, useState } from 'react';
 import { fx } from '../fx';
 import { SORTER_PROMPT, SORTER_TURN } from '../phrases';
-import { nice, praise, retry, say, shuffled, type GameProps } from './common';
+import { ask, nice, praise, retry, say, shuffled, type GameProps } from './common';
 import { DragItem } from './DragItem';
 import { cheer } from './juice';
 import { fits, SORTER } from './sorterShapes';
@@ -32,7 +32,7 @@ export function Shapes({ spec, phrases, onFinish }: GameProps<'shapes'>) {
   const slots = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
-    void say(SORTER_PROMPT);
+    void ask(SORTER_PROMPT);
   }, []);
 
   const drop = (k: number, p: { x: number; y: number }) => {
@@ -68,6 +68,10 @@ export function Shapes({ spec, phrases, onFinish }: GameProps<'shapes'>) {
     setPieces((list) => list.map((x) => (x.k === k ? { ...x, rot: x.rot + 90 } : x)));
   };
 
+  /** Подсказка: какую картинку взять и куда положить. */
+  const hint = pieces[0];
+  const hintHole = hint && holes.find((h) => !filled.has(h.k) && h.shape === hint.shape)?.k;
+
   return (
     <div className="game sorter" data-testid="game-shapes">
       <div className="sorter-board">
@@ -80,6 +84,7 @@ export function Shapes({ spec, phrases, onFinish }: GameProps<'shapes'>) {
             className={filled.has(h.k) ? 'sorter-hole filled' : 'sorter-hole'}
             data-testid="sorter-hole"
             data-shape={h.shape}
+            data-hint-target={h.k === hintHole ? '' : undefined}
             style={{ '--c': SORTER[h.shape].color } as React.CSSProperties}
           >
             <ShapeSvg shape={h.shape} className="sorter-hole-svg" />
@@ -93,7 +98,7 @@ export function Shapes({ spec, phrases, onFinish }: GameProps<'shapes'>) {
             key={p.k}
             className="sorter-piece appear"
             testId="sorter-piece"
-            data={{ shape: p.shape, rot: p.rot }}
+            data={{ shape: p.shape, rot: p.rot, ...(p === hint && { hint: '' }) }}
             style={{ '--c': SORTER[p.shape].color, '--i': i } as React.CSSProperties}
             onGrab={() => void say(SORTER[p.shape].name)}
             onTap={spec.rotate ? () => turn(p.k) : undefined}
@@ -108,14 +113,6 @@ export function Shapes({ spec, phrases, onFinish }: GameProps<'shapes'>) {
           </DragItem>
         ))}
       </div>
-      <button
-        type="button"
-        className="corner-button ear"
-        aria-label="Повторить задание"
-        onClick={() => void say(SORTER_PROMPT)}
-      >
-        👂
-      </button>
     </div>
   );
 }
