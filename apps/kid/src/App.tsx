@@ -175,6 +175,9 @@ export function App() {
       reportVoicesOnce();
       // Нейроголос: фразы приложения озвучиваются на сервере заранее.
       setServerVoice(playlist.serverVoice);
+      // Просмотр из кабинета — метка «Просмотр» на всех экранах (этап 16а).
+      if (playlist.preview) document.documentElement.dataset.preview = '';
+      else delete document.documentElement.dataset.preview;
       wantSpeech(appPhrases(playlist));
       setToday(day);
       // Во время занятия список не подменяем — обновится, когда ребёнок вернётся.
