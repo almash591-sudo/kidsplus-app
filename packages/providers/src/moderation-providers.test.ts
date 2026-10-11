@@ -74,9 +74,18 @@ describe('llmJson', () => {
   });
 
   it('JSON Schema без неподдерживаемых ключей', () => {
-    const js = jsonSchemaFor(z.object({ s: z.string().min(2).max(5).regex(/a/), n: z.number() }));
-    expect(JSON.stringify(js)).not.toMatch(/minLength|maxLength|pattern|\$schema/);
-    expect(js).toMatchObject({ type: 'object', required: ['s', 'n'] });
+    const js = jsonSchemaFor(
+      z.object({
+        s: z.string().min(2).max(5).regex(/a/),
+        n: z.number().int().min(1).max(5),
+        list: z.array(z.string()).min(1).max(3),
+      }),
+    );
+    // Границы Gemini не принимает (400) — их проверяет Zod после ответа.
+    expect(JSON.stringify(js)).not.toMatch(
+      /minLength|maxLength|pattern|\$schema|minItems|maxItems|minimum|maximum/,
+    );
+    expect(js).toMatchObject({ type: 'object', required: ['s', 'n', 'list'] });
   });
 });
 
