@@ -199,6 +199,7 @@ export async function buildKidItems(
         startSec: row.segment.startSec,
         endSec: row.segment.endSec,
         thumbnailUrl: row.source.thumbnailUrl,
+        subject: (row.segment.subject as GameCategory | null) ?? null,
         questions: kidQuestions(row.segment.id),
       });
     } else if (item.interactiveId) {

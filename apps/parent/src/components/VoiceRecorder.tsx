@@ -18,9 +18,12 @@ export function VoiceRecorder(props: {
   label?: string;
   size?: 'xs' | 'sm' | 'md';
   disabled?: boolean;
+  /** Наибольшая длина записи, с (колыбельная — до 3 минут). */
+  maxSec?: number;
 }) {
+  const maxSec = props.maxSec ?? RECORD_MAX_SEC;
   const [state, setState] = useState<'idle' | 'recording' | 'saving'>('idle');
-  const [left, setLeft] = useState(RECORD_MAX_SEC);
+  const [left, setLeft] = useState(props.maxSec ?? RECORD_MAX_SEC);
   const rec = useRef<MediaRecorder | null>(null);
   const timer = useRef<ReturnType<typeof setInterval>>(undefined);
 
@@ -51,7 +54,8 @@ export function VoiceRecorder(props: {
       return;
     }
     const chunks: Blob[] = [];
-    const r = new MediaRecorder(stream, { mimeType: type });
+    // 48 кбит/с — голосу хватает, а 3 минуты колыбельной — около 1 МБ.
+    const r = new MediaRecorder(stream, { mimeType: type, audioBitsPerSecond: 48_000 });
     rec.current = r;
     r.ondataavailable = (e) => e.data.size && chunks.push(e.data);
     r.onstop = () => {
@@ -66,10 +70,10 @@ export function VoiceRecorder(props: {
     };
     r.start();
     setState('recording');
-    setLeft(RECORD_MAX_SEC);
+    setLeft(maxSec);
     const started = Date.now();
     timer.current = setInterval(() => {
-      const rest = RECORD_MAX_SEC - Math.floor((Date.now() - started) / 1000);
+      const rest = maxSec - Math.floor((Date.now() - started) / 1000);
       setLeft(rest);
       if (rest <= 0) stop();
     }, 250);

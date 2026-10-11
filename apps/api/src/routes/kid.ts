@@ -1,5 +1,6 @@
 import { schema, type Db } from '@kidsplus/db';
 import {
+  isBaby,
   kidEventRequest,
   mediaUrl,
   kidSpeechRequest,
@@ -70,6 +71,22 @@ export async function kidPhrases(
 
 export function kidRoutes(app: FastifyInstance, ctx: Ctx) {
   const { db } = ctx;
+
+  /** Колыбельные голосом мамы (этап 16б) — готовые записи по порядку. */
+  const lullabies = async () => {
+    const rows = await db
+      .select()
+      .from(schema.familyPhrases)
+      .where(eq(schema.familyPhrases.kind, 'lullaby'))
+      .orderBy(asc(schema.familyPhrases.createdAt));
+    const assets = await loadAssets(
+      db,
+      rows.map((r) => r.audioId),
+    );
+    return rows
+      .filter((r) => assets.get(r.audioId)?.status === 'ready')
+      .map((r) => ({ label: r.label, url: mediaUrl(r.audioId) }));
+  };
   const deviceOnly = requireDevice(ctx);
 
   /**
@@ -98,6 +115,8 @@ export function kidRoutes(app: FastifyInstance, ctx: Ctx) {
         immersion: child.foreignImmersion,
         serverVoice: ctx.config.tts.providerId !== 'browser',
         preview: request.device!.preview,
+        baby: isBaby(child, ctx.now()),
+        lullabies: await lullabies(),
         phrasesEn: await kidPhrases(db, ctx.config.tts, child.gender, 'en'),
       };
     },
