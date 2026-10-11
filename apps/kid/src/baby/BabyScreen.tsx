@@ -4,7 +4,8 @@
 // Голосовые команды («Малыш, дальше» и т. п., этап 16в) приходят событием kidsplus-voice.
 import type { KidItem, KidPlaylist, KidSegment } from '@kidsplus/shared/api';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { setNightMode } from '../kiosk';
+import { fx } from '../fx';
+import { setKeepAwake, setNightMode, voiceControl } from '../kiosk';
 import { KidPlayer } from '../player/KidPlayer';
 import { NOISES, playNoise, type NoiseKind, type NoisePlayer } from './noise';
 import './baby.css';
@@ -93,13 +94,27 @@ export function BabyScreen({ playlist }: { playlist: KidPlaylist }) {
   useEffect(() => {
     const on = (e: Event) => command.current((e as CustomEvent<BabyCommand>).detail);
     window.addEventListener('kidsplus-voice', on);
-    return () => window.removeEventListener('kidsplus-voice', on);
+    // Киоск слушает «Малыш, …» (офлайн) — команды приходят сюда; громкость меняет сам киоск.
+    const stopVoice = voiceControl((c) => {
+      fx.bell(2); // маме слышно, что команда понята
+      if (c !== 'louder' && c !== 'quieter')
+        window.dispatchEvent(new CustomEvent('kidsplus-voice', { detail: c }));
+    });
+    return () => {
+      window.removeEventListener('kidsplus-voice', on);
+      stopVoice();
+    };
   }, []);
 
   // Шум и мамин голос — ночной экран (тёмный, не гаснет); видео — обычный.
   useEffect(() => {
     void setNightMode(mode === 'noise' || mode === 'mama');
-    return () => void setNightMode(false);
+    // Видео — экран не гаснет, пока играет.
+    void setKeepAwake(mode === 'songs' || mode === 'speech');
+    return () => {
+      void setNightMode(false);
+      void setKeepAwake(false);
+    };
   }, [mode]);
 
   if (mode === 'songs' || mode === 'speech') {
