@@ -25,6 +25,7 @@ import { api } from '../api';
 import { parentCalls } from '../calls/CallLayer';
 import { SUBJECT_LABELS } from '../lib/subjects';
 import { keys, queryClient, useChildNow, useChildren, useSegments } from '../queries';
+import { PreviewButton } from '../components/PreviewButton';
 
 /** Цвет ребёнка — по порядку: аватар, кольца. */
 const KID_COLORS = ['#e5533f', '#c27c00', '#5856d6', '#1d8f3a'];
@@ -321,6 +322,7 @@ function KidCard({ child, color }: { child: Child; color: string }) {
             🌙 Няня
           </Button>
         </Group>
+        <PreviewButton childId={child.id} fullWidth />
       </Stack>
     </Card>
   );

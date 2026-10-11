@@ -102,3 +102,6 @@ app/src/main/res/xml/config.xml
 
 # sing-box libbox — собирается scripts/build-libbox.sh
 app/libs/*.aar
+
+# Модель распознавания речи (scripts/fetch-vosk-model.ps1) — большая, в git не хранится
+app/src/main/assets/model-ru

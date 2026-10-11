@@ -88,6 +88,14 @@ export function quizDefaults(
   return months < 48 ? { options: 2, questions: 3 } : { options: 4, questions: 5 };
 }
 
+/** Малыш (до 1,5 лет, этап 16б): телефон на кронштейне — экран без заданий, всё само. */
+export const BABY_MONTHS = 18;
+export function isBaby(child: { birthYear: number; birthMonth: number }, now = new Date()) {
+  const months =
+    (now.getFullYear() - child.birthYear) * 12 + (now.getMonth() + 1 - child.birthMonth);
+  return months < BABY_MONTHS;
+}
+
 export function quizSettings(
   child: {
     birthYear: number;
@@ -309,6 +317,8 @@ export interface Card {
   audio: MediaRef | null;
   translationAudio: MediaRef | null;
   questionAudio: MediaRef | null;
+  /** Слово, записанное голосом родителя (звучит вместо нейроголоса). */
+  voice: MediaRef | null;
 }
 
 export interface Deck {
@@ -368,6 +378,8 @@ export interface KidSegment {
   startSec: number;
   endSec: number;
   thumbnailUrl: string | null;
+  /** Тема видео (раздел): у малыша по ней — «Песенки» (music) и «Логопед» (other). */
+  subject?: GameCategory | null;
 }
 
 /**
@@ -418,6 +430,12 @@ export interface KidPlaylist {
   phrasesEn: KidPhrases;
   /** Озвучка на сервере (нейроголос): фразы приложения запрашиваются через /api/kid/speech. */
   serverVoice: boolean;
+  /** Просмотр из кабинета: родитель смотрит глазами ребёнка, прогресс не пишется. */
+  preview?: boolean;
+  /** Малыш (до 1,5 лет): экран малыша вместо разделов и заданий. */
+  baby?: boolean;
+  /** Колыбельные и сказки голосом мамы (записи родителя). */
+  lullabies?: { label: string; url: string }[];
 }
 
 /** Фразы приложения для серверной озвучки (задания игр, разделы, «Где …?»). */

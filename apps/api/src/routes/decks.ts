@@ -36,7 +36,13 @@ export async function loadDecks(
     .orderBy(asc(flashcards.position));
   const assets = await loadAssets(
     db,
-    cards.flatMap((c) => [c.imageId, c.audioId, c.translationAudioId, c.questionAudioId]),
+    cards.flatMap((c) => [
+      c.imageId,
+      c.audioId,
+      c.translationAudioId,
+      c.questionAudioId,
+      c.customAudioId,
+    ]),
   );
   const ref = (id: string | null) => (id && assets.get(id) ? toMediaRef(assets.get(id)!) : null);
   const childIds = await childIdsByRef(db, 'deck', ids);
@@ -57,6 +63,7 @@ export async function loadDecks(
         audio: ref(c.audioId),
         translationAudio: ref(c.translationAudioId),
         questionAudio: ref(c.questionAudioId),
+        voice: ref(c.customAudioId),
       })),
   }));
 }
@@ -181,7 +188,7 @@ export function decksRoutes(app: FastifyInstance, ctx: Ctx) {
     const body = parse(cardInput, request.body);
     const deckId = await db.transaction(async (tx) => {
       const [card] = await tx
-        .select({ deckId: flashcards.deckId, lang: flashcardDecks.lang })
+        .select({ deckId: flashcards.deckId, lang: flashcardDecks.lang, text: flashcards.text })
         .from(flashcards)
         .innerJoin(flashcardDecks, eq(flashcardDecks.id, flashcards.deckId))
         .where(eq(flashcards.id, id));
@@ -204,6 +211,8 @@ export function decksRoutes(app: FastifyInstance, ctx: Ctx) {
           audioId,
           translationAudioId,
           questionAudioId,
+          // Слово изменилось — старая запись голосом родителя к нему не подходит.
+          ...(body.text !== card.text ? { customAudioId: null } : {}),
         })
         .where(eq(flashcards.id, id));
       return card.deckId;
