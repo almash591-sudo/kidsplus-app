@@ -18,6 +18,7 @@ export const SUBJECT_LABELS: Record<Subject, string> = {
   math: 'Математика и геометрия',
   geography: 'География',
   nature: 'Природа',
+  music: 'Музыка',
   other: 'Разное',
 };
 const subject = z.enum(SUBJECTS);

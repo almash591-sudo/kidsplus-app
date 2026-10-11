@@ -24,6 +24,7 @@ import { fromKidQuestion } from './quiz/engine';
 import { QuizScreen } from './quiz/QuizScreen';
 import { DeckScreen } from './screens/DeckScreen';
 import { CategoryScreen, HomeScreen } from './screens/HomeScreen';
+import { isLessonPath } from './screens/LessonPath';
 import { PairScreen } from './screens/PairScreen';
 import {
   DayOverScreen,
@@ -104,7 +105,9 @@ function nextStep(s: State): State {
   const items = itemsOf(s.playlist.items, s.category);
   const i = s.lesson ? (s.step.index + 1) % items.length : s.step.index + 1;
   const next = items[i];
-  return next
+  // Дорожка уроков: после урока — назад на дорожку, к новой звёздочке.
+  const path = !s.lesson && isLessonPath(items);
+  return next && !path
     ? { ...s, step: { index: i, phase: firstPhase(next), seq: s.step.seq + 1 } }
     : { screen: 'home', playlist: s.playlist, category: s.category };
 }

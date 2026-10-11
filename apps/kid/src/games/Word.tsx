@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { playSequence } from '../audio';
 import { fx } from '../fx';
 import { WORD_PROMPT } from '../phrases';
-import { nice, praise, ru, shuffled, type GameProps } from './common';
+import { askSpeech, nice, praise, ru, shuffled, type GameProps } from './common';
 import { DragItem, Pic } from './DragItem';
 import { cheer } from './juice';
 import { inside } from './useDrag';
@@ -66,7 +66,7 @@ function WordRound(props: {
   const solved = filled.size === word.length;
 
   useEffect(() => {
-    void playSequence([ru(WORD_PROMPT), speech(word.toLowerCase())]);
+    void askSpeech([ru(WORD_PROMPT), speech(word.toLowerCase())]);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- задание звучит один раз при показе
   }, []);
 
@@ -103,6 +103,10 @@ function WordRound(props: {
     put(k, slot);
   };
 
+  /** Подсказка: какую букву взять и куда положить. */
+  const hintSlot = [...word].findIndex((_, i) => !filled.has(i));
+  const hint = tiles.find((t) => !used.has(t.k) && t.letter === word[hintSlot]);
+
   return (
     <div className="game word" data-testid="game-word" data-word={word}>
       <button
@@ -123,6 +127,7 @@ function WordRound(props: {
             className={filled.has(i) ? 'word-slot filled' : 'word-slot'}
             data-testid="word-slot"
             data-letter={l}
+            data-hint-target={i === hintSlot ? '' : undefined}
           >
             <span className={filled.has(i) ? 'word-letter' : 'word-ghost'}>{l}</span>
           </div>
@@ -136,7 +141,7 @@ function WordRound(props: {
               key={t.k}
               className="word-tile appear"
               testId="word-tile"
-              data={{ letter: t.letter }}
+              data={{ letter: t.letter, ...(t === hint && { hint: '' }) }}
               style={{ '--i': i } as React.CSSProperties}
               onTap={() => tap(t.k, t.letter)}
               onDrop={(p) => drop(t.k, t.letter, p)}

@@ -4,7 +4,7 @@ import { PictureSvg } from './Coloring';
 import { PALETTE } from './common';
 import { PICTURES } from './pictures';
 
-const ICON: Record<GameKind, string> = {
+export const ICON: Record<GameKind, string> = {
   drawing: '🖍️',
   coloring: '🎨',
   sorting: '🧺',
@@ -26,6 +26,15 @@ const ICON: Record<GameKind, string> = {
   size: '📏',
   sequence: '➡️',
   word: '🔤',
+  pitch: '🐦',
+  loudness: '🐘',
+  tempo: '🐇',
+  duration: '🚂',
+  direction: '↕️',
+  beats: '🥁',
+  rhythm: '🪘',
+  piano: '🎹',
+  staff: '🎼',
 };
 
 /** Картинка для плитки игры (если у игры есть картинки). */

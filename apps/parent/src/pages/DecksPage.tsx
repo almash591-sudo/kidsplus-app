@@ -20,11 +20,11 @@ import {
   Modal,
   SegmentedControl,
   Select,
-  SimpleGrid,
   Stack,
   Text,
   TextInput,
   Title,
+  UnstyledButton,
 } from '@mantine/core';
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -43,6 +43,7 @@ export const CATEGORY_LABELS: Record<DeckCategory, string> = {
   chinese: 'Китайский',
   geography: 'География',
   nature: 'Природа',
+  music: 'Музыка',
   other: 'Разное',
 };
 const CATEGORY_ORDER: DeckCategory[] = [
@@ -51,6 +52,7 @@ const CATEGORY_ORDER: DeckCategory[] = [
   'chinese',
   'geography',
   'nature',
+  'music',
   'other',
 ];
 
@@ -69,27 +71,24 @@ export function DecksPage() {
 
   return (
     <Stack>
-      <Group justify="space-between">
-        <Title order={2}>Карточки</Title>
-        <Button onClick={() => setCreating(true)}>Новый набор</Button>
+      <h1 className="page-title">Карточки</h1>
+      <Group gap="xs" wrap="nowrap" align="center">
+        <Text size="sm" c="dimmed" style={{ flex: 1 }}>
+          Картинки со словами, которые озвучиваются. У ребёнка наборы лежат по разделам.
+        </Text>
+        <Button radius="xl" onClick={() => setCreating(true)}>
+          + Набор
+        </Button>
       </Group>
-      <Text size="sm" c="dimmed">
-        Набор карточек — картинки со словами, которые озвучиваются. У ребёнка на главном экране
-        наборы разложены по разделам: английский, математика и геометрия, китайский; видео —
-        отдельный раздел.
-      </Text>
       {decks.data?.length === 0 && <Text c="dimmed">Наборов пока нет.</Text>}
       {CATEGORY_ORDER.map((category) => {
         const list = decks.data?.filter((d) => d.category === category) ?? [];
         if (!list.length) return null;
         return (
-          <Stack key={category} gap="xs">
-            <Title order={4}>
-              {CATEGORY_LABELS[category]}{' '}
-              <Text span c="dimmed" fw={400}>
-                · {list.length}
-              </Text>
-            </Title>
+          <Stack key={category} gap={6}>
+            <Text size="xs" fw={600} c="dimmed" tt="uppercase" px={16}>
+              {CATEGORY_LABELS[category]} · {list.length}
+            </Text>
             <DeckGrid decks={list} />
           </Stack>
         );
@@ -103,27 +102,37 @@ export function DecksPage() {
 
 function DeckGrid({ decks }: { decks: Deck[] }) {
   return (
-    <SimpleGrid cols={{ base: 1, sm: 2 }}>
-      {decks.map((d) => (
-        <Card key={d.id} withBorder component={Link} to={`/decks/${d.id}`}>
-          <Group wrap="nowrap">
+    <Card padding={0}>
+      <Stack gap={0} className="grouped decks">
+        {decks.map((d) => (
+          <UnstyledButton
+            key={d.id}
+            component={Link}
+            to={`/decks/${d.id}`}
+            className="attention-row"
+          >
             {d.cards[0] ? (
-              <Image src={d.cards[0].image.url} alt="" w={56} h={56} fit="contain" />
+              <img className="deck-thumb" src={d.cards[0].image.url} alt="" />
             ) : (
-              <Text fz={36} aria-hidden>
+              <span className="deck-thumb" aria-hidden>
                 🃏
-              </Text>
+              </span>
             )}
-            <div>
-              <Text fw={600}>{d.title}</Text>
+            <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
+              <Text fw={600} truncate>
+                {d.title}
+              </Text>
               <Text size="sm" c="dimmed">
                 {LANGUAGE_LABELS[d.lang]} · {d.cards.length} шт.
               </Text>
-            </div>
-          </Group>
-        </Card>
-      ))}
-    </SimpleGrid>
+            </Stack>
+            <span className="chevron" aria-hidden="true">
+              ›
+            </span>
+          </UnstyledButton>
+        ))}
+      </Stack>
+    </Card>
   );
 }
 

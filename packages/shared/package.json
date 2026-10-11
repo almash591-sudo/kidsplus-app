@@ -11,6 +11,7 @@
     "./time": "./src/time.ts",
     "./phrases": "./src/phrases.ts",
     "./games": "./src/games.ts",
+    "./music-lessons": "./src/music-lessons.ts",
     "./schedule": "./src/schedule.ts",
     "./analytics": "./src/analytics.ts",
     "./push": "./src/push.ts",

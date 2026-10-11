@@ -53,6 +53,21 @@ const ART: Record<Art, React.ReactNode> = {
       <circle cx="20" cy="14" r="3.5" fill="var(--c-tint)" />
     </>
   ),
+  music: (
+    <>
+      <path
+        d="M17 34V12l22-5v22"
+        stroke="var(--c)"
+        strokeWidth="4.5"
+        fill="none"
+        strokeLinejoin="round"
+      />
+      <path d="M17 18l22-5" stroke="var(--c)" strokeWidth="4.5" />
+      <ellipse cx="12" cy="35" rx="7" ry="5.5" fill="var(--c)" />
+      <ellipse cx="34" cy="30" rx="7" ry="5.5" fill="var(--c)" />
+      <ellipse cx="10.5" cy="33.5" rx="2.5" ry="1.6" fill="var(--c-tint)" />
+    </>
+  ),
   games: (
     <>
       <path

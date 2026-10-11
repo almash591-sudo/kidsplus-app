@@ -1621,6 +1621,38 @@ test.describe('новые игры', () => {
     expect((await spoken(page)).map((s) => s.text)).toContain('Морковка — не зверь.');
   });
 
+  test('бездействие: задание звучит снова, палец показывает верный ответ', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [
+      game(1, {
+        kind: 'odd',
+        rounds: [{ imageIds: [CAT, LION, RABBIT, CARROT], odd: 3 }],
+      }),
+    ];
+    await page.clock.install();
+    await openGame(page);
+    await expect(page.getByTestId('hint-hand')).toHaveCount(0);
+    await page.clock.runFor(7_000);
+    const hand = page.getByTestId('hint-hand');
+    // Сам слой — точка в центре цели (палец и кольцо рисуются вокруг неё).
+    await expect(hand).toBeAttached();
+    await expect(hand.locator('span')).toBeVisible();
+    // Палец — над лишней картинкой.
+    const cell = await page.locator('[data-testid=odd-cell][data-index="3"]').boundingBox();
+    const at = await hand.boundingBox();
+    expect(at!.x).toBeGreaterThanOrEqual(cell!.x - 1);
+    expect(at!.x).toBeLessThanOrEqual(cell!.x + cell!.width + 1);
+    expect((await spoken(page)).filter((s) => s.text === 'Что здесь лишнее?').length).toBe(2);
+    // Касание убирает подсказку; «ушко» повторяет задание.
+    await page.getByTestId('ear').click();
+    await expect(hand).toHaveCount(0);
+    await expect
+      .poll(async () => (await spoken(page)).filter((s) => s.text === 'Что здесь лишнее?').length)
+      .toBe(3);
+  });
+
   test('продолжи ряд: выбираем, что дальше', async ({ page, backend }) => {
     backend.items = [
       game(1, { kind: 'pattern', imageIds: [CAT, LION, RABBIT], patterns: ['ABC'], rounds: 2 }),
@@ -2257,10 +2289,19 @@ test.describe('главный экран', () => {
     ),
   ];
 
-  test('семь разделов помещаются на экран без прокрутки', async ({ page, backend }) => {
-    backend.items = seven();
+  test('все девять разделов (с музыкой и играми) помещаются на экран без прокрутки', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [
+      ...seven(),
+      game(1, { kind: 'loudness', rounds: 2 }, 'music'),
+      game(2, { kind: 'balloons', count: 5, target: null }),
+    ];
+    await gameMedia(page);
     await page.goto('/');
-    await expect(page.getByTestId('category')).toHaveCount(7);
+    await expect(page.getByTestId('category')).toHaveCount(9);
+    await shot(page, 'nine-categories');
     const fits = await page.evaluate(() => {
       const last = [...document.querySelectorAll('[data-testid=category]')].at(-1)!;
       const dock = document.querySelector('.dock');
@@ -2301,5 +2342,131 @@ test.describe('главный экран', () => {
     expect(
       await page.evaluate(() => (window as unknown as { __levels: number[] }).__levels),
     ).toEqual([0.15]);
+  });
+});
+
+test.describe('музыка', () => {
+  test('высоко — низко: показ, потом вопрос; верная картинка — следующий раунд', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [game(1, { kind: 'pitch', gap: 24, rounds: 2 }, 'music')];
+    await openGame(page);
+    const field = page.getByTestId('game-music-choice');
+    for (let round = 0; round < 2; round++) {
+      await expect(field).toHaveAttribute('data-phase', 'answer', { timeout: 15_000 });
+      await shot(page, 'music-pitch');
+      const answer = (await field.getAttribute('data-answer'))!;
+      if (round === 0) {
+        const wrong = answer === 'a' ? 'b' : 'a';
+        await page.locator(`[data-testid=music-side][data-side="${wrong}"]`).click();
+      }
+      await page.locator(`[data-testid=music-side][data-side="${answer}"]`).click();
+      if (round === 0) await expect(field).toHaveAttribute('data-phase', 'solved');
+    }
+    await expectFinished(page, backend);
+    const said = (await spoken(page)).map((s) => s.text);
+    expect(said).toContain('Птичка поёт высоко.');
+    expect(said).toContain('Кто поёт — птичка или мишка?');
+  });
+
+  test('сколько звуков: выбрать число ударов', async ({ page, backend }) => {
+    backend.items = [game(1, { kind: 'beats', max: 3, rounds: 2 }, 'music')];
+    await openGame(page);
+    const field = page.getByTestId('game-beats');
+    for (let round = 0; round < 2; round++) {
+      const answer = (await field.getAttribute('data-answer'))!;
+      const option = page.locator(`[data-testid=beats-option][data-value="${answer}"]`);
+      await expect(option).toHaveAttribute('data-hint', '', { timeout: 10_000 });
+      await option.click();
+      if (round === 0) {
+        await expect(option).toHaveClass(/picked/);
+        // Следующий раунд — когда отметка «верно» снята.
+        await expect(page.locator('.music-number.picked')).toHaveCount(0, { timeout: 5000 });
+      }
+    }
+    await expectFinished(page, backend);
+  });
+
+  test('повтори ритм: после образца — столько же ударов по барабану', async ({ page, backend }) => {
+    backend.items = [game(1, { kind: 'rhythm', beats: 3, timing: false, rounds: 2 }, 'music')];
+    await openGame(page);
+    const field = page.getByTestId('game-rhythm');
+    for (let round = 0; round < 2; round++) {
+      await expect(field).toHaveAttribute('data-phase', 'play', { timeout: 10_000 });
+      await shot(page, 'music-rhythm');
+      for (let i = 0; i < 3; i++) await page.getByTestId('rhythm-drum').click();
+      if (round === 0) await expect(field).toHaveAttribute('data-phase', 'listen');
+    }
+    await expectFinished(page, backend);
+  });
+
+  test('пианино: «найди ноту» — неверная называется, верная засчитывается', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [game(1, { kind: 'piano', mode: 'find', keys: 5, rounds: 2 }, 'music')];
+    await openGame(page);
+    const field = page.getByTestId('game-piano');
+    for (let round = 0; round < 2; round++) {
+      await expect(field).toHaveAttribute('data-ready', 'true', { timeout: 15_000 });
+      await shot(page, 'music-piano');
+      const answer = Number(await field.getAttribute('data-answer'));
+      if (round === 0) {
+        await page.locator(`[data-testid=piano-key][data-key="${(answer + 1) % 5}"]`).click();
+      }
+      await page.locator(`[data-testid=piano-key][data-key="${answer}"]`).click();
+      if (round === 0) await expect(field).toHaveAttribute('data-ready', 'false');
+    }
+    await expectFinished(page, backend);
+    expect((await spoken(page)).some((s) => s.text.startsWith('Найди ноту '))).toBe(true);
+  });
+
+  test('нотный стан: выбрать название ноты', async ({ page, backend }) => {
+    backend.items = [game(1, { kind: 'staff', keys: 5, rounds: 2 }, 'music')];
+    await openGame(page);
+    const field = page.getByTestId('game-staff');
+    for (let round = 0; round < 2; round++) {
+      await shot(page, 'music-staff');
+      const answer = (await field.getAttribute('data-answer'))!;
+      const option = page.locator(`[data-testid=staff-option][data-name="${answer}"]`);
+      await option.click();
+      await expect(option).toHaveClass(/picked/);
+      // Следующая нота — другая.
+      if (round === 0)
+        await expect(field).not.toHaveAttribute('data-answer', answer, { timeout: 4000 });
+    }
+    await expectFinished(page, backend);
+  });
+
+  test('раздел «Музыка» — дорожка уроков: пройденный со звёздочкой, следующий светится', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [
+      game(1, { kind: 'staff', keys: 3, rounds: 2 }, 'music'),
+      game(2, { kind: 'loudness', rounds: 2 }, 'music'),
+    ];
+    await gameMedia(page);
+    await page.goto('/');
+    const path = page.getByTestId('lesson-path');
+    await expect(path).toBeVisible();
+    await shot(page, 'music-path');
+    const steps = path.getByTestId('tile');
+    await expect(steps.nth(0)).toHaveAttribute('data-hint', '');
+    await steps.nth(0).click();
+    const field = page.getByTestId('game-staff');
+    for (let round = 0; round < 2; round++) {
+      const answer = (await field.getAttribute('data-answer'))!;
+      const option = page.locator(`[data-testid=staff-option][data-name="${answer}"]`);
+      await option.click();
+      await expect(option).toHaveClass(/picked/);
+      if (round === 0)
+        await expect(page.locator('.staff-option.picked')).toHaveCount(0, { timeout: 5000 });
+    }
+    // После урока — снова дорожка: первый со звёздочкой, второй светится.
+    await expect(path).toBeVisible({ timeout: 8000 });
+    await expect(steps.nth(0)).toHaveAttribute('data-done', 'true');
+    await expect(steps.nth(1)).toHaveAttribute('data-hint', '');
   });
 });

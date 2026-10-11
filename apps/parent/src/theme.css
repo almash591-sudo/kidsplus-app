@@ -324,3 +324,126 @@ body {
 .grouped.plain > .attention-row:not(:last-child)::after {
   left: 16px;
 }
+
+/* ─── Видео: список с превью ─── */
+.grouped.thumbs > .attention-row:not(:last-child)::after {
+  left: 124px;
+}
+
+.video-thumb {
+  position: relative;
+  flex: none;
+  width: 96px;
+  height: 54px;
+  border-radius: 10px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: var(--app-fill, rgba(120, 120, 128, 0.16));
+}
+
+.video-thumb img,
+img.video-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+img.video-thumb.contain {
+  object-fit: contain;
+}
+
+.video-len {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+}
+
+/* Строка списка ребёнка: внутренняя строка без своих отступов. */
+.attention-row.ordered {
+  padding-right: 8px;
+}
+
+.attention-row.ordered .attention-row {
+  padding: 0;
+  min-height: 0;
+}
+
+/* Быстрые фильтры — «таблетки» в одну прокручиваемую строку. */
+.chip-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.chip-row button {
+  flex: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 7px 14px;
+  background: var(--app-card);
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chip-row button.on {
+  background: var(--mantine-primary-color-filled);
+  color: #fff;
+}
+
+/* Внутри «Контента» заголовок уже есть. */
+.embedded-page .page-title {
+  display: none;
+}
+
+/* ─── Карточки: список наборов ─── */
+.grouped.decks > .attention-row:not(:last-child)::after {
+  left: 72px;
+}
+
+.deck-thumb {
+  flex: none;
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
+  object-fit: contain;
+  background: rgba(120, 120, 128, 0.12);
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+}
+
+/* Кому показывать: имена-переключатели. */
+.kid-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.kid-pills button {
+  border: 0;
+  border-radius: 999px;
+  padding: 3px 10px;
+  background: rgba(120, 120, 128, 0.14);
+  color: var(--app-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.kid-pills button.on {
+  background: var(--mantine-primary-color-light);
+  color: var(--mantine-primary-color-light-color);
+}

@@ -1,7 +1,7 @@
 import { mediaUrl } from '@kidsplus/shared/api';
 import { useEffect, useState } from 'react';
 import { COUNT_PROMPT } from '../phrases';
-import { NUMBERS, praise, retry, say, shuffled, type GameProps } from './common';
+import { ask, NUMBERS, praise, retry, say, shuffled, type GameProps } from './common';
 
 /** Варианты ответа: верный и соседние числа, по возрастанию (как на линейке). */
 export function countOptions(answer: number, max: number, count = 3): number[] {
@@ -31,7 +31,7 @@ export function Counting({ spec, phrases, onFinish }: GameProps<'counting'>) {
   const imageId = image[round % image.length]!;
 
   useEffect(() => {
-    void say(COUNT_PROMPT);
+    void ask(COUNT_PROMPT);
   }, [round]);
 
   const tapItem = (i: number) => {
@@ -91,6 +91,7 @@ export function Counting({ spec, phrases, onFinish }: GameProps<'counting'>) {
                   : 'count-option'
             }
             data-testid="count-option"
+            data-hint={!solved && n === answer ? '' : undefined}
             data-value={n}
             onClick={() => choose(n)}
           >

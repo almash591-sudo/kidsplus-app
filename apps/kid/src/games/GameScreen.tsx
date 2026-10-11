@@ -3,10 +3,11 @@ import type { GameKind, GameSpec } from '@kidsplus/shared/games';
 import { useEffect, useState, type ComponentType } from 'react';
 import { sendEvent } from '../api';
 import { stopAudio } from '../audio';
+import { markDone } from '../progress';
 import { Celebrate } from '../Celebrate';
 import { Balloons } from './Balloons';
 import { Coloring } from './Coloring';
-import type { GameProps } from './common';
+import { repeatCurrentTask, say, setTask, type GameProps } from './common';
 import { Counting } from './Counting';
 import { Drawing } from './Drawing';
 import { Memory } from './Memory';
@@ -28,9 +29,19 @@ import { Shadows } from './Shadows';
 import { Shapes } from './Shapes';
 import { Size } from './Size';
 import { Word } from './Word';
+import { Beats } from './music/Beats';
+import { MusicChoice } from './music/Choice';
+import { Piano } from './music/Piano';
+import { Rhythm } from './music/Rhythm';
+import { Staff } from './music/Staff';
 import './games.css';
 import './games-more.css';
+import { GAME_INTRO } from '../phrases';
+import { IdleHint } from '../ui/IdleHint';
 import { Icon } from '../ui/icons';
+
+/** Игры без своего задания: как играть — звучит при входе. */
+const SILENT: readonly GameKind[] = ['drawing', 'memory', 'puzzle'];
 
 /** Плагины игр: вид → компонент (параметры проверены схемой gameSpec на сервере). */
 const GAMES: { [K in GameKind]: ComponentType<GameProps<K>> } = {
@@ -55,6 +66,15 @@ const GAMES: { [K in GameKind]: ComponentType<GameProps<K>> } = {
   size: Size,
   sequence: Sequence,
   word: Word,
+  pitch: MusicChoice as ComponentType<GameProps<'pitch'>>,
+  loudness: MusicChoice as ComponentType<GameProps<'loudness'>>,
+  tempo: MusicChoice as ComponentType<GameProps<'tempo'>>,
+  duration: MusicChoice as ComponentType<GameProps<'duration'>>,
+  direction: MusicChoice as ComponentType<GameProps<'direction'>>,
+  beats: Beats,
+  rhythm: Rhythm,
+  piano: Piano,
+  staff: Staff,
 };
 
 /** Экран игры: сама игра, кнопка «домой», в конце — звёздочка и следующий пункт. */
@@ -70,6 +90,18 @@ export function GameScreen(props: {
   const Game = GAMES[spec.kind] as ComponentType<GameProps<GameKind>>;
 
   useEffect(() => () => stopAudio(), []);
+
+  // Как играть — для игр без своего задания (игры с заданием говорят его сами).
+  useEffect(() => {
+    if (SILENT.includes(spec.kind) || (spec.kind === 'coloring' && !spec.tasks))
+      void say(GAME_INTRO[spec.kind]);
+    return () => setTask(null);
+  }, [spec]);
+
+  /** «Ушко» и подсказка при бездействии: повторить задание, а нет его — как играть. */
+  const remind = () => {
+    if (!repeatCurrentTask()) void say(GAME_INTRO[spec.kind]);
+  };
 
   useEffect(() => {
     if (!finished) return;
@@ -97,11 +129,24 @@ export function GameScreen(props: {
               interactiveId: id,
               payload: { kind: spec.kind },
             });
+            markDone(id);
             setFinished(true);
           }}
         />
       )}
       {!finished && <Mascot />}
+      {!finished && <IdleHint onIdle={remind} first={6000} />}
+      {!finished && (
+        <button
+          type="button"
+          className="corner-button ear"
+          aria-label="Повторить задание"
+          onClick={remind}
+          data-testid="ear"
+        >
+          👂
+        </button>
+      )}
       <button
         type="button"
         className="corner-button home"

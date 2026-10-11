@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { fx } from '../fx';
 import { HOW_MANY, MINUS, PLUS, WILL_BE } from '../phrases';
 import { countOptions } from './Counting';
-import { NUMBERS, praise, retry, say, shuffled, type GameProps } from './common';
+import { NUMBERS, praise, retry, say, setTask, shuffled, type GameProps } from './common';
 import { Pic } from './DragItem';
 
 export interface Sum {
@@ -53,6 +53,7 @@ export function Arithmetic({ spec, phrases, onFinish }: GameProps<'arithmetic'>)
           () => {
             if (!alive) return;
             void say(sign, NUMBERS[b]!, HOW_MANY);
+            setTask(() => say(NUMBERS[a]!, sign, NUMBERS[b]!, HOW_MANY));
             setPhase('ask');
           },
           900 + b * 120,
@@ -135,6 +136,7 @@ export function Arithmetic({ spec, phrases, onFinish }: GameProps<'arithmetic'>)
                   : 'count-option'
             }
             data-testid="sum-option"
+            data-hint={phase === 'ask' && n === answer ? '' : undefined}
             data-value={n}
             disabled={phase === 'show' || phase === 'move'}
             onClick={() => choose(n)}

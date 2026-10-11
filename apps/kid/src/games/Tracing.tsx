@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { fx } from '../fx';
-import { praise, say, svgPoint, type GameProps } from './common';
+import { ask, praise, svgPoint, type GameProps } from './common';
 import { tracePrompt } from '../phrases';
 import { advance, resample, TRACES } from './traceShapes';
 
@@ -33,7 +33,7 @@ function TraceOne({ shape, onDone }: { shape: keyof typeof TRACES; onDone: () =>
   const [done, setDone] = useState(0);
   const svg = useRef<SVGSVGElement>(null);
   const finished = stroke >= strokes.length;
-  const prompt = () => say(tracePrompt(shape));
+  const prompt = () => ask(tracePrompt(shape));
 
   useEffect(() => {
     void prompt();
@@ -89,14 +89,6 @@ function TraceOne({ shape, onDone }: { shape: keyof typeof TRACES; onDone: () =>
           </>
         )}
       </svg>
-      <button
-        type="button"
-        className="corner-button ear"
-        aria-label="Повторить задание"
-        onClick={() => void prompt()}
-      >
-        👂
-      </button>
     </div>
   );
 }

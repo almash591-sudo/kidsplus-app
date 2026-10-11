@@ -2,7 +2,14 @@
 // заранее просит озвучить на сервере (нейроголосом), когда серверная озвучка включена.
 import { BATTERY_PHRASES } from '@kidsplus/shared/battery';
 import type { KidCategory, KidPlaylist } from '@kidsplus/shared/api';
-import type { BalloonColor, ColoringPicture, GameSpec, TraceShape } from '@kidsplus/shared/games';
+import type {
+  BalloonColor,
+  ColoringPicture,
+  GameKind,
+  GameSpec,
+  TraceShape,
+} from '@kidsplus/shared/games';
+import { NOTE_NAMES } from '@kidsplus/shared/games';
 import { NUMBERS, paint, PALETTE } from './games/common';
 import { SORTER } from './games/sorterShapes';
 import { PICTURES } from './games/pictures';
@@ -16,6 +23,7 @@ export const CATEGORY_LABELS: Record<KidCategory, string> = {
   chinese: 'Китайский',
   geography: 'География',
   nature: 'Природа',
+  music: 'Музыка',
   games: 'Игры',
   other: 'Разное',
 };
@@ -72,6 +80,86 @@ export const HOW_MANY = 'Сколько будет?';
 export const SIZE_PROMPT = 'Поставь от маленького к большому!';
 export const WORD_PROMPT = 'Собери слово!';
 
+// ─── Музыка ──────────────────────────────────────────────────────────────────
+
+/** Игры «что ты слышишь»: две картинки, у каждой — показ в начале и слово после ответа. */
+export const MUSIC_CHOICE = {
+  pitch: {
+    prompt: 'Кто поёт — птичка или мишка?',
+    a: { demo: 'Птичка поёт высоко.', name: 'Высоко!' },
+    b: { demo: 'Мишка поёт низко.', name: 'Низко!' },
+  },
+  loudness: {
+    prompt: 'Громко или тихо?',
+    a: { demo: 'Слон трубит громко.', name: 'Громко!' },
+    b: { demo: 'Мышка пищит тихо.', name: 'Тихо!' },
+  },
+  tempo: {
+    prompt: 'Быстро или медленно?',
+    a: { demo: 'Зайчик бежит быстро.', name: 'Быстро!' },
+    b: { demo: 'Черепаха ползёт медленно.', name: 'Медленно!' },
+  },
+  duration: {
+    prompt: 'Долгий звук или короткий?',
+    a: { demo: 'Паровоз гудит долго.', name: 'Долго!' },
+    b: { demo: 'Цыплёнок пищит коротко.', name: 'Коротко!' },
+  },
+  direction: {
+    prompt: 'Куда идёт мелодия — вверх или вниз?',
+    a: { demo: 'Мелодия идёт вверх.', name: 'Вверх!' },
+    b: { demo: 'Мелодия идёт вниз.', name: 'Вниз!' },
+  },
+} as const;
+export type MusicChoiceKind = keyof typeof MUSIC_CHOICE;
+export const LISTEN = 'Послушай!';
+export const BEATS_PROMPT = 'Сколько раз ударил барабан?';
+export const RHYTHM_LISTEN = 'Послушай барабан!';
+export const RHYTHM_YOU = 'Теперь ты! Стучи по барабану.';
+export const RHYTHM_AGAIN = 'Почти! Послушай ещё раз.';
+export const PIANO_FREE = 'Играй на пианино! Каждая клавиша — своя нота.';
+export const PIANO_EAR = 'Какая это нота? Найди её на клавишах.';
+export const STAFF_PROMPT = 'Как зовут эту ноту?';
+export const pianoFind = (name: string) => `Найди ноту ${name}!`;
+export const thisNote = (name: string) => `Это ${name}.`;
+
+/** Как играть — для игр без своего задания и для «ушка», если задание ещё не звучало. */
+export const GAME_INTRO: Record<GameKind, string> = {
+  drawing: 'Рисуй пальчиком! Краски — внизу.',
+  coloring: 'Раскрась картинку! Выбери краску и нажми на картинку.',
+  sorting: 'Перетащи каждую картинку в свой домик.',
+  memory: 'Открывай по две картинки и найди одинаковые!',
+  puzzle: 'Собери картинку! Перетащи кусочки на свои места.',
+  tracing: 'Веди пальчиком по точкам.',
+  balloons: 'Лопай шарики — нажимай на них!',
+  counting: 'Посчитай и нажми нужную цифру.',
+  maze: MAZE_PROMPT,
+  shadows: SHADOWS_PROMPT,
+  flashlight: FLASH_PROMPT,
+  moles: MOLES_PROMPT,
+  melody: 'Послушай колокольчики и нажми их так же.',
+  shapes: SORTER_PROMPT,
+  odd: 'Что здесь лишнее? Нажми на эту картинку.',
+  pattern: 'Что будет дальше? Нажми на картинку внизу.',
+  compare: 'Нажми, где больше.',
+  arithmetic: 'Посчитай и нажми ответ.',
+  size: SIZE_PROMPT,
+  sequence: 'Разложи картинки по порядку.',
+  word: 'Собери слово из букв.',
+  pitch: MUSIC_CHOICE.pitch.prompt,
+  loudness: MUSIC_CHOICE.loudness.prompt,
+  tempo: MUSIC_CHOICE.tempo.prompt,
+  duration: MUSIC_CHOICE.duration.prompt,
+  direction: MUSIC_CHOICE.direction.prompt,
+  beats: BEATS_PROMPT,
+  rhythm: 'Послушай барабан и постучи так же.',
+  piano: 'Нажимай на клавиши — это ноты до, ре, ми.',
+  staff: STAFF_PROMPT,
+};
+
+/** Подсказки на экранах выбора — для тех, кто не читает. */
+export const HINT_TODAY = 'Нажми на кружок — начнём!';
+export const HINT_PICK = 'Нажми на любую картинку!';
+
 /** Всё, что может прозвучать в игре. */
 function gamePhrases(spec: GameSpec): string[] {
   switch (spec.kind) {
@@ -123,6 +211,28 @@ function gamePhrases(spec: GameSpec): string[] {
       return spec.rounds.map((r) => r.prompt);
     case 'word':
       return [WORD_PROMPT];
+    case 'pitch':
+    case 'loudness':
+    case 'tempo':
+    case 'duration':
+    case 'direction': {
+      const c = MUSIC_CHOICE[spec.kind];
+      return [c.prompt, c.a.demo, c.a.name, c.b.demo, c.b.name];
+    }
+    case 'beats':
+      return [BEATS_PROMPT];
+    case 'rhythm':
+      return [RHYTHM_LISTEN, RHYTHM_YOU, RHYTHM_AGAIN];
+    case 'piano': {
+      const names = [...new Set(NOTE_NAMES.slice(0, spec.keys))];
+      return spec.mode === 'free'
+        ? [PIANO_FREE, ...names]
+        : spec.mode === 'find'
+          ? names.flatMap((n) => [pianoFind(n), thisNote(n)])
+          : [PIANO_EAR, ...names.flatMap((n) => [n, thisNote(n)])];
+    }
+    case 'staff':
+      return [STAFF_PROMPT, ...new Set(NOTE_NAMES.slice(0, spec.keys))];
     case 'drawing':
     case 'puzzle':
     case 'memory':
@@ -152,6 +262,8 @@ export function appPhrases(playlist: KidPlaylist): Phrase[] {
     DAY_OVER,
     PAUSED,
     CAMERA_ENOUGH,
+    HINT_TODAY,
+    HINT_PICK,
     ...Object.values(BATTERY_PHRASES),
     ...(Object.keys(CATEGORY_LABELS) as KidCategory[]).map(categoryPhrase),
     ...PALETTE.map((p) => p.name),
@@ -161,6 +273,7 @@ export function appPhrases(playlist: KidPlaylist): Phrase[] {
   for (const item of playlist.items) {
     if (item.kind === 'interactive') {
       gamePhrases(item.spec).forEach((t) => ru.add(t));
+      ru.add(GAME_INTRO[item.spec.kind]);
       for (const p of gameForeign(item.spec)) {
         if (p.lang === 'ru') ru.add(p.text);
         else out.push(p);

@@ -13,6 +13,7 @@ import {
   GAME_KINDS,
   MOLE_SPEEDS,
   PATTERNS,
+  PIANO_MODES,
   SORTER_SHAPES,
   TRACE_SHAPES,
   type GameKind,
@@ -38,6 +39,7 @@ import { api } from '../api';
 import { keys, queryClient, useChildren } from '../queries';
 import { problem } from '../lib/game';
 import { ImageSlot } from './ImagePicker';
+import { PIANO_MODE_LABELS } from '../pages/GamesPage';
 import { SUBJECT_LABELS as GAME_CATEGORY_LABELS } from '../lib/subjects';
 
 const SORTER_LABELS: Record<(typeof SORTER_SHAPES)[number], string> = {
@@ -135,6 +137,15 @@ const DEFAULTS: { [K in GameKind]: Extract<GameSpec, { kind: K }> } = {
   size: { kind: 'size', imageIds: [], count: 3 },
   sequence: { kind: 'sequence', rounds: [{ prompt: '', imageIds: [] }] },
   word: { kind: 'word', lang: 'ru', words: [], extra: 0 },
+  pitch: { kind: 'pitch', gap: 24, rounds: 5 },
+  loudness: { kind: 'loudness', rounds: 5 },
+  tempo: { kind: 'tempo', rounds: 5 },
+  duration: { kind: 'duration', rounds: 5 },
+  direction: { kind: 'direction', notes: 4, rounds: 5 },
+  beats: { kind: 'beats', max: 3, rounds: 5 },
+  rhythm: { kind: 'rhythm', beats: 3, timing: false, rounds: 4 },
+  piano: { kind: 'piano', mode: 'find', keys: 5, rounds: 5 },
+  staff: { kind: 'staff', keys: 5, rounds: 5 },
 };
 
 /** Число из NumberInput (пустое поле — минимум). */
@@ -1001,7 +1012,118 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
           />
         </Stack>
       );
+    case 'pitch':
+      return (
+        <Group grow>
+          <NumberInput
+            label="Разница, полутонов (больше — проще)"
+            min={12}
+            max={36}
+            value={spec.gap}
+            onChange={(v) => onChange({ ...spec, gap: num(v, 12) })}
+          />
+          <MusicRounds value={spec.rounds} onChange={(rounds) => onChange({ ...spec, rounds })} />
+        </Group>
+      );
+    case 'loudness':
+    case 'tempo':
+    case 'duration':
+      return (
+        <MusicRounds value={spec.rounds} onChange={(rounds) => onChange({ ...spec, rounds })} />
+      );
+    case 'direction':
+      return (
+        <Group grow>
+          <NumberInput
+            label="Нот в мелодии"
+            min={3}
+            max={5}
+            value={spec.notes}
+            onChange={(v) => onChange({ ...spec, notes: num(v, 3) })}
+          />
+          <MusicRounds value={spec.rounds} onChange={(rounds) => onChange({ ...spec, rounds })} />
+        </Group>
+      );
+    case 'beats':
+      return (
+        <Group grow>
+          <NumberInput
+            label="До скольки ударов"
+            min={2}
+            max={6}
+            value={spec.max}
+            onChange={(v) => onChange({ ...spec, max: num(v, 2) })}
+          />
+          <MusicRounds value={spec.rounds} onChange={(rounds) => onChange({ ...spec, rounds })} />
+        </Group>
+      );
+    case 'rhythm':
+      return (
+        <Stack gap="xs">
+          <Group grow>
+            <NumberInput
+              label="Ударов"
+              min={2}
+              max={6}
+              value={spec.beats}
+              onChange={(v) => onChange({ ...spec, beats: num(v, 2) })}
+            />
+            <MusicRounds value={spec.rounds} onChange={(rounds) => onChange({ ...spec, rounds })} />
+          </Group>
+          <Switch
+            label="Проверять длительности («та» и «ти-ти»), а не только число ударов"
+            checked={spec.timing}
+            onChange={(e) => onChange({ ...spec, timing: e.currentTarget.checked })}
+          />
+        </Stack>
+      );
+    case 'piano':
+      return (
+        <Group grow>
+          <Select
+            label="Режим"
+            allowDeselect={false}
+            value={spec.mode}
+            data={PIANO_MODES.map((m) => ({ value: m, label: PIANO_MODE_LABELS[m] }))}
+            onChange={(m) => m && onChange({ ...spec, mode: m as typeof spec.mode })}
+          />
+          <NumberInput
+            label="Нот (от «до»)"
+            min={3}
+            max={8}
+            value={spec.keys}
+            onChange={(v) => onChange({ ...spec, keys: num(v, 3) })}
+          />
+          <MusicRounds value={spec.rounds} onChange={(rounds) => onChange({ ...spec, rounds })} />
+        </Group>
+      );
+    case 'staff':
+      return (
+        <Group grow>
+          <NumberInput
+            label="Нот (от «до»)"
+            min={3}
+            max={8}
+            value={spec.keys}
+            onChange={(v) => onChange({ ...spec, keys: num(v, 3) })}
+          />
+          <MusicRounds value={spec.rounds} onChange={(rounds) => onChange({ ...spec, rounds })} />
+        </Group>
+      );
   }
+}
+
+/** Число раундов музыкальной игры. */
+function MusicRounds({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  return (
+    <NumberInput
+      label="Раундов"
+      min={2}
+      max={12}
+      value={value}
+      onChange={(v) => onChange(num(v, 2))}
+    />
+  );
 }
 
 /** Создание и изменение игры. */

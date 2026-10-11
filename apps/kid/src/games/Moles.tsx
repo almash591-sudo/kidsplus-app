@@ -2,7 +2,7 @@ import type { MoleSpeed } from '@kidsplus/shared/games';
 import { useEffect, useRef, useState } from 'react';
 import { fx } from '../fx';
 import { MOLES_PROMPT } from '../phrases';
-import { NUMBERS, praise, say, type GameProps } from './common';
+import { ask, NUMBERS, praise, say, type GameProps } from './common';
 import { Pic } from './DragItem';
 import { burstAt, cheer, floatText } from './juice';
 
@@ -27,7 +27,7 @@ export function Moles({ spec, phrases, onFinish }: GameProps<'moles'>) {
   const [score, setScore] = useState(0);
   const finished = score >= spec.count;
   const holes = useRef<(HTMLButtonElement | null)[]>([]);
-  const prompt = () => say(spec.prompt ?? MOLES_PROMPT);
+  const prompt = () => ask(spec.prompt ?? MOLES_PROMPT);
 
   useEffect(() => {
     void prompt();
@@ -135,14 +135,6 @@ export function Moles({ spec, phrases, onFinish }: GameProps<'moles'>) {
           <span key={i} className={i < score ? 'on' : ''} />
         ))}
       </div>
-      <button
-        type="button"
-        className="corner-button ear"
-        aria-label="Повторить задание"
-        onClick={() => void prompt()}
-      >
-        👂
-      </button>
     </div>
   );
 }

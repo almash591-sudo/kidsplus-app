@@ -9,6 +9,8 @@ const PATHS = {
   math: 'M12 5v14M5 12h14',
   nature:
     'M12 21V11M12 11c0-4.2 3-7 7.5-7 0 4.3-3 7-7.5 7zM12 14.5C12 11.4 9.6 9 6 9c0 3.3 2.4 5.5 6 5.5z',
+  music:
+    'M9 18V6l10-2v12M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM19 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM9 10l10-2',
   games:
     'M6.5 9h11a3.5 3.5 0 0 1 3.4 4.3l-.5 2a2.6 2.6 0 0 1-4.5 1.1L14.5 15h-5l-1.4 1.4a2.6 2.6 0 0 1-4.5-1.1l-.5-2A3.5 3.5 0 0 1 6.5 9zM8 11v3M6.5 12.5h3M16 12h.01M17.5 13.5h.01',
   geography:
@@ -74,6 +76,7 @@ export const CATEGORY_ICON: Record<KidCategory, IconName> = {
   chinese: 'chinese',
   geography: 'geography',
   nature: 'nature',
+  music: 'music',
   games: 'games',
   other: 'other',
 };

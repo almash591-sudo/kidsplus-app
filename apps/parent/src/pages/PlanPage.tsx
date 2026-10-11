@@ -565,6 +565,7 @@ const SUBJECT_COLORS: Record<Subject, string> = {
   math: '#f5a000',
   geography: '#2d9cff',
   nature: '#2fb67c',
+  music: '#00a9bd',
   games: '#ff5fa2',
   other: '#8e5cf6',
 };
