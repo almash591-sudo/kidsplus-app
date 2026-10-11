@@ -13,6 +13,7 @@ import {
 import { gameImageIds, gameSpec, type GameSpec } from '@kidsplus/shared/games';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { loadAssets, type TtsSettings } from './media';
+import { cardStates, orderCards, type CardState } from './srs';
 
 const {
   flashcardDecks,
@@ -51,6 +52,8 @@ export async function buildKidItems(
   db: Db,
   tts: TtsSettings,
   items: readonly ItemRef[],
+  /** Интервальное повторение: чьи ответы учитывать при порядке карточек. */
+  srs?: { childId: string; now: Date },
 ): Promise<KidItem[]> {
   const segmentIds = items.flatMap((i) => (i.segmentId ? [i.segmentId] : []));
   const deckIds = items.flatMap((i) => (i.deckId ? [i.deckId] : []));
@@ -148,9 +151,13 @@ export async function buildKidItems(
     }
   }
 
+  const states = srs ? await cardStates(db, srs.childId) : new Map<string, CardState>();
   const kidCards = (deckId: string): KidCard[] =>
-    cards
-      .filter((c) => c.deckId === deckId && ready(c.imageId))
+    orderCards(
+      cards.filter((c) => c.deckId === deckId && ready(c.imageId)),
+      states,
+      srs?.now ?? new Date(),
+    )
       .map((c) => ({
         c,
         word: speech(c.text, deckLang.get(deckId) ?? 'ru', c.audioId),
