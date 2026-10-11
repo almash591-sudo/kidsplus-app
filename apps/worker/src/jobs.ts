@@ -7,6 +7,9 @@ export const AVAILABILITY_QUEUE = 'video-availability';
 /** Недельный отчёт: воскресенье, 19:00 по Москве (решение владельца 2026-10-10). */
 export const WEEKLY_QUEUE = 'weekly-report';
 export const WEEKLY_CRON = '0 19 * * 0';
+/** Резервная копия базы: каждую ночь в 04:00 по Москве. */
+export const BACKUP_QUEUE = 'db-backup';
+export const BACKUP_CRON = '0 4 * * *';
 
 type Boss = Pick<PgBoss, 'createQueue' | 'schedule' | 'work'>;
 
@@ -19,6 +22,7 @@ export async function registerJobs(
   log: Logger,
   checkVideos?: () => Promise<Record<string, number>>,
   weekly?: () => Promise<number>,
+  backup?: () => Promise<unknown>,
 ): Promise<void> {
   await boss.createQueue(HEARTBEAT_QUEUE);
   await boss.schedule(HEARTBEAT_QUEUE, '*/5 * * * *');
@@ -33,6 +37,14 @@ export async function registerJobs(
     await boss.schedule(WEEKLY_QUEUE, WEEKLY_CRON, null, { tz: 'Europe/Moscow' });
     await boss.work(WEEKLY_QUEUE, async () => {
       await weekly();
+    });
+  }
+
+  if (backup) {
+    await boss.createQueue(BACKUP_QUEUE);
+    await boss.schedule(BACKUP_QUEUE, BACKUP_CRON, null, { tz: 'Europe/Moscow' });
+    await boss.work(BACKUP_QUEUE, async () => {
+      await backup();
     });
   }
 

@@ -22,6 +22,7 @@ import { callsRoutes } from './routes/calls';
 import { quizRoutes } from './routes/quiz';
 import { videosRoutes } from './routes/videos';
 import { voiceRoutes } from './routes/voice';
+import { backupRoutes } from './routes/backup';
 import { EmojiCatalog } from './services/emoji';
 
 /** Настройки модерации по умолчанию (как в env). */
@@ -113,6 +114,7 @@ export async function buildApp({
   capturesRoutes(app, ctx);
   callsRoutes(app, ctx);
   voiceRoutes(app, ctx);
+  backupRoutes(app, ctx);
 
   return app;
 }

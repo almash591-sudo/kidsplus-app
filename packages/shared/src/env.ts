@@ -104,6 +104,10 @@ export const workerEnvSchema = z
     GOOGLE_TTS_API_KEY: optional(z.string().min(10)),
     /** Ключ Gemini API — анализ видео для модерации. Без него очередь модерации ждёт. */
     GEMINI_API_KEY: optional(z.string().min(10)),
+    /** Резервные копии на Google Диск владельца (OAuth, право drive.file): scripts/google-drive-auth.mjs. */
+    GOOGLE_DRIVE_CLIENT_ID: optional(z.string().min(10)),
+    GOOGLE_DRIVE_CLIENT_SECRET: optional(z.string().min(10)),
+    GOOGLE_DRIVE_REFRESH_TOKEN: optional(z.string().min(10)),
     ...storageEnv,
     ...ttsEnv,
     ...moderationEnv,

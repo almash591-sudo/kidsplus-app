@@ -46,6 +46,12 @@ const GROUPS: {
     items: [
       { to: '/devices', label: 'Устройства', color: '#5856d6', icon: 'M7 3h10v18H7zM11 18h2' },
       {
+        to: '/backup',
+        label: 'Резервные копии',
+        color: '#30b0c7',
+        icon: 'M4 7c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3zM4 7v10c0 1.7 3.6 3 8 3s8-1.3 8-3V7M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3',
+      },
+      {
         to: '/account',
         label: 'Аккаунт и оформление',
         color: '#8e8e93',
