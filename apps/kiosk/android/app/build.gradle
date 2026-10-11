@@ -7,7 +7,9 @@ android {
         applicationId "app.kidsplus.kiosk"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
+        // Номер сборки (минуты с 2020 года) задаёт scripts/publish-kiosk.ps1; растёт — телефоны ставят новую версию.
+        // Без параметра — тоже минуты с 2020-01-01 (26297280 — минуты эпохи Unix на эту дату).
+        versionCode((project.findProperty('kidsplusVersionCode') ?: (System.currentTimeMillis().intdiv(60000L) - 26297280L)) as int)
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {

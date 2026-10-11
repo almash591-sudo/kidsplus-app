@@ -39,6 +39,7 @@ export async function makeApp(
     rateLimit?: boolean;
     push?: Ctx['push'];
     capturesQuotaBytes?: number;
+    kioskPublishToken?: string;
   } = { setupToken: SETUP_TOKEN },
 ) {
   const { db, close } = await createTestDb();
@@ -55,6 +56,7 @@ export async function makeApp(
       tts: options.tts ?? TEST_TTS,
       moderation: { maxVideoSec: 30 * 60, dailyTokenLimit: 1_000_000, totalTokenLimit: 10_000_000 },
       captures: { quotaBytes: options.capturesQuotaBytes ?? 200 * 1024 * 1024 },
+      kioskPublishToken: options.kioskPublishToken,
     },
     youtube: options.youtube ?? null,
     rateLimit: options.rateLimit ?? true,
