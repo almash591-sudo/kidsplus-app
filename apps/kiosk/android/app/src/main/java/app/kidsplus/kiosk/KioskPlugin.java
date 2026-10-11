@@ -16,6 +16,7 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 @CapacitorPlugin(name = "Kiosk")
 public class KioskPlugin extends Plugin {
     private BroadcastReceiver batteryReceiver;
+    private VoiceControl voice;
 
     /** Заряд для детского приложения (этап 8): системное «липкое» ACTION_BATTERY_CHANGED. */
     static JSObject battery(Intent i) {
@@ -50,6 +51,36 @@ public class KioskPlugin extends Plugin {
     @Override
     protected void handleOnDestroy() {
         if (batteryReceiver != null) getContext().unregisterReceiver(batteryReceiver);
+        if (voice != null) voice.stop();
+    }
+
+    /** Голосовое управление экраном малыша (этап 16в): включает детское приложение. */
+    @PluginMethod
+    public void setVoiceControl(PluginCall call) {
+        boolean on = Boolean.TRUE.equals(call.getBoolean("on", false));
+        if (voice == null) {
+            voice = new VoiceControl(getContext(), cmd -> {
+                JSObject e = new JSObject();
+                e.put("command", cmd);
+                notifyListeners("voice", e);
+            });
+        }
+        if (on) voice.start();
+        else voice.stop();
+        JSObject r = new JSObject();
+        r.put("available", VoiceControl.hasModel(getContext()));
+        call.resolve(r);
+    }
+
+    /** Экран не гаснет, пока малыш смотрит видео (яркость — обычная). */
+    @PluginMethod
+    public void setKeepAwake(PluginCall call) {
+        boolean on = Boolean.TRUE.equals(call.getBoolean("on", false));
+        getActivity().runOnUiThread(() -> {
+            if (on) getActivity().getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            else getActivity().getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        });
+        call.resolve();
     }
 
     @PluginMethod

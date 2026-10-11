@@ -2512,4 +2512,54 @@ test.describe('малыш', () => {
     await page.locator('[data-testid=baby-tile][data-mode=mama]').click();
     await expect(page.getByTestId('baby-mama')).toContainText('Спи, моя радость');
   });
+
+  test('голос в киоске: «Малыш, шум» — шум; голос включён, пока открыт экран малыша', async ({
+    page,
+    backend,
+  }) => {
+    await page.addInitScript(() => {
+      const w = window as unknown as {
+        Capacitor: unknown;
+        __voice: boolean[];
+        __say: (c: string) => void;
+      };
+      w.__voice = [];
+      let listener: ((e: { command: string }) => void) | null = null;
+      w.__say = (c) => listener?.({ command: c });
+      w.Capacitor = {
+        Plugins: {
+          Kiosk: {
+            openSettings: async () => {},
+            setVoiceControl: async ({ on }: { on: boolean }) => {
+              w.__voice.push(on);
+              return { available: true };
+            },
+            setKeepAwake: async () => {},
+            setNightMode: async () => {},
+            // Как в настоящем киоске при server.url — подписка возвращается сразу.
+            addListener: (event: string, cb: (e: { command: string }) => void) => {
+              if (event === 'voice') listener = cb;
+              return { remove: () => {} };
+            },
+          },
+        },
+      };
+    });
+    backend.baby = true;
+    backend.items = [{ ...SEGMENTS[0]!, kind: 'segment', questions: [], subject: 'music' }];
+    await page.goto('/');
+    await expect(page.getByTestId('baby-menu')).toBeVisible();
+    await expect
+      .poll(() => page.evaluate(() => (window as unknown as { __voice: boolean[] }).__voice))
+      .toEqual([true]);
+    await page.evaluate(() => (window as unknown as { __say: (c: string) => void }).__say('noise'));
+    await expect(page.getByTestId('baby-noise')).toBeVisible();
+    await page.evaluate(() => (window as unknown as { __say: (c: string) => void }).__say('songs'));
+    await expect(page.getByTestId('baby-video')).toHaveAttribute('data-mode', 'songs');
+    // Громкость меняет сам киоск — экран не переключается.
+    await page.evaluate(() =>
+      (window as unknown as { __say: (c: string) => void }).__say('louder'),
+    );
+    await expect(page.getByTestId('baby-video')).toBeVisible();
+  });
 });
