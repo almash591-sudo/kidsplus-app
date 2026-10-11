@@ -658,3 +658,10 @@ export const weeklyReports = pgTable(
   },
   (t) => [uniqueIndex().on(t.childId, t.weekStart)],
 );
+
+/** Настройки системы, которые родитель меняет в кабинете (этап 14в): key — имя, value — JSON. */
+export const appSettings = pgTable('app_settings', {
+  key: text().primaryKey(),
+  value: jsonb().notNull(),
+  updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+});

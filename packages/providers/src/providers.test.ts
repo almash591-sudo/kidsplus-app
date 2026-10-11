@@ -76,6 +76,17 @@ describe('GoogleTtsProvider', () => {
     });
   });
 
+  it('«+» перед гласной уходит знаком ударения', async () => {
+    const fetch = okFetch();
+    await new GoogleTtsProvider({ apiKey: 'k', fetch }).synthesize({
+      text: 'Молодец, здор+ово!',
+      lang: 'ru',
+      speed: 1,
+    });
+    const [, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(init.body as string).input.text).toBe('Молодец, здоро́во!');
+  });
+
   it('использует голос из настроек', async () => {
     const fetch = okFetch();
     await new GoogleTtsProvider({

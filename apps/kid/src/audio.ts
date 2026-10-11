@@ -3,6 +3,7 @@
 // (Web Speech API: на Android это голос Samsung/Google TTS, установленный на устройстве).
 import type { Language, Speech } from '@kidsplus/shared/api';
 import { cachedSpeechUrl, wantSpeech } from './speechCache';
+import { withoutStress } from '@kidsplus/shared/voice';
 
 const SPEECH_LANG: Record<Language, string> = { ru: 'ru-RU', en: 'en-US', zh: 'zh-CN' };
 /** Медленнее обычного — для малышей. */
@@ -93,7 +94,8 @@ async function speakText(s: Speech): Promise<void> {
   lastLang = lang;
 
   return new Promise((resolve) => {
-    const u = new SpeechSynthesisUtterance(s.text);
+    // Пометка ударения «здор+ово» — только для нейроголоса; голос телефона её прочитал бы.
+    const u = new SpeechSynthesisUtterance(withoutStress(s.text));
     u.lang = lang;
     u.rate = SPEECH_RATE;
     const voice = voiceFor(lang, speech.getVoices());

@@ -19,6 +19,7 @@ import { NowPage } from './pages/NowPage';
 import { PlanPage } from './pages/PlanPage';
 import { SegmentEditorPage } from './pages/SegmentEditorPage';
 import { VideosPage } from './pages/VideosPage';
+import { VoicePage } from './pages/VoicePage';
 import { VoicesPage } from './pages/VoicesPage';
 
 export const router = createBrowserRouter([
@@ -36,6 +37,7 @@ export const router = createBrowserRouter([
       { path: 'content', element: <ContentPage /> },
       { path: 'progress', element: <AnalyticsPage /> },
       { path: 'more', element: <MorePage /> },
+      { path: 'voice', element: <VoicePage /> },
       { path: 'now', element: <NowPage /> },
       { path: 'plan', element: <PlanPage /> },
       { path: 'analytics', element: <AnalyticsPage /> },

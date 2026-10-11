@@ -1400,7 +1400,7 @@ test.describe('отклик интерфейса', () => {
     await expect(page.getByTestId('home')).toBeVisible({ timeout: 6000 });
     await expect
       .poll(async () => (await spoken(page)).map((s) => s.text))
-      .toContain('Молодец! Выбирай, что дальше.');
+      .toContain('Молодец, выбирай, что дальше.');
   });
 });
 
@@ -1835,7 +1835,7 @@ test.describe('расписание дня', () => {
     await expect(page.getByTestId('today')).toBeVisible({ timeout: 8000 });
     await expect
       .poll(async () => (await spoken(page)).map((s) => s.text))
-      .toContain('Молодец! На сегодня этот урок закончен.');
+      .toContain('Молодец, на сегодня этот урок закончен.');
   });
 
   test('урок идёт по кругу, пока время не вышло', async ({ page, backend }) => {

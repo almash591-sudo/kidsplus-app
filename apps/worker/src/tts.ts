@@ -5,7 +5,7 @@ import {
   type TtsLanguage,
   type TtsProvider,
 } from '@kidsplus/providers';
-import { and, eq, inArray, lt, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, lt, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
 
 const { mediaAssets } = schema;
@@ -51,6 +51,9 @@ export async function processPendingTts(deps: TtsDeps, batch = 5): Promise<TtsBa
               lt(mediaAssets.attempts, MAX_TTS_ATTEMPTS),
             ),
           )
+          // Сначала новые: прослушивание голоса в кабинете и фразы, которые телефон ждёт сейчас,
+          // не стоят в очереди за тысячами фраз переозвучки.
+          .orderBy(desc(mediaAssets.createdAt))
           .limit(batch)
           .for('update', { skipLocked: true }),
       ),
