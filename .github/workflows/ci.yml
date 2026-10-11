@@ -1,8 +1,18 @@
 name: CI
 
+# Экономия минут (приватный репозиторий, бесплатный лимит): ветки PR проверяются один раз —
+# через pull_request; push — только в main (после него Railway деплоит). Новый push в PR
+# отменяет незаконченную проверку. Правки только документации CI не запускают.
 on:
   push:
+    branches: [main]
+    paths-ignore: ['**/*.md', 'docs/**']
   pull_request:
+    paths-ignore: ['**/*.md', 'docs/**']
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   check:
@@ -35,6 +45,13 @@ jobs:
           # Автокэш по packageManager требует pnpm до corepack enable — отключаем.
           package-manager-cache: false
       - run: corepack enable
+      - id: pnpm-store
+        run: echo "dir=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.dir }}
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm format:check
@@ -60,14 +77,35 @@ jobs:
       CI: 'true'
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      # Детское приложение и общие пакеты не менялись — сквозные тесты не нужны.
+      - id: changed
+        run: bash .github/changed.sh '^(apps/kid/|packages/|pnpm-lock\.yaml|package\.json|\.github/)'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
       - uses: actions/setup-node@v5
+        if: steps.changed.outputs.run == 'true'
         with:
           node-version-file: .nvmrc
           package-manager-cache: false
-      - run: corepack enable
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @kidsplus/kid exec playwright install --with-deps chromium
-      - run: pnpm --filter @kidsplus/kid e2e
+      - if: steps.changed.outputs.run == 'true'
+        run: corepack enable
+      - id: pnpm-store
+        if: steps.changed.outputs.run == 'true'
+        run: echo "dir=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        if: steps.changed.outputs.run == 'true'
+        with:
+          path: ${{ steps.pnpm-store.outputs.dir }}
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+      - if: steps.changed.outputs.run == 'true'
+        run: pnpm install --frozen-lockfile
+      - if: steps.changed.outputs.run == 'true'
+        run: pnpm --filter @kidsplus/kid exec playwright install --with-deps chromium
+      - if: steps.changed.outputs.run == 'true'
+        run: pnpm --filter @kidsplus/kid e2e
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -83,30 +121,45 @@ jobs:
       COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      # Киоск собирается только если менялся он сам или сборка libbox — это самая долгая проверка.
+      - id: changed
+        run: bash .github/changed.sh '^(apps/kiosk/|scripts/build-libbox\.sh|\.github/)'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
       - uses: actions/setup-java@v4
+        if: steps.changed.outputs.run == 'true'
         with:
           distribution: temurin
           java-version: '21'
       - uses: actions/setup-go@v5
+        if: steps.changed.outputs.run == 'true'
         with:
           go-version: '1.25'
           cache: false
       # sing-box libbox собирается из исходников ~10 минут — кэш по версии.
       - id: libbox
+        if: steps.changed.outputs.run == 'true'
         uses: actions/cache@v4
         with:
           path: apps/kiosk/android/app/libs/libbox.aar
           key: libbox-1.14.3-arm64-v1
       - name: libbox (sing-box)
-        if: steps.libbox.outputs.cache-hit != 'true'
+        if: steps.changed.outputs.run == 'true' && steps.libbox.outputs.cache-hit != 'true'
         run: ANDROID_NDK_HOME="$ANDROID_NDK_LATEST_HOME" bash scripts/build-libbox.sh
       - uses: actions/setup-node@v5
+        if: steps.changed.outputs.run == 'true'
         with:
           node-version-file: .nvmrc
           package-manager-cache: false
       - run: corepack enable
+        if: steps.changed.outputs.run == 'true'
       - run: pnpm install --frozen-lockfile --filter @kidsplus/kiosk
+        if: steps.changed.outputs.run == 'true'
       - run: pnpm --filter @kidsplus/kiosk exec cap sync android
+        if: steps.changed.outputs.run == 'true'
       - name: Тесты и сборка APK
+        if: steps.changed.outputs.run == 'true'
         working-directory: apps/kiosk/android
         run: bash gradlew testDebugUnitTest assembleDebug --no-daemon
