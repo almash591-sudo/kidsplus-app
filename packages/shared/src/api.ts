@@ -309,6 +309,8 @@ export interface Card {
   audio: MediaRef | null;
   translationAudio: MediaRef | null;
   questionAudio: MediaRef | null;
+  /** Слово, записанное голосом родителя (звучит вместо нейроголоса). */
+  voice: MediaRef | null;
 }
 
 export interface Deck {
