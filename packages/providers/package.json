@@ -6,6 +6,7 @@
     ".": "./src/index.ts",
     "./s3": "./src/storage-s3.ts",
     "./gemini": "./src/llm-gemini.ts",
+    "./google-drive": "./src/google-drive.ts",
     "./prompts/*": "./prompts/*.ts",
     "./storage-factory": "./src/storage-factory.ts"
   },

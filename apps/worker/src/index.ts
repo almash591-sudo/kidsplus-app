@@ -8,7 +8,9 @@ import { createStorage } from '@kidsplus/providers/storage-factory';
 import { parseEnv, ttsVoices, workerEnvSchema } from '@kidsplus/shared/env';
 import { PgBoss } from 'pg-boss';
 import { pino } from 'pino';
+import { GoogleDrive } from '@kidsplus/providers/google-drive';
 import { checkAvailability } from './availability';
+import { markConfigured, pgDump, runBackup, startBackupRequests } from './backup';
 import { registerJobs } from './jobs';
 import { startDraftLoop } from './curriculum-draft';
 import { startModerationLoop } from './moderation';
@@ -44,12 +46,29 @@ const llm = env.GEMINI_API_KEY
   : null;
 const limits = { daily: env.LLM_DAILY_TOKEN_LIMIT, total: env.LLM_TOTAL_TOKEN_LIMIT };
 
+// Резервные копии на Google Диск владельца; без ключей — не делаются (кабинет это покажет).
+const drive =
+  env.GOOGLE_DRIVE_CLIENT_ID && env.GOOGLE_DRIVE_CLIENT_SECRET && env.GOOGLE_DRIVE_REFRESH_TOKEN
+    ? new GoogleDrive({
+        clientId: env.GOOGLE_DRIVE_CLIENT_ID,
+        clientSecret: env.GOOGLE_DRIVE_CLIENT_SECRET,
+        refreshToken: env.GOOGLE_DRIVE_REFRESH_TOKEN,
+      })
+    : null;
+const backupDeps = { db, drive, log, dump: pgDump(env.DATABASE_URL) };
+await markConfigured(db, Boolean(drive)).catch((err: unknown) =>
+  log.error({ err }, 'резервная копия: статус'),
+);
+if (!drive) log.warn('GOOGLE_DRIVE_* не заданы — резервные копии не делаются');
+const stopBackupRequests = drive ? startBackupRequests(backupDeps) : undefined;
+
 await boss.start();
 await registerJobs(
   boss,
   log,
   youtube ? () => checkAvailability(db, youtube, new Date(), notify) : undefined,
   () => buildWeeklyReports({ db, llm, log, limits, notify }),
+  drive ? () => runBackup(backupDeps) : undefined,
 );
 if (!youtube) log.warn('YOUTUBE_API_KEY не задан — ежедневная проверка видео отключена');
 let stopTts: (() => void) | undefined;
@@ -85,6 +104,7 @@ log.info('worker запущен');
 async function shutdown(signal: string) {
   log.info({ signal }, 'остановка');
   stopTts?.();
+  stopBackupRequests?.();
   stopModeration();
   stopDrafts();
   await boss.stop({ graceful: true });

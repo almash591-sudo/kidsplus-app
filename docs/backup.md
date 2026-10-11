@@ -1,43 +1,57 @@
-# Бэкапы
+# Резервные копии
 
-> **Пока не включено.** На бесплатном тарифе Railway нельзя создать bucket и ещё один сервис,
-> поэтому медиа хранятся в PostgreSQL (`STORAGE_DRIVER=db`), а ночной бэкап отложен до перехода
-> на тариф Hobby. Ниже — как он устроен и включается (скрипт и Dockerfile — в `deploy/backup/`).
+Каждую ночь в 04:00 по Москве worker делает копию всей базы (`pg_dump -Fc`) и кладёт её на
+Google Диск владельца в папку **«KidsPlus — резервные копии»**. Хранятся 14 последних копий.
 
-Сервис `backup` на Railway запускается каждую ночь в 01:00 UTC (04:00 МСК) и складывает копии в
-Railway Bucket `media` (регион Амстердам):
+В базе — всё: профили детей, планы, прогресс, одобренный контент, картинки, озвучка, фото и видео
+с камеры (`STORAGE_DRIVER=db`). Озвучку при потере можно перегенерировать, остальное — только из
+копии.
 
-| Путь в bucket           | Что                           | Сколько хранится |
-| ----------------------- | ----------------------------- | ---------------- |
-| `backups/daily/*.dump`  | дамп PostgreSQL (pg_dump -Fc) | 7 последних      |
-| `backups/weekly/*.dump` | дамп по воскресеньям          | 4 последних      |
-| `backups/media/`        | зеркало озвучки и картинок    | без удаления     |
+Доступ к Диску — OAuth владельца с правом **drive.file**: приложение видит и меняет только файлы,
+которые создало само; остальной Диск ему недоступен. Статус и кнопка «Сделать копию сейчас» —
+в кабинете: «Ещё» → «Резервные копии».
 
-Озвучку при потере можно перегенерировать (она строится из текста), а загруженные картинки — только из
-зеркала `backups/media/`.
+## Включение (один раз)
 
-Ограничение: копии лежат в том же bucket, что и рабочие файлы. От случайного удаления данных они
-защищают, от удаления самого bucket — нет (Railway хранит удалённый bucket 52 часа).
+1. Google Cloud Console (тот же проект, что для озвучки):
+   - **APIs & Services → Library** → «Google Drive API» → **Enable**;
+   - **OAuth consent screen** → тип **Internal** (аккаунт в организации) → название «KidsPlus» → сохранить;
+   - **Credentials → Create credentials → OAuth client ID** → тип **Desktop app** → имя
+     «KidsPlus backup» → **Create** → **Download JSON**.
+2. Сохранить скачанный файл как `%USERPROFILE%\.kidsplus\google-oauth-client.json`.
+3. На компьютере, где выполнен вход в Railway CLI:
+
+   ```sh
+   node scripts/google-drive-auth.mjs
+   ```
+
+   Откроется браузер: войти в Google и разрешить доступ. Скрипт сам запишет в сервис `worker`
+   переменные `GOOGLE_DRIVE_CLIENT_ID`, `GOOGLE_DRIVE_CLIENT_SECRET`, `GOOGLE_DRIVE_REFRESH_TOKEN`
+   (на экран не выводит), worker перезапустится.
+
+4. В кабинете «Резервные копии» → «Сделать копию сейчас» — через минуту-две на Диске появится
+   первый файл `kidsplus-ГГГГ-ММ-ДД-ЧЧ-ММ.dump`.
 
 ## Восстановление базы
 
-1. Скачать дамп: в Railway → bucket `media` → Files → `backups/daily/<дата>.dump`
-   (или `aws s3 cp` с параметрами из вкладки Credentials).
-2. Восстановить в базу (все таблицы будут пересозданы):
+1. Скачать нужный `.dump` из папки на Google Диске.
+2. Восстановить (таблицы пересоздаются):
 
    ```sh
-   pg_restore --clean --if-exists --no-owner --dbname="$DATABASE_URL" kidsplus-<дата>.dump
+   pg_restore --clean --if-exists --no-owner --no-acl --dbname="$DATABASE_URL" kidsplus-….dump
    ```
 
-   `DATABASE_URL` — публичный адрес базы: Railway → Postgres → Variables → `DATABASE_PUBLIC_URL`.
+   У базы на Railway нет публичного адреса: на время восстановления включить его
+   (Railway → Postgres → Settings → Networking → TCP Proxy) и взять `DATABASE_PUBLIC_URL`
+   из Variables; после — выключить. `pg_restore` нужен версии 18 (как сервер).
 
-## Восстановление медиа
+## Если копии перестали делаться
 
-```sh
-aws --endpoint-url "$ENDPOINT" s3 sync s3://$BUCKET/backups/media/ s3://$BUCKET/media/
-```
+Кабинет показывает ошибку последней попытки. Частые причины:
 
-## Проверить бэкап вручную
+- `invalid_grant` — доступ отозван или истёк: повторить шаг 3 «Включения»;
+- `pg_dump: … version mismatch` — сервер обновился до новой версии PostgreSQL: поменять пакет
+  `postgresql18-client` в `deploy/node.Dockerfile`.
 
-Railway → сервис `backup` → Deployments → Redeploy: сервис сразу выполнит бэкап и завершится,
-результат — в логах.
+Каталог `deploy/backup/` — прежний вариант (отдельный сервис и Railway Bucket) для тарифа Hobby;
+сейчас не используется.

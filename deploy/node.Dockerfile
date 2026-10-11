@@ -16,6 +16,8 @@ RUN pnpm --filter "@kidsplus/${APP}" deploy --prod /out
 FROM mirror.gcr.io/library/node:24-alpine
 ARG APP
 ENV NODE_ENV=production
+# worker делает резервные копии базы: pg_dump той же версии, что сервер (PostgreSQL 18 на Railway).
+RUN if [ "$APP" = "worker" ]; then apk add --no-cache postgresql18-client; fi
 WORKDIR /app
 COPY --from=build /out/node_modules ./node_modules
 COPY --from=build /out/package.json ./package.json
