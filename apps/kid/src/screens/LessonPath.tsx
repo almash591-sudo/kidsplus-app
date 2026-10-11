@@ -5,9 +5,12 @@ import { doneIds } from '../progress';
 import { Icon } from '../ui/icons';
 import '../games/music/music.css';
 
-/** Раздел — дорожка уроков: всё в нём игры этого раздела (например, музыка). */
+/** Раздел — дорожка уроков: все пункты — игры-уроки музыки или букв (по порядку). */
 export const isLessonPath = (items: readonly KidItem[]) =>
-  items.length > 0 && items.every((i) => i.kind === 'interactive' && i.category === 'music');
+  items.length > 0 &&
+  items.every(
+    (i) => i.kind === 'interactive' && (i.category === 'music' || i.category === 'letters'),
+  );
 
 /**
  * Дорожка уроков: кружки по порядку, пройденные — со звёздочкой, следующий светится.

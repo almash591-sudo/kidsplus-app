@@ -85,6 +85,13 @@ export function gameSummary(spec: GameSpec): string {
       return `${PIANO_MODE_LABELS[spec.mode]} · нот: ${spec.keys}`;
     case 'staff':
       return `нот: ${spec.keys} · раундов: ${spec.rounds}`;
+    case 'letter':
+      return `${spec.letters.join(' ')} · раундов: ${spec.rounds}`;
+    case 'syllable':
+      return `${spec.syllables.join(', ')} · раундов: ${spec.rounds}`;
+    case 'firstLetter':
+    case 'readWord':
+      return `${spec.words.map((w) => w.word.toLowerCase()).join(', ')} · раундов: ${spec.rounds}`;
   }
 }
 
@@ -120,6 +127,10 @@ const GAME_ICONS: Record<GameKind, string> = {
   rhythm: '🪘',
   piano: '🎹',
   staff: '🎼',
+  letter: '🔤',
+  syllable: '🅰️',
+  firstLetter: '🐱',
+  readWord: '📖',
 };
 
 /** Игры (п. 5.6 ТЗ): кому какую показывать. У ребёнка они — в разделе «Игры». */

@@ -35,6 +35,7 @@ const RING: Record<string, string> = {
   geography: '#2d9cff',
   nature: '#34c759',
   music: '#00a9bd',
+  letters: '#e8590c',
   games: '#ff2d55',
   other: '#8e5cf6',
   video: '#5856d6',

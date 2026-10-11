@@ -2470,3 +2470,52 @@ test.describe('музыка', () => {
     await expect(steps.nth(1)).toHaveAttribute('data-hint', '');
   });
 });
+
+test.describe('буквы', () => {
+  test('найди букву и прочитай слово: верный ответ — следующий раунд, раздел — дорожка', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [
+      game(1, { kind: 'letter', letters: ['А', 'О', 'У'], choices: 3, rounds: 2 }, 'letters'),
+      game(
+        2,
+        {
+          kind: 'readWord',
+          words: [
+            { emoji: '🐱', word: 'КОТ' },
+            { emoji: '🏠', word: 'ДОМ' },
+            { emoji: '🐳', word: 'КИТ' },
+          ],
+          choices: 3,
+          rounds: 2,
+        },
+        'letters',
+      ),
+    ];
+    await page.goto('/');
+    await expect(page.getByTestId('lesson-path')).toBeVisible();
+    const field = page.getByTestId('game-letters');
+    const play = async () => {
+      for (let round = 0; round < 2; round++) {
+        const answer = (await field.getAttribute('data-answer'))!;
+        const option = page.locator(`[data-testid=letters-option][data-value="${answer}"]`);
+        await option.click();
+        await expect(option).toHaveClass(/picked/);
+        if (round === 0)
+          await expect(page.locator('.letters-option.picked')).toHaveCount(0, { timeout: 5000 });
+      }
+    };
+    await page.getByTestId('tile').nth(0).click();
+    await shot(page, 'letters-letter');
+    await play();
+    await expect(page.getByTestId('lesson-path')).toBeVisible({ timeout: 8000 });
+    await page.getByTestId('tile').nth(1).click();
+    await expect(page.locator('.letters-word')).toBeVisible();
+    await shot(page, 'letters-read');
+    await play();
+    const said = (await spoken(page)).map((s) => s.text);
+    expect(said.some((t) => t.startsWith('Найди букву '))).toBe(true);
+    expect(said).toContain('Прочитай слово и найди картинку.');
+  });
+});

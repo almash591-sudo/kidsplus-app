@@ -35,6 +35,10 @@ export const ICON: Record<GameKind, string> = {
   rhythm: '🪘',
   piano: '🎹',
   staff: '🎼',
+  letter: '🔤',
+  syllable: '🅰️',
+  firstLetter: '🐱',
+  readWord: '📖',
 };
 
 /** Картинка для плитки игры (если у игры есть картинки). */

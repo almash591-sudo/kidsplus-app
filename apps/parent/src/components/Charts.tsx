@@ -17,6 +17,7 @@ const SLOT: Record<Subject | 'free', number> = {
   other: 7,
   free: 8,
   music: 9,
+  letters: 10,
 };
 const SERIES: (Subject | 'free')[] = [...SUBJECTS, 'free'];
 const label = (s: Subject | 'free') => (s === 'free' ? 'Свободное время' : SUBJECT_LABELS[s]);

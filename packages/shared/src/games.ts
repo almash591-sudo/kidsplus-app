@@ -79,6 +79,16 @@ export const PIANO_MODES = ['free', 'find', 'ear'] as const;
 const musicRounds = z.number().int().min(2).max(12);
 const keys = z.number().int().min(3).max(8);
 
+// ─── Буквы (этап 15ж) ───
+const letter = z.string().regex(/^[А-ЯЁ]$/u, 'одна заглавная буква');
+/** Слово заглавными и эмодзи-картинка к нему (рисует сам телефон — файлы не нужны). */
+const picWord = z.object({
+  emoji: z.string().min(1).max(16),
+  word: z.string().regex(/^[А-ЯЁ]{2,10}$/u, 'слово заглавными, 2–10 букв'),
+});
+const choices = z.number().int().min(2).max(4);
+const letterRounds = z.number().int().min(2).max(12);
+
 export const gameSpec = z.discriminatedUnion('kind', [
   /** Рисовалка: кисть, цвета, наклейки. */
   z.object({
@@ -307,6 +317,38 @@ export const gameSpec = z.discriminatedUnion('kind', [
   }),
   /** Нотный стан: где живёт нота — выбрать её название. */
   z.object({ kind: z.literal('staff'), keys, rounds: musicRounds }),
+  // ─── Буквы ───
+  /** Найди букву: звучит буква — ребёнок выбирает её среди choices. */
+  z.object({
+    kind: z.literal('letter'),
+    letters: z.array(letter).min(2).max(33),
+    choices,
+    rounds: letterRounds,
+  }),
+  /** Найди слог: звучит слог («ма») — выбрать написанный. */
+  z.object({
+    kind: z.literal('syllable'),
+    syllables: z
+      .array(z.string().regex(/^[А-ЯЁ]{2,3}$/u))
+      .min(2)
+      .max(60),
+    choices,
+    rounds: letterRounds,
+  }),
+  /** С какой буквы начинается слово: картинка и слово голосом — выбрать первую букву. */
+  z.object({
+    kind: z.literal('firstLetter'),
+    words: z.array(picWord).min(2).max(30),
+    choices,
+    rounds: letterRounds,
+  }),
+  /** Прочитай слово: написано слово — найти его картинку. */
+  z.object({
+    kind: z.literal('readWord'),
+    words: z.array(picWord).min(2).max(30),
+    choices,
+    rounds: letterRounds,
+  }),
 ]);
 export type GameSpec = z.infer<typeof gameSpec>;
 export type GameKind = GameSpec['kind'];
@@ -342,6 +384,10 @@ export const GAME_KINDS: Record<GameKind, string> = {
   rhythm: 'Повтори ритм',
   piano: 'Пианино: ноты',
   staff: 'Нотный стан',
+  letter: 'Найди букву',
+  syllable: 'Найди слог',
+  firstLetter: 'С какой буквы?',
+  readWord: 'Прочитай слово',
 };
 
 /** id картинок в параметрах игры — для проверки, что они есть и готовы. */
@@ -383,6 +429,10 @@ export function gameImageIds(g: GameSpec): string[] {
     case 'rhythm':
     case 'piano':
     case 'staff':
+    case 'letter':
+    case 'syllable':
+    case 'firstLetter':
+    case 'readWord':
       return [];
   }
 }

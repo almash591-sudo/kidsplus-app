@@ -31,6 +31,7 @@ import {
   Stack,
   Switch,
   Text,
+  Textarea,
   TextInput,
 } from '@mantine/core';
 import { useMutation } from '@tanstack/react-query';
@@ -146,6 +147,26 @@ const DEFAULTS: { [K in GameKind]: Extract<GameSpec, { kind: K }> } = {
   rhythm: { kind: 'rhythm', beats: 3, timing: false, rounds: 4 },
   piano: { kind: 'piano', mode: 'find', keys: 5, rounds: 5 },
   staff: { kind: 'staff', keys: 5, rounds: 5 },
+  letter: { kind: 'letter', letters: ['А', 'О', 'У'], choices: 3, rounds: 5 },
+  syllable: { kind: 'syllable', syllables: ['МА', 'МО', 'МУ'], choices: 3, rounds: 5 },
+  firstLetter: {
+    kind: 'firstLetter',
+    words: [
+      { emoji: '🐱', word: 'КОТ' },
+      { emoji: '🏠', word: 'ДОМ' },
+    ],
+    choices: 3,
+    rounds: 5,
+  },
+  readWord: {
+    kind: 'readWord',
+    words: [
+      { emoji: '🐱', word: 'КОТ' },
+      { emoji: '🏠', word: 'ДОМ' },
+    ],
+    choices: 2,
+    rounds: 5,
+  },
 };
 
 /** Число из NumberInput (пустое поле — минимум). */
@@ -1110,7 +1131,91 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
           <MusicRounds value={spec.rounds} onChange={(rounds) => onChange({ ...spec, rounds })} />
         </Group>
       );
+    case 'letter':
+      return (
+        <Stack gap="xs">
+          <TextInput
+            label="Буквы (подряд, заглавными)"
+            value={spec.letters.join('')}
+            onChange={(e) =>
+              onChange({
+                ...spec,
+                letters: [
+                  ...new Set(
+                    [...e.currentTarget.value.toUpperCase()].filter((c) => /[А-ЯЁ]/u.test(c)),
+                  ),
+                ],
+              })
+            }
+          />
+          <Group grow>
+            <Choices value={spec.choices} onChange={(choices) => onChange({ ...spec, choices })} />
+            <MusicRounds value={spec.rounds} onChange={(rounds) => onChange({ ...spec, rounds })} />
+          </Group>
+        </Stack>
+      );
+    case 'syllable':
+      return (
+        <Stack gap="xs">
+          <TextInput
+            label="Слоги через пробел"
+            value={spec.syllables.join(' ')}
+            onChange={(e) =>
+              onChange({
+                ...spec,
+                syllables: e.currentTarget.value
+                  .toUpperCase()
+                  .split(/[\s,]+/)
+                  .filter((x) => /^[А-ЯЁ]{2,3}$/u.test(x)),
+              })
+            }
+          />
+          <Group grow>
+            <Choices value={spec.choices} onChange={(choices) => onChange({ ...spec, choices })} />
+            <MusicRounds value={spec.rounds} onChange={(rounds) => onChange({ ...spec, rounds })} />
+          </Group>
+        </Stack>
+      );
+    case 'firstLetter':
+    case 'readWord':
+      return (
+        <Stack gap="xs">
+          <Textarea
+            label="Слова с картинкой — по одному в строке: эмодзи и слово («🐱 КОТ»)"
+            autosize
+            minRows={3}
+            value={spec.words.map((w) => `${w.emoji} ${w.word}`).join('\n')}
+            onChange={(e) =>
+              onChange({
+                ...spec,
+                words: e.currentTarget.value
+                  .split('\n')
+                  .map((line) => line.trim().split(/\s+/))
+                  .filter((p) => p.length === 2 && /^[А-ЯЁа-яё]{2,10}$/u.test(p[1]!))
+                  .map(([emoji, word]) => ({ emoji: emoji!, word: word!.toUpperCase() })),
+              })
+            }
+          />
+          <Group grow>
+            <Choices value={spec.choices} onChange={(choices) => onChange({ ...spec, choices })} />
+            <MusicRounds value={spec.rounds} onChange={(rounds) => onChange({ ...spec, rounds })} />
+          </Group>
+        </Stack>
+      );
   }
+}
+
+/** Сколько вариантов ответа показать. */
+function Choices({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  return (
+    <NumberInput
+      label="Вариантов"
+      min={2}
+      max={4}
+      value={value}
+      onChange={(v) => onChange(num(v, 2))}
+    />
+  );
 }
 
 /** Число раундов музыкальной игры. */

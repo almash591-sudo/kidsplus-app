@@ -30,6 +30,7 @@ import { Shapes } from './Shapes';
 import { Size } from './Size';
 import { Word } from './Word';
 import { Beats } from './music/Beats';
+import { LetterGame } from './letters/LetterGame';
 import { MusicChoice } from './music/Choice';
 import { Piano } from './music/Piano';
 import { Rhythm } from './music/Rhythm';
@@ -75,6 +76,10 @@ const GAMES: { [K in GameKind]: ComponentType<GameProps<K>> } = {
   rhythm: Rhythm,
   piano: Piano,
   staff: Staff,
+  letter: LetterGame as ComponentType<GameProps<'letter'>>,
+  syllable: LetterGame as ComponentType<GameProps<'syllable'>>,
+  firstLetter: LetterGame as ComponentType<GameProps<'firstLetter'>>,
+  readWord: LetterGame as ComponentType<GameProps<'readWord'>>,
 };
 
 /** Экран игры: сама игра, кнопка «домой», в конце — звёздочка и следующий пункт. */

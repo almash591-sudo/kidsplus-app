@@ -1,0 +1,64 @@
+/* ─── Буквы (этап 15ж) ─── */
+.letters {
+  align-items: center;
+  justify-content: center;
+}
+
+@media (orientation: landscape) {
+  .letters {
+    flex-direction: column;
+  }
+}
+
+.letters-pic {
+  font-size: min(30vw, 20vh);
+  line-height: 1;
+}
+
+.letters-word {
+  font-size: min(16vw, 12vh);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: #e8590c;
+  background: var(--card, #fff);
+  border-radius: 28px;
+  padding: 8px 28px;
+}
+
+.letters-options {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.letters-option {
+  min-width: min(26vw, 18vh);
+  height: min(26vw, 18vh);
+  padding: 0 14px;
+  border: 0;
+  border-radius: 26px;
+  background: var(--card, #fff);
+  box-shadow: 0 7px 0 rgb(0 0 0 / 0.08);
+  color: #1f2937;
+  font: inherit;
+  font-size: min(15vw, 10vh);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.letters.syllable .letters-option {
+  font-size: min(11vw, 8vh);
+}
+
+.letters-option.emoji {
+  font-size: min(16vw, 11vh);
+}
+
+.letters-option.off {
+  opacity: 0.3;
+}
+
+.letters-option.picked {
+  box-shadow: 0 0 0 6px #22c55e;
+}

@@ -24,6 +24,7 @@ export const CATEGORY_LABELS: Record<KidCategory, string> = {
   geography: 'География',
   nature: 'Природа',
   music: 'Музыка',
+  letters: 'Буквы',
   games: 'Игры',
   other: 'Разное',
 };
@@ -122,6 +123,17 @@ export const STAFF_PROMPT = 'Как зовут эту ноту?';
 export const pianoFind = (name: string) => `Найди ноту ${name}!`;
 export const thisNote = (name: string) => `Это ${name}.`;
 
+// ─── Буквы ───────────────────────────────────────────────────────────────────
+
+const low = (s: string) => s.toLowerCase();
+export const findLetter = (l: string) => `Найди букву ${l}.`;
+export const isLetter = (l: string) => `Буква ${l}!`;
+export const findSyllable = (s: string) => `Найди слог ${low(s)}.`;
+export const firstLetterAsk = (word: string) => `С какой буквы начинается слово ${low(word)}?`;
+export const firstLetterIs = (word: string) => `${low(word)} — на букву ${word[0]}!`;
+export const READ_WORD = 'Прочитай слово и найди картинку.';
+export const sayWord = (word: string) => `${low(word)}!`;
+
 /** Как играть — для игр без своего задания и для «ушка», если задание ещё не звучало. */
 export const GAME_INTRO: Record<GameKind, string> = {
   drawing: 'Рисуй пальчиком! Краски — внизу.',
@@ -154,6 +166,10 @@ export const GAME_INTRO: Record<GameKind, string> = {
   rhythm: 'Послушай барабан и постучи так же.',
   piano: 'Нажимай на клавиши — это ноты до, ре, ми.',
   staff: STAFF_PROMPT,
+  letter: 'Найди букву, которую я называю.',
+  syllable: 'Найди слог, который я называю.',
+  firstLetter: 'С какой буквы начинается слово?',
+  readWord: READ_WORD,
 };
 
 /** Подсказки на экранах выбора — для тех, кто не читает. */
@@ -233,6 +249,14 @@ function gamePhrases(spec: GameSpec): string[] {
     }
     case 'staff':
       return [STAFF_PROMPT, ...new Set(NOTE_NAMES.slice(0, spec.keys))];
+    case 'letter':
+      return spec.letters.flatMap((l) => [findLetter(l), isLetter(l)]);
+    case 'syllable':
+      return spec.syllables.flatMap((s) => [findSyllable(s), sayWord(s)]);
+    case 'firstLetter':
+      return spec.words.flatMap((w) => [firstLetterAsk(w.word), firstLetterIs(w.word)]);
+    case 'readWord':
+      return [READ_WORD, ...spec.words.map((w) => sayWord(w.word))];
     case 'drawing':
     case 'puzzle':
     case 'memory':
