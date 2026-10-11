@@ -1,16 +1,15 @@
 import type { Game } from '@kidsplus/shared/api';
-import { GAME_KINDS, type GameSpec } from '@kidsplus/shared/games';
+import { GAME_KINDS, type GameKind, type GameSpec } from '@kidsplus/shared/games';
 import {
-  Badge,
+  ActionIcon,
   Button,
   Card,
-  Checkbox,
   Group,
+  Menu,
   Modal,
-  SimpleGrid,
   Stack,
   Text,
-  Title,
+  UnstyledButton,
 } from '@mantine/core';
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -67,6 +66,31 @@ export function gameSummary(spec: GameSpec): string {
   }
 }
 
+/** Значок вида игры в списке. */
+const GAME_ICONS: Record<GameKind, string> = {
+  drawing: '🖍️',
+  coloring: '🎨',
+  sorting: '🧺',
+  memory: '🃏',
+  puzzle: '🧩',
+  tracing: '✏️',
+  balloons: '🎈',
+  counting: '🔢',
+  maze: '🌀',
+  shadows: '👤',
+  flashlight: '🔦',
+  moles: '🐹',
+  melody: '🎵',
+  shapes: '🔷',
+  odd: '❓',
+  pattern: '🔁',
+  compare: '⚖️',
+  arithmetic: '➕',
+  size: '📏',
+  sequence: '🔢',
+  word: '🔤',
+};
+
 /** Игры (п. 5.6 ТЗ): кому какую показывать. У ребёнка они — в разделе «Игры». */
 export function GamesPage() {
   const games = useGames();
@@ -95,68 +119,90 @@ export function GamesPage() {
 
   return (
     <Stack>
-      <Group justify="space-between">
-        <Title order={2}>Игры</Title>
-        <Button onClick={() => setEditing('new')}>Новая игра</Button>
+      <h1 className="page-title">Игры</h1>
+      <Group gap="xs" wrap="nowrap" align="center">
+        <Text size="sm" c="dimmed" style={{ flex: 1 }}>
+          Касание имени — показать или скрыть игру у ребёнка.
+        </Text>
+        <Button radius="xl" onClick={() => setEditing('new')}>
+          + Игра
+        </Button>
       </Group>
-      <Text size="sm" c="dimmed">
-        Рисование, раскраски, пазлы, лабиринты, «найди пару» и другие игры. У ребёнка они — в
-        разделе «Игры» на главном экране (или в разделе, который выбран у игры, например «Природа»).
-        Отметьте, кому какую показывать; новую игру можно собрать из своих картинок.
-      </Text>
-      {games.data?.length === 0 && <Text c="dimmed">Игр пока нет.</Text>}
-      <SimpleGrid cols={{ base: 1, sm: 2 }}>
-        {games.data?.map((g) => (
-          <Card key={g.id} withBorder padding="sm">
-            <Stack gap={6}>
-              <Group gap="xs">
-                <Badge variant="light" color="pink">
-                  {GAME_KINDS[g.spec.kind]}
-                </Badge>
-                <Text fw={600}>{g.title}</Text>
-                {g.category !== 'games' && (
-                  <Badge variant="outline" color="gray">
-                    {CATEGORY_LABELS[g.category]}
-                  </Badge>
-                )}
-              </Group>
-              <Text size="sm" c="dimmed">
-                {gameSummary(g.spec)}
-              </Text>
-              <Checkbox.Group
-                value={g.childIds}
-                onChange={(childIds) => assign.mutate({ game: g, childIds })}
-              >
-                <Group>
-                  {children.data?.map((c) => (
-                    <Checkbox key={c.id} value={c.id} label={c.nickname} />
-                  ))}
-                </Group>
-              </Checkbox.Group>
-              <Group gap="xs">
-                <Button size="compact-sm" variant="default" onClick={() => setEditing(g)}>
-                  Изменить
-                </Button>
-                <Button
-                  size="compact-sm"
-                  variant="subtle"
-                  color="red"
-                  onClick={() =>
-                    modals.confirm({
-                      title: 'Удалить игру?',
-                      message: `«${g.title}» пропадёт у детей.`,
-                      confirmLabel: 'Удалить',
-                      onConfirm: () => remove.mutate(g.id),
-                    })
-                  }
-                >
-                  Удалить
-                </Button>
-              </Group>
-            </Stack>
-          </Card>
-        ))}
-      </SimpleGrid>
+      <Card padding={0}>
+        <Stack gap={0} className="grouped decks">
+          {games.data?.length === 0 && (
+            <div className="attention-row">
+              <Text c="dimmed">Игр пока нет.</Text>
+            </div>
+          )}
+          {games.data?.map((g) => (
+            <div key={g.id} className="attention-row">
+              <span className="deck-thumb" aria-hidden>
+                {GAME_ICONS[g.spec.kind]}
+              </span>
+              <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
+                <UnstyledButton onClick={() => setEditing(g)} style={{ minWidth: 0 }}>
+                  <Text fw={600} truncate>
+                    {g.title}
+                  </Text>
+                  <Text size="xs" c="dimmed" truncate>
+                    {GAME_KINDS[g.spec.kind]}
+                    {g.category !== 'games' ? ` · ${CATEGORY_LABELS[g.category]}` : ''} ·{' '}
+                    {gameSummary(g.spec)}
+                  </Text>
+                </UnstyledButton>
+                <div className="kid-pills">
+                  {children.data?.map((c) => {
+                    const on = g.childIds.includes(c.id);
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        className={on ? 'on' : ''}
+                        aria-pressed={on}
+                        onClick={() =>
+                          assign.mutate({
+                            game: g,
+                            childIds: on
+                              ? g.childIds.filter((id) => id !== c.id)
+                              : [...g.childIds, c.id],
+                          })
+                        }
+                      >
+                        {on ? '✓ ' : ''}
+                        {c.nickname}
+                      </button>
+                    );
+                  })}
+                </div>
+              </Stack>
+              <Menu position="bottom-end" withinPortal>
+                <Menu.Target>
+                  <ActionIcon variant="subtle" color="gray" aria-label="Действия">
+                    ⋯
+                  </ActionIcon>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Item onClick={() => setEditing(g)}>Изменить</Menu.Item>
+                  <Menu.Item
+                    color="red"
+                    onClick={() =>
+                      modals.confirm({
+                        title: 'Удалить игру?',
+                        message: `«${g.title}» пропадёт у детей.`,
+                        confirmLabel: 'Удалить',
+                        onConfirm: () => remove.mutate(g.id),
+                      })
+                    }
+                  >
+                    Удалить
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
+            </div>
+          ))}
+        </Stack>
+      </Card>
       <Modal
         opened={editing !== null}
         onClose={() => setEditing(null)}
