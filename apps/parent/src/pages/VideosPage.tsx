@@ -3,15 +3,14 @@ import { GAME_KINDS } from '@kidsplus/shared/games';
 import { formatTime } from '@kidsplus/shared/time';
 import {
   ActionIcon,
-  Badge,
-  Button,
   Card,
   Group,
-  Image,
+  Menu,
   SegmentedControl,
   Stack,
   Text,
-  Title,
+  TextInput,
+  UnstyledButton,
 } from '@mantine/core';
 import { useMutation } from '@tanstack/react-query';
 import { useMemo, useState, type ReactNode } from 'react';
@@ -31,12 +30,23 @@ import { gameSummary } from './GamesPage';
 
 type Row = { item: ChildItem; segment?: Segment; deck?: Deck; game?: Game };
 
+/** Быстрые фильтры общего списка — то, что требует внимания родителя. */
+const FILTERS = {
+  all: { label: 'Все', test: () => true },
+  noQuiz: { label: 'Без вопросов', test: (s: Segment) => !s.questionCount },
+  nobody: { label: 'Никому', test: (s: Segment) => s.childIds.length === 0 },
+  broken: { label: 'Недоступны', test: (s: Segment) => s.source.status === 'unavailable' },
+} as const;
+type FilterKey = keyof typeof FILTERS;
+
 export function VideosPage() {
   const segments = useSegments();
   const decks = useDecks();
   const games = useGames();
   const children = useChildren();
   const [filter, setFilter] = useState<string>('all');
+  const [query, setQuery] = useState('');
+  const [quick, setQuick] = useState<FilterKey>('all');
   const childId = filter === 'all' ? null : filter;
   const items = useChildItems(childId);
 
@@ -60,6 +70,17 @@ export function VideosPage() {
     );
   }, [childId, items.data, segments.data, decks.data, games.data]);
 
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return (segments.data ?? []).filter(
+      (s) =>
+        FILTERS[quick].test(s) &&
+        (!q ||
+          s.title.toLowerCase().includes(q) ||
+          (s.source.channelTitle ?? '').toLowerCase().includes(q)),
+    );
+  }, [segments.data, query, quick]);
+
   const reorder = useMutation({
     mutationFn: (itemIds: string[]) => api.put(`/parent/children/${childId}/items`, { itemIds }),
     onMutate: (itemIds) =>
@@ -79,51 +100,99 @@ export function VideosPage() {
 
   return (
     <Stack>
-      <Group justify="space-between">
-        <Title order={2}>Видео</Title>
-        <Button component={Link} to="/videos/new">
-          Добавить видео
-        </Button>
-      </Group>
+      <h1 className="page-title">Видео</h1>
 
       {(children.data?.length ?? 0) > 0 && (
         <SegmentedControl
+          fullWidth
           value={filter}
           onChange={setFilter}
           data={[
             { value: 'all', label: 'Все видео' },
-            ...(children.data ?? []).map((c) => ({ value: c.id, label: `Список: ${c.nickname}` })),
+            ...(children.data ?? []).map((c) => ({ value: c.id, label: c.nickname })),
           ]}
         />
       )}
 
       {childId ? (
         <>
-          <Text size="sm" c="dimmed">
-            Так ребёнок проходит свой список: видео → вопросы к нему → следующий пункт. Порядок
-            меняйте стрелками; наборы карточек добавляются в разделе «Карточки».
+          <Text size="sm" c="dimmed" px={4}>
+            Так ребёнок проходит свой список: видео → вопросы к нему → следующий пункт. Порядок —
+            стрелками; карточки добавляются в разделе «Карточки».
           </Text>
-          {items.data?.length === 0 && <Text c="dimmed">Список пока пуст.</Text>}
-          {rows.map((r, i) => (
-            <Ordered
-              key={r.item.id}
-              onUp={() => move(i, -1)}
-              onDown={() => move(i, 1)}
-              first={i === 0}
-              last={i === rows.length - 1}
-            >
-              {r.segment && <SegmentCard segment={r.segment} names={names} />}
-              {r.deck && <DeckRow deck={r.deck} />}
-              {r.game && <GameRow game={r.game} />}
-            </Ordered>
-          ))}
+          <Card padding={0}>
+            <Stack gap={0} className="grouped thumbs">
+              {items.data?.length === 0 && (
+                <div className="attention-row">
+                  <Text c="dimmed">Список пока пуст.</Text>
+                </div>
+              )}
+              {rows.map((r, i) => (
+                <Ordered
+                  key={r.item.id}
+                  onUp={() => move(i, -1)}
+                  onDown={() => move(i, 1)}
+                  first={i === 0}
+                  last={i === rows.length - 1}
+                >
+                  {r.segment && <SegmentRow segment={r.segment} names={names} />}
+                  {r.deck && <DeckRow deck={r.deck} />}
+                  {r.game && <GameRow game={r.game} />}
+                </Ordered>
+              ))}
+            </Stack>
+          </Card>
         </>
       ) : (
         <>
-          {segments.data?.length === 0 && <Text c="dimmed">Видео пока нет.</Text>}
-          {segments.data?.map((s) => (
-            <SegmentCard key={s.id} segment={s} names={names} />
-          ))}
+          <Group gap="xs" wrap="nowrap">
+            <TextInput
+              placeholder="Поиск по названию или каналу"
+              value={query}
+              onChange={(e) => setQuery(e.currentTarget.value)}
+              radius="xl"
+              style={{ flex: 1 }}
+            />
+            <ActionIcon
+              component={Link}
+              to="/videos/new"
+              size={36}
+              radius="xl"
+              aria-label="Добавить видео"
+            >
+              +
+            </ActionIcon>
+          </Group>
+          <div className="chip-row">
+            {(Object.keys(FILTERS) as FilterKey[]).map((k) => {
+              const n = (segments.data ?? []).filter(FILTERS[k].test).length;
+              if (k !== 'all' && !n) return null;
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  className={quick === k ? 'on' : ''}
+                  onClick={() => setQuick(k)}
+                >
+                  {FILTERS[k].label} · {n}
+                </button>
+              );
+            })}
+          </div>
+          <Card padding={0}>
+            <Stack gap={0} className="grouped thumbs">
+              {shown.length === 0 && (
+                <div className="attention-row">
+                  <Text c="dimmed">
+                    {segments.data?.length === 0 ? 'Видео пока нет.' : 'Ничего не нашлось.'}
+                  </Text>
+                </div>
+              )}
+              {shown.map((s) => (
+                <SegmentRow key={s.id} segment={s} names={names} />
+              ))}
+            </Stack>
+          </Card>
         </>
       )}
     </Stack>
@@ -138,14 +207,21 @@ function Ordered(props: {
   last: boolean;
 }) {
   return (
-    <Group wrap="nowrap" align="stretch" gap="xs">
+    <div className="attention-row ordered">
       <div style={{ flex: 1, minWidth: 0 }}>{props.children}</div>
-      <Stack gap={4} justify="center">
-        <ActionIcon variant="default" aria-label="Выше" disabled={props.first} onClick={props.onUp}>
+      <Stack gap={2}>
+        <ActionIcon
+          variant="subtle"
+          size="sm"
+          aria-label="Выше"
+          disabled={props.first}
+          onClick={props.onUp}
+        >
           ↑
         </ActionIcon>
         <ActionIcon
-          variant="default"
+          variant="subtle"
+          size="sm"
           aria-label="Ниже"
           disabled={props.last}
           onClick={props.onDown}
@@ -153,68 +229,63 @@ function Ordered(props: {
           ↓
         </ActionIcon>
       </Stack>
-    </Group>
+    </div>
+  );
+}
+
+/** Значок вместо превью: того же размера, что превью видео. */
+function Tile({ emoji, color }: { emoji: string; color: string }) {
+  return (
+    <span className="video-thumb" style={{ background: color }} aria-hidden>
+      <Text fz={28}>{emoji}</Text>
+    </span>
   );
 }
 
 function GameRow({ game }: { game: Game }) {
   return (
-    <Card withBorder padding="sm">
-      <Group wrap="nowrap">
-        <Text fz={40} aria-hidden>
-          🎨
+    <UnstyledButton component={Link} to="/games" className="attention-row">
+      <Tile emoji="🎨" color="var(--mantine-color-pink-light)" />
+      <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
+        <Text fw={600} truncate>
+          {game.title}
         </Text>
-        <Stack gap={4} style={{ flex: 1 }}>
-          <Group gap="xs">
-            <Badge variant="light" color="pink">
-              {GAME_KINDS[game.spec.kind]}
-            </Badge>
-            <Text fw={600}>{game.title}</Text>
-          </Group>
-          <Text size="sm" c="dimmed">
-            {gameSummary(game.spec)}
-          </Text>
-        </Stack>
-        <Button size="compact-sm" variant="default" component={Link} to="/games">
-          Открыть
-        </Button>
-      </Group>
-    </Card>
+        <Text size="sm" c="dimmed" truncate>
+          {GAME_KINDS[game.spec.kind]} · {gameSummary(game.spec)}
+        </Text>
+      </Stack>
+      <span className="chevron" aria-hidden="true">
+        ›
+      </span>
+    </UnstyledButton>
   );
 }
 
 function DeckRow({ deck }: { deck: Deck }) {
   const cover = deck.cards[0]?.image.url;
   return (
-    <Card withBorder padding="sm">
-      <Group wrap="nowrap">
-        {cover ? (
-          <Image src={cover} alt="" w={72} h={72} fit="contain" />
-        ) : (
-          <Text fz={40} aria-hidden>
-            🃏
-          </Text>
-        )}
-        <Stack gap={4} style={{ flex: 1 }}>
-          <Group gap="xs">
-            <Badge variant="light" color="grape">
-              карточки
-            </Badge>
-            <Text fw={600}>{deck.title}</Text>
-          </Group>
-          <Text size="sm" c="dimmed">
-            {deck.cards.length} шт.
-          </Text>
-        </Stack>
-        <Button size="compact-sm" variant="default" component={Link} to={`/decks/${deck.id}`}>
-          Открыть
-        </Button>
-      </Group>
-    </Card>
+    <UnstyledButton component={Link} to={`/decks/${deck.id}`} className="attention-row">
+      {cover ? (
+        <img className="video-thumb contain" src={cover} alt="" />
+      ) : (
+        <Tile emoji="🃏" color="var(--mantine-color-grape-light)" />
+      )}
+      <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
+        <Text fw={600} truncate>
+          {deck.title}
+        </Text>
+        <Text size="sm" c="dimmed">
+          Карточки · {deck.cards.length} шт.
+        </Text>
+      </Stack>
+      <span className="chevron" aria-hidden="true">
+        ›
+      </span>
+    </UnstyledButton>
   );
 }
 
-function SegmentCard({ segment: s, names }: { segment: Segment; names: Map<string, string> }) {
+function SegmentRow({ segment: s, names }: { segment: Segment; names: Map<string, string> }) {
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: keys.segments });
     void queryClient.invalidateQueries({ queryKey: ['child-items'] });
@@ -228,73 +299,76 @@ function SegmentCard({ segment: s, names }: { segment: Segment; names: Map<strin
     mutationFn: () => api.post<Segment>(`/parent/segments/${s.id}/recheck`),
     onSuccess: invalidate,
   });
+  const broken = s.source.status === 'unavailable';
+  const who = s.childIds.length
+    ? s.childIds.map((id) => names.get(id) ?? '?').join(', ')
+    : 'никому';
 
   return (
-    <Card withBorder padding="sm">
-      <Group wrap="nowrap" align="flex-start">
-        {s.source.thumbnailUrl && (
-          <Image src={s.source.thumbnailUrl} alt="" w={128} h={72} radius="sm" fit="cover" />
-        )}
-        <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
-          <Text fw={600} lineClamp={2}>
+    <div className="attention-row">
+      <UnstyledButton
+        component={Link}
+        to={`/videos/${s.id}`}
+        style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}
+      >
+        <span className="video-thumb">
+          {s.source.thumbnailUrl && <img src={s.source.thumbnailUrl} alt="" />}
+          <span className="video-len">{formatTime(s.endSec - s.startSec)}</span>
+        </span>
+        <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
+          <Text fw={600} size="sm" lineClamp={2} lh={1.3}>
             {s.title}
           </Text>
-          <Text size="sm" c="dimmed" lineClamp={1}>
-            {s.source.channelTitle ?? '—'} · {formatTime(s.startSec)}–{formatTime(s.endSec)} (
-            {formatTime(s.endSec - s.startSec)})
+          <Text size="xs" c="dimmed" truncate>
+            {s.source.channelTitle ?? '—'}
           </Text>
-          <Group gap={4}>
-            {s.source.status === 'unavailable' && (
-              <Badge color="red" variant="light">
-                недоступно
-              </Badge>
-            )}
-            <Badge color={s.questionCount ? 'teal' : 'orange'} variant="light">
-              {s.questionCount ? `вопросов: ${s.questionCount}` : 'без вопросов'}
-            </Badge>
-            {s.childIds.length === 0 && (
-              <Badge color="gray" variant="light">
-                никому не назначено
-              </Badge>
-            )}
-            {s.childIds.map((id) => (
-              <Badge key={id} variant="light">
-                {names.get(id) ?? '?'}
-              </Badge>
-            ))}
-          </Group>
-          <Group gap="xs" mt={4}>
-            <Button size="compact-sm" variant="default" component={Link} to={`/videos/${s.id}`}>
-              Изменить и вопросы
-            </Button>
-            {s.source.status === 'unavailable' && (
-              <Button
-                size="compact-sm"
-                variant="default"
-                loading={recheck.isPending}
-                onClick={() => recheck.mutate()}
-              >
-                Проверить снова
-              </Button>
-            )}
-            <Button
-              size="compact-sm"
-              variant="subtle"
-              color="red"
-              onClick={() =>
-                modals.confirm({
-                  title: 'Удалить фрагмент?',
-                  message: `«${s.title}» пропадёт у всех детей вместе с вопросами.`,
-                  confirmLabel: 'Удалить',
-                  onConfirm: () => remove.mutate(),
-                })
-              }
-            >
-              Удалить
-            </Button>
-          </Group>
+          <Text size="xs" truncate>
+            {broken ? (
+              <Text span c="red" fw={600} inherit>
+                Недоступно ·{' '}
+              </Text>
+            ) : null}
+            <Text span c={s.questionCount ? 'teal' : 'orange'} inherit>
+              {s.questionCount ? `${s.questionCount} вопр.` : 'без вопросов'}
+            </Text>
+            <Text span c={s.childIds.length ? 'dimmed' : 'orange'} inherit>
+              {' · '}
+              {who}
+            </Text>
+          </Text>
         </Stack>
-      </Group>
-    </Card>
+      </UnstyledButton>
+      <Menu position="bottom-end" withinPortal>
+        <Menu.Target>
+          <ActionIcon
+            variant="subtle"
+            color="gray"
+            aria-label="Действия"
+            loading={recheck.isPending}
+          >
+            ⋯
+          </ActionIcon>
+        </Menu.Target>
+        <Menu.Dropdown>
+          <Menu.Item component={Link} to={`/videos/${s.id}`}>
+            Изменить и вопросы
+          </Menu.Item>
+          {broken && <Menu.Item onClick={() => recheck.mutate()}>Проверить снова</Menu.Item>}
+          <Menu.Item
+            color="red"
+            onClick={() =>
+              modals.confirm({
+                title: 'Удалить фрагмент?',
+                message: `«${s.title}» пропадёт у всех детей вместе с вопросами.`,
+                confirmLabel: 'Удалить',
+                onConfirm: () => remove.mutate(),
+              })
+            }
+          >
+            Удалить
+          </Menu.Item>
+        </Menu.Dropdown>
+      </Menu>
+    </div>
   );
 }
