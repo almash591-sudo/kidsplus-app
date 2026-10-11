@@ -10,6 +10,7 @@ import { CategoryArt } from '../ui/CategoryArt';
 import { IdleHint } from '../ui/IdleHint';
 import { Icon } from '../ui/icons';
 import { isLessonPath, LessonPath } from './LessonPath';
+import { CachedImg } from '../ui/CachedImg';
 
 /** Приветствие — один раз за запуск приложения. */
 let greeted = false;
@@ -166,7 +167,7 @@ export function HomeScreen({
             {item.kind === 'interactive' ? (
               <GameTile spec={item.spec} />
             ) : item.kind === 'deck' ? (
-              <img src={item.coverUrl} alt="" draggable={false} />
+              <CachedImg src={item.coverUrl} alt="" draggable={false} />
             ) : item.thumbnailUrl ? (
               <img src={item.thumbnailUrl} alt="" draggable={false} />
             ) : (

@@ -2,6 +2,7 @@ import { mediaUrl } from '@kidsplus/shared/api';
 import { useEffect, useRef, useState } from 'react';
 import { fx } from '../fx';
 import { praise, shuffled, type GameProps } from './common';
+import { CachedImg } from '../ui/CachedImg';
 
 /** Найди пару: открываем по две карточки; совпали — остаются открытыми. */
 export function Memory({ spec, phrases, onFinish }: GameProps<'memory'>) {
@@ -72,7 +73,7 @@ export function Memory({ spec, phrases, onFinish }: GameProps<'memory'>) {
               aria-label="Карточка"
               onClick={() => flip(i)}
             >
-              {shown ? <img src={mediaUrl(c.id)} alt="" draggable={false} /> : <span>★</span>}
+              {shown ? <CachedImg src={mediaUrl(c.id)} alt="" draggable={false} /> : <span>★</span>}
             </button>
           );
         })}

@@ -2,6 +2,7 @@ import { mediaUrl } from '@kidsplus/shared/api';
 import { useEffect, useState } from 'react';
 import { COUNT_PROMPT } from '../phrases';
 import { ask, NUMBERS, praise, retry, say, shuffled, type GameProps } from './common';
+import { CachedImg } from '../ui/CachedImg';
 
 /** Варианты ответа: верный и соседние числа, по возрастанию (как на линейке). */
 export function countOptions(answer: number, max: number, count = 3): number[] {
@@ -73,7 +74,7 @@ export function Counting({ spec, phrases, onFinish }: GameProps<'counting'>) {
             aria-label="Предмет"
             onClick={() => tapItem(i)}
           >
-            <img src={mediaUrl(imageId)} alt="" draggable={false} />
+            <CachedImg src={mediaUrl(imageId)} alt="" draggable={false} />
             {counted.includes(i) && <span className="count-mark">{counted.indexOf(i) + 1}</span>}
           </button>
         ))}
