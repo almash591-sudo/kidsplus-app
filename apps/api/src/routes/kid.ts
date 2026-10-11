@@ -1,6 +1,7 @@
 import { schema, type Db } from '@kidsplus/db';
 import {
   kidEventRequest,
+  mediaUrl,
   kidSpeechRequest,
   quizSettings,
   type KidPhrases,
@@ -44,6 +45,25 @@ export async function kidPhrases(
   const ready = (id: string | null) => Boolean(id && assets.get(id)?.status === 'ready');
   for (const [kind, text, id] of entries) {
     result[kind].push(toSpeech(tts, text, lang, id, ready));
+  }
+  // «Мамин голос»: есть записи родителя для этого вида фраз — звучат они вместо нейроголоса.
+  if (lang === 'ru') {
+    const own = await db.select().from(schema.familyPhrases);
+    const ownAssets = await loadAssets(
+      db,
+      own.map((p) => p.audioId),
+    );
+    for (const kind of Object.keys(result) as PhraseKind[]) {
+      const mine = own.filter(
+        (p) => p.kind === kind && ownAssets.get(p.audioId)?.status === 'ready',
+      );
+      if (mine.length)
+        result[kind] = mine.map((p) => ({
+          text: p.label,
+          lang: 'ru',
+          audioUrl: mediaUrl(p.audioId),
+        }));
+    }
   }
   return result;
 }

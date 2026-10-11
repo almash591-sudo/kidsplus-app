@@ -367,6 +367,8 @@ export const flashcards = pgTable(
     /** Свой вопрос для проверки («Покажи пример: два плюс один»); без него — «Где <слово>?». */
     question: text(),
     questionAudioId: uuid().references(() => mediaAssets.id, { onDelete: 'set null' }),
+    /** Слово, записанное голосом родителя (этап 15в) — звучит вместо нейроголоса. */
+    customAudioId: uuid().references(() => mediaAssets.id, { onDelete: 'set null' }),
     position: integer().notNull(),
   },
   (t) => [index().on(t.deckId)],
@@ -664,4 +666,17 @@ export const appSettings = pgTable('app_settings', {
   key: text().primaryKey(),
   value: jsonb().notNull(),
   updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Фразы, записанные голосом родителя (этап 15в): похвала, «попробуй ещё», конец урока. */
+export const familyPhrases = pgTable('family_phrases', {
+  id: uuid().primaryKey().defaultRandom(),
+  /** correct | retry | done */
+  kind: text().notNull(),
+  audioId: uuid()
+    .notNull()
+    .references(() => mediaAssets.id, { onDelete: 'cascade' }),
+  /** Что сказано — для списка в кабинете и как подпись, если запись не загрузится. */
+  label: text().notNull(),
+  createdAt: createdAt(),
 });

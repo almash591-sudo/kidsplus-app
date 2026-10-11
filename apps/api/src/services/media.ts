@@ -123,6 +123,55 @@ export async function saveUpload(db: Db, storage: MediaStorage, data: Uint8Array
   return row!;
 }
 
+// ─── Записи голоса родителя (этап 15в) ───────────────────────────────────────
+
+const AUDIO_SIGNATURES: { mime: string; ext: string; test: (b: Uint8Array) => boolean }[] = [
+  // WebM (Chrome на Android и компьютере)
+  {
+    mime: 'audio/webm',
+    ext: 'webm',
+    test: (b) => b[0] === 0x1a && b[1] === 0x45 && b[2] === 0xdf && b[3] === 0xa3,
+  },
+  {
+    mime: 'audio/ogg',
+    ext: 'ogg',
+    test: (b) => Buffer.from(b.subarray(0, 4)).toString() === 'OggS',
+  },
+  // MP4/M4A (Safari)
+  {
+    mime: 'audio/mp4',
+    ext: 'm4a',
+    test: (b) => Buffer.from(b.subarray(4, 8)).toString() === 'ftyp',
+  },
+  {
+    mime: 'audio/mpeg',
+    ext: 'mp3',
+    test: (b) =>
+      Buffer.from(b.subarray(0, 3)).toString() === 'ID3' ||
+      (b[0] === 0xff && (b[1]! & 0xe0) === 0xe0),
+  },
+];
+
+/** Сохранить запись голоса; формат — по содержимому, а не по заголовку запроса. */
+export async function saveAudioUpload(db: Db, storage: MediaStorage, data: Uint8Array) {
+  const kind = AUDIO_SIGNATURES.find((s) => s.test(data));
+  if (!kind)
+    throw new HttpError(415, 'unsupported_audio', 'поддерживаются записи WebM, Ogg, M4A и MP3');
+  const key = `voice/${randomUUID()}.${kind.ext}`;
+  await storage.put(key, data, kind.mime);
+  const [row] = await db
+    .insert(mediaAssets)
+    .values({
+      kind: 'audio',
+      source: 'upload',
+      storageKey: key,
+      mimeType: kind.mime,
+      bytes: data.byteLength,
+    })
+    .returning();
+  return row!;
+}
+
 /** Эмодзи Twemoji: копируется в хранилище один раз и переиспользуется. */
 export const saveEmoji = (db: Db, storage: MediaStorage, code: string, svg: Uint8Array) =>
   saveSvgAsset(db, storage, {
