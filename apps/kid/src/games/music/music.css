@@ -1,0 +1,434 @@
+/* ─── Музыка (этап 14б) ─── */
+
+.music-choice,
+.music-beats,
+.music-rhythm,
+.piano,
+.staff {
+  align-items: center;
+  justify-content: center;
+}
+
+/* Сверху — что звучит, снизу — что нажать; и в альбомной ориентации тоже. */
+@media (orientation: landscape) {
+  .music-beats,
+  .music-rhythm,
+  .piano,
+  .staff {
+    flex-direction: column;
+  }
+
+  .staff-svg {
+    width: min(70vw, 52vh);
+  }
+
+  .piano-keys {
+    height: min(46vh, 300px);
+  }
+}
+
+/* Значок «слушай» — пульсирует, пока звучит вопрос. */
+.music-ear {
+  font-size: min(18vw, 12vh);
+  line-height: 1;
+  transition: transform 0.2s;
+}
+
+.music-ear.on {
+  animation: music-beat 0.45s ease-in-out infinite;
+}
+
+.music-sides {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+  justify-content: center;
+}
+
+@media (orientation: portrait) {
+  .music-sides {
+    flex-direction: column;
+    align-items: center;
+  }
+}
+
+.music-side {
+  width: min(70vw, 34vh);
+  height: min(46vw, 28vh);
+  border: 0;
+  border-radius: 32px;
+  background: var(--card, #fff);
+  box-shadow: 0 8px 0 rgb(0 0 0 / 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: inherit;
+  font: inherit;
+  transition: transform 0.2s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+.music-side:active {
+  transform: scale(0.95);
+}
+
+.music-pic {
+  font-size: min(22vw, 13vh);
+  line-height: 1;
+}
+
+.music-word {
+  font-size: 22px;
+  font-weight: 800;
+  opacity: 0.75;
+}
+
+.music-side.sounding .music-pic {
+  animation: music-beat 0.45s ease-in-out infinite;
+}
+
+.music-side.picked {
+  box-shadow: 0 0 0 6px #22c55e;
+}
+
+.music-side.shake,
+.music-number.off,
+.staff-option.off {
+  animation: music-shake 0.4s;
+}
+
+.music-number.off,
+.staff-option.off {
+  opacity: 0.35;
+}
+
+/* Сколько звуков */
+.music-drum {
+  font-size: min(30vw, 18vh);
+  line-height: 1;
+}
+
+.music-drum.hit {
+  animation: music-hit 0.3s ease-out;
+}
+
+.music-numbers,
+.staff-options {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.music-number {
+  width: min(26vw, 20vh);
+  height: min(30vw, 22vh);
+  border: 0;
+  border-radius: 24px;
+  background: #00a9bd;
+  box-shadow: 0 6px 0 #007f8e;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font: inherit;
+}
+
+.music-number b {
+  font-size: min(14vw, 10vh);
+  line-height: 1;
+}
+
+.music-number span {
+  font-size: 14px;
+  letter-spacing: 2px;
+}
+
+.music-number.picked,
+.staff-option.picked {
+  box-shadow: 0 0 0 6px #22c55e;
+}
+
+/* Ритм: плашки «та» (длинная) и «ти» (короткая) */
+.rhythm-notes {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.rhythm-notes span {
+  height: 54px;
+  border-radius: 14px;
+  background: var(--card, #fff);
+  color: #94a3b8;
+  font-size: 20px;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    transform 0.15s;
+}
+
+.rhythm-notes .ta {
+  width: 84px;
+}
+
+.rhythm-notes .ti {
+  width: 42px;
+}
+
+.rhythm-notes .on {
+  background: #00a9bd;
+  color: #fff;
+  transform: translateY(-6px);
+}
+
+.rhythm-drum {
+  width: min(56vw, 34vh);
+  height: min(56vw, 34vh);
+  border: 0;
+  border-radius: 50%;
+  background: var(--card, #fff);
+  box-shadow: 0 10px 0 rgb(0 0 0 / 0.1);
+  font-size: min(32vw, 20vh);
+  line-height: 1;
+  touch-action: manipulation;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.rhythm-drum.ready {
+  opacity: 1;
+}
+
+.rhythm-drum span {
+  display: inline-block;
+  animation: music-hit 0.25s ease-out;
+}
+
+/* Пианино: цветные клавиши с названиями нот */
+.piano-ask {
+  font-size: min(20vw, 12vh);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.piano-keys {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+  max-width: 900px;
+  height: min(52vh, 360px);
+}
+
+.piano-key {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  border-radius: 0 0 18px 18px;
+  background: linear-gradient(to bottom, #fff 0 55%, var(--k) 55%);
+  box-shadow:
+    inset 0 0 0 2px rgb(0 0 0 / 0.08),
+    0 6px 0 color-mix(in srgb, var(--k) 70%, #000);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 14px;
+  touch-action: manipulation;
+  transition: transform 0.08s;
+}
+
+.piano-key span {
+  color: #fff;
+  font-size: clamp(14px, 4.5vw, 26px);
+  font-weight: 900;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.35);
+}
+
+.piano-key.down {
+  transform: translateY(5px);
+  box-shadow: inset 0 0 0 2px rgb(0 0 0 / 0.08);
+  filter: brightness(1.1);
+}
+
+/* Нотный стан */
+.staff-svg {
+  width: min(92vw, 70vh);
+  background: var(--card, #fff);
+  border-radius: 24px;
+}
+
+.staff-svg line {
+  stroke: #475569;
+  stroke-width: 2;
+}
+
+.staff-svg .ledger {
+  stroke-width: 2.5;
+}
+
+.staff-note ellipse {
+  fill: #1e293b;
+}
+
+.staff-note line {
+  stroke: #1e293b;
+  stroke-width: 2.5;
+}
+
+.staff-note {
+  animation: music-drop 0.4s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+.staff-option {
+  min-width: min(26vw, 20vh);
+  height: min(20vw, 14vh);
+  padding: 0 12px;
+  border: 0;
+  border-radius: 22px;
+  background: var(--k);
+  box-shadow: 0 6px 0 color-mix(in srgb, var(--k) 70%, #000);
+  color: #fff;
+  font: inherit;
+  font-size: min(9vw, 6vh);
+  font-weight: 900;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+}
+
+@keyframes music-beat {
+  50% {
+    transform: scale(1.15);
+  }
+}
+
+@keyframes music-hit {
+  from {
+    transform: scale(1.18);
+  }
+}
+
+@keyframes music-shake {
+  25% {
+    transform: translateX(-8px);
+  }
+  75% {
+    transform: translateX(8px);
+  }
+}
+
+@keyframes music-drop {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .music-ear.on,
+  .music-side.sounding .music-pic,
+  .music-drum.hit,
+  .rhythm-drum span,
+  .staff-note {
+    animation: none;
+  }
+}
+
+/* ─── Дорожка уроков ─── */
+.lesson-path {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 16px 12px;
+  padding: 8px 4px 32px;
+}
+
+.path-step {
+  position: relative;
+  aspect-ratio: 1;
+  border: 0;
+  border-radius: 50%;
+  background: var(--card, #fff);
+  box-shadow: 0 6px 0 rgb(0 0 0 / 0.08);
+  display: grid;
+  place-items: center;
+  color: inherit;
+  font: inherit;
+  animation: path-in 0.35s calc(var(--i) * 40ms) both;
+}
+
+/* Чётные кружки чуть ниже — получается извилистая дорожка. */
+.path-step:nth-child(even) {
+  transform: translateY(14px);
+}
+
+.path-icon {
+  font-size: 40px;
+  line-height: 1;
+}
+
+.path-num {
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  translate: -50% 0;
+  min-width: 26px;
+  padding: 0 6px;
+  border-radius: 13px;
+  background: #00a9bd;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.path-step.done {
+  background: #e6f8fa;
+}
+
+.path-step.done .path-icon {
+  opacity: 0.55;
+}
+
+.path-star {
+  position: absolute;
+  top: -6px;
+  right: -4px;
+  width: 30px;
+  height: 30px;
+  color: #facc15;
+}
+
+.path-step.next {
+  box-shadow:
+    0 0 0 5px #00a9bd,
+    0 0 24px 6px rgb(0 169 189 / 0.55);
+  animation: path-glow 1.4s ease-in-out infinite;
+}
+
+@keyframes path-in {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+}
+
+/* Свечение без изменения размера: кружок стоит на месте, светится вокруг. */
+@keyframes path-glow {
+  50% {
+    box-shadow:
+      0 0 0 9px #00a9bd,
+      0 0 36px 14px rgb(0 169 189 / 0.6);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .path-step,
+  .path-step.next {
+    animation: none;
+  }
+}

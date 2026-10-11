@@ -165,6 +165,10 @@ body {
   --c: #2fb67c;
   --c-shadow: rgb(47 182 124 / 0.35);
 }
+.tile.category.music {
+  --c: #00a9bd;
+  --c-shadow: rgb(0 169 189 / 0.35);
+}
 .tile.category.games {
   --c: #ff5fa2;
   --c-shadow: rgb(255 95 162 / 0.35);
@@ -649,6 +653,9 @@ body {
 }
 .tile.category.games {
   --c-tint: #ffd0e4;
+}
+.tile.category.music {
+  --c-tint: #c4f1f6;
 }
 .tile.category.other {
   --c-tint: #e2d6ff;

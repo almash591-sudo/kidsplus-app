@@ -72,6 +72,13 @@ export type MoleSpeed = (typeof MOLE_SPEEDS)[number];
 /** Слово «Собери слово»: буквы русского или английского алфавита, 2–10. */
 const WORD_RE = /^[А-ЯЁA-Z]{2,10}$/u;
 
+/** Ноты от «до» первой октавы до «до» второй — так их поёт ребёнок (сольфеджио). */
+export const NOTE_NAMES = ['до', 'ре', 'ми', 'фа', 'соль', 'ля', 'си', 'до'] as const;
+/** Режимы пианино: свободная игра, «найди ноту ми», «какая нота прозвучала». */
+export const PIANO_MODES = ['free', 'find', 'ear'] as const;
+const musicRounds = z.number().int().min(2).max(12);
+const keys = z.number().int().min(3).max(8);
+
 export const gameSpec = z.discriminatedUnion('kind', [
   /** Рисовалка: кисть, цвета, наклейки. */
   z.object({
@@ -263,6 +270,43 @@ export const gameSpec = z.discriminatedUnion('kind', [
       .max(10),
     extra: z.number().int().min(0).max(3).default(0),
   }),
+  // ─── Музыка (этап 14б): звуки синтезирует телефон, картинки не нужны ───
+  /** Высоко — низко: звучит нота, ребёнок выбирает птичку (высоко) или мишку (низко). gap — полутонов между ними. */
+  z.object({
+    kind: z.literal('pitch'),
+    gap: z.number().int().min(12).max(36),
+    rounds: musicRounds,
+  }),
+  /** Громко — тихо: слон или мышка. */
+  z.object({ kind: z.literal('loudness'), rounds: musicRounds }),
+  /** Быстро — медленно: зайчик или черепаха. */
+  z.object({ kind: z.literal('tempo'), rounds: musicRounds }),
+  /** Долго — коротко: паровоз «ту-у-у» или цыплёнок «пик». */
+  z.object({ kind: z.literal('duration'), rounds: musicRounds }),
+  /** Вверх или вниз: мелодия из notes нот идёт по лесенке вверх или вниз. */
+  z.object({
+    kind: z.literal('direction'),
+    notes: z.number().int().min(3).max(5),
+    rounds: musicRounds,
+  }),
+  /** Сколько звуков: барабан ударил несколько раз — выбрать число (до max). */
+  z.object({ kind: z.literal('beats'), max: z.number().int().min(2).max(6), rounds: musicRounds }),
+  /** Повтори ритм на барабане; timing — проверять и длительности («та» и «ти-ти»), а не только число. */
+  z.object({
+    kind: z.literal('rhythm'),
+    beats: z.number().int().min(2).max(6),
+    timing: z.boolean().default(false),
+    rounds: musicRounds,
+  }),
+  /** Пианино с цветными клавишами до-ре-ми (keys клавиш от «до»). */
+  z.object({
+    kind: z.literal('piano'),
+    mode: z.enum(PIANO_MODES),
+    keys,
+    rounds: musicRounds,
+  }),
+  /** Нотный стан: где живёт нота — выбрать её название. */
+  z.object({ kind: z.literal('staff'), keys, rounds: musicRounds }),
 ]);
 export type GameSpec = z.infer<typeof gameSpec>;
 export type GameKind = GameSpec['kind'];
@@ -289,6 +333,15 @@ export const GAME_KINDS: Record<GameKind, string> = {
   size: 'По размеру',
   sequence: 'По порядку',
   word: 'Собери слово',
+  pitch: 'Высоко — низко',
+  loudness: 'Громко — тихо',
+  tempo: 'Быстро — медленно',
+  duration: 'Долго — коротко',
+  direction: 'Вверх или вниз',
+  beats: 'Сколько звуков',
+  rhythm: 'Повтори ритм',
+  piano: 'Пианино: ноты',
+  staff: 'Нотный стан',
 };
 
 /** id картинок в параметрах игры — для проверки, что они есть и готовы. */
@@ -321,6 +374,15 @@ export function gameImageIds(g: GameSpec): string[] {
     case 'balloons':
     case 'melody':
     case 'shapes':
+    case 'pitch':
+    case 'loudness':
+    case 'tempo':
+    case 'duration':
+    case 'direction':
+    case 'beats':
+    case 'rhythm':
+    case 'piano':
+    case 'staff':
       return [];
   }
 }

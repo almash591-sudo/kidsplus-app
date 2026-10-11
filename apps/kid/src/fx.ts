@@ -4,11 +4,14 @@
 type Ctx = AudioContext;
 let ctx: Ctx | null = null;
 let master: GainNode | null = null;
+let musicBus: GainNode | null = null;
 
 /** Громкость эффектов относительно голоса. */
 const VOLUME = 0.22;
+/** Громкость музыкальных уроков: ноты должны быть слышны не тише голоса. */
+const MUSIC_VOLUME = 0.75;
 
-function audio(): { ctx: Ctx; out: GainNode } | null {
+function audio(bus: 'fx' | 'music' = 'fx'): { ctx: Ctx; out: GainNode } | null {
   if (typeof window === 'undefined') return null;
   const AC =
     window.AudioContext ??
@@ -19,10 +22,13 @@ function audio(): { ctx: Ctx; out: GainNode } | null {
     master = ctx.createGain();
     master.gain.value = VOLUME;
     master.connect(ctx.destination);
+    musicBus = ctx.createGain();
+    musicBus.gain.value = MUSIC_VOLUME;
+    musicBus.connect(ctx.destination);
   }
   // Браузер запускает звук только после касания — первое касание его и «будит».
   if (ctx.state === 'suspended') void ctx.resume();
-  return { ctx, out: master! };
+  return { ctx, out: bus === 'music' ? musicBus! : master! };
 }
 
 /** Нота: частота, начало (с от сейчас), длительность, тембр, громкость; slideTo — скольжение высоты. */
@@ -30,9 +36,9 @@ function tone(
   freq: number,
   at: number,
   dur: number,
-  o: { type?: OscillatorType; gain?: number; slideTo?: number } = {},
+  o: { type?: OscillatorType; gain?: number; slideTo?: number; bus?: 'fx' | 'music' } = {},
 ) {
-  const a = audio();
+  const a = audio(o.bus);
   if (!a) return;
   const t = a.ctx.currentTime + at;
   const osc = a.ctx.createOscillator();
@@ -53,9 +59,9 @@ function tone(
 function noise(
   at: number,
   dur: number,
-  o: { from: number; to: number; gain?: number; q?: number },
+  o: { from: number; to: number; gain?: number; q?: number; bus?: 'fx' | 'music' },
 ) {
-  const a = audio();
+  const a = audio(o.bus);
   if (!a) return;
   const t = a.ctx.currentTime + at;
   const len = Math.ceil(a.ctx.sampleRate * dur);
@@ -178,3 +184,33 @@ export function installTapFeedback(root: Document = document) {
   root.addEventListener('pointerdown', onDown, { capture: true });
   return () => root.removeEventListener('pointerdown', onDown, { capture: true });
 }
+
+// ─── Музыка (этап 14б) ──────────────────────────────────────────────────────
+
+/** Ноты от «до» первой октавы до «до» второй, Гц. */
+export const NOTE_FREQ = [261.63, 293.66, 329.63, 349.23, 392.0, 440.0, 493.88, 523.25];
+
+/** Звуки музыкальных уроков: инструмент, похожий на пианино, и барабан. */
+export const music = {
+  /** Нота «пианино»: основной тон с обертонами и затуханием. gain — громкость (0–1). */
+  note(freq: number, at = 0, dur = 0.6, gain = 0.6) {
+    const b = { bus: 'music' as const };
+    tone(freq, at, dur, { ...b, type: 'triangle', gain });
+    tone(freq * 2, at, dur * 0.6, { ...b, gain: gain * 0.25 });
+    tone(freq * 3, at, dur * 0.3, { ...b, gain: gain * 0.08 });
+  },
+  /** Длинная ровная нота (для «долго»): без быстрого затухания. */
+  long(freq: number, at = 0, dur = 1.6, gain = 0.5) {
+    tone(freq, at, dur, { bus: 'music', type: 'triangle', gain });
+    tone(freq * 2, at, dur, { bus: 'music', gain: gain * 0.15 });
+  },
+  /** Удар барабана: низкий «бум» с призвуком. */
+  drum(at = 0, gain = 0.9) {
+    tone(150, at, 0.32, { bus: 'music', slideTo: 55, gain });
+    noise(at, 0.08, { from: 1800, to: 500, gain: gain * 0.4, q: 0.9, bus: 'music' });
+  },
+  /** Сейчас по часам звука, с — для точных интервалов. */
+  now() {
+    return audio('music')?.ctx.currentTime ?? 0;
+  },
+};

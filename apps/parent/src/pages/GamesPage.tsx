@@ -20,6 +20,12 @@ import { CATEGORY_LABELS } from './DecksPage';
 import { keys, queryClient, useChildren, useGames } from '../queries';
 
 /** Короткое описание параметров игры для родителя. */
+export const PIANO_MODE_LABELS = {
+  free: 'свободная игра',
+  find: 'найди ноту',
+  ear: 'узнай на слух',
+} as const;
+
 export function gameSummary(spec: GameSpec): string {
   switch (spec.kind) {
     case 'drawing':
@@ -63,6 +69,22 @@ export function gameSummary(spec: GameSpec): string {
       return `по ${spec.count} размера · картинок: ${spec.imageIds.length}`;
     case 'word':
       return spec.words.map((w) => w.word).join(', ');
+    case 'pitch':
+      return `разница ${spec.gap} полутонов · раундов: ${spec.rounds}`;
+    case 'loudness':
+    case 'tempo':
+    case 'duration':
+      return `раундов: ${spec.rounds}`;
+    case 'direction':
+      return `мелодия из ${spec.notes} нот · раундов: ${spec.rounds}`;
+    case 'beats':
+      return `до ${spec.max} ударов · раундов: ${spec.rounds}`;
+    case 'rhythm':
+      return `${spec.beats} ударов${spec.timing ? ' · «та» и «ти-ти»' : ''} · раундов: ${spec.rounds}`;
+    case 'piano':
+      return `${PIANO_MODE_LABELS[spec.mode]} · нот: ${spec.keys}`;
+    case 'staff':
+      return `нот: ${spec.keys} · раундов: ${spec.rounds}`;
   }
 }
 
@@ -89,6 +111,15 @@ const GAME_ICONS: Record<GameKind, string> = {
   size: '📏',
   sequence: '🔢',
   word: '🔤',
+  pitch: '🐦',
+  loudness: '🐘',
+  tempo: '🐇',
+  duration: '🚂',
+  direction: '↕️',
+  beats: '🥁',
+  rhythm: '🪘',
+  piano: '🎹',
+  staff: '🎼',
 };
 
 /** Игры (п. 5.6 ТЗ): кому какую показывать. У ребёнка они — в разделе «Игры». */

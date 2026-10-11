@@ -3,6 +3,7 @@ import type { GameKind, GameSpec } from '@kidsplus/shared/games';
 import { useEffect, useState, type ComponentType } from 'react';
 import { sendEvent } from '../api';
 import { stopAudio } from '../audio';
+import { markDone } from '../progress';
 import { Celebrate } from '../Celebrate';
 import { Balloons } from './Balloons';
 import { Coloring } from './Coloring';
@@ -28,6 +29,11 @@ import { Shadows } from './Shadows';
 import { Shapes } from './Shapes';
 import { Size } from './Size';
 import { Word } from './Word';
+import { Beats } from './music/Beats';
+import { MusicChoice } from './music/Choice';
+import { Piano } from './music/Piano';
+import { Rhythm } from './music/Rhythm';
+import { Staff } from './music/Staff';
 import './games.css';
 import './games-more.css';
 import { GAME_INTRO } from '../phrases';
@@ -60,6 +66,15 @@ const GAMES: { [K in GameKind]: ComponentType<GameProps<K>> } = {
   size: Size,
   sequence: Sequence,
   word: Word,
+  pitch: MusicChoice as ComponentType<GameProps<'pitch'>>,
+  loudness: MusicChoice as ComponentType<GameProps<'loudness'>>,
+  tempo: MusicChoice as ComponentType<GameProps<'tempo'>>,
+  duration: MusicChoice as ComponentType<GameProps<'duration'>>,
+  direction: MusicChoice as ComponentType<GameProps<'direction'>>,
+  beats: Beats,
+  rhythm: Rhythm,
+  piano: Piano,
+  staff: Staff,
 };
 
 /** Экран игры: сама игра, кнопка «домой», в конце — звёздочка и следующий пункт. */
@@ -114,6 +129,7 @@ export function GameScreen(props: {
               interactiveId: id,
               payload: { kind: spec.kind },
             });
+            markDone(id);
             setFinished(true);
           }}
         />

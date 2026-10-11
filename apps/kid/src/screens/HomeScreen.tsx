@@ -9,6 +9,7 @@ import { CATEGORY_LABELS, categoryPhrase, GREETING, HINT_PICK } from '../phrases
 import { CategoryArt } from '../ui/CategoryArt';
 import { IdleHint } from '../ui/IdleHint';
 import { Icon } from '../ui/icons';
+import { isLessonPath, LessonPath } from './LessonPath';
 
 /** Приветствие — один раз за запуск приложения. */
 let greeted = false;
@@ -21,6 +22,7 @@ export const CATEGORY_SHORT: Record<KidCategory, string> = {
   chinese: 'Китайский',
   geography: 'География',
   nature: 'Природа',
+  music: 'Музыка',
   games: 'Игры',
   other: 'Разное',
 };
@@ -138,40 +140,48 @@ export function HomeScreen({
           <Icon name="back" size={34} stroke={2.6} />
         </button>
       )}
-      {items.map((item, i) => (
-        <button
-          key={`${item.kind}-${item.id}`}
-          type="button"
-          className={
-            item.kind === 'segment' ? 'tile' : `tile ${item.kind === 'deck' ? 'deck' : 'game'}`
-          }
-          style={{ '--i': i } as React.CSSProperties}
-          onClick={() => onPick(i)}
-          data-testid="tile"
-          data-kind={item.kind}
-          data-hint={i === 0 ? '' : undefined}
-          aria-label={
-            item.kind === 'deck' ? 'Карточки' : item.kind === 'interactive' ? 'Играть' : 'Смотреть'
-          }
-        >
-          {item.kind === 'interactive' ? (
-            <GameTile spec={item.spec} />
-          ) : item.kind === 'deck' ? (
-            <img src={item.coverUrl} alt="" draggable={false} />
-          ) : item.thumbnailUrl ? (
-            <img src={item.thumbnailUrl} alt="" draggable={false} />
-          ) : (
-            <span className="tile-play" aria-hidden="true">
-              <Icon name="play" size={56} fill />
-            </span>
-          )}
-          {item.kind === 'segment' && item.thumbnailUrl && (
-            <span className="tile-play small" aria-hidden="true">
-              <Icon name="play" size={26} fill />
-            </span>
-          )}
-        </button>
-      ))}
+      {isLessonPath(items) ? (
+        <LessonPath items={items} onPick={onPick} />
+      ) : (
+        items.map((item, i) => (
+          <button
+            key={`${item.kind}-${item.id}`}
+            type="button"
+            className={
+              item.kind === 'segment' ? 'tile' : `tile ${item.kind === 'deck' ? 'deck' : 'game'}`
+            }
+            style={{ '--i': i } as React.CSSProperties}
+            onClick={() => onPick(i)}
+            data-testid="tile"
+            data-kind={item.kind}
+            data-hint={i === 0 ? '' : undefined}
+            aria-label={
+              item.kind === 'deck'
+                ? 'Карточки'
+                : item.kind === 'interactive'
+                  ? 'Играть'
+                  : 'Смотреть'
+            }
+          >
+            {item.kind === 'interactive' ? (
+              <GameTile spec={item.spec} />
+            ) : item.kind === 'deck' ? (
+              <img src={item.coverUrl} alt="" draggable={false} />
+            ) : item.thumbnailUrl ? (
+              <img src={item.thumbnailUrl} alt="" draggable={false} />
+            ) : (
+              <span className="tile-play" aria-hidden="true">
+                <Icon name="play" size={56} fill />
+              </span>
+            )}
+            {item.kind === 'segment' && item.thumbnailUrl && (
+              <span className="tile-play small" aria-hidden="true">
+                <Icon name="play" size={26} fill />
+              </span>
+            )}
+          </button>
+        ))
+      )}
       <IdleHint onIdle={() => void playSequence([ru(HINT_PICK)])} first={8000} />
     </div>
   );
