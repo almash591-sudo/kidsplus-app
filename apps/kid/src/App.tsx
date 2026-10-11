@@ -5,6 +5,7 @@ import { kidApi, NotPairedError } from './api';
 import { playSequence, speechLanguages } from './audio';
 import { categoriesOf, itemsOf, needsCategoryPick } from './categories';
 import { useBattery } from './battery';
+import { BabyScreen } from './baby/BabyScreen';
 import { BatteryBadge } from './BatteryBadge';
 import { BrightnessButton } from './ui/Brightness';
 import { CameraScreen } from './camera/CameraScreen';
@@ -435,6 +436,16 @@ export function App() {
     case 'unpaired':
       return <PairScreen initialCode={state.initialCode} onPaired={() => void load()} />;
     case 'today':
+      // Малыш (до 1,5 лет): свой экран вместо занятий (этап 16б).
+      if (state.playlist.baby)
+        return (
+          <>
+            <BabyScreen playlist={state.playlist} />
+            <BatteryBadge battery={battery} />
+            {/* Уголок родителя: PIN → Wi-Fi и настройки (в машине — раздача с телефона мамы). */}
+            <ParentCorner onUnlock={() => setParentMenu(true)} />
+          </>
+        );
       return (
         <>
           <TodayScreen
@@ -447,6 +458,14 @@ export function App() {
       );
     case 'home': {
       const { playlist, category } = state;
+      if (playlist.baby)
+        return (
+          <>
+            <BabyScreen playlist={playlist} />
+            <BatteryBadge battery={battery} />
+            <ParentCorner onUnlock={() => setParentMenu(true)} />
+          </>
+        );
       // В режиме плана — назад к «Сегодня».
       const toToday = isPlan
         ? () => {

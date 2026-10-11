@@ -2,19 +2,21 @@
 import { z } from 'zod';
 import type { MediaRef } from './api';
 
-export const FAMILY_PHRASE_KINDS = ['correct', 'retry', 'done'] as const;
+export const FAMILY_PHRASE_KINDS = ['correct', 'retry', 'done', 'lullaby'] as const;
 export type FamilyPhraseKind = (typeof FAMILY_PHRASE_KINDS)[number];
 
 export const FAMILY_PHRASE_TITLES: Record<FamilyPhraseKind, string> = {
   correct: 'Похвала за верный ответ',
   retry: 'Если ошибся',
   done: 'В конце урока',
+  lullaby: 'Колыбельные и сказки для малыша',
 };
 /** Что можно сказать — подсказка в кабинете. */
 export const FAMILY_PHRASE_HINTS: Record<FamilyPhraseKind, string> = {
   correct: 'Умница! Молодец, моя хорошая! Правильно!',
   retry: 'Попробуй ещё разок! Почти получилось!',
   done: 'Ты всё сделала! Я тобой горжусь!',
+  lullaby: 'Спи, моя радость, усни… — до 3 минут',
 };
 
 export const familyPhraseInput = z.object({
@@ -34,6 +36,7 @@ export interface FamilyPhrase {
 /** Своя запись слова карточки; null — снова нейроголос. */
 export const cardVoiceInput = z.object({ audioId: z.uuid().nullable() });
 
-/** Запись голоса — до 10 секунд, это меньше 1,5 МБ в любом формате браузера. */
-export const AUDIO_MAX_BYTES = 1_500_000;
+/** Запись голоса: фраза — до 8 секунд, колыбельная — до 3 минут (сжато ~48 кбит/с — до ~1,1 МБ). */
+export const AUDIO_MAX_BYTES = 4_000_000;
 export const RECORD_MAX_SEC = 8;
+export const recordMaxSec = (kind: FamilyPhraseKind) => (kind === 'lullaby' ? 180 : RECORD_MAX_SEC);

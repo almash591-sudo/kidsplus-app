@@ -4,6 +4,7 @@ import {
   FAMILY_PHRASE_HINTS,
   FAMILY_PHRASE_KINDS,
   FAMILY_PHRASE_TITLES,
+  recordMaxSec,
   type FamilyPhrase,
   type FamilyPhraseKind,
 } from '@kidsplus/shared/family-voice';
@@ -25,7 +26,9 @@ function KindSection({ kind, phrases }: { kind: FamilyPhraseKind; phrases: Famil
       api.post<FamilyPhrase[]>('/parent/family-phrases', {
         kind,
         audioId: audio.id,
-        label: label.trim() || FAMILY_PHRASE_HINTS[kind].split('!')[0] + '!',
+        label:
+          label.trim() ||
+          (kind === 'lullaby' ? 'Колыбельная' : FAMILY_PHRASE_HINTS[kind].split('!')[0] + '!'),
       }),
     onSuccess: (data) => {
       queryClient.setQueryData(KEY, data);
@@ -74,7 +77,7 @@ function KindSection({ kind, phrases }: { kind: FamilyPhraseKind; phrases: Famil
               maxLength={120}
               onChange={(e) => setLabel(e.currentTarget.value)}
             />
-            <VoiceRecorder onRecorded={(a) => add.mutate(a)} />
+            <VoiceRecorder maxSec={recordMaxSec(kind)} onRecorded={(a) => add.mutate(a)} />
           </div>
         </Stack>
       </Card>

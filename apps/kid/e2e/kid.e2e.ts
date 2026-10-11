@@ -62,6 +62,9 @@ interface Backend {
   voices?: string[];
   /** Режим погружения (иностранные карточки без перевода). */
   immersion?: boolean;
+  /** Малыш (этап 16б) и колыбельные мамы. */
+  baby?: boolean;
+  lullabies?: { label: string; url: string }[];
   /** Серверная озвучка (нейроголос) и сколько раз приложение просило озвучить фразы. */
   serverVoice?: boolean;
   speechRequests?: number;
@@ -319,6 +322,8 @@ async function mockBackend(page: Page, backend: Backend) {
                 immersion: backend.immersion ?? false,
                 phrasesEn: PHRASES_EN,
                 serverVoice: backend.serverVoice ?? false,
+                baby: backend.baby ?? false,
+                lullabies: backend.lullabies ?? [],
               },
             })
           : unauthorized();
@@ -2468,5 +2473,43 @@ test.describe('музыка', () => {
     await expect(path).toBeVisible({ timeout: 8000 });
     await expect(steps.nth(0)).toHaveAttribute('data-done', 'true');
     await expect(steps.nth(1)).toHaveAttribute('data-hint', '');
+  });
+});
+
+test.describe('малыш', () => {
+  test('четыре большие кнопки; песенки играют сами; шум и мама; режим запоминается', async ({
+    page,
+    backend,
+  }) => {
+    backend.baby = true;
+    backend.items = [
+      { ...SEGMENTS[0]!, kind: 'segment', questions: [], subject: 'music' },
+      { ...SEGMENTS[1]!, kind: 'segment', questions: [], subject: 'other' },
+    ];
+    backend.lullabies = [{ label: 'Спи, моя радость', url: '/api/media/lull1' }];
+    await page.goto('/');
+    await expect(page.getByTestId('baby-tile')).toHaveCount(4);
+    await shot(page, 'baby-menu');
+
+    await page.locator('[data-testid=baby-tile][data-mode=songs]').click();
+    await expect(page.getByTestId('baby-video')).toHaveAttribute('data-mode', 'songs');
+    await expect(page.getByTestId('player')).toBeVisible();
+
+    // Голосом (этап 16в): «Малыш, шум».
+    await page.evaluate(() =>
+      window.dispatchEvent(new CustomEvent('kidsplus-voice', { detail: 'noise' })),
+    );
+    await expect(page.getByTestId('baby-noise')).toBeVisible();
+    await page.getByRole('button', { name: /Сердце/ }).click();
+    await expect(page.getByTestId('baby-noise')).toHaveAttribute('data-noise', 'heart');
+    await shot(page, 'baby-noise');
+
+    // После перезапуска — тот же режим.
+    await page.reload();
+    await expect(page.getByTestId('baby-noise')).toHaveAttribute('data-noise', 'heart');
+
+    await page.getByTestId('baby-back').click();
+    await page.locator('[data-testid=baby-tile][data-mode=mama]').click();
+    await expect(page.getByTestId('baby-mama')).toContainText('Спи, моя радость');
   });
 });
