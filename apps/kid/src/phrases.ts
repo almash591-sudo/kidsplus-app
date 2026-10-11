@@ -30,12 +30,12 @@ export const CATEGORY_LABELS: Record<KidCategory, string> = {
 
 export const GREETING = 'Привет! Что будем делать?';
 export const TODAY_GREETING = 'Привет! Вот твои занятия на сегодня.';
-export const LESSON_DONE = 'Молодец! На сегодня этот урок закончен.';
+export const LESSON_DONE = 'Молодец, на сегодня этот урок закончен.';
 export const FREE_TIME = 'Свободное время! Выбирай, что хочешь.';
 export const DAY_OVER = 'На сегодня всё! Ты молодец. До завтра!';
 export const CAMERA_ENOUGH = 'На сегодня снимков хватит! Завтра снимем ещё.';
 export const PAUSED = 'Сделаем перерыв.';
-export const CATEGORY_DONE = 'Молодец! Выбирай, что дальше.';
+export const CATEGORY_DONE = 'Молодец, выбирай, что дальше.';
 export const COUNT_PROMPT = 'Сколько здесь? Посчитай и нажми цифру.';
 export const categoryPhrase = (c: KidCategory) => `${CATEGORY_LABELS[c]}!`;
 

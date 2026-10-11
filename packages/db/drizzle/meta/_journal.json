@@ -127,6 +127,13 @@
       "when": 1791655467031,
       "tag": "0017_unique_salo",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791718668233,
+      "tag": "0018_natural_bloodaxe",
+      "breakpoints": true
     }
   ]
 }

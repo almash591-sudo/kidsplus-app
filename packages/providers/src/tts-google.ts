@@ -5,6 +5,7 @@ import {
   type TtsRequest,
   type TtsResult,
 } from './tts';
+import { withAcuteStress } from '@kidsplus/shared/voice';
 
 /** Коды языков Google для наших языков. */
 const LANGUAGE_CODES: Record<TtsLanguage, string> = {
@@ -64,7 +65,8 @@ export class GoogleTtsProvider implements TtsProvider {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-goog-api-key': this.config.apiKey },
         body: JSON.stringify({
-          input: { text: r.text },
+          // «здор+ово» → знак ударения над гласной: подсказка голосу, где ударение.
+          input: { text: withAcuteStress(r.text) },
           voice: {
             languageCode: LANGUAGE_CODES[r.lang],
             ...(voice ? { name: voice } : { ssmlGender: 'FEMALE' }),

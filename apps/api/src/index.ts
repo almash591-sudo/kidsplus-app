@@ -6,11 +6,15 @@ import { createStorage } from '@kidsplus/providers/storage-factory';
 import { apiEnvSchema, parseEnv, ttsVoices } from '@kidsplus/shared/env';
 import { buildApp } from './app';
 import { backfillTts } from './services/tts-backfill';
+import { applyVoice, loadVoice } from './services/voice';
 
 const env = parseEnv(apiEnvSchema);
 const { db, pool } = createDb(env.DATABASE_URL);
 
 const tts = { providerId: env.TTS_PROVIDER, speed: env.TTS_SPEED, voices: ttsVoices(env) };
+// Голос, выбранный родителем в кабинете, важнее переменных окружения.
+const chosenVoice = await loadVoice(db).catch(() => null);
+if (chosenVoice) applyVoice(tts, chosenVoice);
 
 const app = await buildApp({
   db,
