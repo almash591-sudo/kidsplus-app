@@ -6,7 +6,8 @@ import { defineRailway, github, postgres, preserve, project, service, volume } f
 const LLM_DAILY_TOKEN_LIMIT = '5000000';
 const REGION = 'europe-west4-drams3a';
 const BRANCH = 'main';
-const REPO = 'almash591-sudo/Kidsplus';
+// Публичный репозиторий (с 2026-10-11): бесплатные минуты CI; история разработки — в приватном архиве.
+const REPO = 'almash591-sudo/kidsplus-app';
 
 /** Файлы, общие для всех сервисов: изменение любого из них пересобирает сервис. */
 const ROOT_FILES = ['/package.json', '/pnpm-lock.yaml', '/pnpm-workspace.yaml'];
