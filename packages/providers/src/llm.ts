@@ -31,7 +31,11 @@ export class LlmError extends Error {
   }
 }
 
-/** Ключи JSON Schema, которые понимает Gemini; остальные (pattern, minLength…) убираются. */
+/**
+ * Ключи JSON Schema, которые понимает Gemini; остальные (pattern, minLength…) убираются.
+ * Границы (minItems, maxItems, minimum, maximum) Gemini 3.8 отвергает целиком запросом 400
+ * (проверено на проде 2026-10-12) — они остаются только в Zod-проверке ответа.
+ */
 const SCHEMA_KEYS = new Set([
   'type',
   'format',
@@ -40,10 +44,6 @@ const SCHEMA_KEYS = new Set([
   'enum',
   'items',
   'prefixItems',
-  'minItems',
-  'maxItems',
-  'minimum',
-  'maximum',
   'anyOf',
   'oneOf',
   'properties',
