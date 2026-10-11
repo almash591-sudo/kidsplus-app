@@ -62,6 +62,9 @@ interface Backend {
   voices?: string[];
   /** Режим погружения (иностранные карточки без перевода). */
   immersion?: boolean;
+  /** Малыш (этап 16б) и колыбельные мамы. */
+  baby?: boolean;
+  lullabies?: { label: string; url: string }[];
   /** Серверная озвучка (нейроголос) и сколько раз приложение просило озвучить фразы. */
   serverVoice?: boolean;
   speechRequests?: number;
@@ -319,6 +322,8 @@ async function mockBackend(page: Page, backend: Backend) {
                 immersion: backend.immersion ?? false,
                 phrasesEn: PHRASES_EN,
                 serverVoice: backend.serverVoice ?? false,
+                baby: backend.baby ?? false,
+                lullabies: backend.lullabies ?? [],
               },
             })
           : unauthorized();
@@ -808,18 +813,18 @@ test.describe('карточки', () => {
 
     await expect(page.getByTestId('deck')).toBeVisible();
     await expect(page.getByTestId('deck-card').locator('img')).toHaveAttribute(
-      'src',
+      'data-src',
       '/api/media/c1',
     );
     await page.getByTestId('deck-next').click();
     await expect(page.getByTestId('deck-card').locator('img')).toHaveAttribute(
-      'src',
+      'data-src',
       '/api/media/c2',
     );
     await page.getByTestId('deck-next').click();
 
     await expect(page.getByTestId('deck-card').locator('img')).toHaveAttribute(
-      'src',
+      'data-src',
       '/api/media/d1',
     );
     expect(backend.events.some((e) => e.type === 'deck_complete')).toBe(true);
@@ -867,7 +872,7 @@ test('разделы: видео, английский, математика; в
   await expect(page.getByTestId('tile')).toHaveCount(2);
   await page.getByTestId('tile').nth(1).click();
   await expect(page.getByTestId('deck-card').locator('img')).toHaveAttribute(
-    'src',
+    'data-src',
     '/api/media/m2',
   );
   // «Домой» из набора — к пунктам раздела, оттуда — к разделам.
@@ -981,14 +986,14 @@ test.describe('карточки: проверки и стрелки', () => {
     await expect(page.getByTestId('quiz')).toBeVisible();
     for (let i = 0; i < 2; i++) {
       await answering(page);
-      const src = await correct(page).locator('img').getAttribute('src');
+      const src = await correct(page).locator('img').getAttribute('data-src');
       expect(['k0', 'k1', 'k2', 'k3', 'k4'].map((k) => `/api/media/${k}`)).toContain(src);
       await correct(page).dispatchEvent('pointerdown');
       await expect(page.getByTestId('quiz-round')).toHaveAttribute('data-phase', /correct|asking/);
     }
     // Шестая карточка, затем — следующий пункт списка (хвост из 1 карточки — без проверки).
     await expect(page.getByTestId('deck-card').locator('img')).toHaveAttribute(
-      'src',
+      'data-src',
       '/api/media/k5',
       { timeout: 6000 },
     );
@@ -1189,13 +1194,13 @@ test.describe('игры', () => {
     const bins = page.getByTestId('bin');
     const items = page.getByTestId('item');
     // Морковку — обезьянке: неверно, предмет остаётся.
-    const carrot = items.filter({ has: page.locator(`img[src$="${CARROT}"]`) }).first();
+    const carrot = items.filter({ has: page.locator(`img[data-src$="${CARROT}"]`) }).first();
     await dragTo(page, await center(carrot), await center(bins.nth(1)));
     await expect(items).toHaveCount(3);
     await page.waitForTimeout(400); // предмет возвращается на место с анимацией
     while ((await items.count()) > 0) {
       const it = items.first();
-      const src = (await it.locator('img').getAttribute('src'))!;
+      const src = (await it.locator('img').getAttribute('data-src'))!;
       const bin = src.endsWith(CARROT) ? 0 : 1;
       const before = await items.count();
       await dragTo(page, await center(it), await center(bins.nth(bin)));
@@ -2468,5 +2473,140 @@ test.describe('музыка', () => {
     await expect(path).toBeVisible({ timeout: 8000 });
     await expect(steps.nth(0)).toHaveAttribute('data-done', 'true');
     await expect(steps.nth(1)).toHaveAttribute('data-hint', '');
+  });
+});
+
+test.describe('без интернета', () => {
+  test('картинки занятий скачиваются заранее и показываются без сети', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [game(1, { kind: 'memory', imageIds: [CAT, LION, RABBIT] })];
+    await gameMedia(page);
+    await page.goto('/');
+    // Файлы занятий легли в кэш.
+    await expect
+      .poll(() =>
+        page.evaluate(async () => (await (await caches.open('kidsplus-media')).keys()).length),
+      )
+      .toBeGreaterThanOrEqual(3);
+    // Сети для файлов больше нет — картинки всё равно из кэша.
+    await page.unroute('**/api/media/**');
+    await page.route('**/api/media/**', (r) => r.abort('internetdisconnected'));
+    await page.getByTestId('tile').first().click();
+    await page.getByTestId('memory-card').first().click();
+    const img = page.getByTestId('memory-card').first().locator('img');
+    await expect(img).toHaveAttribute('src', /^blob:/);
+    expect(await img.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+  });
+
+  test('событие без сети копится и уходит, когда связь вернулась', async ({ page, backend }) => {
+    backend.items = [game(1, { kind: 'memory', imageIds: [CAT] })];
+    await gameMedia(page);
+    await page.goto('/');
+    await page.route('**/api/kid/events', (r) => r.abort('internetdisconnected'));
+    await page.getByTestId('tile').first().click();
+    const cards = page.getByTestId('memory-card');
+    await cards.nth(0).click();
+    await cards.nth(1).click();
+    await expect(page.getByTestId('game-finished')).toBeVisible({ timeout: 6000 });
+    expect(backend.events.filter((e) => e.type === 'interactive_complete')).toHaveLength(0);
+    expect(await page.evaluate(() => localStorage.getItem('kidsplus.outbox'))).toContain(
+      'interactive_complete',
+    );
+
+    await page.unroute('**/api/kid/events');
+    await page.evaluate(() => window.dispatchEvent(new Event('online')));
+    await expect
+      .poll(() => backend.events.filter((e) => e.type === 'interactive_complete').length)
+      .toBe(1);
+  });
+});
+
+test.describe('малыш', () => {
+  test('четыре большие кнопки; песенки играют сами; шум и мама; режим запоминается', async ({
+    page,
+    backend,
+  }) => {
+    backend.baby = true;
+    backend.items = [
+      { ...SEGMENTS[0]!, kind: 'segment', questions: [], subject: 'music' },
+      { ...SEGMENTS[1]!, kind: 'segment', questions: [], subject: 'other' },
+    ];
+    backend.lullabies = [{ label: 'Спи, моя радость', url: '/api/media/lull1' }];
+    await page.goto('/');
+    await expect(page.getByTestId('baby-tile')).toHaveCount(4);
+    await shot(page, 'baby-menu');
+
+    await page.locator('[data-testid=baby-tile][data-mode=songs]').click();
+    await expect(page.getByTestId('baby-video')).toHaveAttribute('data-mode', 'songs');
+    await expect(page.getByTestId('player')).toBeVisible();
+
+    // Голосом (этап 16в): «Малыш, шум».
+    await page.evaluate(() =>
+      window.dispatchEvent(new CustomEvent('kidsplus-voice', { detail: 'noise' })),
+    );
+    await expect(page.getByTestId('baby-noise')).toBeVisible();
+    await page.getByRole('button', { name: /Сердце/ }).click();
+    await expect(page.getByTestId('baby-noise')).toHaveAttribute('data-noise', 'heart');
+    await shot(page, 'baby-noise');
+
+    // После перезапуска — тот же режим.
+    await page.reload();
+    await expect(page.getByTestId('baby-noise')).toHaveAttribute('data-noise', 'heart');
+
+    await page.getByTestId('baby-back').click();
+    await page.locator('[data-testid=baby-tile][data-mode=mama]').click();
+    await expect(page.getByTestId('baby-mama')).toContainText('Спи, моя радость');
+  });
+
+  test('голос в киоске: «Малыш, шум» — шум; голос включён, пока открыт экран малыша', async ({
+    page,
+    backend,
+  }) => {
+    await page.addInitScript(() => {
+      const w = window as unknown as {
+        Capacitor: unknown;
+        __voice: boolean[];
+        __say: (c: string) => void;
+      };
+      w.__voice = [];
+      let listener: ((e: { command: string }) => void) | null = null;
+      w.__say = (c) => listener?.({ command: c });
+      w.Capacitor = {
+        Plugins: {
+          Kiosk: {
+            openSettings: async () => {},
+            setVoiceControl: async ({ on }: { on: boolean }) => {
+              w.__voice.push(on);
+              return { available: true };
+            },
+            setKeepAwake: async () => {},
+            setNightMode: async () => {},
+            // Как в настоящем киоске при server.url — подписка возвращается сразу.
+            addListener: (event: string, cb: (e: { command: string }) => void) => {
+              if (event === 'voice') listener = cb;
+              return { remove: () => {} };
+            },
+          },
+        },
+      };
+    });
+    backend.baby = true;
+    backend.items = [{ ...SEGMENTS[0]!, kind: 'segment', questions: [], subject: 'music' }];
+    await page.goto('/');
+    await expect(page.getByTestId('baby-menu')).toBeVisible();
+    await expect
+      .poll(() => page.evaluate(() => (window as unknown as { __voice: boolean[] }).__voice))
+      .toEqual([true]);
+    await page.evaluate(() => (window as unknown as { __say: (c: string) => void }).__say('noise'));
+    await expect(page.getByTestId('baby-noise')).toBeVisible();
+    await page.evaluate(() => (window as unknown as { __say: (c: string) => void }).__say('songs'));
+    await expect(page.getByTestId('baby-video')).toHaveAttribute('data-mode', 'songs');
+    // Громкость меняет сам киоск — экран не переключается.
+    await page.evaluate(() =>
+      (window as unknown as { __say: (c: string) => void }).__say('louder'),
+    );
+    await expect(page.getByTestId('baby-video')).toBeVisible();
   });
 });

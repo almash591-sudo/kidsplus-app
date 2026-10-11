@@ -14,6 +14,7 @@ import {
   type QuizItem,
 } from './engine';
 import { Icon } from '../ui/icons';
+import { CachedImg } from '../ui/CachedImg';
 
 /** Откуда квиз: вопросы к видео или проверка по набору карточек (для аналитики). */
 export type QuizSource = { segmentId: string } | { deckId: string };
@@ -212,7 +213,7 @@ function QuestionRound(props: {
             data-correct={o.isCorrect ? '1' : '0'}
             aria-label="Вариант ответа"
           >
-            <img src={o.imageUrl} alt="" draggable={false} />
+            <CachedImg src={o.imageUrl} alt="" draggable={false} />
           </button>
         ))}
       </div>

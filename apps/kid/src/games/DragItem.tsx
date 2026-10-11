@@ -1,6 +1,7 @@
 import { mediaUrl } from '@kidsplus/shared/api';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useDrag, type DragState } from './useDrag';
+import { CachedImg } from '../ui/CachedImg';
 
 /** Касание без перетаскивания — палец сдвинулся меньше, чем на столько пикселей. */
 const TAP = 10;
@@ -72,7 +73,7 @@ export function DragItem(props: {
 
 /** Картинка игры. */
 export const Pic = ({ id, className }: { id: string; className?: string }) => (
-  <img className={className} src={mediaUrl(id)} alt="" draggable={false} />
+  <CachedImg className={className} src={mediaUrl(id)} alt="" draggable={false} />
 );
 
 /** Размер элемента (ResizeObserver). */

@@ -1,6 +1,8 @@
 import { schema, type Db } from '@kidsplus/db';
 import {
+  isBaby,
   kidEventRequest,
+  mediaUrl,
   kidSpeechRequest,
   quizSettings,
   type KidPhrases,
@@ -45,11 +47,46 @@ export async function kidPhrases(
   for (const [kind, text, id] of entries) {
     result[kind].push(toSpeech(tts, text, lang, id, ready));
   }
+  // «Мамин голос»: есть записи родителя для этого вида фраз — звучат они вместо нейроголоса.
+  if (lang === 'ru') {
+    const own = await db.select().from(schema.familyPhrases);
+    const ownAssets = await loadAssets(
+      db,
+      own.map((p) => p.audioId),
+    );
+    for (const kind of Object.keys(result) as PhraseKind[]) {
+      const mine = own.filter(
+        (p) => p.kind === kind && ownAssets.get(p.audioId)?.status === 'ready',
+      );
+      if (mine.length)
+        result[kind] = mine.map((p) => ({
+          text: p.label,
+          lang: 'ru',
+          audioUrl: mediaUrl(p.audioId),
+        }));
+    }
+  }
   return result;
 }
 
 export function kidRoutes(app: FastifyInstance, ctx: Ctx) {
   const { db } = ctx;
+
+  /** Колыбельные голосом мамы (этап 16б) — готовые записи по порядку. */
+  const lullabies = async () => {
+    const rows = await db
+      .select()
+      .from(schema.familyPhrases)
+      .where(eq(schema.familyPhrases.kind, 'lullaby'))
+      .orderBy(asc(schema.familyPhrases.createdAt));
+    const assets = await loadAssets(
+      db,
+      rows.map((r) => r.audioId),
+    );
+    return rows
+      .filter((r) => assets.get(r.audioId)?.status === 'ready')
+      .map((r) => ({ label: r.label, url: mediaUrl(r.audioId) }));
+  };
   const deviceOnly = requireDevice(ctx);
 
   /**
@@ -77,6 +114,9 @@ export function kidRoutes(app: FastifyInstance, ctx: Ctx) {
         phrases: await kidPhrases(db, ctx.config.tts, child.gender),
         immersion: child.foreignImmersion,
         serverVoice: ctx.config.tts.providerId !== 'browser',
+        preview: request.device!.preview,
+        baby: isBaby(child, ctx.now()),
+        lullabies: await lullabies(),
         phrasesEn: await kidPhrases(db, ctx.config.tts, child.gender, 'en'),
       };
     },
@@ -108,6 +148,8 @@ export function kidRoutes(app: FastifyInstance, ctx: Ctx) {
     async (request, reply) => {
       const body = parse(kidEventRequest, request.body);
       const { childId, id: deviceId } = request.device!;
+      // Просмотр из кабинета: прогресс и аналитику ребёнка не трогаем.
+      if (request.device!.preview) return reply.code(204).send();
 
       let sourceId: string | undefined;
       if (body.segmentId) {

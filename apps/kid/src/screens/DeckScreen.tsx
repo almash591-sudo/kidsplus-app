@@ -11,6 +11,7 @@ import {
 } from '../quiz/engine';
 import { QuizScreen } from '../quiz/QuizScreen';
 import { Icon } from '../ui/icons';
+import { CachedImg } from '../ui/CachedImg';
 
 /** Слово, затем перевод (если есть и не включено погружение). */
 const say = (c: KidCard, immersion: boolean) =>
@@ -127,7 +128,7 @@ export function DeckScreen(props: {
         aria-label="Повторить слово"
         data-testid="deck-card"
       >
-        <img key={card.id} src={card.imageUrl} alt="" draggable={false} />
+        <CachedImg key={card.id} src={card.imageUrl} alt="" draggable={false} />
       </button>
 
       <div className="deck-controls">

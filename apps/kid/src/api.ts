@@ -9,6 +9,8 @@ import type {
   Subject,
 } from '@kidsplus/shared/schedule';
 
+import { sendEventQueued } from './offline';
+
 export class NotPairedError extends Error {}
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -67,12 +69,7 @@ export const kidApi = {
 };
 
 /** События для аналитики: «выстрелил и забыл», переживает закрытие страницы. */
+/** Событие для родителя и аналитики; без сети — копится и уходит позже (offline.ts). */
 export function sendEvent(event: KidEventRequest): void {
-  void fetch(`${API_PREFIX}/kid/events`, {
-    method: 'POST',
-    credentials: 'same-origin',
-    keepalive: true,
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(event),
-  }).catch(() => {});
+  void sendEventQueued(event);
 }

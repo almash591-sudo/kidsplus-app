@@ -12,6 +12,8 @@ android {
         versionCode((project.findProperty('kidsplusVersionCode') ?: (System.currentTimeMillis().intdiv(60000L) - 26297280L)) as int)
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        // Детские телефоны — Galaxy S20+ (arm64): библиотеки других архитектур (Vosk, JNA) не нужны.
+        ndk { abiFilters 'arm64-v8a' }
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
@@ -56,6 +58,9 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
+    // Голосовое управление экраном малыша (этап 16в): офлайн-распознавание Vosk (Apache 2.0).
+    implementation 'com.alphacephei:vosk-android:0.3.47@aar'
+    implementation 'net.java.dev.jna:jna:5.13.0@aar'
     testImplementation "junit:junit:$junitVersion"
     // org.json в android.jar — заглушки; для unit-тестов — настоящая реализация.
     testImplementation "org.json:json:20240303"
