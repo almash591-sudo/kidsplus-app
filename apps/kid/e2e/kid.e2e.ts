@@ -813,18 +813,18 @@ test.describe('карточки', () => {
 
     await expect(page.getByTestId('deck')).toBeVisible();
     await expect(page.getByTestId('deck-card').locator('img')).toHaveAttribute(
-      'src',
+      'data-src',
       '/api/media/c1',
     );
     await page.getByTestId('deck-next').click();
     await expect(page.getByTestId('deck-card').locator('img')).toHaveAttribute(
-      'src',
+      'data-src',
       '/api/media/c2',
     );
     await page.getByTestId('deck-next').click();
 
     await expect(page.getByTestId('deck-card').locator('img')).toHaveAttribute(
-      'src',
+      'data-src',
       '/api/media/d1',
     );
     expect(backend.events.some((e) => e.type === 'deck_complete')).toBe(true);
@@ -872,7 +872,7 @@ test('разделы: видео, английский, математика; в
   await expect(page.getByTestId('tile')).toHaveCount(2);
   await page.getByTestId('tile').nth(1).click();
   await expect(page.getByTestId('deck-card').locator('img')).toHaveAttribute(
-    'src',
+    'data-src',
     '/api/media/m2',
   );
   // «Домой» из набора — к пунктам раздела, оттуда — к разделам.
@@ -986,14 +986,14 @@ test.describe('карточки: проверки и стрелки', () => {
     await expect(page.getByTestId('quiz')).toBeVisible();
     for (let i = 0; i < 2; i++) {
       await answering(page);
-      const src = await correct(page).locator('img').getAttribute('src');
+      const src = await correct(page).locator('img').getAttribute('data-src');
       expect(['k0', 'k1', 'k2', 'k3', 'k4'].map((k) => `/api/media/${k}`)).toContain(src);
       await correct(page).dispatchEvent('pointerdown');
       await expect(page.getByTestId('quiz-round')).toHaveAttribute('data-phase', /correct|asking/);
     }
     // Шестая карточка, затем — следующий пункт списка (хвост из 1 карточки — без проверки).
     await expect(page.getByTestId('deck-card').locator('img')).toHaveAttribute(
-      'src',
+      'data-src',
       '/api/media/k5',
       { timeout: 6000 },
     );
@@ -1194,13 +1194,13 @@ test.describe('игры', () => {
     const bins = page.getByTestId('bin');
     const items = page.getByTestId('item');
     // Морковку — обезьянке: неверно, предмет остаётся.
-    const carrot = items.filter({ has: page.locator(`img[src$="${CARROT}"]`) }).first();
+    const carrot = items.filter({ has: page.locator(`img[data-src$="${CARROT}"]`) }).first();
     await dragTo(page, await center(carrot), await center(bins.nth(1)));
     await expect(items).toHaveCount(3);
     await page.waitForTimeout(400); // предмет возвращается на место с анимацией
     while ((await items.count()) > 0) {
       const it = items.first();
-      const src = (await it.locator('img').getAttribute('src'))!;
+      const src = (await it.locator('img').getAttribute('data-src'))!;
       const bin = src.endsWith(CARROT) ? 0 : 1;
       const before = await items.count();
       await dragTo(page, await center(it), await center(bins.nth(bin)));
@@ -2473,6 +2473,53 @@ test.describe('музыка', () => {
     await expect(path).toBeVisible({ timeout: 8000 });
     await expect(steps.nth(0)).toHaveAttribute('data-done', 'true');
     await expect(steps.nth(1)).toHaveAttribute('data-hint', '');
+  });
+});
+
+test.describe('без интернета', () => {
+  test('картинки занятий скачиваются заранее и показываются без сети', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [game(1, { kind: 'memory', imageIds: [CAT, LION, RABBIT] })];
+    await gameMedia(page);
+    await page.goto('/');
+    // Файлы занятий легли в кэш.
+    await expect
+      .poll(() =>
+        page.evaluate(async () => (await (await caches.open('kidsplus-media')).keys()).length),
+      )
+      .toBeGreaterThanOrEqual(3);
+    // Сети для файлов больше нет — картинки всё равно из кэша.
+    await page.unroute('**/api/media/**');
+    await page.route('**/api/media/**', (r) => r.abort('internetdisconnected'));
+    await page.getByTestId('tile').first().click();
+    await page.getByTestId('memory-card').first().click();
+    const img = page.getByTestId('memory-card').first().locator('img');
+    await expect(img).toHaveAttribute('src', /^blob:/);
+    expect(await img.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+  });
+
+  test('событие без сети копится и уходит, когда связь вернулась', async ({ page, backend }) => {
+    backend.items = [game(1, { kind: 'memory', imageIds: [CAT] })];
+    await gameMedia(page);
+    await page.goto('/');
+    await page.route('**/api/kid/events', (r) => r.abort('internetdisconnected'));
+    await page.getByTestId('tile').first().click();
+    const cards = page.getByTestId('memory-card');
+    await cards.nth(0).click();
+    await cards.nth(1).click();
+    await expect(page.getByTestId('game-finished')).toBeVisible({ timeout: 6000 });
+    expect(backend.events.filter((e) => e.type === 'interactive_complete')).toHaveLength(0);
+    expect(await page.evaluate(() => localStorage.getItem('kidsplus.outbox'))).toContain(
+      'interactive_complete',
+    );
+
+    await page.unroute('**/api/kid/events');
+    await page.evaluate(() => window.dispatchEvent(new Event('online')));
+    await expect
+      .poll(() => backend.events.filter((e) => e.type === 'interactive_complete').length)
+      .toBe(1);
   });
 });
 

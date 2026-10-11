@@ -3,6 +3,7 @@ import type { GameKind, GameSpec } from '@kidsplus/shared/games';
 import { PictureSvg } from './Coloring';
 import { PALETTE } from './common';
 import { PICTURES } from './pictures';
+import { CachedImg } from '../ui/CachedImg';
 
 export const ICON: Record<GameKind, string> = {
   drawing: '🖍️',
@@ -79,7 +80,7 @@ export function GameTile({ spec }: { spec: GameSpec }) {
   if (spec.kind === 'puzzle') {
     return (
       <span className="game-tile">
-        <img src={mediaUrl(spec.imageIds[0]!)} alt="" draggable={false} />
+        <CachedImg src={mediaUrl(spec.imageIds[0]!)} alt="" draggable={false} />
         <span className="game-badge">{ICON.puzzle}</span>
       </span>
     );
@@ -88,7 +89,7 @@ export function GameTile({ spec }: { spec: GameSpec }) {
   return (
     <span className="game-tile">
       {image ? (
-        <img src={mediaUrl(image)} alt="" draggable={false} />
+        <CachedImg src={mediaUrl(image)} alt="" draggable={false} />
       ) : (
         <span className="game-icon">
           {spec.kind === 'tracing'

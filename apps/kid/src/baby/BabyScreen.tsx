@@ -6,6 +6,7 @@ import type { KidItem, KidPlaylist, KidSegment } from '@kidsplus/shared/api';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { fx } from '../fx';
 import { setKeepAwake, setNightMode, voiceControl } from '../kiosk';
+import { cachedObjectUrl } from '../offline';
 import { KidPlayer } from '../player/KidPlayer';
 import { NOISES, playNoise, type NoiseKind, type NoisePlayer } from './noise';
 import './baby.css';
@@ -270,11 +271,26 @@ function MamaView({
   const current = lullabies.length ? lullabies[i % lullabies.length]! : null;
   useEffect(() => {
     if (!current) return;
-    const a = new Audio(current.url);
-    a.onended = () => setI((x) => x + 1);
-    a.onerror = () => setTimeout(() => setI((x) => x + 1), 1000);
-    void a.play().catch(() => {});
-    return () => a.pause();
+    let a: HTMLAudioElement | null = null;
+    let local: string | null = null;
+    let alive = true;
+    // Из кэша занятий — играет и без интернета (этап 15г).
+    void cachedObjectUrl(current.url).then((u) => {
+      if (!alive) {
+        if (u) URL.revokeObjectURL(u);
+        return;
+      }
+      local = u;
+      a = new Audio(u ?? current.url);
+      a.onended = () => setI((x) => x + 1);
+      a.onerror = () => setTimeout(() => setI((x) => x + 1), 1000);
+      void a.play().catch(() => {});
+    });
+    return () => {
+      alive = false;
+      a?.pause();
+      if (local) URL.revokeObjectURL(local);
+    };
   }, [current, i]);
 
   return (
