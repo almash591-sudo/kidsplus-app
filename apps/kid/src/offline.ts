@@ -27,6 +27,8 @@ export function playlistMedia(p: KidPlaylist): string[] {
       for (const id of gameImageIds(item.spec)) out.add(mediaUrl(id));
     }
   }
+  // Колыбельные мамы (малыш) — в машине без интернета нужнее всего.
+  for (const l of p.lullabies ?? []) out.add(l.url);
   for (const list of [p.phrases, p.phrasesEn])
     for (const kind of ['correct', 'retry', 'done'] as const) list[kind].forEach(speech);
   // Только свои файлы (сторонние картинки — например, обложки YouTube — не кэшируем).
