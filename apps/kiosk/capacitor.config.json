@@ -1,0 +1,14 @@
+{
+  "appId": "app.kidsplus.kiosk",
+  "appName": "KidsPlus",
+  "webDir": "www",
+  "server": {
+    "url": "https://kid-web-production.up.railway.app",
+    "errorPath": "offline.html",
+    "allowNavigation": ["kid-web-production.up.railway.app"]
+  },
+  "android": {
+    "allowMixedContent": false,
+    "webContentsDebuggingEnabled": false
+  }
+}

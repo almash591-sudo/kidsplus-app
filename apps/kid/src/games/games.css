@@ -1,0 +1,521 @@
+/* ─── Игры ──────────────────────────────────────────────────────────────── */
+
+.tile.category.games {
+  background: #ec4899;
+  box-shadow: 0 6px 0 #be185d;
+}
+
+.tile.game {
+  background: #fff;
+  position: relative;
+}
+
+.tile.game > svg {
+  width: 100%;
+  height: 100%;
+}
+
+.game-tile {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tile.game .game-tile img {
+  width: 80%;
+  height: 72%;
+  object-fit: contain;
+}
+
+.game-icon {
+  font-size: min(12vw, 12vh);
+  color: var(--ink);
+  font-weight: 900;
+}
+
+.game-badge {
+  position: absolute;
+  right: 8px;
+  bottom: 4px;
+  font-size: 34px;
+}
+
+.game-screen {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  overflow: hidden;
+  touch-action: none;
+}
+
+.game {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  padding: calc(max(16px, env(safe-area-inset-top)) + 84px) 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (orientation: landscape) {
+  .game {
+    padding: 16px 16px 16px calc(max(16px, env(safe-area-inset-left)) + 84px);
+    flex-direction: row;
+  }
+}
+
+/* Краски и инструменты */
+.palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.paint {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 3px solid rgb(0 0 0 / 0.15);
+  padding: 0;
+}
+
+.paint.on {
+  border: 5px solid var(--ink);
+  transform: scale(1.12);
+}
+
+.tool-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.tool {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  border: 3px solid transparent;
+  background: #fff;
+  font-size: 30px;
+  display: grid;
+  place-items: center;
+  padding: 6px;
+}
+
+.tool.on {
+  border-color: var(--ink);
+}
+
+.tool img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.tool.done {
+  background: #22a55b;
+  color: #fff;
+  width: 88px;
+}
+
+.brush-dot {
+  display: block;
+  border-radius: 50%;
+  background: var(--ink);
+}
+
+/* Рисовалка */
+.drawing-canvas {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  border-radius: 16px;
+  background: #fff;
+  touch-action: none;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+}
+
+.drawing-tools,
+.coloring-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+
+@media (orientation: landscape) {
+  .drawing-tools,
+  .coloring-tools {
+    width: 260px;
+    justify-content: center;
+  }
+}
+
+/* Раскраска */
+.coloring-board {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: grid;
+  place-items: center;
+}
+
+.coloring-svg {
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.region.hint path {
+  animation: hint 1.2s ease-in-out infinite;
+}
+
+@keyframes hint {
+  50% {
+    stroke: #f59e0b;
+    stroke-width: 10px;
+  }
+}
+
+/* Разложи по местам */
+.bins {
+  display: flex;
+  gap: 12px;
+  flex: 0 0 auto;
+}
+
+@media (orientation: landscape) {
+  .bins {
+    flex-direction: column;
+    width: 45%;
+  }
+}
+
+.bin {
+  flex: 1;
+  min-height: 160px;
+  border: 4px dashed #c9a46a;
+  border-radius: 20px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px;
+  gap: 4px;
+}
+
+.bin-icon {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+}
+
+.bin-content {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px;
+}
+
+.bin-content img {
+  width: 34px;
+  height: 34px;
+}
+
+.loose {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.item {
+  width: 96px;
+  height: 96px;
+  touch-action: none;
+  position: relative;
+}
+
+.item.dragging {
+  z-index: 10;
+}
+
+.item img {
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* Найди пару */
+.memory-grid {
+  flex: 1;
+  display: grid;
+  gap: 12px;
+  align-content: center;
+  justify-content: center;
+}
+
+.memory-card {
+  aspect-ratio: 1;
+  width: min(var(--card-w), var(--card-h));
+  border: 0;
+  border-radius: 18px;
+  background: var(--accent);
+  box-shadow: 0 5px 0 var(--accent-dark);
+  font-size: 9vmin;
+  color: #fff;
+  padding: 10%;
+}
+
+.memory-card.open {
+  background: #fff;
+  box-shadow: 0 5px 0 #ddd;
+}
+
+.memory-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Пазл */
+.game.puzzle {
+  padding: 0;
+}
+
+.puzzle-board {
+  position: absolute;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.12);
+}
+
+.puzzle-ghost {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.18;
+}
+
+.puzzle-slot {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px dashed rgb(0 0 0 / 0.2);
+  background-repeat: no-repeat;
+}
+
+.puzzle-slot.filled {
+  border: 0;
+}
+
+.puzzle-piece {
+  position: absolute;
+  box-sizing: border-box;
+  background-color: #fff;
+  background-repeat: no-repeat;
+  border-radius: 6px;
+  box-shadow: 0 3px 8px rgb(0 0 0 / 0.25);
+  touch-action: none;
+}
+
+.puzzle-piece.dragging {
+  z-index: 10;
+  box-shadow: 0 8px 18px rgb(0 0 0 / 0.3);
+}
+
+/* Обведи по точкам */
+.trace-svg {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  background: #fff;
+  border-radius: 20px;
+  touch-action: none;
+}
+
+.trace-guide,
+.trace-dash,
+.trace-ink {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.trace-guide {
+  stroke: #eee3cf;
+  stroke-width: 12;
+}
+
+.trace-dash {
+  stroke: #b8a27a;
+  stroke-width: 1.6;
+  stroke-dasharray: 1 3.2;
+}
+
+.trace-ink {
+  stroke: #3b82f6;
+  stroke-width: 7;
+}
+
+.trace-start {
+  fill: #22a55b;
+  animation: pulse 1s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.trace-end {
+  fill: #e8453c;
+}
+
+@keyframes pulse {
+  50% {
+    transform: scale(1.35);
+  }
+}
+
+/* Лопни шарики */
+.game.balloons {
+  padding: 0;
+  background: linear-gradient(#bfe3ff, #eaf6ff);
+}
+
+.balloon {
+  position: absolute;
+  bottom: 0;
+  width: 22vmin;
+  height: 36vmin;
+  border: 0;
+  padding: 0;
+  background: none;
+  animation-name: float-up;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+  touch-action: none;
+}
+
+.balloon svg {
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.balloon.popped {
+  animation: burst 0.35s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes float-up {
+  from {
+    transform: translateY(40vmin);
+  }
+  to {
+    transform: translateY(-110vh);
+  }
+}
+
+@keyframes burst {
+  to {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+.balloon-score {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: max(28px, env(safe-area-inset-top));
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  max-width: 55%;
+  justify-content: center;
+}
+
+.balloon-score span {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.7);
+}
+
+.balloon-score span.on {
+  background: #f59e0b;
+}
+
+/* Посчитай */
+.count-field {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: center;
+  gap: 10px;
+}
+
+.count-item {
+  width: min(22vw, 18vh);
+  height: min(22vw, 18vh);
+  border: 0;
+  background: none;
+  padding: 0;
+  position: relative;
+}
+
+.count-item img {
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.count-item.counted img {
+  opacity: 0.55;
+}
+
+.count-mark {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: min(10vw, 8vh);
+  font-weight: 900;
+  color: #1d4ed8;
+  text-shadow: 0 0 6px #fff;
+}
+
+.count-options {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+}
+
+@media (orientation: landscape) {
+  .count-options {
+    flex-direction: column;
+  }
+}
+
+.count-option {
+  width: min(26vw, 22vh);
+  height: min(26vw, 22vh);
+  border: 0;
+  border-radius: 24px;
+  background: #3b82f6;
+  box-shadow: 0 6px 0 #1d4ed8;
+  color: #fff;
+  font-size: min(16vw, 14vh);
+  font-weight: 900;
+}
+
+.count-option.off {
+  opacity: 0.35;
+}

@@ -1,0 +1,763 @@
+:root {
+  --bg: #fff4de;
+  --accent: #ffb347;
+  --accent-dark: #e8912a;
+  --ink: #3a2a14;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: system-ui, sans-serif;
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.screen {
+  min-height: 100%;
+  box-sizing: border-box;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+
+.center {
+  height: 100%;
+  display: grid;
+  place-items: center;
+}
+
+.sun {
+  font-size: min(40vw, 40vh);
+  line-height: 1;
+}
+
+/* ─── Главный экран ─────────────────────────────────────────────────────── */
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  align-content: start;
+}
+
+@media (orientation: landscape) {
+  .tiles {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.tile {
+  aspect-ratio: 16 / 9;
+  border: 0;
+  border-radius: 20px;
+  padding: 0;
+  overflow: hidden;
+  background: var(--accent);
+  box-shadow: 0 6px 0 var(--accent-dark);
+  transition: transform 0.1s;
+  font-size: 15vw;
+  color: #fff;
+}
+
+.tile:active {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 var(--accent-dark);
+}
+
+.tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+}
+
+/* ─── Плеер ─────────────────────────────────────────────────────────────── */
+
+.player-screen {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  overflow: hidden;
+}
+
+.player-frame,
+.player-frame iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+/* Прозрачный слой поверх iframe: все касания — сюда, а не в YouTube. */
+.touch-shield {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: transparent;
+  touch-action: none;
+}
+
+/* Заглушка, пока видео не играет: прячет заставки и «другие видео» YouTube. */
+.player-cover {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  background: #000 center / cover no-repeat;
+}
+
+.player-cover::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 0.35);
+}
+
+.big-button {
+  position: relative;
+  width: min(40vw, 40vh);
+  height: min(40vw, 40vh);
+  border-radius: 50%;
+  border: 0;
+  background: var(--accent);
+  color: #fff;
+  font-size: min(16vw, 16vh);
+  box-shadow: 0 8px 0 var(--accent-dark);
+}
+
+.big-button:active {
+  transform: translateY(4px);
+  box-shadow: 0 4px 0 var(--accent-dark);
+}
+
+.corner-button {
+  position: absolute;
+  z-index: 3;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 0;
+  background: rgb(255 255 255 / 0.85);
+  color: var(--ink);
+  font-size: 30px;
+}
+
+.corner-button.home {
+  top: max(16px, env(safe-area-inset-top));
+  left: max(16px, env(safe-area-inset-left));
+}
+
+.corner-button.pause {
+  bottom: max(16px, env(safe-area-inset-bottom));
+  left: max(16px, env(safe-area-inset-left));
+}
+
+.spinner {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 8px solid rgb(255 255 255 / 0.3);
+  border-top-color: #fff;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.celebrate {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: min(50vw, 50vh);
+  animation: pop 0.6s ease-out;
+}
+
+@keyframes pop {
+  from {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+}
+
+/* ─── Привязка (экран для взрослого) ────────────────────────────────────── */
+
+.pair-card {
+  max-width: 420px;
+  background: #fff;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgb(0 0 0 / 0.08);
+  user-select: text;
+}
+
+.pair-card h1 {
+  font-size: 22px;
+  margin: 0 0 8px;
+}
+
+.pair-card p {
+  line-height: 1.4;
+}
+
+.pair-card form {
+  display: flex;
+  gap: 8px;
+}
+
+.pair-card input {
+  flex: 1;
+  min-width: 0;
+  font-size: 22px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 10px 12px;
+  border: 2px solid #ddd;
+  border-radius: 12px;
+}
+
+.pair-card button {
+  padding: 0 16px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 18px;
+}
+
+.pair-card button:disabled {
+  opacity: 0.5;
+}
+
+.pair-error {
+  color: #c92a2a;
+}
+
+/* ─── Квиз ──────────────────────────────────────────────────────────────── */
+
+.quiz-screen,
+.deck-screen {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  box-sizing: border-box;
+  touch-action: none;
+}
+
+/* Варианты занимают весь экран: 2 — две половины, 3–4 — сетка 2×2 (каждая зона ≥ 1/4 экрана). */
+.quiz-options {
+  height: 100%;
+  display: grid;
+  gap: 16px;
+  padding: 88px 0 32px;
+  box-sizing: border-box;
+}
+
+.quiz-options.count-2 {
+  grid-template-rows: 1fr 1fr;
+}
+
+.quiz-options.count-3,
+.quiz-options.count-4 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+@media (orientation: landscape) {
+  .quiz-options.count-2 {
+    grid-template-rows: none;
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.quiz-option {
+  border: 0;
+  border-radius: 28px;
+  background: #fff;
+  box-shadow: 0 6px 0 #e8d9bd;
+  display: grid;
+  place-items: center;
+  padding: 12%;
+  min-height: 0;
+  transition:
+    opacity 0.4s,
+    transform 0.2s;
+}
+
+.quiz-option img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.quiz-option.faded {
+  opacity: 0.25;
+  transform: scale(0.92);
+}
+
+.quiz-option.chosen {
+  background: #d3f9d8;
+  box-shadow: 0 6px 0 #8ce99a;
+  animation: bounce 0.6s ease-out;
+}
+
+@keyframes bounce {
+  40% {
+    transform: scale(1.08);
+  }
+}
+
+.quiz-round[data-phase='asking'] .quiz-option,
+.quiz-round[data-phase='paused'] .quiz-option {
+  pointer-events: none;
+}
+
+.quiz-round[data-phase='paused'] .quiz-options {
+  opacity: 0.4;
+}
+
+.corner-button.ear {
+  top: max(16px, env(safe-area-inset-top));
+  right: max(16px, env(safe-area-inset-right));
+  background: var(--accent);
+}
+
+.corner-button:disabled {
+  opacity: 0.5;
+}
+
+.quiz-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: max(6px, env(safe-area-inset-bottom));
+  text-align: center;
+  font-size: 22px;
+  letter-spacing: 6px;
+  color: #e8d9bd;
+  pointer-events: none;
+}
+
+.quiz-progress .on {
+  color: var(--accent-dark);
+}
+
+/* ─── Карточки ──────────────────────────────────────────────────────────── */
+
+/* Сетка: картинка отдельно от стрелок — стрелки никогда не перекрывают картинку.
+   Портрет: сверху место под «домой», картинка, внизу полоса [◀ точки ▶].
+   Альбом: [◀ | картинка | ▶] на всю высоту, «домой» — над левой стрелкой. */
+.deck-screen {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-rows: 1fr 96px;
+  grid-template-areas:
+    'card card card'
+    'prev dots next';
+  column-gap: 12px;
+  row-gap: 12px;
+  padding-top: max(100px, calc(env(safe-area-inset-top) + 88px));
+}
+
+.deck-controls {
+  display: contents;
+}
+
+.deck-card {
+  grid-area: card;
+}
+
+.deck-controls .deck-arrow:first-child {
+  grid-area: prev;
+}
+
+.deck-controls .deck-arrow:last-child {
+  grid-area: next;
+}
+
+.deck-dots {
+  grid-area: dots;
+  align-self: center;
+}
+
+@media (orientation: landscape) {
+  .deck-screen {
+    grid-template-rows: 1fr 20px;
+    grid-template-areas:
+      'prev card next'
+      '. dots .';
+    padding-top: max(16px, env(safe-area-inset-top));
+  }
+
+  .deck-arrow {
+    align-self: center;
+  }
+}
+
+.deck-card {
+  min-height: 0;
+  width: 100%;
+  border: 0;
+  border-radius: 28px;
+  background: #fff;
+  padding: 6%;
+  box-sizing: border-box;
+}
+
+.deck-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.deck-arrow {
+  align-self: center;
+  width: 120px;
+  height: 84px;
+  border-radius: 42px;
+  border: 0;
+  background: var(--accent);
+  color: #fff;
+  font-size: 36px;
+  box-shadow: 0 6px 0 var(--accent-dark);
+}
+
+.deck-arrow:active {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 var(--accent-dark);
+}
+
+.deck-arrow:disabled {
+  opacity: 0.3;
+}
+
+.deck-dots {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.deck-dots span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #e8d9bd;
+}
+
+.deck-dots span.dot-on {
+  background: var(--accent-dark);
+}
+
+.tile.deck {
+  background: #fff;
+  padding: 8%;
+}
+
+.tile.deck img {
+  object-fit: contain;
+}
+
+.quiz-round {
+  height: 100%;
+}
+
+/* ─── Разделы главного экрана ───────────────────────────────────────────── */
+
+.tiles.with-back {
+  padding-top: calc(max(16px, env(safe-area-inset-top)) + 88px);
+}
+
+.tile.category {
+  aspect-ratio: 1;
+  font-size: min(14vw, 14vh);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+@media (orientation: landscape) {
+  .tiles.categories {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    align-content: center;
+    min-height: 100%;
+  }
+}
+
+.tile.category.video {
+  background: #ef4444;
+  box-shadow: 0 6px 0 #b91c1c;
+}
+
+.tile.category.english {
+  background: #3b82f6;
+  box-shadow: 0 6px 0 #1d4ed8;
+}
+
+.tile.category.math {
+  background: #22a55b;
+  box-shadow: 0 6px 0 #15803d;
+}
+
+.tile.category.chinese {
+  background: #f59e0b;
+  box-shadow: 0 6px 0 #b45309;
+}
+
+.tile.category.geography {
+  background: #0ea5e9;
+  box-shadow: 0 6px 0 #0369a1;
+}
+
+.tile.category.nature {
+  background: #65a30d;
+  box-shadow: 0 6px 0 #3f6212;
+}
+
+.tile.category.other {
+  background: #9b5de5;
+  box-shadow: 0 6px 0 #6d28d9;
+}
+
+/* ─── «Сегодня», «На сегодня всё», пауза, PIN (этап 4) ─────────────────────── */
+
+.tile.category.free {
+  background: #f472b6;
+  box-shadow: 0 6px 0 #be185d;
+}
+
+.tile.category {
+  position: relative;
+}
+
+.tile.category.done {
+  opacity: 0.55;
+  filter: saturate(0.6);
+}
+
+.done-star {
+  position: absolute;
+  top: 6%;
+  right: 6%;
+  font-size: min(9vw, 9vh);
+  animation: pop-in 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+.day-over,
+.paused {
+  background: linear-gradient(#1e1b4b, #4338ca);
+  position: fixed;
+  inset: 0;
+}
+
+.day-over-moon,
+.paused-icon {
+  font-size: min(45vw, 45vh);
+  animation: breathe 4s ease-in-out infinite;
+}
+
+.day-over-stars span {
+  position: absolute;
+  font-size: min(10vw, 10vh);
+  left: calc(10% + var(--i) * 18%);
+  top: calc(10% + var(--i) * 6%);
+  animation: twinkle 2.4s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 0.4s);
+}
+
+@keyframes twinkle {
+  50% {
+    opacity: 0.3;
+    transform: scale(0.7);
+  }
+}
+
+/* Угол для взрослого жеста: невидимый, удержание 3 с. */
+.parent-corner {
+  position: fixed;
+  z-index: 40;
+  top: 0;
+  right: 0;
+  width: 72px;
+  height: 72px;
+  touch-action: none;
+}
+
+.pin-pad {
+  position: fixed;
+  z-index: 60;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  background: rgb(30 27 75 / 0.96);
+  color: #fff;
+}
+
+.pin-dots {
+  display: flex;
+  gap: 14px;
+}
+
+.pin-dots span {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+}
+
+.pin-dots span.on {
+  background: #fff;
+}
+
+.pin-dots.wrong {
+  animation: wobble 0.45s ease-in-out;
+}
+
+.pin-keys {
+  display: grid;
+  grid-template-columns: repeat(3, 76px);
+  gap: 14px;
+}
+
+.pin-key,
+.menu-button {
+  height: 76px;
+  border: 0;
+  border-radius: 20px;
+  background: rgb(255 255 255 / 0.14);
+  color: #fff;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.pin-key:disabled {
+  opacity: 0.4;
+}
+
+.parent-menu p {
+  font-size: 22px;
+  margin: 0;
+}
+
+.menu-button {
+  width: min(80vw, 360px);
+  font-size: 20px;
+}
+
+/* «Сегодня» в портрете: предметы крупно, один под другим, на весь экран. */
+@media (orientation: portrait) {
+  .tiles.today {
+    grid-template-columns: 1fr;
+    grid-auto-rows: 1fr;
+    align-content: stretch;
+    min-height: 100%;
+  }
+  .tiles.today .tile.category {
+    aspect-ratio: auto;
+  }
+}
+
+/* ─── Заряд батареи (этап 8) ─────────────────────────────────────────────── */
+.battery {
+  position: fixed;
+  top: max(10px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.85);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.12);
+  font-weight: 800;
+  font-size: 18px;
+  z-index: 20;
+  pointer-events: none;
+}
+.battery-body {
+  position: relative;
+  width: 40px;
+  height: 20px;
+  border: 3px solid currentColor;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.battery-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: currentColor;
+  transition: width 0.6s ease;
+}
+.battery-cap {
+  width: 4px;
+  height: 10px;
+  margin-left: -3px;
+  border-radius: 0 2px 2px 0;
+  background: currentColor;
+}
+.battery-bolt {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  color: #fff;
+  text-shadow: 0 0 2px #000;
+}
+.battery-text {
+  margin-left: 4px;
+  color: #333;
+}
+.battery-ok {
+  color: #2fa84f;
+}
+.battery-low {
+  color: #e6a100;
+}
+.battery-critical {
+  color: #e03a3a;
+  animation: battery-pulse 1.2s ease-in-out infinite;
+}
+@keyframes battery-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .battery-critical {
+    animation: none;
+  }
+}

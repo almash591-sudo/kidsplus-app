@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>KidsPlus</title>
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        background: #fff4de;
+        font-family: system-ui, sans-serif;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      .center {
+        height: 100%;
+        display: grid;
+        place-items: center;
+      }
+      .moon {
+        font-size: 40vmin;
+        animation: breathe 3s ease-in-out infinite;
+      }
+      @keyframes breathe {
+        50% {
+          transform: scale(1.08) rotate(-4deg);
+        }
+      }
+      button.retry {
+        position: fixed;
+        bottom: 12vh;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 28vmin;
+        height: 28vmin;
+        border-radius: 50%;
+        border: 0;
+        background: #ffb347;
+        box-shadow: 0 8px 0 #e8912a;
+        color: #fff;
+        font-size: 14vmin;
+      }
+      /* Угол для взрослого жеста: удержание 3 с открывает настройки телефона (PIN). */
+      .corner {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: 72px;
+        height: 72px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Нет связи с сервером: VPN ещё не настроен или не подключился. Ребёнок видит спокойный экран. -->
+    <div class="center"><div class="moon">🌙</div></div>
+    <button class="retry" aria-label="Повторить" onclick="location.replace(HOME)">↻</button>
+    <div class="corner" id="corner"></div>
+    <script>
+      // Детское приложение (как server.url в capacitor.config.json).
+      const HOME = 'https://kid-web-production.up.railway.app';
+      const kiosk = () =>
+        window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Kiosk;
+      let timer;
+      const corner = document.getElementById('corner');
+      corner.addEventListener('pointerdown', () => {
+        timer = setTimeout(() => kiosk() && kiosk().openSettings(), 3000);
+      });
+      for (const e of ['pointerup', 'pointerleave', 'pointercancel'])
+        corner.addEventListener(e, () => clearTimeout(timer));
+      // Сеть появилась — пробуем снова сами. Эта страница открыта с другого адреса, поэтому
+      // запрос «no-cors»: ответ не прочитать, но если он пришёл — сервер доступен.
+      setInterval(() => {
+        fetch(`${HOME}/api/health`, { cache: 'no-store', mode: 'no-cors' })
+          .then(() => location.replace(HOME))
+          .catch(() => {});
+      }, 10000);
+    </script>
+  </body>
+</html>

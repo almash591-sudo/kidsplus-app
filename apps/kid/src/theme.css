@@ -1,0 +1,875 @@
+/* ─── Оформление (этап 12): светлый стиль в духе iOS ──────────────────────────
+   Слой поверх styles.css: цвета, шрифт, тени, радиусы, нажатия. Раскладка экранов
+   остаётся в styles.css — этот файл меняет только вид. */
+
+:root {
+  --font: 'Nunito', system-ui, -apple-system, sans-serif;
+  --bg: #f3f1fb;
+  --ink: #1c1b29;
+  --muted: #6b6889;
+  --card: #ffffff;
+  --accent: #5b4bdb;
+  --accent-dark: #4334c4;
+  --ok: #34c759;
+  --radius-xl: 30px;
+  --radius-l: 24px;
+  --shadow-soft: 0 10px 28px rgb(40 30 90 / 0.1);
+  --shadow-press: 0 4px 12px rgb(40 30 90 / 0.12);
+  /* Пружина: быстро вниз, мягкий отскок вверх. */
+  --spring: cubic-bezier(0.3, 1.6, 0.5, 1);
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+body {
+  font-family: var(--font);
+  font-weight: 700;
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+.icon {
+  display: block;
+  flex: none;
+}
+
+/* ─── Заголовок экрана ─── */
+.screen-title {
+  grid-column: 1 / -1;
+  padding: 6px 6px 2px;
+}
+
+.screen-title h1 {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+}
+
+.screen-title p {
+  margin: 2px 0 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.tiles {
+  padding-top: calc(max(16px, env(safe-area-inset-top)) + 40px);
+  padding-bottom: calc(max(16px, env(safe-area-inset-bottom)) + 104px);
+}
+
+.tiles.with-back {
+  padding-top: calc(max(16px, env(safe-area-inset-top)) + 84px);
+}
+
+/* ─── Плитки ─── */
+.tile {
+  border-radius: var(--radius-l);
+  background: var(--card);
+  box-shadow: var(--shadow-soft);
+  position: relative;
+  transition:
+    transform 0.32s var(--spring),
+    box-shadow 0.2s var(--ease),
+    opacity 0.3s;
+}
+
+.tile:active {
+  transform: scale(0.95);
+  box-shadow: var(--shadow-press);
+}
+
+.tile-play {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: var(--accent);
+}
+
+.tile-play.small {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.9);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.2);
+}
+
+.tile.deck {
+  background: #ffffff;
+}
+
+/* Разделы: цветная плитка, белая плашка со значком, подпись. */
+.tile.category {
+  --c: var(--accent);
+  --c-shadow: rgb(91 75 219 / 0.35);
+  aspect-ratio: 1 / 0.92;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 16px;
+  box-sizing: border-box;
+  background: var(--c);
+  box-shadow: 0 12px 26px var(--c-shadow);
+  color: #ffffff;
+  font-size: 16px;
+  text-align: left;
+}
+
+.tile.category:active {
+  box-shadow: 0 5px 14px var(--c-shadow);
+}
+
+.tile-badge {
+  width: 38%;
+  aspect-ratio: 1;
+  border-radius: 28%;
+  background: rgb(255 255 255 / 0.94);
+  color: var(--c);
+  display: grid;
+  place-items: center;
+}
+
+.tile-label {
+  font-size: clamp(16px, 5.2vw, 24px);
+  font-weight: 900;
+  letter-spacing: -0.2px;
+  line-height: 1.05;
+}
+
+.tile.category.video {
+  --c: #5b4bdb;
+  --c-shadow: rgb(91 75 219 / 0.35);
+}
+.tile.category.english {
+  --c: #ff6b5c;
+  --c-shadow: rgb(255 107 92 / 0.35);
+}
+.tile.category.math {
+  --c: #f5a000;
+  --c-shadow: rgb(245 160 0 / 0.38);
+}
+.tile.category.chinese {
+  --c: #e8453c;
+  --c-shadow: rgb(232 69 60 / 0.35);
+}
+.tile.category.geography {
+  --c: #2d9cff;
+  --c-shadow: rgb(45 156 255 / 0.35);
+}
+.tile.category.nature {
+  --c: #2fb67c;
+  --c-shadow: rgb(47 182 124 / 0.35);
+}
+.tile.category.games {
+  --c: #ff5fa2;
+  --c-shadow: rgb(255 95 162 / 0.35);
+}
+.tile.category.other {
+  --c: #8b5cf6;
+  --c-shadow: rgb(139 92 246 / 0.35);
+}
+.tile.category.free {
+  --c: #1c1b29;
+  --c-shadow: rgb(28 27 41 / 0.3);
+}
+
+/* Цвет раздела побеждает старые правила styles.css (та же сила, но этот файл позже). */
+.tile.category[class] {
+  background: var(--c);
+  box-shadow: 0 12px 26px var(--c-shadow);
+}
+
+.tile.category[class]:active {
+  box-shadow: 0 5px 14px var(--c-shadow);
+}
+
+/* Значки больше не «дышат» — спокойнее и дороже на вид; вложенные элементы — со своим видом. */
+.tile.category span {
+  animation: none;
+  display: revert;
+}
+
+.tile.category .tile-badge,
+.tile.category .ring-icon {
+  display: grid;
+}
+
+.tile.category .lesson-text {
+  display: flex;
+}
+
+.tile.category .ring,
+.tile.category .tile-label,
+.tile.category .lesson-left {
+  display: block;
+}
+
+/* ─── «Сегодня»: белые карточки с кольцом прогресса ─── */
+.today {
+  background: #fff8ec;
+}
+
+@media (orientation: portrait) {
+  .tiles.today {
+    grid-auto-rows: auto;
+    align-content: start;
+    gap: 14px;
+  }
+}
+
+.tiles.today .tile.category[class] {
+  aspect-ratio: auto;
+  min-height: 104px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 16px;
+  padding: 16px 18px;
+  background: #ffffff;
+  color: var(--ink);
+  box-shadow: 0 8px 22px rgb(120 80 20 / 0.1);
+}
+
+.tiles.today .tile.category.free[class] {
+  background: var(--c);
+  color: #ffffff;
+}
+
+.tiles.today .tile.category.free .tile-badge {
+  width: 64px;
+}
+
+.tiles.today .tile.category.done {
+  opacity: 1;
+  filter: none;
+}
+
+.ring {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  flex: none;
+}
+
+.ring svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.ring-bg,
+.ring-fg {
+  fill: none;
+  stroke-width: 9;
+}
+
+.ring-bg {
+  stroke: #f1ece2;
+}
+
+.ring-fg {
+  stroke: var(--c);
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.8s var(--ease);
+}
+
+.ring-icon {
+  position: absolute;
+  inset: 15px;
+  border-radius: 50%;
+  background: var(--c);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+}
+
+.lesson-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.lesson-left {
+  font-size: 16px;
+  font-weight: 700;
+  color: #8a8478;
+}
+
+.done-star {
+  top: 12px;
+  right: 14px;
+  width: 28px;
+  height: 28px;
+  color: #ffc21a;
+  font-size: 0;
+}
+
+/* ─── Кнопки поверх экрана: «стеклянные», как на iPhone ─── */
+.corner-button {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  background: rgb(255 255 255 / 0.82);
+  -webkit-backdrop-filter: blur(18px) saturate(1.6);
+  backdrop-filter: blur(18px) saturate(1.6);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.14);
+  color: var(--ink);
+  transition: transform 0.32s var(--spring);
+}
+
+.corner-button:active {
+  transform: scale(0.88);
+}
+
+.corner-button.ear {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.big-button {
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  box-shadow: 0 16px 36px rgb(91 75 219 / 0.4);
+  transition: transform 0.32s var(--spring);
+}
+
+.big-button:active {
+  transform: scale(0.92);
+  box-shadow: 0 8px 18px rgb(91 75 219 / 0.4);
+}
+
+/* ─── Док внизу: камера, звонок — как панель приложений iPhone ─── */
+.dock {
+  position: fixed;
+  left: 50%;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 15;
+  display: flex;
+  gap: 14px;
+  padding: 10px;
+  border-radius: 34px;
+  background: rgb(255 255 255 / 0.72);
+  -webkit-backdrop-filter: blur(22px) saturate(1.8);
+  backdrop-filter: blur(22px) saturate(1.8);
+  box-shadow: 0 14px 34px rgb(40 30 90 / 0.18);
+}
+
+.dock .camera-open,
+.dock .calls-open {
+  position: static;
+  width: 66px;
+  height: 66px;
+  border-radius: 24px;
+  display: grid;
+  place-items: center;
+  box-shadow: none;
+  color: #ffffff;
+  transition: transform 0.32s var(--spring);
+}
+
+.dock .camera-open {
+  background: var(--ink);
+}
+
+.dock .calls-open {
+  background: var(--ok);
+}
+
+.dock .camera-open:active,
+.dock .calls-open:active {
+  transform: scale(0.88);
+}
+
+/* ─── Заряд ─── */
+.battery {
+  top: max(14px, env(safe-area-inset-top));
+  left: auto;
+  right: max(88px, calc(env(safe-area-inset-right) + 88px));
+  transform: none;
+  padding: 6px 12px;
+  gap: 6px;
+  background: rgb(255 255 255 / 0.82);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 2px 12px rgb(40 30 90 / 0.1);
+  font-size: 15px;
+}
+
+.battery-body {
+  width: 28px;
+  height: 14px;
+  border-width: 2px;
+  border-radius: 4px;
+}
+
+.battery-text {
+  color: var(--ink);
+}
+
+/* ─── Квиз ─── */
+.quiz-screen,
+.deck-screen {
+  background: var(--bg);
+}
+
+.quiz-option {
+  border-radius: 32px;
+  background: #ffffff;
+  box-shadow: var(--shadow-soft);
+  transition:
+    transform 0.32s var(--spring),
+    box-shadow 0.2s,
+    opacity 0.4s;
+}
+
+.quiz-option:active {
+  transform: scale(0.95);
+}
+
+.quiz-option.chosen {
+  background: #ffffff;
+  box-shadow:
+    0 0 0 6px var(--ok),
+    0 16px 34px rgb(52 199 89 / 0.35);
+}
+
+.quiz-progress {
+  letter-spacing: 8px;
+  color: #dcd8ee;
+}
+
+.quiz-progress .on {
+  color: var(--ok);
+}
+
+/* ─── Карточки ─── */
+.deck-card {
+  border-radius: 34px;
+  box-shadow: var(--shadow-soft);
+}
+
+.deck-arrow {
+  display: grid;
+  place-items: center;
+  width: 112px;
+  height: 80px;
+  border-radius: 40px;
+  background: var(--accent);
+  box-shadow: 0 12px 26px rgb(91 75 219 / 0.35);
+  transition: transform 0.32s var(--spring);
+}
+
+.deck-arrow:active {
+  transform: scale(0.92);
+  box-shadow: 0 6px 14px rgb(91 75 219 / 0.35);
+}
+
+.deck-dots span {
+  width: 8px;
+  height: 8px;
+  background: #dcd8ee;
+  transition:
+    width 0.3s var(--ease),
+    background 0.3s;
+}
+
+.deck-dots span.dot-on {
+  width: 22px;
+  border-radius: 4px;
+  background: var(--accent);
+}
+
+/* ─── PIN и меню взрослого: как экран код-пароля iPhone ─── */
+.pin-pad {
+  background: rgb(18 16 36 / 0.88);
+  -webkit-backdrop-filter: blur(26px);
+  backdrop-filter: blur(26px);
+  font-family: var(--font);
+}
+
+.pin-dots span {
+  width: 14px;
+  height: 14px;
+  border-width: 1.5px;
+}
+
+.pin-keys {
+  grid-template-columns: repeat(3, 80px);
+  gap: 18px 24px;
+}
+
+.pin-key {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.16);
+  font-size: 32px;
+  font-weight: 600;
+  transition:
+    background 0.15s,
+    transform 0.25s var(--spring);
+}
+
+.pin-key:active {
+  background: rgb(255 255 255 / 0.4);
+  transform: scale(0.94);
+}
+
+.menu-button {
+  border-radius: 16px;
+  font-weight: 700;
+  transition: transform 0.25s var(--spring);
+}
+
+.menu-button:active {
+  transform: scale(0.97);
+}
+
+/* ─── Привязка ─── */
+.pair-card {
+  border-radius: 28px;
+  box-shadow: var(--shadow-soft);
+  font-weight: 600;
+}
+
+.pair-card h1 {
+  font-size: 26px;
+  font-weight: 900;
+}
+
+.pair-card input {
+  border-radius: 14px;
+  border: 2px solid #e4e1f2;
+  font-family: var(--font);
+  font-weight: 800;
+}
+
+.pair-card input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.pair-card button {
+  border-radius: 14px;
+  background: var(--accent);
+  font-weight: 800;
+}
+
+/* ─── Ночь и пауза ─── */
+.day-over,
+.paused {
+  background: radial-gradient(120% 80% at 50% 10%, #3b2f8f 0%, #15122e 70%);
+}
+
+/* ─── Экраны въезжают мягче ─── */
+.screen,
+.game-screen,
+.deck-screen,
+.quiz-screen {
+  animation-duration: 0.42s;
+  animation-timing-function: var(--ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile,
+  .corner-button,
+  .big-button,
+  .quiz-option,
+  .deck-arrow,
+  .pin-key {
+    transition: none;
+  }
+}
+
+.pair-card {
+  box-sizing: border-box;
+  width: min(420px, 100%);
+}
+
+.pair-card form {
+  flex-wrap: wrap;
+}
+
+.pair-card input {
+  flex: 1 1 180px;
+  height: 56px;
+  box-sizing: border-box;
+}
+
+.pair-card button {
+  height: 56px;
+  flex: 1 1 120px;
+}
+
+/* Док на ночных экранах — тёмное стекло. */
+.day-over ~ .dock,
+.paused ~ .dock {
+  background: rgb(255 255 255 / 0.12);
+  box-shadow: 0 14px 34px rgb(0 0 0 / 0.35);
+}
+
+.day-over ~ .battery,
+.paused ~ .battery {
+  background: rgb(255 255 255 / 0.16);
+}
+
+.day-over ~ .battery .battery-text,
+.paused ~ .battery .battery-text {
+  color: #ffffff;
+}
+
+/* ─── Этап 12в: картинки разделов, 7 плиток без прокрутки, яркость, тёмная тема ─── */
+.tile.category.video {
+  --c-tint: #d9d4ff;
+}
+.tile.category.english {
+  --c-tint: #ffd9d4;
+}
+.tile.category.math {
+  --c-tint: #ffe7b3;
+}
+.tile.category.chinese {
+  --c-tint: #ffd2cf;
+}
+.tile.category.geography {
+  --c-tint: #cfe7ff;
+}
+.tile.category.nature {
+  --c-tint: #c8f0dd;
+}
+.tile.category.games {
+  --c-tint: #ffd0e4;
+}
+.tile.category.other {
+  --c-tint: #e2d6ff;
+}
+.tile.category.free {
+  --c-tint: #ffd0e4;
+}
+
+.category-art {
+  display: block;
+  width: 80%;
+  height: 80%;
+  overflow: visible;
+}
+
+.tile.category .tile-badge {
+  width: 44%;
+}
+
+/* Белая картинка на цветном круге внутри кольца «Сегодня». */
+.ring-icon .category-art {
+  --c: #ffffff;
+  --c-tint: rgb(255 255 255 / 0.45);
+  width: 72%;
+  height: 72%;
+}
+
+/* Свободное время: тёмная карточка, шарик — розовый. */
+.tile.category.free .tile-badge {
+  --c: #ff5fa2;
+}
+
+/* Разделы в портрете: все плитки помещаются на экран без прокрутки (--rows — рядов). */
+@media (orientation: portrait) {
+  .tiles.categories:not(.today) .tile.category {
+    aspect-ratio: auto;
+    height: min(
+      calc((100vw - 48px) / 2 * 0.92),
+      calc((100dvh - 300px - (var(--rows, 3) - 1) * 16px) / var(--rows, 3))
+    );
+    min-height: 96px;
+  }
+
+  .tiles.categories.with-back:not(.today) .tile.category {
+    height: min(
+      calc((100vw - 48px) / 2 * 0.92),
+      calc((100dvh - 230px - (var(--rows, 3) - 1) * 16px) / var(--rows, 3))
+    );
+  }
+}
+
+/* Невысокая плитка: значок и подпись — в ряд. */
+@media (orientation: portrait) and (max-height: 760px) {
+  .tiles.categories:not(.today) .tile.category {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+  }
+}
+
+/* Кнопка яркости в доке. */
+.dock .brightness-open {
+  width: 66px;
+  height: 66px;
+  border: 0;
+  border-radius: 24px;
+  background: #fff3c4;
+  display: grid;
+  place-items: center;
+  transition: transform 0.32s var(--spring);
+}
+
+.dock .brightness-open:active {
+  transform: scale(0.88);
+}
+
+/* Панель снизу (как «шторка» на iPhone). */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: rgb(0 0 0 / 0.35);
+  display: flex;
+  align-items: flex-end;
+  animation: fade-in 0.2s ease-out both;
+}
+
+.sheet {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 26px 20px max(26px, env(safe-area-inset-bottom));
+  border-radius: 32px 32px 0 0;
+  background: var(--card);
+  box-shadow: 0 -10px 40px rgb(0 0 0 / 0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  animation: sheet-up 0.42s var(--spring) both;
+}
+
+.brightness-levels {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+}
+
+.brightness-level {
+  flex: 1;
+  height: 120px;
+  border: 0;
+  border-radius: 28px;
+  background: var(--bg);
+  display: grid;
+  place-items: center;
+  transition: transform 0.32s var(--spring);
+}
+
+.brightness-level:active {
+  transform: scale(0.92);
+}
+
+.sheet-close {
+  width: 56px;
+  height: 56px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  transform: rotate(-90deg);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+/* ─── Тёмная тема: вместе с тёмным режимом телефона ─── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f0e17;
+    --ink: #f3f1ff;
+    --muted: #a4a1bf;
+    --card: #1d1b2b;
+    --shadow-soft: 0 10px 28px rgb(0 0 0 / 0.45);
+    --shadow-press: 0 4px 12px rgb(0 0 0 / 0.45);
+  }
+
+  .today {
+    background: #13111d;
+  }
+
+  .tiles.today .tile.category[class] {
+    background: var(--card);
+    color: var(--ink);
+    box-shadow: 0 8px 22px rgb(0 0 0 / 0.4);
+  }
+
+  .ring-bg {
+    stroke: #2c2a3d;
+  }
+
+  .lesson-left {
+    color: var(--muted);
+  }
+
+  .tile.category.free {
+    --c: #2a2742;
+  }
+
+  .corner-button {
+    background: rgb(40 38 58 / 0.82);
+    color: var(--ink);
+  }
+
+  .dock {
+    background: rgb(40 38 58 / 0.72);
+    box-shadow: 0 14px 34px rgb(0 0 0 / 0.5);
+  }
+
+  .dock .camera-open {
+    background: #f3f1ff;
+    color: #1c1b29;
+  }
+
+  .dock .brightness-open {
+    background: #3a3420;
+  }
+
+  .battery {
+    background: rgb(40 38 58 / 0.82);
+  }
+
+  /* Картинки содержимого — на светлом, иначе тёмные рисунки теряются. */
+  .tile.deck,
+  .quiz-option,
+  .deck-card {
+    background: #f4f2ff;
+  }
+
+  .pair-card {
+    background: var(--card);
+    color: var(--ink);
+  }
+
+  .pair-card input {
+    background: #14121f;
+    color: var(--ink);
+    border-color: #34314a;
+  }
+
+  .sheet-backdrop {
+    background: rgb(0 0 0 / 0.55);
+  }
+}

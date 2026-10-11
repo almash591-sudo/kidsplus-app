@@ -1,0 +1,36 @@
+{
+  "name": "@kidsplus/shared",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./env": "./src/env.ts",
+    "./api": "./src/api.ts",
+    "./youtube": "./src/youtube.ts",
+    "./youtube-iframe": "./src/youtube-iframe.ts",
+    "./time": "./src/time.ts",
+    "./phrases": "./src/phrases.ts",
+    "./games": "./src/games.ts",
+    "./schedule": "./src/schedule.ts",
+    "./analytics": "./src/analytics.ts",
+    "./push": "./src/push.ts",
+    "./battery": "./src/battery.ts",
+    "./captures": "./src/captures.ts",
+    "./calls": "./src/calls.ts",
+    "./call-client": "./src/call-client.ts",
+    "./monitor": "./src/monitor.ts",
+    "./moderation": "./src/moderation.ts",
+    "./sw-register": "./src/sw-register.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "vitest": "^5.0.3"
+  }
+}

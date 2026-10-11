@@ -1,0 +1,74 @@
+apply plugin: 'com.android.application'
+
+android {
+    namespace = "app.kidsplus.kiosk"
+    compileSdk = rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "app.kidsplus.kiosk"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    // Ключ подписи — только на компьютере родителя (~/.gradle/gradle.properties, docs/kiosk.md):
+    // обновление киоска на телефоне ставится только с той же подписью.
+    signingConfigs {
+        release {
+            if (project.hasProperty('KIDSPLUS_STORE_FILE')) {
+                storeFile file(KIDSPLUS_STORE_FILE)
+                storePassword KIDSPLUS_STORE_PASSWORD
+                keyAlias KIDSPLUS_KEY_ALIAS
+                keyPassword KIDSPLUS_KEY_PASSWORD
+            }
+        }
+    }
+    buildTypes {
+        // Отладочная сборка — с той же подписью: ставится поверх, PIN и подписка сохраняются.
+        debug {
+            if (project.hasProperty('KIDSPLUS_STORE_FILE')) signingConfig signingConfigs.release
+        }
+        release {
+            if (project.hasProperty('KIDSPLUS_STORE_FILE')) signingConfig signingConfigs.release
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    // libbox.aar (sing-box) собирается скриптом scripts/build-libbox.sh, в git не хранится.
+    implementation fileTree(include: ['*.jar', '*.aar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    // org.json в android.jar — заглушки; для unit-тестов — настоящая реализация.
+    testImplementation "org.json:json:20240303"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}

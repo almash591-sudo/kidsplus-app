@@ -1,0 +1,33 @@
+{
+  "name": "@kidsplus/api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file-if-exists=../../.env --watch --import tsx src/index.ts",
+    "build": "tsup",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.1.2",
+    "@fastify/rate-limit": "^11.2.0",
+    "@node-rs/argon2": "^2.2.1",
+    "@twemoji/svg": "^15.0.0",
+    "drizzle-orm": "^0.45.3",
+    "emojibase-data": "^17.0.0",
+    "fastify": "^5.12.5",
+    "pg": "^8.23.1",
+    "web-push": "^3.6.7",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@kidsplus/db": "workspace:*",
+    "@kidsplus/providers": "workspace:*",
+    "@kidsplus/shared": "workspace:*",
+    "@types/node": "^24",
+    "tsup": "^8.5.1",
+    "tsx": "^4.23.15",
+    "vitest": "^5.0.3"
+  }
+}

@@ -1,0 +1,1438 @@
+/* ─── Отклик и анимации всех игр ────────────────────────────────────────── */
+
+/* Слой частиц: искры, кольца, след пальца. */
+.fx-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.fx-particle {
+  position: absolute;
+  display: block;
+  will-change: transform, opacity;
+}
+
+.fx-text {
+  display: grid;
+  place-items: center;
+  text-shadow:
+    0 2px 0 #fff,
+    0 0 10px #fff;
+}
+
+/* Мягкий «живой» фон: цветные пятна медленно плывут. */
+.game-screen::before {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 28%, rgb(255 179 71 / 0.22) 0 11%, transparent 12%),
+    radial-gradient(circle at 82% 72%, rgb(125 211 252 / 0.22) 0 10%, transparent 11%),
+    radial-gradient(circle at 62% 14%, rgb(244 114 182 / 0.16) 0 7%, transparent 8%),
+    radial-gradient(circle at 30% 85%, rgb(134 239 172 / 0.2) 0 9%, transparent 10%);
+  animation: drift 20s ease-in-out infinite alternate;
+}
+
+@keyframes drift {
+  to {
+    transform: translate(4%, -3%) rotate(5deg);
+  }
+}
+
+/* Появление по очереди (--i — номер). */
+.appear {
+  animation: appear 0.5s cubic-bezier(0.2, 1.3, 0.4, 1) backwards;
+  animation-delay: calc(min(var(--i, 0), 10) * 70ms);
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.6);
+  }
+}
+
+@keyframes wave {
+  50% {
+    transform: translateY(-14px) scale(1.06);
+  }
+}
+
+@keyframes q-pulse {
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+/* Перетаскиваемый предмет: приподнят, с тенью; отпущен мимо — пружинкой назад. */
+.drag-item {
+  position: relative;
+  touch-action: none;
+  box-sizing: border-box;
+  transition:
+    transform 0.4s cubic-bezier(0.2, 1.4, 0.4, 1),
+    filter 0.2s;
+}
+
+.drag-item.dragging {
+  z-index: 20;
+  transition: filter 0.2s;
+  filter: drop-shadow(0 14px 12px rgb(0 0 0 / 0.28));
+}
+
+.drag-item.bounced-back {
+  animation: wobble 0.45s ease-in-out;
+}
+
+.drag-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+/* ─── Маскот ─────────────────────────────────────────────────────────────── */
+
+.mascot {
+  position: absolute;
+  z-index: 3;
+  top: max(16px, env(safe-area-inset-top));
+  left: calc(max(16px, env(safe-area-inset-left)) + 84px);
+  width: 72px;
+  height: 72px;
+  pointer-events: none;
+  transform-origin: 50% 100%;
+  animation: mascot-idle 3s ease-in-out infinite;
+}
+
+@media (orientation: landscape) {
+  .mascot {
+    top: calc(max(16px, env(safe-area-inset-top)) + 84px);
+    left: max(16px, env(safe-area-inset-left));
+  }
+}
+
+.mascot svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.mascot-eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: blink 4s infinite;
+}
+
+.mascot-wing {
+  transform-box: fill-box;
+}
+
+.mascot-wing.left {
+  transform-origin: 90% 10%;
+}
+
+.mascot-wing.right {
+  transform-origin: 10% 10%;
+}
+
+@keyframes blink {
+  0%,
+  93%,
+  100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes mascot-idle {
+  50% {
+    transform: translateY(-3px) rotate(-3deg);
+  }
+}
+
+.mascot.happy {
+  animation: mascot-hop 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) 2;
+}
+
+.mascot.happy .mascot-wing.left,
+.mascot.wow .mascot-wing.left {
+  animation: flap-left 0.25s ease-in-out 6;
+}
+
+.mascot.happy .mascot-wing.right,
+.mascot.wow .mascot-wing.right {
+  animation: flap-right 0.25s ease-in-out 6;
+}
+
+@keyframes mascot-hop {
+  40% {
+    transform: translateY(-22px) scale(1.08) rotate(6deg);
+  }
+}
+
+@keyframes flap-left {
+  50% {
+    transform: rotate(35deg);
+  }
+}
+
+@keyframes flap-right {
+  50% {
+    transform: rotate(-35deg);
+  }
+}
+
+.mascot.oops {
+  animation: mascot-tilt 1s ease-in-out;
+}
+
+@keyframes mascot-tilt {
+  30% {
+    transform: rotate(-14deg);
+  }
+  60% {
+    transform: rotate(10deg);
+  }
+}
+
+.mascot.wow {
+  animation: mascot-spin 0.9s cubic-bezier(0.3, 1.4, 0.5, 1) 2;
+}
+
+@keyframes mascot-spin {
+  50% {
+    transform: translateY(-30px) rotate(180deg) scale(1.2);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* ─── Праздник: лучи за звездой ──────────────────────────────────────────── */
+
+.celebrate-rays {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 150vmax;
+  height: 150vmax;
+  margin: -75vmax 0 0 -75vmax;
+  border-radius: 50%;
+  background: repeating-conic-gradient(rgb(250 204 21 / 0.2) 0 10deg, transparent 10deg 20deg);
+  mask-image: radial-gradient(circle, #000 15%, transparent 60%);
+  animation:
+    rays-spin 14s linear infinite,
+    fade-in 0.6s ease-out;
+}
+
+@keyframes rays-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.celebrate-star {
+  position: relative;
+  animation:
+    star-in 0.7s cubic-bezier(0.2, 1.4, 0.4, 1) both,
+    star-bob 1.6s ease-in-out 0.7s infinite;
+}
+
+@keyframes star-bob {
+  50% {
+    transform: translateY(-4%) rotate(6deg) scale(1.04);
+  }
+}
+
+/* ─── Старые игры: появление по очереди ──────────────────────────────────── */
+
+.memory-card,
+.count-item,
+.loose .drag-item {
+  animation: appear 0.45s cubic-bezier(0.2, 1.3, 0.4, 1) backwards;
+  animation-delay: calc(min(var(--i, 0), 12) * 50ms);
+}
+
+.memory-card.found {
+  animation: bounce 0.6s ease-out;
+}
+
+.count-item.counted {
+  animation: pop-in 0.3s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.bin.got {
+  animation: bounce 0.5s ease-out;
+}
+
+.count-option:disabled {
+  opacity: 0.45;
+}
+
+/* ─── Лабиринт ───────────────────────────────────────────────────────────── */
+
+.game.maze {
+  align-items: center;
+  justify-content: center;
+}
+
+.maze-svg {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.maze-floor {
+  fill: #fff8e7;
+}
+
+.maze-walls {
+  fill: none;
+  stroke: #8b5a2b;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.maze-trail {
+  fill: none;
+  stroke: #7dd3fc;
+  stroke-width: 4.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.8;
+}
+
+.maze-svg.done .maze-trail {
+  stroke: #4ade80;
+  animation: q-pulse 0.6s ease-in-out 3;
+}
+
+.maze-hero {
+  transition: transform 0.18s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+
+.maze-hero-bob {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: hop 0.25s ease-out;
+}
+
+@keyframes hop {
+  40% {
+    transform: translateY(-1.5px) scale(1.12, 0.9);
+  }
+}
+
+.maze-goal-glow {
+  fill: #fde68a;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: goal-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes goal-pulse {
+  50% {
+    transform: scale(1.3);
+    opacity: 0.5;
+  }
+}
+
+/* ─── Найди тень ─────────────────────────────────────────────────────────── */
+
+.game.shadows {
+  justify-content: space-around;
+}
+
+.shadow-row,
+.shadow-loose {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  align-content: center;
+  gap: 16px;
+}
+
+.shadow-slot {
+  width: min(26vw, 18vh);
+  aspect-ratio: 1;
+  box-sizing: border-box;
+  padding: 6%;
+  display: grid;
+  place-items: center;
+  border: 4px dashed #e8d9bd;
+  border-radius: 24px;
+  background: rgb(255 255 255 / 0.6);
+}
+
+.shadow-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: brightness(0) opacity(0.35);
+  transition: filter 0.6s ease-out;
+}
+
+.shadow-slot.filled {
+  border-style: solid;
+  border-color: #8ce99a;
+  background: #fff;
+  animation: pop-in 0.4s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.shadow-slot.filled .shadow-img {
+  filter: none;
+}
+
+.shadow-item {
+  width: min(24vw, 16vh);
+  aspect-ratio: 1;
+}
+
+@media (orientation: landscape) {
+  .shadow-slot {
+    width: min(18vw, 34vh);
+  }
+  .shadow-item {
+    width: min(16vw, 30vh);
+  }
+}
+
+/* ─── Фонарик ────────────────────────────────────────────────────────────── */
+
+@property --lx {
+  syntax: '<length-percentage>';
+  inherits: false;
+  initial-value: 50%;
+}
+
+@property --ly {
+  syntax: '<length-percentage>';
+  inherits: false;
+  initial-value: 50%;
+}
+
+.game.flashlight {
+  display: block;
+  padding: 0;
+  overflow: hidden;
+}
+
+.flash-scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.flash-item {
+  position: absolute;
+  width: 17vmin;
+  height: 17vmin;
+  transform: translate(-50%, -50%);
+}
+
+.flash-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.flash-item.found {
+  z-index: 3;
+  filter: drop-shadow(0 0 14px #fde68a);
+  animation: found-jump 0.8s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+@keyframes found-jump {
+  40% {
+    transform: translate(-50%, -50%) scale(1.6) rotate(-10deg);
+  }
+}
+
+.flash-dark {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: radial-gradient(
+    circle 15vmin at var(--lx) var(--ly),
+    rgb(255 250 220 / 0.08) 0,
+    transparent 65%,
+    rgb(8 10 30 / 0.985) 100%
+  );
+  transition: opacity 1.4s ease-out;
+}
+
+/* Пока ребёнок не коснулся — луч сам гуляет, показывает, что делать. */
+.flash-dark.idle {
+  animation: wander 5s ease-in-out infinite;
+}
+
+@keyframes wander {
+  0%,
+  100% {
+    --lx: 30%;
+    --ly: 40%;
+  }
+  33% {
+    --lx: 70%;
+    --ly: 35%;
+  }
+  66% {
+    --lx: 55%;
+    --ly: 70%;
+  }
+}
+
+.flash-dark.lights-on {
+  opacity: 0;
+}
+
+.flash-progress,
+.mole-target {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  top: max(28px, env(safe-area-inset-top));
+  transform: translateX(-50%);
+}
+
+.flash-progress {
+  display: flex;
+  gap: 8px;
+}
+
+.flash-progress span {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.35);
+}
+
+.flash-progress span.on {
+  background: #facc15;
+  box-shadow: 0 0 10px #facc15;
+  animation: pop-in 0.4s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+/* ─── Поймай зверька ─────────────────────────────────────────────────────── */
+
+.game.moles {
+  background: linear-gradient(#bfe3ff 0 22%, #86efac 22%);
+  align-items: center;
+  justify-content: center;
+}
+
+.mole-target {
+  /* Под счётчиком пойманных. */
+  top: calc(max(28px, env(safe-area-inset-top)) + 40px);
+  width: 76px;
+  height: 76px;
+  padding: 10px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 5px #facc15;
+  animation: q-pulse 1.4s ease-in-out infinite;
+}
+
+.mole-target img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.mole-field {
+  width: 100%;
+  max-width: 80vh;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 3vmin 6vmin;
+}
+
+@media (orientation: landscape) {
+  .mole-field {
+    max-width: 150vh;
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.mole-hole {
+  position: relative;
+  aspect-ratio: 1.15;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.mole-pit {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: 8%;
+  height: 28%;
+  border-radius: 50%;
+  background: radial-gradient(#2a180c 40%, #5c3a1e);
+}
+
+.mole-window {
+  position: absolute;
+  left: 14%;
+  right: 14%;
+  top: 0;
+  bottom: 22%;
+  overflow: hidden;
+}
+
+.mole {
+  position: absolute;
+  inset: 8% 0 0;
+  transform: translateY(105%);
+  animation: mole-up 0.3s cubic-bezier(0.3, 1.5, 0.5, 1) forwards;
+}
+
+.mole img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: bottom;
+}
+
+@keyframes mole-up {
+  to {
+    transform: translateY(0);
+  }
+}
+
+.mole.hit {
+  animation: mole-hit 0.45s ease-in forwards;
+}
+
+.mole.leaving {
+  animation: mole-down 0.3s ease-in forwards;
+}
+
+@keyframes mole-down {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(105%);
+  }
+}
+
+@keyframes mole-hit {
+  0% {
+    transform: translateY(0) scale(1.2, 0.8);
+  }
+  30% {
+    transform: translateY(-8%) scale(0.9, 1.1) rotate(10deg);
+  }
+  100% {
+    transform: translateY(110%);
+  }
+}
+
+.mole-grass {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  bottom: 0;
+  height: 20%;
+  border-radius: 0 0 50% 50% / 0 0 100% 100%;
+  background: #22a55b;
+}
+
+/* ─── Повтори мелодию ────────────────────────────────────────────────────── */
+
+.game.melody {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(#fdf2f8, #fff4de);
+}
+
+.melody-progress {
+  display: flex;
+  gap: 8px;
+}
+
+.melody-progress span {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #e8d9bd;
+  transition: background 0.3s;
+}
+
+.melody-progress span.now {
+  background: #fde68a;
+}
+
+.melody-progress span.on {
+  background: #f59e0b;
+}
+
+.bells {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  align-content: center;
+  justify-content: center;
+  gap: 3vmin;
+}
+
+.bell {
+  width: min(26vw, 16vh);
+  padding: 0;
+  border: 0;
+  background: none;
+  transform-origin: 50% 4%;
+}
+
+@media (orientation: landscape) {
+  .bell {
+    width: min(15vw, 34vh);
+  }
+}
+
+.bell svg {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  filter: drop-shadow(0 6px 0 rgb(0 0 0 / 0.12));
+  transition: filter 0.2s;
+}
+
+.bell.ringing {
+  animation: bell-swing 0.5s ease-in-out;
+}
+
+.bell.ringing svg {
+  filter: brightness(1.15) drop-shadow(0 0 18px var(--bell));
+}
+
+@keyframes bell-swing {
+  20% {
+    transform: rotate(18deg) scale(1.08);
+  }
+  50% {
+    transform: rotate(-14deg) scale(1.08);
+  }
+  80% {
+    transform: rotate(6deg);
+  }
+}
+
+.game.melody[data-phase='listen'] .bell,
+.game.melody[data-phase='done'] .bell {
+  pointer-events: none;
+}
+
+.game.melody[data-phase='play'] .bell:not(.ringing) {
+  animation: q-pulse 1.6s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 0.2s);
+}
+
+/* ─── Сортер фигур ───────────────────────────────────────────────────────── */
+
+.game.sorter {
+  justify-content: space-around;
+}
+
+.sorter-board {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: center;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 28px;
+  background: linear-gradient(#c98a55, #a0693d);
+  box-shadow:
+    inset 0 -8px 0 rgb(0 0 0 / 0.15),
+    0 6px 0 #7a4a24;
+}
+
+.sorter-hole {
+  position: relative;
+  width: min(19vw, 12vh);
+  aspect-ratio: 1;
+}
+
+.sorter-hole-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.sorter-hole-svg path {
+  fill: #3b2414;
+  stroke: #2a180c;
+  stroke-width: 3;
+}
+
+.sorter-piece-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 4px 0 rgb(0 0 0 / 0.15));
+}
+
+.sorter-piece-svg path {
+  fill: var(--c);
+  stroke: rgb(0 0 0 / 0.18);
+  stroke-width: 4;
+}
+
+.sorter-hole .sorter-piece-svg.in {
+  position: absolute;
+  inset: 0;
+  animation: drop-in 0.45s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+
+@keyframes drop-in {
+  from {
+    transform: scale(1.5) translateY(-25%);
+    opacity: 0.3;
+  }
+}
+
+.sorter-loose {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: center;
+  gap: 16px;
+}
+
+.sorter-piece {
+  width: min(19vw, 12vh);
+  aspect-ratio: 1;
+}
+
+.sorter-turn {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.35s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+
+.sorter-turn-hint {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #fff;
+  font-size: 20px;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 0.2);
+}
+
+@media (orientation: landscape) {
+  .sorter-board {
+    max-width: 48%;
+  }
+  .sorter-hole,
+  .sorter-piece {
+    width: min(11vw, 22vh);
+  }
+}
+
+/* ─── Что лишнее ─────────────────────────────────────────────────────────── */
+
+.game.odd {
+  align-items: center;
+  justify-content: center;
+}
+
+.odd-grid {
+  width: 100%;
+  height: 100%;
+  max-width: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-auto-rows: 1fr;
+  gap: 16px;
+}
+
+@media (orientation: landscape) {
+  .odd-grid {
+    max-width: none;
+    height: auto;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    grid-template-columns: none;
+    grid-auto-rows: auto;
+  }
+  .odd-cell {
+    aspect-ratio: 1;
+  }
+}
+
+.odd-cell {
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 10%;
+  border: 0;
+  border-radius: 28px;
+  background: #fff;
+  box-shadow: 0 6px 0 #e8d9bd;
+}
+
+.odd-cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.odd-cell.off {
+  opacity: 0.35;
+  animation: wobble 0.45s ease-in-out;
+}
+
+.odd-cell.picked {
+  background: #fde68a;
+  animation: odd-out 1.3s cubic-bezier(0.5, 0, 0.7, 0.4) 0.4s forwards;
+}
+
+@keyframes odd-out {
+  25% {
+    transform: scale(1.15) rotate(-8deg);
+  }
+  100% {
+    transform: translateY(-130vh) rotate(40deg);
+    opacity: 0;
+  }
+}
+
+.odd-cell.together {
+  box-shadow: 0 6px 0 #8ce99a;
+  animation: bounce 0.6s ease-out 0.6s;
+}
+
+/* ─── Продолжи ряд ───────────────────────────────────────────────────────── */
+
+.game.pattern {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5vmin;
+}
+
+.pattern-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.pattern-cell {
+  width: min(17vw, 10vh);
+  aspect-ratio: 1;
+  box-sizing: border-box;
+  padding: 8%;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 4px 0 #e8d9bd;
+}
+
+@media (orientation: landscape) {
+  .pattern-cell {
+    width: min(8.5vw, 17vh);
+  }
+}
+
+.pattern-cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.pattern-cell.question {
+  background: #fde68a;
+  box-shadow: 0 4px 0 #f59e0b;
+  color: #b45309;
+  font-size: min(9vw, 6vh);
+  font-weight: 900;
+  animation: q-pulse 1.2s ease-in-out infinite;
+}
+
+.pattern-cell.question.filled {
+  background: #d3f9d8;
+  box-shadow: 0 4px 0 #8ce99a;
+}
+
+.pattern-row.solved .pattern-cell {
+  animation: wave 0.5s ease-in-out both;
+  animation-delay: calc(var(--i) * 80ms);
+}
+
+.pattern-options {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+}
+
+.pattern-option {
+  width: min(26vw, 17vh);
+  aspect-ratio: 1;
+  padding: 10%;
+  border: 0;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 6px 0 #e8d9bd;
+}
+
+.pattern-option img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.pattern-option.off {
+  opacity: 0.35;
+  animation: wobble 0.45s ease-in-out;
+}
+
+/* ─── Где больше ─────────────────────────────────────────────────────────── */
+
+.compare-side {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 4%;
+  border: 0;
+  border-radius: 28px;
+  background: #fff;
+  box-shadow: 0 6px 0 #e8d9bd;
+}
+
+.compare-group {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: center;
+  gap: 3%;
+}
+
+.compare-thing {
+  width: 21%;
+  aspect-ratio: 1;
+}
+
+.compare-thing img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.compare-number {
+  font-size: min(32vw, 22vh);
+  font-weight: 900;
+  color: #3b82f6;
+}
+
+.compare-side.off {
+  animation: wobble 0.45s ease-in-out;
+}
+
+.compare-side.picked {
+  background: #f0fdf4;
+  box-shadow: 0 6px 0 #8ce99a;
+}
+
+.compare-side.picked .compare-thing {
+  animation: wave 0.5s ease-in-out both;
+  animation-delay: calc(var(--k) * 90ms);
+}
+
+.compare-count {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #22a55b;
+  color: #fff;
+  font-size: 34px;
+  font-weight: 900;
+  animation: pop-in 0.4s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+/* ─── Сложи и вычти ──────────────────────────────────────────────────────── */
+
+.game.arithmetic {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+}
+
+@media (orientation: landscape) {
+  .game.arithmetic {
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto 1fr;
+  }
+  .game.arithmetic .count-options {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+  }
+}
+
+.sum-line {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  font-size: min(12vw, 8vh);
+  font-weight: 900;
+}
+
+.sum-op {
+  color: #e8453c;
+}
+
+.sum-hidden {
+  visibility: hidden;
+}
+
+.sum-q {
+  color: #f59e0b;
+  animation: q-pulse 1.2s ease-in-out infinite;
+}
+
+.sum-answer {
+  color: #22a55b;
+  animation: pop-in 0.4s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.sum-field {
+  min-height: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: center;
+  gap: 10px;
+}
+
+.sum-thing {
+  width: min(17vw, 12vh);
+  aspect-ratio: 1;
+}
+
+.sum-thing img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.sum-thing.stay {
+  animation: pop-in 0.4s cubic-bezier(0.2, 1.4, 0.4, 1) backwards;
+  animation-delay: calc(var(--k) * 80ms);
+}
+
+.sum-thing.arrive {
+  opacity: 0;
+}
+
+.sum-field:not(.show) .sum-thing.arrive {
+  animation: fly-in 0.7s cubic-bezier(0.3, 1.3, 0.5, 1) forwards;
+  animation-delay: calc(var(--k) * 120ms);
+}
+
+@keyframes fly-in {
+  from {
+    opacity: 1;
+    transform: translate(80vw, -20vh) rotate(40deg) scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.sum-field:not(.show) .sum-thing.leave {
+  animation: fly-away 0.9s ease-in forwards;
+  animation-delay: calc(var(--k) * 120ms);
+}
+
+@keyframes fly-away {
+  20% {
+    transform: translateY(10px) scale(1.1);
+  }
+  to {
+    transform: translate(-30vw, -80vh) rotate(-40deg) scale(0.6);
+    opacity: 0;
+  }
+}
+
+/* ─── По размеру ─────────────────────────────────────────────────────────── */
+
+.game.size {
+  flex-direction: column;
+  justify-content: space-around;
+}
+
+.size-loose {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  align-content: center;
+  gap: 14px;
+}
+
+.size-steps {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 10px;
+  padding-bottom: 6px;
+  border-bottom: 8px solid #c08552;
+  border-radius: 4px;
+}
+
+.size-item,
+.size-slot {
+  width: calc(min(24vw, 15vh) * var(--s));
+  aspect-ratio: 1;
+}
+
+@media (orientation: landscape) {
+  .size-item,
+  .size-slot {
+    width: calc(min(15vw, 30vh) * var(--s));
+  }
+}
+
+.size-slot img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.size-ghost {
+  filter: brightness(0) opacity(0.18);
+}
+
+.size-in {
+  animation: pop-in 0.4s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.size-steps.solved .size-slot {
+  animation: wave 0.5s ease-in-out both;
+  animation-delay: calc(var(--i) * 110ms);
+}
+
+/* ─── По порядку ─────────────────────────────────────────────────────────── */
+
+.game.sequence {
+  flex-direction: column;
+  justify-content: space-around;
+}
+
+.seq-slots {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+}
+
+.seq-step {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.seq-arrow {
+  color: #c9a46a;
+  font-size: min(7vw, 5vh);
+}
+
+.seq-slot {
+  width: min(19vw, 13vh);
+  aspect-ratio: 1;
+  box-sizing: border-box;
+  padding: 6%;
+  display: grid;
+  place-items: center;
+  border: 4px dashed #e8d9bd;
+  border-radius: 20px;
+  background: rgb(255 255 255 / 0.6);
+}
+
+@media (orientation: landscape) {
+  .seq-slot {
+    width: min(12vw, 26vh);
+  }
+  .seq-item {
+    width: min(12vw, 26vh) !important;
+  }
+}
+
+.seq-num {
+  color: #e8d9bd;
+  font-size: min(9vw, 6vh);
+  font-weight: 900;
+}
+
+.seq-slot img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.seq-slot.filled {
+  border: 4px solid #8ce99a;
+  background: #fff;
+  animation: pop-in 0.4s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.seq-slots.solved .seq-step {
+  animation: wave 0.6s ease-in-out both;
+  animation-delay: calc(var(--i) * 300ms);
+}
+
+.seq-loose {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+}
+
+.seq-item {
+  width: min(22vw, 15vh);
+  aspect-ratio: 1;
+  padding: 6%;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 5px 0 #e8d9bd;
+}
+
+/* ─── Собери слово ───────────────────────────────────────────────────────── */
+
+.game.word {
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-around;
+}
+
+@media (orientation: landscape) {
+  .game.word {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: 1fr 1fr;
+    align-items: center;
+    justify-items: center;
+  }
+  .word-picture {
+    grid-row: 1 / span 2;
+    width: min(30vw, 55vh) !important;
+  }
+}
+
+.word-picture {
+  width: min(42vw, 24vh);
+  aspect-ratio: 1;
+  padding: 7%;
+  border: 0;
+  border-radius: 28px;
+  background: #fff;
+  box-shadow: 0 6px 0 #e8d9bd;
+}
+
+.word-picture img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.word-picture.solved {
+  animation: bounce 0.6s ease-out 2;
+}
+
+.word-slots {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.word-slot {
+  width: min(12vw, 8vh);
+  aspect-ratio: 0.85;
+  display: grid;
+  place-items: center;
+  border-bottom: 6px solid #c9a46a;
+  font-size: min(10vw, 7vh);
+  font-weight: 900;
+}
+
+.word-ghost {
+  color: rgb(58 42 20 / 0.14);
+}
+
+.word-letter {
+  color: #2563eb;
+  animation: pop-in 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.word-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.word-tile {
+  width: min(14vw, 9vh);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background: #fde68a;
+  box-shadow: 0 5px 0 #f59e0b;
+  color: #7c2d12;
+  font-size: min(9vw, 6vh);
+  font-weight: 900;
+}

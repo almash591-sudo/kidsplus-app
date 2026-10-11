@@ -1,0 +1,1 @@
+ALTER TABLE "interactives" ADD COLUMN "category" text DEFAULT 'games' NOT NULL;

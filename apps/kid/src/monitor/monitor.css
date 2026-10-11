@@ -1,0 +1,31 @@
+/* Ночной экран радионяни: чёрный — на AMOLED чёрные пиксели не светят. */
+.night {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 50;
+}
+.night-moon {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  transform: translate(-50%, -50%);
+  font-size: 48px;
+  opacity: 0.25;
+}
+.night-mic {
+  position: absolute;
+  right: 18px;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  font-size: 22px;
+  opacity: 0.35;
+}
+.night-mic.on {
+  opacity: 0.7;
+  filter: drop-shadow(0 0 6px #e53935);
+}
+/* Значок заряда на ночном экране не нужен — он светит. */
+.night ~ .battery,
+.night .battery {
+  display: none;
+}

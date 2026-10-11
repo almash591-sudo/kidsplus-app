@@ -1,0 +1,1 @@
+ALTER TABLE "children" ADD COLUMN "foreign_immersion" boolean DEFAULT false NOT NULL;

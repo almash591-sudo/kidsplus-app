@@ -1,0 +1,326 @@
+/* Кабинет в духе iOS (этап 12б): фон, блоки, крупные заголовки, «стеклянные» панели. */
+:root {
+  --app-bg: #f2f2f7;
+  --app-card: #ffffff;
+  --app-separator: #e5e5ea;
+  --app-muted: #6e6e73;
+  --app-glass: rgb(249 249 249 / 0.82);
+}
+
+[data-mantine-color-scheme='dark'] {
+  --app-bg: #000000;
+  --app-card: #1c1c1e;
+  --app-separator: #38383a;
+  --app-muted: #98989f;
+  --app-glass: rgb(22 22 24 / 0.82);
+}
+
+body {
+  background: var(--app-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+.mantine-AppShell-main {
+  background: var(--app-bg);
+}
+
+/* Блоки — без рамок, на сером фоне (как сгруппированные списки «Настроек»). */
+.mantine-Card-root,
+.mantine-Paper-root:not(.mantine-Modal-content):not(.mantine-Menu-dropdown):not(
+    .mantine-Popover-dropdown
+  ) {
+  background: var(--app-card);
+  border-color: transparent;
+}
+
+/* Крупный заголовок страницы. */
+.mantine-AppShell-main > div > .mantine-Stack-root > .mantine-Title-root:first-child,
+.mantine-AppShell-main .mantine-Title-root[data-order='2'] {
+  font-size: 34px;
+  letter-spacing: -0.6px;
+  line-height: 1.15;
+}
+
+/* Шапка и меню — «стекло». */
+.mantine-AppShell-header,
+.mantine-AppShell-navbar {
+  background: var(--app-glass);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8);
+  backdrop-filter: blur(20px) saturate(1.8);
+  border-color: var(--app-separator);
+}
+
+.mantine-NavLink-root {
+  border-radius: 12px;
+  margin-bottom: 2px;
+}
+
+.mantine-Button-root {
+  font-weight: 600;
+  transition:
+    transform 0.25s cubic-bezier(0.3, 1.6, 0.5, 1),
+    background 0.15s;
+}
+
+.mantine-Button-root:active {
+  transform: scale(0.97);
+}
+
+.mantine-Table-table {
+  background: var(--app-card);
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+/* ─── Нижняя панель вкладок (телефон) ─── */
+.tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 200;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  padding: 6px 4px max(8px, env(safe-area-inset-bottom));
+  background: var(--app-glass);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8);
+  backdrop-filter: blur(20px) saturate(1.8);
+  border-top: 1px solid var(--app-separator);
+}
+
+.tabbar a,
+.tabbar button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--app-muted);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.tabbar a[aria-current='page'] {
+  color: var(--mantine-primary-color-filled);
+}
+
+@media (min-width: 48em) {
+  .tabbar {
+    display: none;
+  }
+}
+
+@media (max-width: calc(48em - 1px)) {
+  .mantine-AppShell-main {
+    padding-bottom: calc(84px + env(safe-area-inset-bottom));
+  }
+}
+
+/* ─── Кабинет 2.0 ─── */
+.page-title {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.6px;
+  line-height: 1.15;
+}
+
+/* Вложенные страницы во вкладке «Контент»: свой заголовок не нужен. */
+.embedded-page > .mantine-Stack-root > .mantine-Title-root:first-child {
+  display: none;
+}
+
+.attention-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  min-height: 50px;
+  box-sizing: border-box;
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Разделитель как в «Настройках»: от текста до края, у последней строки — нет. */
+.grouped > .attention-row:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 56px;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--app-separator);
+}
+
+.attention-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.chevron {
+  color: var(--app-muted);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.photo-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 4px;
+}
+
+.photo-strip-item {
+  flex: none;
+  width: 96px;
+  height: 96px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--app-card);
+  scroll-snap-align: start;
+}
+
+.photo-strip-item img,
+.photo-strip-item video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Телефон: шапки нет — её заменяют крупный заголовок и вкладки. */
+@media (max-width: calc(48em - 1px)) {
+  .mantine-AppShell-main {
+    padding-top: max(16px, env(safe-area-inset-top));
+  }
+}
+
+/* ─── Проверка видео ─── */
+.review-thumb {
+  position: relative;
+  width: 116px;
+  height: 66px;
+  flex: none;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--app-separator);
+}
+
+.review-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.review-thumb span {
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: rgb(0 0 0 / 0.6);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.review-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--app-separator);
+}
+
+.review-actions > * {
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--mantine-primary-color-filled);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.review-actions > * + * {
+  border-left: 1px solid var(--app-separator);
+}
+
+.review-actions .danger {
+  color: var(--mantine-color-red-6);
+}
+
+.review-actions .ok {
+  color: var(--mantine-color-green-7);
+  font-weight: 800;
+}
+
+.review-actions button:disabled {
+  color: var(--app-muted);
+  cursor: default;
+}
+
+/* ─── План: неделя по дням ─── */
+.week-strip {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.week-strip button {
+  height: 62px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--app-card);
+  color: inherit;
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+.week-strip button span {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+.week-strip button b {
+  font-size: 18px;
+}
+
+.week-strip button.off {
+  opacity: 0.45;
+}
+
+.week-strip button.on {
+  background: var(--mantine-primary-color-filled);
+  color: #fff;
+}
+
+.week-strip button:active {
+  transform: scale(0.94);
+}
+
+/* Список без значков — разделитель от края текста. */
+.grouped.plain > .attention-row:not(:last-child)::after {
+  left: 16px;
+}

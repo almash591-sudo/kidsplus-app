@@ -1,0 +1,95 @@
+# Локальная разработка.
+#   docker compose up -d db          — только PostgreSQL (для pnpm dev)
+#   docker compose --profile full up — вся система в контейнерах, как на Railway:
+#                                      детское PWA http://localhost:8081, родительское http://localhost:8082
+name: kidsplus
+
+x-db-url: &db-url postgres://kidsplus:kidsplus@db:5432/kidsplus
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: kidsplus
+      POSTGRES_PASSWORD: kidsplus
+      POSTGRES_DB: kidsplus
+    ports:
+      - '5432:5432'
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U kidsplus']
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+    mem_limit: 512m
+
+  migrate:
+    profiles: [full]
+    build: &api-build
+      context: .
+      dockerfile: deploy/node.Dockerfile
+      args: { APP: api }
+    command: ['node', 'dist/migrate.js']
+    environment:
+      DATABASE_URL: *db-url
+    depends_on:
+      db: { condition: service_healthy }
+
+  api:
+    profiles: [full]
+    build: *api-build
+    environment:
+      DATABASE_URL: *db-url
+      PORT: '3000'
+      SETUP_TOKEN: ${SETUP_TOKEN:-}
+      KID_APP_URL: http://localhost:8081
+      TRUST_PROXY_HOPS: '1'
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    restart: unless-stopped
+    mem_limit: 512m
+
+  worker:
+    profiles: [full]
+    build:
+      context: .
+      dockerfile: deploy/node.Dockerfile
+      args: { APP: worker }
+    environment:
+      DATABASE_URL: *db-url
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    restart: unless-stopped
+    mem_limit: 256m
+
+  kid-web:
+    profiles: [full]
+    build:
+      context: .
+      dockerfile: deploy/web/Dockerfile
+      args: { APP: kid }
+    environment:
+      API_UPSTREAM: api:3000
+    ports:
+      - '8081:8080'
+    depends_on: [api]
+    restart: unless-stopped
+    mem_limit: 64m
+
+  parent-web:
+    profiles: [full]
+    build:
+      context: .
+      dockerfile: deploy/web/Dockerfile
+      args: { APP: parent }
+    environment:
+      API_UPSTREAM: api:3000
+    ports:
+      - '8082:8080'
+    depends_on: [api]
+    restart: unless-stopped
+    mem_limit: 64m
+
+volumes:
+  db-data:

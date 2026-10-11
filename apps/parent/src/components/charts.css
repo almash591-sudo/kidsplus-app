@@ -1,0 +1,85 @@
+/* Графики аналитики: цвета — роли (слоты палитры), светлая и тёмная тема. */
+.viz-root {
+  --surface-1: #fcfcfb;
+  --text-secondary: #52514e;
+  --grid: #e7e6e2;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-7: #4a3aa7;
+  --series-8: #e34948;
+  --bar: #2a78d6;
+  --track: #eef3fb;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-mantine-color-scheme='light'])) .viz-root {
+    --surface-1: #1a1a19;
+    --text-secondary: #c3c2b7;
+    --grid: #383835;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+    --series-6: #008300;
+    --series-7: #9085e9;
+    --series-8: #e66767;
+    --bar: #3987e5;
+    --track: #24324a;
+  }
+}
+
+.viz-plot {
+  position: relative;
+}
+
+.viz-plot svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: pan-y;
+}
+
+.viz-grid {
+  stroke: var(--grid);
+  stroke-width: 1;
+}
+
+.viz-axis {
+  fill: var(--text-secondary);
+  font-size: 11px;
+}
+
+.viz-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: none;
+}
+
+.viz-tooltip {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  pointer-events: none;
+  min-width: 140px;
+  z-index: 2;
+}
+
+.viz-hbar-track {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--track);
+  overflow: hidden;
+}
+
+.viz-hbar-fill {
+  height: 100%;
+  border-radius: 5px;
+  background: var(--bar);
+}

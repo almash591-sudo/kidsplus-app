@@ -1,0 +1,56 @@
+# Отдаёт собранное PWA и проксирует /api/* на сервис api (тот же origin — без CORS и сторонних cookie).
+# Переменные окружения:
+#   APP           kid | parent — выбирает политику CSP (задаётся в образе)
+#   API_UPSTREAM  адрес api, например api.railway.internal:3000 или api:3000
+#   PORT          порт (Railway задаёт сам)
+
+{
+	admin off
+	auto_https off
+	persist_config off
+	servers {
+		# Снаружи Caddy доступен только через Railway edge: принимаем его X-Forwarded-For,
+		# чтобы api видел настоящий IP клиента (для ограничения частоты входа).
+		trusted_proxies static 0.0.0.0/0 ::/0
+	}
+}
+
+# Детское приложение: только свой origin и плеер YouTube (youtube-nocookie).
+# script-src www.youtube.com — скрипт IFrame Player API (iframe_api и www-widgetapi.js).
+# img-src blob: — фото ребёнка в галерее берутся из памяти телефона (этап 9).
+(csp-kid) {
+	header Content-Security-Policy "default-src 'self'; script-src 'self' https://www.youtube.com; style-src 'self'; img-src 'self' data: blob: https://i.ytimg.com; media-src 'self' blob:; connect-src 'self'; frame-src https://www.youtube-nocookie.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+}
+
+(csp-parent) {
+	header Content-Security-Policy "default-src 'self'; script-src 'self' https://www.youtube.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://i.ytimg.com; media-src 'self' blob:; connect-src 'self'; frame-src https://www.youtube-nocookie.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+}
+
+:{$PORT:8080} {
+	encode zstd gzip
+	import csp-{$APP}
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		-Server
+	}
+
+	handle /healthz {
+		respond "ok" 200
+	}
+
+	handle /api/* {
+		reverse_proxy {$API_UPSTREAM}
+	}
+
+	handle {
+		root * /srv
+		@immutable path /assets/*
+		header @immutable Cache-Control "public, max-age=31536000, immutable"
+		@revalidate path / /index.html /sw.js /registerSW.js /manifest.webmanifest
+		header @revalidate Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}

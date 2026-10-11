@@ -1,0 +1,25 @@
+node_modules/
+dist/
+dev-dist/
+coverage/
+*.tsbuildinfo
+
+# Секреты — только локально, в репозитории лежит .env.example
+.env
+.env.*
+!.env.example
+
+# Локальные данные
+media/
+backups/
+
+# Тесты
+playwright-report/
+test-results/
+
+# ОС и редакторы
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json

@@ -1,0 +1,211 @@
+/* ─── Камера и галерея (этап 9) ──────────────────────────────────────────── */
+.camera {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  overflow: hidden;
+}
+.camera-preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.camera-preview.mirrored {
+  transform: scaleX(-1);
+}
+.camera-error {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 96px;
+}
+.camera-flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  animation: camera-flash 0.18s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes camera-flash {
+  to {
+    opacity: 0;
+  }
+}
+.camera-modes {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 12px;
+  padding: 6px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.4);
+}
+.camera-mode {
+  width: 64px;
+  height: 64px;
+  border: 0;
+  border-radius: 50%;
+  font-size: 32px;
+  background: transparent;
+  opacity: 0.55;
+}
+.camera-mode.active {
+  background: rgb(255 255 255 / 0.9);
+  opacity: 1;
+}
+.camera-bar {
+  position: absolute;
+  bottom: max(28px, env(safe-area-inset-bottom));
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+}
+.camera-side {
+  width: 72px;
+  height: 72px;
+  border: 0;
+  border-radius: 50%;
+  font-size: 36px;
+  background: rgb(255 255 255 / 0.85);
+}
+.camera-side:disabled,
+.camera-mode:disabled {
+  opacity: 0.3;
+}
+.camera-shutter {
+  position: relative;
+  width: 112px;
+  height: 112px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  padding: 0;
+  transition:
+    transform 0.15s,
+    opacity 0.2s;
+}
+.camera-shutter.video {
+  background: #e53935;
+}
+.camera-shutter.recording {
+  background: #b71c1c;
+}
+.camera-shutter:active {
+  transform: scale(0.92);
+}
+.camera-shutter:disabled {
+  opacity: 0.4;
+}
+.camera-shutter svg {
+  position: absolute;
+  inset: -8px;
+  width: calc(100% + 16px);
+  height: calc(100% + 16px);
+  transform: rotate(-90deg);
+}
+.camera-shutter .ring-bg {
+  fill: none;
+  stroke: rgb(255 255 255 / 0.6);
+  stroke-width: 5;
+}
+.camera-shutter .ring {
+  fill: none;
+  stroke: #ffeb3b;
+  stroke-width: 6;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.1s linear;
+}
+.camera-left {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 36px;
+  font-weight: 800;
+}
+.camera-limit {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 140px;
+  background: rgb(0 0 0 / 0.55);
+  pointer-events: none;
+}
+.camera-open {
+  position: fixed;
+  right: 20px;
+  bottom: max(20px, env(safe-area-inset-bottom));
+  width: 84px;
+  height: 84px;
+  border: 0;
+  border-radius: 50%;
+  font-size: 44px;
+  background: #fff;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.2);
+  z-index: 15;
+}
+.gallery {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  background: #fff8ee;
+  padding: 88px 12px 24px;
+}
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.gallery-tile {
+  position: relative;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #ddd;
+}
+.gallery-tile img,
+.gallery-tile video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.gallery-play {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 56px;
+  color: #fff;
+  text-shadow: 0 2px 8px rgb(0 0 0 / 0.5);
+}
+.gallery-empty {
+  display: grid;
+  place-items: center;
+  height: 60vh;
+  font-size: 120px;
+  opacity: 0.3;
+}
+.gallery-viewer {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: #000;
+  z-index: 30;
+}
+.gallery-viewer img,
+.gallery-viewer video {
+  max-width: 100%;
+  max-height: 100%;
+}

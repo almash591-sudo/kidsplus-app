@@ -1,0 +1,10 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Установочные скрипты зависимостей запрещены по умолчанию; разрешаем только нужным.
+allowBuilds:
+  esbuild: true
+  # Скрипты SDK Gemini и protobufjs не нужны (вызовы через REST) — запрещаем явно.
+  '@google/genai': false
+  protobufjs: false
