@@ -10,6 +10,7 @@ import { PgBoss } from 'pg-boss';
 import { pino } from 'pino';
 import { GoogleDrive } from '@kidsplus/providers/google-drive';
 import { checkAvailability } from './availability';
+import { checkOffline } from './offline-alerts';
 import { markConfigured, pgDump, runBackup, startBackupRequests } from './backup';
 import { registerJobs } from './jobs';
 import { startDraftLoop } from './curriculum-draft';
@@ -69,6 +70,7 @@ await registerJobs(
   youtube ? () => checkAvailability(db, youtube, new Date(), notify) : undefined,
   () => buildWeeklyReports({ db, llm, log, limits, notify }),
   drive ? () => runBackup(backupDeps) : undefined,
+  () => checkOffline({ db, notify }),
 );
 if (!youtube) log.warn('YOUTUBE_API_KEY не задан — ежедневная проверка видео отключена');
 let stopTts: (() => void) | undefined;

@@ -11,6 +11,7 @@ export const PUSH_KINDS = [
   'battery',
   'call',
   'noise',
+  'offline',
 ] as const;
 export type PushKind = (typeof PUSH_KINDS)[number];
 
@@ -23,6 +24,7 @@ export const PUSH_KIND_LABELS: Record<PushKind, string> = {
   battery: 'Телефон ребёнка садится',
   call: 'Входящий звонок',
   noise: 'Радионяня: в комнате шумно',
+  offline: 'Телефон ребёнка долго не на связи',
 };
 
 export const pushSubscription = z.object({
@@ -84,6 +86,21 @@ export const pushMessages = {
     title: 'Радионяня',
     body: 'В комнате {child} шумно — нажмите, чтобы послушать.',
     url: `/now?listen=${childId}`,
+    childId,
+  }),
+  /** Телефон не выходил на связь больше двух часов (днём). */
+  offline: (childId: string, hours: number): PushMessage => ({
+    kind: 'offline',
+    title: 'Телефон не на связи',
+    body: `Телефон {child} не выходит на связь ${hours} ч. Разряжен, выключен или нет интернета?`,
+    url: '/devices',
+    childId,
+  }),
+  online: (childId: string): PushMessage => ({
+    kind: 'offline',
+    title: 'Телефон снова на связи',
+    body: 'Телефон {child} снова на связи.',
+    url: '/now',
     childId,
   }),
   battery: (childId: string, level: number): PushMessage => ({
