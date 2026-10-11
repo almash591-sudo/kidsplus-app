@@ -86,6 +86,8 @@ export const apiEnvSchema = z
     SETUP_TOKEN: optional(z.string().min(24, 'SETUP_TOKEN — минимум 24 символа')),
     /** Публичный адрес детского PWA — для QR-ссылки привязки устройства. */
     KID_APP_URL: z.url().default('http://localhost:5173'),
+    /** Токен публикации APK киоска (scripts/publish-kiosk.ps1 задаёт его сам). */
+    KIOSK_PUBLISH_TOKEN: optional(z.string().min(32)),
     /** Сколько прокси перед api (Railway edge + Caddy = 2) — для определения IP клиента. */
     TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(2),
     ...storageEnv,

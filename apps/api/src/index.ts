@@ -22,6 +22,7 @@ const app = await buildApp({
   config: {
     setupToken: env.SETUP_TOKEN,
     kidAppUrl: env.KID_APP_URL,
+    kioskPublishToken: env.KIOSK_PUBLISH_TOKEN,
     trustProxyHops: env.TRUST_PROXY_HOPS,
     tts,
     moderation: {

@@ -11,6 +11,7 @@
     "./time": "./src/time.ts",
     "./phrases": "./src/phrases.ts",
     "./games": "./src/games.ts",
+    "./kiosk-update": "./src/kiosk-update.ts",
     "./backup": "./src/backup.ts",
     "./voice": "./src/voice.ts",
     "./music-lessons": "./src/music-lessons.ts",

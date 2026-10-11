@@ -22,6 +22,8 @@ export interface AppConfig {
   };
   /** Снимки ребёнка: квота копий на сервере, сверх — удаляются самые старые. */
   captures: { quotaBytes: number };
+  /** Токен публикации новой версии киоска (только у компьютера владельца); нет — публикация выключена. */
+  kioskPublishToken?: string | undefined;
   /** Серверы ICE для звонков (STUN/TURN); по умолчанию — открытые STUN. */
   ice?: IceConfig;
 }

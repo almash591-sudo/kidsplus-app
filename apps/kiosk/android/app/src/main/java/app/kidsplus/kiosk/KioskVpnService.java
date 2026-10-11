@@ -116,6 +116,7 @@ public class KioskVpnService extends VpnService implements PlatformInterface, Co
             scheduleRefresh();
             // Входящие звонки при погашенном экране (этап 10).
             CallWaiter.start(this);
+            Updater.start(this);
         } catch (Exception e) {
             Log.e(TAG, "start", e);
             VpnState.set(VpnState.Status.ERROR, e.getMessage());
@@ -179,6 +180,7 @@ public class KioskVpnService extends VpnService implements PlatformInterface, Co
 
     private void shutdown() {
         CallWaiter.stop();
+        Updater.stop();
         if (timer != null) timer.shutdownNow();
         try {
             if (server != null) {
