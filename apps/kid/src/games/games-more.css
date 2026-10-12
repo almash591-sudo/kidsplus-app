@@ -745,6 +745,17 @@
 }
 
 .game.melody[data-phase='listen'] .bell,
+/* Подсказка после ошибок: нужный колокольчик светится (свечение — без масштаба, касание не мешает). */
+.bell.guide svg {
+  animation: bell-guide 0.9s ease-in-out infinite;
+}
+
+@keyframes bell-guide {
+  50% {
+    filter: brightness(1.25) drop-shadow(0 0 22px var(--bell)) drop-shadow(0 0 8px #fff);
+  }
+}
+
 .game.melody[data-phase='done'] .bell {
   pointer-events: none;
 }

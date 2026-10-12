@@ -1,5 +1,6 @@
 import type { Game } from '@kidsplus/shared/api';
 import { GAME_KINDS, type GameKind, type GameSpec } from '@kidsplus/shared/games';
+import { SONGS } from '@kidsplus/shared/songs';
 import {
   ActionIcon,
   Button,
@@ -85,6 +86,12 @@ export function gameSummary(spec: GameSpec): string {
       return `${PIANO_MODE_LABELS[spec.mode]} · нот: ${spec.keys}`;
     case 'staff':
       return `нот: ${spec.keys} · раундов: ${spec.rounds}`;
+    case 'song':
+      return spec.songs.map((s) => `«${SONGS[s].title}»`).join(', ');
+    case 'freeze':
+      return `раундов: ${spec.rounds}`;
+    case 'orchestra':
+      return `зверят: ${spec.players} · раундов: ${spec.rounds}`;
     case 'letter':
       return `${spec.letters.join(' ')} · раундов: ${spec.rounds}`;
     case 'syllable':
@@ -127,6 +134,9 @@ const GAME_ICONS: Record<GameKind, string> = {
   rhythm: '🪘',
   piano: '🎹',
   staff: '🎼',
+  song: '🎶',
+  freeze: '💃',
+  orchestra: '🎺',
   letter: '🔤',
   syllable: '🅰️',
   firstLetter: '🐱',

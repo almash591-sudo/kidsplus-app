@@ -2445,6 +2445,148 @@ test.describe('музыка', () => {
     await expectFinished(page, backend);
   });
 
+  test('колокольчики: застрял — медленнее, потом светится нужный, потом эта мелодия последняя', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [game(1, { kind: 'melody', bells: 3, start: 2, goal: 5 }, 'music')];
+    await openGame(page);
+    const field = page.getByTestId('game-melody');
+    const tune = async () =>
+      ((await page.getByTestId('melody-tune').textContent()) ?? '').split(',').map(Number);
+    const miss = async () => {
+      await expect(field).toHaveAttribute('data-phase', 'play', { timeout: 10_000 });
+      const [first] = await tune();
+      await press(page.locator(`[data-bell="${(first! + 1) % 3}"]`));
+      await expect(field).toHaveAttribute('data-phase', 'listen');
+    };
+    await miss();
+    await expect(page.locator('.bell.guide')).toHaveCount(0);
+    await miss();
+    // Две ошибки — нужный колокольчик светится.
+    await expect(field).toHaveAttribute('data-phase', 'play', { timeout: 10_000 });
+    const [first] = await tune();
+    await expect(page.locator(`.bell.guide[data-bell="${first}"]`)).toHaveCount(1);
+    await shot(page, 'melody-guide');
+    await miss();
+    // Три ошибки — доиграть эту мелодию, и урок пройден.
+    await expect(field).toHaveAttribute('data-phase', 'play', { timeout: 10_000 });
+    await expect(page.locator('.melody-progress span')).toHaveCount(2);
+    for (const n of await tune()) await press(page.locator(`[data-bell="${n}"]`));
+    await expectFinished(page, backend);
+    expect((await spoken(page)).map((s) => s.text)).toContain(
+      'Нажимай на колокольчик, который светится!',
+    );
+  });
+
+  test('ритм «та» и «ти-ти»: после двух промахов засчитывается верное число ударов', async ({
+    page,
+    backend,
+  }) => {
+    test.slow(); // шесть раз слушаем образец
+    backend.items = [game(1, { kind: 'rhythm', beats: 3, timing: true, rounds: 2 }, 'music')];
+    await openGame(page);
+    const field = page.getByTestId('game-rhythm');
+    const drum = page.getByTestId('rhythm-drum');
+    for (let round = 0; round < 2; round++) {
+      // Образец — «ти-ти-та» (ровно); стучим неровно — ритм не тот; после второго раза — засчитано.
+      for (let attempt = 0; attempt < 3; attempt++) {
+        await expect(field).toHaveAttribute('data-phase', 'play', { timeout: 15_000 });
+        await press(drum);
+        await page.waitForTimeout(40);
+        await press(drum);
+        await page.waitForTimeout(500);
+        await press(drum);
+        if (attempt < 2) await expect(field).toHaveAttribute('data-phase', 'listen');
+        else if (round === 0) await expect(field).toHaveAttribute('data-phase', 'done');
+      }
+    }
+    await expectFinished(page, backend);
+    expect((await spoken(page)).map((s) => s.text)).toContain(
+      'Стучи столько раз, сколько огоньков!',
+    );
+  });
+
+  test('сыграй песенку: светится нужная клавиша, ошибка не мешает, в конце — вся песенка', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [game(1, { kind: 'song', songs: ['vorobey'] }, 'music')];
+    await openGame(page);
+    const field = page.getByTestId('game-song');
+    await expect(field).toHaveAttribute('data-phase', 'play', { timeout: 10_000 });
+    await shot(page, 'music-song');
+    const key = (n: string | number) => page.locator(`[data-testid=song-key][data-key="${n}"]`);
+    // Не та клавиша — просто звучит, светится всё та же.
+    const first = (await field.getAttribute('data-answer'))!;
+    await press(key((Number(first) + 1) % 5));
+    await expect(field).toHaveAttribute('data-answer', first);
+    await expect(key(first)).toHaveClass(/guide/);
+    while ((await field.getAttribute('data-phase')) === 'play') {
+      await press(key((await field.getAttribute('data-answer'))!));
+    }
+    await expect(field).toHaveAttribute('data-phase', 'replay');
+    // Песенка звучит целиком — несколько секунд.
+    await expect(page.getByTestId('game-finished')).toBeVisible({ timeout: 15_000 });
+    await expectFinished(page, backend);
+    expect((await spoken(page)).map((s) => s.text)).toContain('Сыграем песенку «Андрей-воробей»!');
+  });
+
+  test('«Замри!»: музыка стихла — замираем; пошевелился — напоминание', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [game(1, { kind: 'freeze', rounds: 2 }, 'music')];
+    await openGame(page);
+    const field = page.getByTestId('game-freeze');
+    await expect(field).toHaveAttribute('data-phase', 'dance');
+    await shot(page, 'music-freeze');
+    await press(page.getByTestId('dancer').first());
+    await expect(field).toHaveAttribute('data-phase', 'freeze', { timeout: 10_000 });
+    await press(page.getByTestId('dancer').first());
+    await expect(field).toHaveAttribute('data-round', '1', { timeout: 6000 });
+    await expect(field).toHaveAttribute('data-phase', 'freeze', { timeout: 10_000 });
+    await expect(page.getByTestId('game-finished')).toBeVisible({ timeout: 10_000 });
+    const said = (await spoken(page)).map((s) => s.text);
+    expect(said).toContain('Замри!');
+    expect(said).toContain('Ой, кто-то пошевелился! Замри!');
+  });
+
+  test('звериный оркестр: играем на том, кто светится', async ({ page, backend }) => {
+    backend.items = [game(1, { kind: 'orchestra', players: 3, rounds: 2 }, 'music')];
+    await openGame(page);
+    const field = page.getByTestId('game-orchestra');
+    for (let round = 0; round < 2; round++) {
+      await expect(field).not.toHaveAttribute('data-solo', '', { timeout: 10_000 });
+      if (round === 0) await shot(page, 'music-orchestra');
+      const solo = (await field.getAttribute('data-solo'))!;
+      // Другой зверёк звучит, но не засчитывается.
+      await press(page.locator(`[data-player="${(Number(solo) + 1) % 3}"]`));
+      await expect(page.locator('.orchestra-notes .on')).toHaveCount(0);
+      for (let i = 0; i < 4; i++) await press(page.locator(`[data-player="${solo}"]`));
+      await expect(field).toHaveAttribute('data-solo', '');
+    }
+    await expectFinished(page, backend);
+  });
+
+  test('дорожка: из трудного урока дважды ушёл — светится следующий', async ({ page, backend }) => {
+    backend.items = [
+      game(1, { kind: 'melody', bells: 3, start: 2, goal: 4 }, 'music'),
+      game(2, { kind: 'loudness', rounds: 2 }, 'music'),
+    ];
+    await gameMedia(page);
+    await page.goto('/');
+    const steps = page.getByTestId('lesson-path').getByTestId('tile');
+    for (let i = 0; i < 2; i++) {
+      await expect(steps.nth(0)).toHaveAttribute('data-hint', '', { timeout: 8000 });
+      await steps.nth(0).click();
+      await expect(page.getByTestId('game-melody')).toBeVisible();
+      await page.getByTestId('go-home').click();
+    }
+    await expect(steps.nth(1)).toHaveAttribute('data-hint', '', { timeout: 8000 });
+    await expect(steps.nth(0)).not.toHaveAttribute('data-hint', '');
+  });
+
   test('раздел «Музыка» — дорожка уроков: пройденный со звёздочкой, следующий светится', async ({
     page,
     backend,

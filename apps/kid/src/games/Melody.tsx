@@ -1,12 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import { fx } from '../fx';
-import { MELODY_LISTEN, MELODY_AGAIN, MELODY_YOU } from '../phrases';
+import { MELODY_AGAIN, MELODY_GUIDE, MELODY_LISTEN, MELODY_YOU } from '../phrases';
 import { praise, say, setTask, type GameProps } from './common';
 import { burstAt, cheer } from './juice';
 
 const BELL_COLORS = ['#E8453C', '#F59E0B', '#22A55B', '#3B82F6', '#9B5DE5'];
 /** Пауза между нотами мелодии, мс. */
 const BEAT = 650;
+/** Длиннее этой мелодии малышу не запомнить — даже если урок просит больше. */
+export const MAX_TUNE = 6;
+/**
+ * Помощь, чтобы не застревать: после первой ошибки мелодия звучит медленнее, после второй
+ * нужный колокольчик светится, после третьей эта мелодия — последняя в игре.
+ */
+export const SLOW_AFTER = 1;
+export const GUIDE_AFTER = 2;
+export const LAST_AFTER = 3;
 
 /** Следующая нота — не такая же, как предыдущая (так мелодию легче запомнить). */
 export const nextNote = (bells: number, prev?: number, rnd: () => number = Math.random) => {
@@ -27,6 +36,11 @@ export function Melody({ spec, phrases, onFinish }: GameProps<'melody'>) {
   const [ringing, setRinging] = useState<number | null>(null);
   const [pos, setPos] = useState(0);
   const [again, setAgain] = useState(false);
+  /** Ошибки на этой мелодии. */
+  const [misses, setMisses] = useState(0);
+  const [goal, setGoal] = useState(() => Math.min(spec.goal, MAX_TUNE));
+  const beat = misses >= SLOW_AFTER ? BEAT * 1.4 : BEAT;
+  const guide = misses >= GUIDE_AFTER;
   const bells = useRef<(HTMLButtonElement | null)[]>([]);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -42,22 +56,22 @@ export function Melody({ spec, phrases, onFinish }: GameProps<'melody'>) {
     let cancelled = false;
     void say(again ? MELODY_AGAIN : MELODY_LISTEN).then(() => {
       if (cancelled) return;
-      tune.forEach((n, k) => timers.current.push(setTimeout(() => ring(n), 300 + k * BEAT)));
+      tune.forEach((n, k) => timers.current.push(setTimeout(() => ring(n), 300 + k * beat)));
       timers.current.push(
         setTimeout(
           () => {
             setPos(0);
             setPhase('play');
-            void say(MELODY_YOU);
+            void say(guide ? MELODY_GUIDE : MELODY_YOU);
           },
-          300 + tune.length * BEAT,
+          300 + tune.length * beat,
         ),
       );
     });
     return () => {
       cancelled = true;
     };
-  }, [phase, tune, again]);
+  }, [phase, tune, again, beat, guide]);
 
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
@@ -79,6 +93,10 @@ export function Melody({ spec, phrases, onFinish }: GameProps<'melody'>) {
     if (i !== tune[pos]) {
       cheer('oops');
       fx.soft();
+      const m = misses + 1;
+      setMisses(m);
+      // Застрял — эта мелодия последняя: доиграет её с подсказкой и получит звёздочку.
+      if (m >= LAST_AFTER) setGoal(tune.length);
       setAgain(true);
       setPhase('listen');
       return;
@@ -86,7 +104,7 @@ export function Melody({ spec, phrases, onFinish }: GameProps<'melody'>) {
     if (pos + 1 < tune.length) return setPos(pos + 1);
     burstAt(bells.current[i] ?? null, 16);
     void praise(phrases);
-    if (tune.length >= spec.goal) {
+    if (tune.length >= goal) {
       setPhase('done');
       setTimeout(onFinish, 1600);
       return;
@@ -95,6 +113,7 @@ export function Melody({ spec, phrases, onFinish }: GameProps<'melody'>) {
     timers.current.push(
       setTimeout(() => {
         setAgain(false);
+        setMisses(0);
         setTune([...tune, nextNote(spec.bells, tune.at(-1))]);
         setPhase('listen');
       }, 1600),
@@ -104,7 +123,7 @@ export function Melody({ spec, phrases, onFinish }: GameProps<'melody'>) {
   return (
     <div className="game melody" data-testid="game-melody" data-phase={phase}>
       <div className="melody-progress" aria-hidden="true">
-        {Array.from({ length: spec.goal }, (_, i) => (
+        {Array.from({ length: goal }, (_, i) => (
           <span
             key={i}
             className={i < tune.length ? (i < pos || phase === 'done' ? 'on' : 'now') : ''}
@@ -119,7 +138,13 @@ export function Melody({ spec, phrases, onFinish }: GameProps<'melody'>) {
             ref={(el) => {
               bells.current[i] = el;
             }}
-            className={ringing === i ? 'bell ringing' : 'bell'}
+            className={[
+              'bell',
+              ringing === i && 'ringing',
+              guide && phase === 'play' && i === tune[pos] && 'guide',
+            ]
+              .filter(Boolean)
+              .join(' ')}
             data-testid="bell"
             data-bell={i}
             data-hint={phase === 'play' && i === tune[pos] ? '' : undefined}

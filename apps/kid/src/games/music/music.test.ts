@@ -8,15 +8,20 @@ describe('ритм', () => {
     expect(rhythmPattern(4, false)).toEqual([1, 1, 1]);
   });
 
-  it('с длительностями — есть и «та», и «ти-ти»; «ти» парами', () => {
+  it('с длительностями — есть «ти-ти» (последний удар — всегда «та»); «ти» парами', () => {
     for (let k = 0; k < 50; k++) {
       const gaps = rhythmPattern(5, true);
       expect(gaps).toHaveLength(4);
-      expect(gaps).toContain(1);
       expect(gaps).toContain(0.5);
       const ti = gaps.join(',').match(/0\.5/g)!.length;
       expect(ti % 2).toBe(0);
     }
+  });
+
+  it('три удара с длительностями — «ти-ти-та», без зависания (раньше цикл был бесконечным)', () => {
+    expect(rhythmPattern(3, true)).toEqual([0.5, 0.5]);
+    // Даже если «случайность» никогда не выбирает «ти-ти» — запасной ритм.
+    expect(rhythmPattern(4, true, () => 0.99)).toEqual([0.5, 0.5, 1]);
   });
 
   it('темп ребёнка любой, важны пропорции', () => {

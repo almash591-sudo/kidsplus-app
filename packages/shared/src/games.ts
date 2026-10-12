@@ -1,6 +1,7 @@
 // Интерактивные игры (п. 5.6 ТЗ): каждый вид — компонент детского приложения + схема параметров.
 // Параметры хранятся в БД (interactives.params) и проверяются этой схемой и при записи, и при выдаче.
 import { z } from 'zod';
+import { SONG_IDS } from './songs';
 
 const uuid = z.uuid();
 const phrase = z.string().trim().min(1).max(200);
@@ -317,6 +318,16 @@ export const gameSpec = z.discriminatedUnion('kind', [
   }),
   /** Нотный стан: где живёт нота — выбрать её название. */
   z.object({ kind: z.literal('staff'), keys, rounds: musicRounds }),
+  /** Сыграй песенку: светится нужная клавиша — ребёнок играет знакомую мелодию (по песенке на раунд). */
+  z.object({ kind: z.literal('song'), songs: z.array(z.enum(SONG_IDS)).min(1).max(4) }),
+  /** «Замри!»: под музыку танцуем, музыка стихла — замираем. */
+  z.object({ kind: z.literal('freeze'), rounds: z.number().int().min(2).max(8) }),
+  /** Звериный оркестр: у каждого зверька свой инструмент; дирижёр зовёт сыграть того, кто светится. */
+  z.object({
+    kind: z.literal('orchestra'),
+    players: z.number().int().min(3).max(6),
+    rounds: z.number().int().min(2).max(8),
+  }),
   // ─── Буквы ───
   /** Найди букву: звучит буква — ребёнок выбирает её среди choices. */
   z.object({
@@ -384,6 +395,9 @@ export const GAME_KINDS: Record<GameKind, string> = {
   rhythm: 'Повтори ритм',
   piano: 'Пианино: ноты',
   staff: 'Нотный стан',
+  song: 'Сыграй песенку',
+  freeze: 'Замри!',
+  orchestra: 'Звериный оркестр',
   letter: 'Найди букву',
   syllable: 'Найди слог',
   firstLetter: 'С какой буквы?',
@@ -429,6 +443,9 @@ export function gameImageIds(g: GameSpec): string[] {
     case 'rhythm':
     case 'piano':
     case 'staff':
+    case 'song':
+    case 'freeze':
+    case 'orchestra':
     case 'letter':
     case 'syllable':
     case 'firstLetter':

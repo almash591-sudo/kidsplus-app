@@ -217,6 +217,25 @@ export const music = {
     tone(150, at, 0.32, { bus: 'music', slideTo: 55, gain });
     noise(at, 0.08, { from: 1800, to: 500, gain: gain * 0.4, q: 0.9, bus: 'music' });
   },
+  /** Звериный оркестр (этап 18б): инструменты из простых тембров. freq — нота. */
+  flute(freq: number, at = 0) {
+    tone(freq * 2, at, 0.5, { bus: 'music', gain: 0.45 });
+    noise(at, 0.08, { from: 3000, to: 2500, gain: 0.05, q: 3, bus: 'music' });
+  },
+  xylo(freq: number, at = 0) {
+    tone(freq * 2, at, 0.35, { bus: 'music', type: 'triangle', gain: 0.55 });
+    tone(freq * 8, at, 0.06, { bus: 'music', gain: 0.12 });
+  },
+  tuba(freq: number, at = 0) {
+    tone(freq / 2, at, 0.45, { bus: 'music', type: 'triangle', gain: 0.7 });
+    tone(freq, at, 0.3, { bus: 'music', type: 'square', gain: 0.06 });
+  },
+  shaker(at = 0) {
+    noise(at, 0.14, { from: 6000, to: 9000, gain: 0.35, q: 1.5, bus: 'music' });
+  },
+  whistle(freq: number, at = 0) {
+    tone(freq * 2, at, 0.32, { bus: 'music', slideTo: freq * 2.5, gain: 0.3 });
+  },
   /** Сейчас по часам звука, с — для точных интервалов. */
   now() {
     return audio('music')?.ctx.currentTime ?? 0;

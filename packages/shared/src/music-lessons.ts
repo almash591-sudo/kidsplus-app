@@ -2,6 +2,7 @@
 // (4–6 лет). Уроки идут дорожкой от простого к сложному: каждые пять — маленькая тема,
 // темы чередуются (слух, ритм, ноты), чтобы ребёнку не надоедало.
 import { NOTE_NAMES, gameSpec, type GameSpec } from './games';
+import { SONGS, type SongId } from './songs';
 
 export type MusicAge = 'young' | 'old';
 
@@ -125,6 +126,59 @@ const lessons = (age: MusicAge, specs: GameSpec[]): MusicLesson[] =>
 
 /** Все 100 уроков: сначала малышам, потом дошкольникам. */
 export const MUSIC_LESSONS: MusicLesson[] = [...lessons('young', YOUNG), ...lessons('old', OLD)];
+
+// ─── Весёлая музыка (этап 18б): песенки, «Замри!», оркестр — между упражнениями ───
+
+const song = (...songs: SongId[]): GameSpec => ({ kind: 'song', songs });
+const freeze = (rounds: number): GameSpec => ({ kind: 'freeze', rounds });
+const band = (players: number, rounds: number): GameSpec => ({
+  kind: 'orchestra',
+  players,
+  rounds,
+});
+
+function funTopic(spec: GameSpec): string {
+  switch (spec.kind) {
+    case 'song':
+      return `Сыграй песенку: ${spec.songs.map((s) => `«${SONGS[s].title}»`).join(', ')}`;
+    case 'freeze':
+      return 'Танцуем и замираем';
+    case 'orchestra':
+      return 'Звериный оркестр';
+    default:
+      return 'Музыка';
+  }
+}
+
+// prettier-ignore
+const YOUNG_FUN: GameSpec[] = [
+  song('vorobey'), freeze(4), band(3, 3), song('yakov'),
+  freeze(4), band(4, 3), song('zvezdochka'), freeze(5),
+  band(4, 4), song('vorobey', 'yakov'), freeze(5), band(5, 4),
+  song('barashek'), freeze(6), band(5, 5), song('zvezdochka', 'vorobey'),
+];
+
+// prettier-ignore
+const OLD_FUN: GameSpec[] = [
+  song('zvezdochka'), freeze(5), band(4, 4), song('barashek'), freeze(5),
+  band(5, 4), song('yakov', 'bubentsy'), freeze(6), band(5, 5), song('radost'),
+  freeze(6), band(6, 5), song('kolybelnaya'), freeze(7), band(6, 6),
+  song('radost', 'bubentsy'), freeze(8), band(6, 6), song('zvezdochka', 'kolybelnaya'), song('barashek', 'radost'),
+];
+
+const funLessons = (age: MusicAge, specs: GameSpec[]): MusicLesson[] =>
+  specs.map((s, i) => {
+    const spec = gameSpec.parse(s);
+    const n = i + 1;
+    const prefix = age === 'young' ? 'Весёлая музыка для малышей' : 'Весёлая музыка';
+    return { n, age, title: `${prefix} ${String(n).padStart(2, '0')} · ${funTopic(spec)}`, spec };
+  });
+
+/** Песенки, «Замри!» и оркестр: импорт расставляет их между упражнениями дорожки. */
+export const MUSIC_FUN_LESSONS: MusicLesson[] = [
+  ...funLessons('young', YOUNG_FUN),
+  ...funLessons('old', OLD_FUN),
+];
 
 /** Возраст, с которого — уроки для дошкольников. */
 export const MUSIC_OLD_FROM_AGE = 4;

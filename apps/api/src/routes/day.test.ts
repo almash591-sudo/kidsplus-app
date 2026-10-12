@@ -123,6 +123,31 @@ describe('расписание дня', () => {
     expect(free.closed).toBe('limit');
   });
 
+  it('музыка: на сегодня хватит трёх пройденных уроков, даже если время осталось', async () => {
+    const tunes = [];
+    for (let i = 0; i < 4; i++) tunes.push(await addGame(`Урок ${i}`, 'music'));
+    await addGame('Счёт', 'math');
+    await enable();
+    const done = (id: string) =>
+      t.app.inject({
+        method: 'POST',
+        url: '/api/kid/events',
+        cookies: device,
+        payload: { type: 'interactive_complete', interactiveId: id, payload: {} },
+      });
+    const music = async () =>
+      (await get<KidToday>('/api/kid/today')).subjects.find((s) => s.subject === 'music');
+    await done(tunes[0]!);
+    await done(tunes[0]!); // тот же урок ещё раз — не новый
+    await done(tunes[1]!);
+    expect(await music()).toMatchObject({ done: false, secondsLeft: 1200 });
+    await done(tunes[2]!);
+    expect(await music()).toMatchObject({ done: true, secondsLeft: 0 });
+    // Назавтра — снова.
+    t.advance(86_400_000);
+    expect(await music()).toMatchObject({ done: false });
+  });
+
   it('без сигналов и на паузе время не идёт', async () => {
     await addGame('Счёт', 'math');
     await enable();
@@ -239,6 +264,38 @@ describe('учебный план', () => {
     // Недели без темы — материалы раздела.
     t.advance(7 * 86_400_000);
     expect((await ids()).sort()).toEqual([counting, shapes, other].sort());
+  });
+
+  it('предмет плана без материалов в «Сегодня» не попадает — пустой раздел не открыть', async () => {
+    await addGame('Счёт', 'math');
+    const tune = await addGame('Песенка', 'music');
+    await enable();
+    const res = await t.app.inject({
+      method: 'POST',
+      url: `/api/parent/children/${child}/curricula`,
+      cookies: parent,
+      payload: {
+        title: 'Осень',
+        startsOn: '2026-10-12',
+        weeks: 4,
+        subjects: ['music', 'other', 'math', 'games'],
+        topics: [
+          {
+            subject: 'music',
+            week: 1,
+            title: 'Песенки',
+            items: [{ kind: 'interactive', refId: tune }],
+          },
+          // Тема без материалов и раздел без материалов у ребёнка.
+          { subject: 'other', week: 1, title: 'Разное', items: [] },
+        ],
+      },
+    });
+    expect(res.statusCode).toBe(201);
+    expect((await get<KidToday>('/api/kid/today')).subjects.map((s) => s.subject)).toEqual([
+      'music',
+      'math',
+    ]);
   });
 
   it('тема вне плана или по чужому предмету — ошибка', async () => {

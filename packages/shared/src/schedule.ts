@@ -248,13 +248,23 @@ export interface DayState {
   extendSeconds: number;
   paused: boolean;
   ended: boolean;
+  /** Пройдено сегодня уроков-игр по предмету (для предметов с дневной нормой уроков). */
+  lessons?: Partial<Record<Subject, number>>;
 }
+
+/**
+ * Предметы, где урок — короткая игра-упражнение: на сегодня хватит стольких пройденных уроков,
+ * даже если время ещё осталось (20 минут одних упражнений малышу надоедают).
+ */
+export const LESSONS_PER_DAY: Partial<Record<Subject, number>> = { music: 3 };
 
 /** День ребёнка: что открыто и сколько осталось. */
 export function computeToday(s: DayState): KidToday {
   const per = s.schedule.minutesPerSubject * 60;
   const subjects = s.subjects.map((subject) => {
-    const left = Math.max(0, per - (s.used[subject] ?? 0));
+    const norm = LESSONS_PER_DAY[subject];
+    const enough = norm !== undefined && (s.lessons?.[subject] ?? 0) >= norm;
+    const left = enough ? 0 : Math.max(0, per - (s.used[subject] ?? 0));
     return { subject, secondsLeft: left, done: left === 0 };
   });
   const freeLeft = Math.max(0, s.schedule.freeMinutes * 60 + s.extraSeconds - (s.used.free ?? 0));

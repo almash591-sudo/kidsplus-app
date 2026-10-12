@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { music } from '../../fx';
-import { RHYTHM_AGAIN, RHYTHM_LISTEN, RHYTHM_YOU } from '../../phrases';
+import { RHYTHM_AGAIN, RHYTHM_EASY, RHYTHM_LISTEN, RHYTHM_YOU } from '../../phrases';
 import { praise, say, setTask, type GameProps } from '../common';
 import { burstAt, cheer } from '../juice';
 import { rhythmMatches, rhythmPattern, wait } from './timing';
@@ -10,6 +10,8 @@ import './music.css';
 const UNIT = 0.6;
 /** Ребёнок замолчал так надолго — попытка сбрасывается. */
 const GIVE_UP_MS = 3000;
+/** После стольких ошибок в раунде — проще, чтобы ребёнок не застревал. */
+export const EASY_AFTER = 2;
 
 type Phase = 'listen' | 'play' | 'done';
 
@@ -21,6 +23,9 @@ export function Rhythm({ spec, phrases, onFinish }: GameProps<'rhythm'>) {
   const [lit, setLit] = useState<number | null>(null);
   const [taps, setTaps] = useState<number[]>([]);
   const [again, setAgain] = useState(false);
+  /** Ошибки в этом раунде: после EASY_AFTER засчитываем верное число ударов, без «та» и «ти». */
+  const [misses, setMisses] = useState(0);
+  const easy = misses >= EASY_AFTER;
   const drum = useRef<HTMLButtonElement>(null);
   const alive = useRef(true);
   const giveUp = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -36,7 +41,7 @@ export function Rhythm({ spec, phrases, onFinish }: GameProps<'rhythm'>) {
   const lengths = [...gaps, 1];
 
   /** Барабан играет образец (фаза listen и пустые касания выставляет тот, кто вызывает). */
-  const listen = async (first: boolean) => {
+  const listen = async (first: boolean, simpler = false) => {
     await say(first ? RHYTHM_LISTEN : RHYTHM_AGAIN);
     if (!alive.current) return;
     let t = 0;
@@ -49,7 +54,7 @@ export function Rhythm({ spec, phrases, onFinish }: GameProps<'rhythm'>) {
     if (!alive.current) return;
     setLit(null);
     setPhase('play');
-    void say(RHYTHM_YOU);
+    void say(simpler ? RHYTHM_EASY : RHYTHM_YOU);
   };
 
   useEffect(() => {
@@ -80,7 +85,7 @@ export function Rhythm({ spec, phrases, onFinish }: GameProps<'rhythm'>) {
       return;
     }
     const tapped = next.slice(1).map((t, i) => (t - next[i]!) / 1000);
-    if (!spec.timing || rhythmMatches(gaps, tapped)) {
+    if (!spec.timing || easy || rhythmMatches(gaps, tapped)) {
       setPhase('done');
       burstAt(drum.current, 18);
       void praise(phrases);
@@ -88,6 +93,7 @@ export function Rhythm({ spec, phrases, onFinish }: GameProps<'rhythm'>) {
         if (!alive.current) return;
         if (round + 1 >= spec.rounds) return onFinish();
         setAgain(false);
+        setMisses(0);
         setGaps(rhythmPattern(spec.beats, spec.timing));
         setPhase('listen');
         setTaps([]);
@@ -95,11 +101,13 @@ export function Rhythm({ spec, phrases, onFinish }: GameProps<'rhythm'>) {
       }, 2000);
     } else {
       cheer('oops');
+      const m = misses + 1;
+      setMisses(m);
       setPhase('listen');
       setTimeout(() => {
         if (!alive.current) return;
         setTaps([]);
-        void listen(false);
+        void listen(false, m >= EASY_AFTER);
       }, 700);
     }
   };

@@ -8,6 +8,7 @@ import {
   dayNumber,
   daySubjects,
   DEFAULT_SCHEDULE,
+  LESSONS_PER_DAY,
   localClock,
   planWeek,
   scheduleInput,
@@ -19,7 +20,7 @@ import {
   type Subject,
   type TopicItem,
 } from '@kidsplus/shared/schedule';
-import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, sql } from 'drizzle-orm';
 
 /** Ссылка на материал: фрагмент видео, набор карточек или игра. */
 export interface ItemRef {
@@ -35,9 +36,11 @@ const {
   curriculumTopics,
   dayControls,
   dayUsage,
+  events,
   flashcardDecks,
   interactives,
   videoSegments,
+  videoSources,
 } = schema;
 
 /** Пауза между сигналами телефона, после которой время не засчитывается (приложение было закрыто). */
@@ -67,28 +70,90 @@ export async function activeCurriculum(db: Db, childId: string, date: string) {
   });
 }
 
-/**
- * Разделы, в которых у ребёнка есть материалы: наборы карточек, игры, видео с предметом.
- * «Игры» и «Разное» — только если других разделов нет.
- */
-async function assignedSubjects(db: Db, childId: string): Promise<Subject[]> {
+/** Разделы, в которых у ребёнка есть материалы: наборы карточек, игры, доступные видео. */
+async function assignedPresent(db: Db, childId: string): Promise<Set<string | null>> {
   const rows = await db
     .select({
       deck: flashcardDecks.category,
       game: interactives.category,
       segment: videoSegments.subject,
+      source: videoSources.status,
     })
     .from(childItems)
     .leftJoin(flashcardDecks, eq(flashcardDecks.id, childItems.deckId))
     .leftJoin(interactives, eq(interactives.id, childItems.interactiveId))
     .leftJoin(videoSegments, eq(videoSegments.id, childItems.segmentId))
+    .leftJoin(videoSources, eq(videoSources.id, videoSegments.sourceId))
     .where(eq(childItems.childId, childId));
-  const present = new Set(
-    rows.flatMap((r) => [r.deck, r.game ? gameCategory(r.game) : null, r.segment]),
+  return new Set<string | null>(
+    rows.flatMap((r) => [
+      r.deck,
+      r.game ? gameCategory(r.game) : null,
+      r.source === 'available' ? r.segment : null,
+    ]),
   );
+}
+
+/** Без плана: разделы с материалами; «Игры» и «Разное» — только если других разделов нет. */
+async function assignedSubjects(db: Db, childId: string): Promise<Subject[]> {
+  const present = await assignedPresent(db, childId);
   const all = SUBJECTS.filter((s) => present.has(s));
   const main = all.filter((s) => s !== 'games' && s !== 'other');
   return main.length ? main : all;
+}
+
+/**
+ * Предметы плана, которые сегодня есть чем открыть: тема этой или прошлой недели с материалами
+ * или материалы раздела у ребёнка. Пустой раздел в «Сегодня» ребёнок открыть не может — его не ставим.
+ */
+async function curriculumSubjects(
+  db: Db,
+  childId: string,
+  curriculum: NonNullable<Awaited<ReturnType<typeof activeCurriculum>>>,
+  date: string,
+): Promise<Subject[]> {
+  const week = planWeek(curriculum.startsOn, date);
+  const topics = await db
+    .select({ subject: curriculumTopics.subject, items: curriculumTopics.items })
+    .from(curriculumTopics)
+    .where(
+      and(
+        eq(curriculumTopics.curriculumId, curriculum.id),
+        inArray(curriculumTopics.week, [week, week - 1]),
+      ),
+    );
+  const present = await assignedPresent(db, childId);
+  for (const t of topics) if ((t.items as TopicItem[]).length) present.add(t.subject);
+  return curriculum.subjects.filter(isSubject).filter((s) => present.has(s));
+}
+
+/** Сколько разных уроков-игр ребёнок прошёл сегодня — по предметам с дневной нормой уроков. */
+async function lessonsToday(
+  db: Db,
+  childId: string,
+  clock: { date: string; timezone: string; now: Date },
+): Promise<Partial<Record<Subject, number>>> {
+  const { date, timezone, now } = clock;
+  const subjects = Object.keys(LESSONS_PER_DAY);
+  const rows = await db
+    .select({
+      category: interactives.category,
+      n: sql<number>`count(distinct ${interactives.id})::int`,
+    })
+    .from(events)
+    .innerJoin(interactives, sql`${interactives.id}::text = ${events.payload}->>'interactiveId'`)
+    .where(
+      and(
+        eq(events.childId, childId),
+        eq(events.type, 'interactive_complete'),
+        inArray(interactives.category, subjects),
+        // Только за последние сутки (индекс), и из них — сегодняшние по часам ребёнка.
+        gt(events.createdAt, new Date(now.getTime() - 30 * 3_600_000)),
+        sql`to_char(${events.createdAt} at time zone ${timezone}, 'YYYY-MM-DD') = ${date}`,
+      ),
+    )
+    .groupBy(interactives.category);
+  return Object.fromEntries(rows.map((r) => [r.category, r.n]));
 }
 
 export interface Day {
@@ -108,7 +173,7 @@ export async function loadDay(db: Db, childId: string, now: Date): Promise<Day> 
   const clock = localClock(now, schedule.timezone);
   const curriculum = await activeCurriculum(db, childId, clock.date);
   const pool = curriculum
-    ? curriculum.subjects.filter(isSubject)
+    ? await curriculumSubjects(db, childId, curriculum, clock.date)
     : await assignedSubjects(db, childId);
   const [control] = await db
     .select()
@@ -119,6 +184,11 @@ export async function loadDay(db: Db, childId: string, now: Date): Promise<Day> 
     .from(dayUsage)
     .where(and(eq(dayUsage.childId, childId), eq(dayUsage.date, clock.date)));
   const used = Object.fromEntries(usage.map((u) => [u.activity, u.seconds]));
+  const lessons = await lessonsToday(db, childId, {
+    date: clock.date,
+    timezone: schedule.timezone,
+    now,
+  });
   const extend = control?.openUntil
     ? Math.max(0, Math.floor((control.openUntil.getTime() - now.getTime()) / 1000))
     : 0;
@@ -131,6 +201,7 @@ export async function loadDay(db: Db, childId: string, now: Date): Promise<Day> 
     extendSeconds: extend,
     paused: control?.paused ?? false,
     ended: control?.ended ?? false,
+    lessons,
   });
   return { schedule, clock, today, pool, curriculum, control, used };
 }
