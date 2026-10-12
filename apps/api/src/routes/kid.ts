@@ -106,7 +106,10 @@ export function kidRoutes(app: FastifyInstance, ctx: Ctx) {
         .from(childItems)
         .where(eq(childItems.childId, childId))
         .orderBy(asc(childItems.position));
-      const result = await buildKidItems(db, ctx.config.tts, rows);
+      const result = await buildKidItems(db, ctx.config.tts, rows, {
+        childId,
+        now: ctx.now(),
+      });
 
       return {
         quiz: quizSettings(child, ctx.now()),

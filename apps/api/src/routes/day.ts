@@ -161,7 +161,9 @@ export function dayRoutes(app: FastifyInstance, ctx: Ctx) {
         await lessonRefs(db, childId, subject, day),
         await weakRefs(db, childId, subject, ctx.now()),
       );
-      return { items: await buildKidItems(db, ctx.config.tts, refs) };
+      return {
+        items: await buildKidItems(db, ctx.config.tts, refs, { childId, now: ctx.now() }),
+      };
     },
   );
 
