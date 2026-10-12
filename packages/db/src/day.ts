@@ -38,6 +38,7 @@ const {
   flashcardDecks,
   interactives,
   videoSegments,
+  videoSources,
 } = schema;
 
 /** Пауза между сигналами телефона, после которой время не засчитывается (приложение было закрыто). */
@@ -67,28 +68,61 @@ export async function activeCurriculum(db: Db, childId: string, date: string) {
   });
 }
 
-/**
- * Разделы, в которых у ребёнка есть материалы: наборы карточек, игры, видео с предметом.
- * «Игры» и «Разное» — только если других разделов нет.
- */
-async function assignedSubjects(db: Db, childId: string): Promise<Subject[]> {
+/** Разделы, в которых у ребёнка есть материалы: наборы карточек, игры, доступные видео. */
+async function assignedPresent(db: Db, childId: string): Promise<Set<string | null>> {
   const rows = await db
     .select({
       deck: flashcardDecks.category,
       game: interactives.category,
       segment: videoSegments.subject,
+      source: videoSources.status,
     })
     .from(childItems)
     .leftJoin(flashcardDecks, eq(flashcardDecks.id, childItems.deckId))
     .leftJoin(interactives, eq(interactives.id, childItems.interactiveId))
     .leftJoin(videoSegments, eq(videoSegments.id, childItems.segmentId))
+    .leftJoin(videoSources, eq(videoSources.id, videoSegments.sourceId))
     .where(eq(childItems.childId, childId));
-  const present = new Set(
-    rows.flatMap((r) => [r.deck, r.game ? gameCategory(r.game) : null, r.segment]),
+  return new Set<string | null>(
+    rows.flatMap((r) => [
+      r.deck,
+      r.game ? gameCategory(r.game) : null,
+      r.source === 'available' ? r.segment : null,
+    ]),
   );
+}
+
+/** Без плана: разделы с материалами; «Игры» и «Разное» — только если других разделов нет. */
+async function assignedSubjects(db: Db, childId: string): Promise<Subject[]> {
+  const present = await assignedPresent(db, childId);
   const all = SUBJECTS.filter((s) => present.has(s));
   const main = all.filter((s) => s !== 'games' && s !== 'other');
   return main.length ? main : all;
+}
+
+/**
+ * Предметы плана, которые сегодня есть чем открыть: тема этой или прошлой недели с материалами
+ * или материалы раздела у ребёнка. Пустой раздел в «Сегодня» ребёнок открыть не может — его не ставим.
+ */
+async function curriculumSubjects(
+  db: Db,
+  childId: string,
+  curriculum: NonNullable<Awaited<ReturnType<typeof activeCurriculum>>>,
+  date: string,
+): Promise<Subject[]> {
+  const week = planWeek(curriculum.startsOn, date);
+  const topics = await db
+    .select({ subject: curriculumTopics.subject, items: curriculumTopics.items })
+    .from(curriculumTopics)
+    .where(
+      and(
+        eq(curriculumTopics.curriculumId, curriculum.id),
+        inArray(curriculumTopics.week, [week, week - 1]),
+      ),
+    );
+  const present = await assignedPresent(db, childId);
+  for (const t of topics) if ((t.items as TopicItem[]).length) present.add(t.subject);
+  return curriculum.subjects.filter(isSubject).filter((s) => present.has(s));
 }
 
 export interface Day {
@@ -108,7 +142,7 @@ export async function loadDay(db: Db, childId: string, now: Date): Promise<Day> 
   const clock = localClock(now, schedule.timezone);
   const curriculum = await activeCurriculum(db, childId, clock.date);
   const pool = curriculum
-    ? curriculum.subjects.filter(isSubject)
+    ? await curriculumSubjects(db, childId, curriculum, clock.date)
     : await assignedSubjects(db, childId);
   const [control] = await db
     .select()

@@ -241,6 +241,38 @@ describe('учебный план', () => {
     expect((await ids()).sort()).toEqual([counting, shapes, other].sort());
   });
 
+  it('предмет плана без материалов в «Сегодня» не попадает — пустой раздел не открыть', async () => {
+    await addGame('Счёт', 'math');
+    const tune = await addGame('Песенка', 'music');
+    await enable();
+    const res = await t.app.inject({
+      method: 'POST',
+      url: `/api/parent/children/${child}/curricula`,
+      cookies: parent,
+      payload: {
+        title: 'Осень',
+        startsOn: '2026-10-12',
+        weeks: 4,
+        subjects: ['music', 'other', 'math', 'games'],
+        topics: [
+          {
+            subject: 'music',
+            week: 1,
+            title: 'Песенки',
+            items: [{ kind: 'interactive', refId: tune }],
+          },
+          // Тема без материалов и раздел без материалов у ребёнка.
+          { subject: 'other', week: 1, title: 'Разное', items: [] },
+        ],
+      },
+    });
+    expect(res.statusCode).toBe(201);
+    expect((await get<KidToday>('/api/kid/today')).subjects.map((s) => s.subject)).toEqual([
+      'music',
+      'math',
+    ]);
+  });
+
   it('тема вне плана или по чужому предмету — ошибка', async () => {
     const payload = { title: 'План', startsOn: '2026-10-12', weeks: 4, subjects: ['math'] };
     for (const topic of [
