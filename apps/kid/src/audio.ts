@@ -67,9 +67,11 @@ function interrupt() {
 }
 
 /** 'error' — файл не загрузился (например, нет сети): тогда фразу скажет голос телефона. */
-function playFile(url: string): Promise<'done' | 'error'> {
+function playFile(url: string, original = url): Promise<'done' | 'error'> {
   return new Promise((resolve) => {
     const audio = new Audio(url);
+    // Исходный адрес (из кэша src становится blob:) — для отладки и тестов.
+    audio.dataset.src = original;
     current = audio;
     const done = (result: 'done' | 'error' = 'done') => {
       audio.onended = audio.onerror = null;
@@ -142,7 +144,7 @@ function say(s: Speech): Promise<void> {
   return cachedObjectUrl(url)
     .then(async (local) => {
       try {
-        if ((await playFile(local ?? url)) === 'error' && !local) await speakText(s);
+        if ((await playFile(local ?? url, url)) === 'error' && !local) await speakText(s);
       } finally {
         if (local) URL.revokeObjectURL(local);
       }
