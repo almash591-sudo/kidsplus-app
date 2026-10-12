@@ -6,6 +6,7 @@ import { playSequence, speechLanguages } from './audio';
 import { categoriesOf, itemsOf, needsCategoryPick } from './categories';
 import { useBattery } from './battery';
 import { BabyScreen } from './baby/BabyScreen';
+import { AlbumButton, AlbumScreen } from './screens/AlbumScreen';
 import { BatteryBadge } from './BatteryBadge';
 import { BrightnessButton } from './ui/Brightness';
 import { CameraScreen } from './camera/CameraScreen';
@@ -123,7 +124,7 @@ export function App() {
   const [today, setToday] = useState<KidToday | null>(null);
   const [parentMenu, setParentMenu] = useState(false);
   /** Камера или галерея поверх экрана выбора (этап 9); время занятий не тратит. */
-  const [camera, setCamera] = useState<'camera' | 'gallery' | 'calls' | null>(null);
+  const [camera, setCamera] = useState<'camera' | 'gallery' | 'calls' | 'album' | null>(null);
   const callView = useCallView();
   const inCall = Boolean(
     callView?.call &&
@@ -361,6 +362,7 @@ export function App() {
         <nav className="dock" aria-label="Камера и звонки">
           {cameraAllowed && <CameraButton onOpen={() => setCamera('camera')} />}
           {paired && <CallsButton onOpen={() => setCamera('calls')} />}
+          <AlbumButton onOpen={() => setCamera('album')} />
           <BrightnessButton />
         </nav>
       )}
@@ -378,6 +380,15 @@ export function App() {
       />
     );
   if (parentMenu) return <ParentMenu onClose={() => setParentMenu(false)} />;
+  if (camera === 'album')
+    return (
+      <AlbumScreen
+        onExit={() => {
+          fx.whoosh();
+          setCamera(null);
+        }}
+      />
+    );
   if (camera === 'calls' && paired) {
     return (
       <CallsScreen
