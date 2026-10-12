@@ -105,7 +105,13 @@ export async function buildKidItems(
   const assets = await loadAssets(db, [
     ...questions.map((q) => q.promptAudioId),
     ...options.map((o) => o.imageId),
-    ...cards.flatMap((c) => [c.imageId, c.audioId, c.translationAudioId, c.questionAudioId]),
+    ...cards.flatMap((c) => [
+      c.imageId,
+      c.audioId,
+      c.translationAudioId,
+      c.questionAudioId,
+      c.customAudioId,
+    ]),
     ...[...games.values()].flatMap((g) => gameImageIds(g.spec)),
   ]);
   const ready = (id: string | null) => Boolean(id && assets.get(id)?.status === 'ready');
@@ -160,7 +166,15 @@ export async function buildKidItems(
     )
       .map((c) => ({
         c,
-        word: speech(c.text, deckLang.get(deckId) ?? 'ru', c.audioId),
+        // Слово, записанное голосом родителя, — вместо нейроголоса (и в режиме голоса телефона).
+        word:
+          c.customAudioId && ready(c.customAudioId)
+            ? {
+                text: c.text,
+                lang: (deckLang.get(deckId) ?? 'ru') as Language,
+                audioUrl: mediaUrl(c.customAudioId),
+              }
+            : speech(c.text, deckLang.get(deckId) ?? 'ru', c.audioId),
         translation: c.translation ? speech(c.translation, 'ru', c.translationAudioId) : null,
         question: c.question
           ? speech(c.question, deckLang.get(deckId) ?? 'ru', c.questionAudioId)
@@ -192,6 +206,7 @@ export async function buildKidItems(
         startSec: row.segment.startSec,
         endSec: row.segment.endSec,
         thumbnailUrl: row.source.thumbnailUrl,
+        subject: (row.segment.subject as GameCategory | null) ?? null,
         questions: kidQuestions(row.segment.id),
       });
     } else if (item.interactiveId) {

@@ -83,6 +83,11 @@ export function dayRoutes(app: FastifyInstance, ctx: Ctx) {
     async (request): Promise<HeartbeatResponse> => {
       const beat = parse(heartbeatRequest, request.body);
       const childId = request.device!.childId;
+      // Просмотр из кабинета: правила дня те же, но время ребёнка не тратится.
+      if (request.device!.preview) {
+        const view = await loadDay(db, childId, ctx.now());
+        return { ...view.today, stop: activityLeft(view.today, beat.activity) <= 0 };
+      }
       const day = await recordBeat(db, childId, ctx.now(), beat);
       // Всё на сегодня пройдено — родителю один раз в день.
       if (day.today.closed === 'limit' && !day.control?.doneNotified) {
@@ -113,6 +118,7 @@ export function dayRoutes(app: FastifyInstance, ctx: Ctx) {
     async (request, reply) => {
       const b = parse(batteryReport, request.body);
       const { id, childId } = request.device!;
+      if (request.device!.preview) return reply.code(204).send();
       const now = ctx.now();
       const reset = b.charging || b.level > BATTERY_RESET_LEVEL;
       await db

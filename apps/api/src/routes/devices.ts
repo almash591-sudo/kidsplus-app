@@ -10,6 +10,9 @@ import { and, desc, eq, gt, isNull } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { requireDevice, requireParent, setDeviceCookie } from '../auth';
 import { PAIRING_TTL_MS, type Ctx } from '../context';
+
+/** Просмотр из кабинета длится 2 часа. */
+const PREVIEW_TTL_MS = 2 * 3600_000;
 import { formatPairingCode, pairingCode, randomToken, sha256 } from '../lib/crypto';
 import { HttpError, idFrom, notFound, parse } from '../lib/http';
 
@@ -31,7 +34,11 @@ export function devicesRoutes(app: FastifyInstance, ctx: Ctx) {
   const parentOnly = requireParent(ctx);
 
   app.get('/api/parent/devices', { preHandler: parentOnly }, async (): Promise<Device[]> => {
-    const rows = await db.select().from(devices).orderBy(desc(devices.createdAt));
+    const rows = await db
+      .select()
+      .from(devices)
+      .where(eq(devices.preview, false))
+      .orderBy(desc(devices.createdAt));
     return rows.map(toDevice);
   });
 
@@ -55,6 +62,41 @@ export function devicesRoutes(app: FastifyInstance, ctx: Ctx) {
         deviceName: body.deviceName,
         createdBy: request.parent!.id,
         expiresAt,
+      });
+      const url = new URL('/pair', ctx.config.kidAppUrl);
+      url.searchParams.set('code', code);
+      reply.code(201);
+      return {
+        code: formatPairingCode(code),
+        url: url.toString(),
+        expiresAt: expiresAt.toISOString(),
+      };
+    },
+  );
+
+  /**
+   * Просмотр глазами ребёнка (этап 16а): одноразовая ссылка на детское приложение под этим
+   * ребёнком. Устройство-просмотр не пишет прогресс и не тратит время, не видно в «Устройствах»
+   * и само отзывается через 2 часа.
+   */
+  app.post(
+    '/api/parent/children/:id/preview',
+    { preHandler: parentOnly },
+    async (request, reply): Promise<PairingCreated> => {
+      const [child] = await db
+        .select({ id: children.id })
+        .from(children)
+        .where(eq(children.id, idFrom(request.params)));
+      if (!child) throw notFound('ребёнок не найден');
+      const code = pairingCode();
+      const expiresAt = new Date(ctx.now().getTime() + PAIRING_TTL_MS);
+      await db.insert(devicePairings).values({
+        codeHash: sha256(code),
+        childId: child.id,
+        deviceName: 'Просмотр из кабинета',
+        createdBy: request.parent!.id,
+        expiresAt,
+        preview: true,
       });
       const url = new URL('/pair', ctx.config.kidAppUrl);
       url.searchParams.set('code', code);
@@ -108,6 +150,10 @@ export function devicesRoutes(app: FastifyInstance, ctx: Ctx) {
             name: pairing.deviceName,
             tokenHash: sha256(token),
             lastSeenAt: ctx.now(),
+            preview: pairing.preview,
+            ...(pairing.preview
+              ? { revokedAt: new Date(ctx.now().getTime() + PREVIEW_TTL_MS) }
+              : {}),
           })
           .returning({ id: devices.id });
         await tx

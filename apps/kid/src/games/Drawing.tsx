@@ -2,6 +2,7 @@ import { mediaUrl } from '@kidsplus/shared/api';
 import { useEffect, useRef, useState } from 'react';
 import { paint, type GameProps, type PaintId } from './common';
 import { Palette } from './Palette';
+import { CachedImg } from '../ui/CachedImg';
 
 const BRUSH = { thin: 8, thick: 24 } as const;
 const STICKER_SIZE = 110;
@@ -135,7 +136,7 @@ export function Drawing({ spec, onFinish }: GameProps<'drawing'>) {
               data-testid="sticker"
               onClick={() => setSticker(id)}
             >
-              <img src={mediaUrl(id)} alt="" draggable={false} />
+              <CachedImg src={mediaUrl(id)} alt="" draggable={false} />
             </button>
           ))}
           <button type="button" className="tool" aria-label="Стереть всё" onClick={clear}>

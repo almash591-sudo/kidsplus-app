@@ -115,6 +115,8 @@ export const devices = pgTable(
     createdAt: createdAt(),
     lastSeenAt: timestamp({ withTimezone: true }),
     revokedAt: timestamp({ withTimezone: true }),
+    /** Просмотр из кабинета (этап 16а): родитель смотрит глазами ребёнка — без прогресса, на 2 часа. */
+    preview: boolean().notNull().default(false),
     /** Языки, для которых на телефоне есть голос синтеза речи (ru, en, …); null — ещё не сообщал. */
     speechLangs: text().array(),
     speechCheckedAt: timestamp({ withTimezone: true }),
@@ -142,6 +144,8 @@ export const devicePairings = pgTable('device_pairings', {
   expiresAt: timestamp({ withTimezone: true }).notNull(),
   usedAt: timestamp({ withTimezone: true }),
   deviceId: uuid().references(() => devices.id, { onDelete: 'set null' }),
+  /** Код для просмотра из кабинета, а не для телефона ребёнка. */
+  preview: boolean().notNull().default(false),
 });
 
 // ─── Видео ───────────────────────────────────────────────────────────────────
@@ -367,6 +371,8 @@ export const flashcards = pgTable(
     /** Свой вопрос для проверки («Покажи пример: два плюс один»); без него — «Где <слово>?». */
     question: text(),
     questionAudioId: uuid().references(() => mediaAssets.id, { onDelete: 'set null' }),
+    /** Слово, записанное голосом родителя (этап 15в) — звучит вместо нейроголоса. */
+    customAudioId: uuid().references(() => mediaAssets.id, { onDelete: 'set null' }),
     position: integer().notNull(),
   },
   (t) => [index().on(t.deckId)],
@@ -664,4 +670,17 @@ export const appSettings = pgTable('app_settings', {
   key: text().primaryKey(),
   value: jsonb().notNull(),
   updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Фразы, записанные голосом родителя (этап 15в): похвала, «попробуй ещё», конец урока. */
+export const familyPhrases = pgTable('family_phrases', {
+  id: uuid().primaryKey().defaultRandom(),
+  /** correct | retry | done */
+  kind: text().notNull(),
+  audioId: uuid()
+    .notNull()
+    .references(() => mediaAssets.id, { onDelete: 'cascade' }),
+  /** Что сказано — для списка в кабинете и как подпись, если запись не загрузится. */
+  label: text().notNull(),
+  createdAt: createdAt(),
 });

@@ -104,6 +104,8 @@ export function capturesRoutes(app: FastifyInstance, ctx: Ctx) {
     async (request, reply) => {
       const q = parse(captureUploadQuery, request.query);
       const { id: deviceId, childId } = request.device!;
+      if (request.device!.preview)
+        throw new HttpError(403, 'preview', 'в просмотре из кабинета снимки не сохраняются');
       const body = request.body;
       if (!(body instanceof Buffer) || body.byteLength === 0)
         throw new HttpError(400, 'validation', 'нет файла');

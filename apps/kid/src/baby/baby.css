@@ -1,0 +1,132 @@
+/* ─── Экран малыша (этап 16б) ─── */
+.baby {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+}
+
+.baby-menu {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  padding: max(16px, env(safe-area-inset-top)) 14px max(16px, env(safe-area-inset-bottom));
+  background: var(--bg, #f3f1fb);
+}
+
+.baby-tile {
+  border: 0;
+  border-radius: 32px;
+  color: #fff;
+  font: inherit;
+  font-size: 26px;
+  font-weight: 900;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 8px 0 rgb(0 0 0 / 0.12);
+}
+
+.baby-tile.songs {
+  background: #e8590c;
+}
+.baby-tile.speech {
+  background: #2f9e44;
+}
+.baby-tile.noise {
+  background: #3b3b98;
+}
+.baby-tile.mama {
+  background: #e64980;
+}
+
+.baby-emoji {
+  font-size: min(22vw, 14vh);
+  line-height: 1;
+}
+
+.baby-video {
+  background: #000;
+}
+
+.baby-dark {
+  background: #05050c;
+  color: #c9c9e8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 24px;
+  text-align: center;
+}
+
+.baby-moon,
+.baby-heart {
+  font-size: min(30vw, 20vh);
+  line-height: 1;
+  opacity: 0.55;
+  animation: baby-breathe 6s ease-in-out infinite;
+}
+
+.baby-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.baby-chips button {
+  border: 1px solid rgb(255 255 255 / 0.18);
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 15px;
+}
+
+.baby-chips button.on {
+  background: rgb(255 255 255 / 0.16);
+  color: #fff;
+}
+
+.baby-note {
+  margin: 0;
+  font-size: 15px;
+  opacity: 0.75;
+}
+
+.baby-back {
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top));
+  left: 12px;
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: rgb(255 255 255 / 0.12);
+  color: #c9c9e8;
+  font: inherit;
+  font-size: 14px;
+}
+
+@keyframes baby-breathe {
+  50% {
+    opacity: 0.25;
+    scale: 0.94;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .baby-moon,
+  .baby-heart {
+    animation: none;
+  }
+}
+
+/* Уголок родителя и заряд — поверх экрана малыша. */
+.baby ~ .parent-corner,
+.baby ~ .battery {
+  z-index: 70;
+}

@@ -1,5 +1,5 @@
 import { schema } from '@kidsplus/db';
-import { and, eq, gt, isNull } from 'drizzle-orm';
+import { and, eq, gt, isNull, or } from 'drizzle-orm';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { DEVICE_COOKIE_MAX_AGE_S, SESSION_TTL_MS, type Ctx } from './context';
 import { randomToken, sha256 } from './lib/crypto';
@@ -19,6 +19,8 @@ export interface ParentPrincipal {
 export interface DevicePrincipal {
   id: string;
   childId: string;
+  /** Просмотр из кабинета: ничего не записывается (этап 16а). */
+  preview: boolean;
 }
 
 declare module 'fastify' {
@@ -78,9 +80,20 @@ export function requireDevice(ctx: Ctx) {
     const token = request.cookies[DEVICE_COOKIE];
     if (!token) throw new HttpError(401, 'not_paired', 'устройство не привязано');
     const [row] = await ctx.db
-      .select({ id: devices.id, childId: devices.childId, lastSeenAt: devices.lastSeenAt })
+      .select({
+        id: devices.id,
+        childId: devices.childId,
+        lastSeenAt: devices.lastSeenAt,
+        preview: devices.preview,
+      })
       .from(devices)
-      .where(and(eq(devices.tokenHash, sha256(token)), isNull(devices.revokedAt)));
+      // Просмотр из кабинета отзывается заранее (revokedAt — через 2 часа) и до того работает.
+      .where(
+        and(
+          eq(devices.tokenHash, sha256(token)),
+          or(isNull(devices.revokedAt), gt(devices.revokedAt, ctx.now())),
+        ),
+      );
     if (!row) {
       reply.clearCookie(DEVICE_COOKIE, baseCookie);
       throw new HttpError(401, 'not_paired', 'устройство не привязано');
@@ -90,7 +103,7 @@ export function requireDevice(ctx: Ctx) {
       await ctx.db.update(devices).set({ lastSeenAt: now }).where(eq(devices.id, row.id));
       setDeviceCookie(reply, token); // продлеваем срок cookie
     }
-    request.device = { id: row.id, childId: row.childId };
+    request.device = { id: row.id, childId: row.childId, preview: row.preview };
   };
 }
 

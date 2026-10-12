@@ -32,6 +32,32 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         navigateFallbackDenylist: [/^\/api\//],
+        // Работа без интернета (этап 15г): картинки и озвучка не меняются по id — берём из кэша;
+        // список занятий — из сети, а без неё (4 с) — последний сохранённый.
+        runtimeCaching: [
+          {
+            urlPattern: ({ url, sameOrigin }) =>
+              sameOrigin && url.pathname.startsWith('/api/media/'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'kidsplus-media',
+              expiration: { maxEntries: 4000, maxAgeSeconds: 60 * 24 * 3600 },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
+          {
+            urlPattern: ({ url, sameOrigin, request }) =>
+              sameOrigin &&
+              request.method === 'GET' &&
+              /^\/api\/kid\/(playlist|today|now|speech)/.test(url.pathname),
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'kidsplus-kid-api',
+              networkTimeoutSeconds: 4,
+              cacheableResponse: { statuses: [200] },
+            },
+          },
+        ],
       },
     }),
   ],
