@@ -1416,7 +1416,7 @@ test('нейроголос: фразы приложения звучат фай�
   await page.addInitScript(`
     window.__played = [];
     HTMLMediaElement.prototype.play = function () {
-      window.__played.push(decodeURIComponent(this.src));
+      window.__played.push(decodeURIComponent(this.dataset.src || this.src));
       this.dispatchEvent(new Event('ended'));
       return Promise.resolve();
     };

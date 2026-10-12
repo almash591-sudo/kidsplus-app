@@ -6,6 +6,7 @@ import { createStorage } from '@kidsplus/providers/storage-factory';
 import { apiEnvSchema, parseEnv, ttsVoices } from '@kidsplus/shared/env';
 import { buildApp } from './app';
 import { backfillTts } from './services/tts-backfill';
+import { addPushKindOnce } from './services/push-kinds';
 import { applyVoice, loadVoice } from './services/voice';
 
 const env = parseEnv(apiEnvSchema);
@@ -63,6 +64,11 @@ process.once('SIGTERM', () => void shutdown('SIGTERM'));
 process.once('SIGINT', () => void shutdown('SIGINT'));
 
 await app.listen({ host: env.HOST, port: env.PORT });
+
+// «Телефон не на связи» (этап 15д) — в подписках тех, кто получает «телефон садится».
+void addPushKindOnce(db, 'offline', 'battery').catch((err: unknown) =>
+  app.log.error({ err }, 'push: новый вид уведомлений'),
+);
 
 // Серверная озвучка включена или сменился голос — старое ставится в очередь (в фоне, один раз).
 void backfillTts(db, tts)
