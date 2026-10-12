@@ -18,6 +18,7 @@ import {
 import { useState } from 'react';
 import { AccuracyBars, TimeChart } from '../components/Charts';
 import { useAnalytics, useChildren, useReports } from '../queries';
+import { CountUp } from '../components/Chrome';
 
 const pct = (s: { answers: number; firstTry: number }) => `${Math.round((rate(s) ?? 0) * 100)} %`;
 
@@ -26,7 +27,7 @@ function Stat({ value, label, color }: { value: string; label: string; color: st
   return (
     <Card padding="sm">
       <Text fz={26} fw={800} lh={1.1} c={color}>
-        {value}
+        <CountUp value={value} />
       </Text>
       <Text size="xs" c="dimmed" mt={2}>
         {label}

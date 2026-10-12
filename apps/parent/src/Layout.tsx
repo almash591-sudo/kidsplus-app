@@ -3,6 +3,7 @@ import { useDisclosure, useMediaQuery } from '@mantine/hooks';
 import { Navigate, NavLink as RouterLink, Outlet, useLocation } from 'react-router';
 import { CallLayer } from './calls/CallLayer';
 import { useMe } from './queries';
+import { CompactTitle, FetchBar, PageTransition } from './components/Chrome';
 
 /** Боковое меню (компьютер): главные разделы и всё из «Ещё». */
 const NAV = [
@@ -116,8 +117,12 @@ export function Layout() {
         ))}
       </AppShell.Navbar>
       <AppShell.Main>
-        <Outlet />
+        <PageTransition>
+          <Outlet />
+        </PageTransition>
       </AppShell.Main>
+      <CompactTitle />
+      <FetchBar />
       <TabBar />
       <CallLayer />
     </AppShell>

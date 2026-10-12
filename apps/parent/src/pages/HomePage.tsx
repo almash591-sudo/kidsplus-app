@@ -62,7 +62,11 @@ function Ring({ part, color, label }: { part: number; color: string; label: stri
             stroke={color}
             strokeWidth="6"
             strokeLinecap="round"
-            strokeDasharray={`${c * part} ${c}`}
+            // Дуга «дорисовывается» при появлении (этап 17б).
+            className="ring-arc"
+            strokeDasharray={c}
+            strokeDashoffset={c * (1 - part)}
+            style={{ '--len': c } as React.CSSProperties}
             transform="rotate(-90 27 27)"
           />
         )}

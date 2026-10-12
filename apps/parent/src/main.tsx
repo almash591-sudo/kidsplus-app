@@ -18,6 +18,7 @@ import { router } from './router';
 import { registerServiceWorker } from '@kidsplus/shared/sw-register';
 
 import { theme } from './theme';
+import { installHaptics } from './components/Chrome';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -33,3 +34,5 @@ createRoot(document.getElementById('root')!).render(
 );
 
 registerServiceWorker();
+// Лёгкий виброотклик на касания (этап 17б).
+installHaptics();

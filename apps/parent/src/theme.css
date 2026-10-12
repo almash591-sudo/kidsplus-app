@@ -447,3 +447,138 @@ img.video-thumb.contain {
   background: var(--mantine-primary-color-light);
   color: var(--mantine-primary-color-light-color);
 }
+
+/* ─── Этап 17б: премиальная оболочка ─── */
+
+/* Компактный заголовок при прокрутке — как в iOS: тонкий, по центру, на размытом фоне. */
+.compact-title {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 150;
+  height: calc(env(safe-area-inset-top) + 44px);
+  padding-top: env(safe-area-inset-top);
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--app-bg) 72%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8);
+  backdrop-filter: blur(20px) saturate(1.8);
+  border-bottom: 0.5px solid var(--app-separator);
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+  transition:
+    opacity 0.22s ease,
+    transform 0.22s ease;
+}
+
+.compact-title.on {
+  opacity: 1;
+  transform: none;
+}
+
+.compact-title span {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+@media (min-width: 48em) {
+  .compact-title {
+    display: none;
+  }
+}
+
+/* Полоска загрузки сверху. */
+.fetch-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 200;
+  height: 2px;
+  width: 0;
+  background: linear-gradient(90deg, #5ac8fa, var(--mantine-primary-color-filled), #af52de);
+  border-radius: 0 2px 2px 0;
+  opacity: 0;
+  transition:
+    width 0.6s ease,
+    opacity 0.3s ease;
+}
+
+.fetch-bar.on {
+  width: 85%;
+  opacity: 1;
+  transition:
+    width 8s cubic-bezier(0.1, 0.6, 0.2, 1),
+    opacity 0.2s ease;
+}
+
+/* Страница появляется мягко. */
+.page-in {
+  animation: page-in 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* Отклик на касание: строки и карточки чуть «проседают», кнопки сжимаются. */
+.attention-row,
+.mantine-Card-root[data-with-link],
+.mantine-Button-root,
+.mantine-ActionIcon-root {
+  transition:
+    transform 0.18s cubic-bezier(0.3, 1.4, 0.5, 1),
+    background-color 0.15s ease;
+}
+
+button.attention-row:active,
+a.attention-row:active {
+  background-color: var(--app-separator);
+}
+
+.mantine-Button-root:active:not(:disabled),
+.mantine-ActionIcon-root:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+/* Кольца дорисовываются. */
+.ring-arc {
+  animation: ring-in 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes ring-in {
+  from {
+    stroke-dashoffset: var(--len);
+  }
+}
+
+/* Скелетон — мерцающая заглушка, пока данные грузятся. */
+.skeleton {
+  border-radius: 20px;
+  background: linear-gradient(
+    90deg,
+    var(--app-card) 0%,
+    color-mix(in srgb, var(--app-card) 70%, var(--app-separator)) 50%,
+    var(--app-card) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.2s linear infinite;
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-in,
+  .ring-arc,
+  .skeleton {
+    animation: none;
+  }
+}
