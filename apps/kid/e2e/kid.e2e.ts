@@ -1385,12 +1385,13 @@ test.describe('отклик интерфейса', () => {
     await expect(page.locator('.count-option.right')).toBeVisible();
   });
 
-  test('в конце игры — звезда и конфетти', async ({ page, backend }) => {
+  test('в конце игры — наклейка и конфетти', async ({ page, backend }) => {
     backend.items = [game(1, { kind: 'drawing', stickerIds: [] })];
     await openGame(page);
     await page.getByTestId('game-done').click();
     await expect(page.getByTestId('game-finished')).toBeVisible();
-    await expect(page.locator('.confetti span')).toHaveCount(36);
+    await expect(page.locator('.confetti span')).toHaveCount(56);
+    await expect(page.getByTestId('sticker-award')).toBeVisible();
     await page.waitForTimeout(600);
     await shot(page, 'celebrate');
   });
@@ -2657,5 +2658,36 @@ test.describe('малыш', () => {
       (window as unknown as { __say: (c: string) => void }).__say('louder'),
     );
     await expect(page.getByTestId('baby-video')).toBeVisible();
+  });
+});
+
+test.describe('наклейки', () => {
+  test('за пройденную игру — новая наклейка; она в альбоме, касание называет её', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [game(1, { kind: 'memory', imageIds: [CAT] })];
+    await openGame(page);
+    const cards = page.getByTestId('memory-card');
+    await cards.nth(0).click();
+    await cards.nth(1).click();
+    const award = page.getByTestId('sticker-award');
+    await expect(award).toBeVisible({ timeout: 6000 });
+    const emoji = (await award.getAttribute('data-sticker'))!;
+    await shot(page, 'sticker-award');
+    await expect
+      .poll(async () => (await spoken(page)).map((s) => s.text).join('|'))
+      .toMatch(/Новая наклейка — /);
+
+    await expect(page.getByTestId('album-open')).toBeVisible({ timeout: 8000 });
+    await page.getByTestId('album-open').click();
+    await expect(page.getByTestId('album')).toContainText('1 из 60');
+    const got = page.locator('[data-testid=album-cell][data-got=true]');
+    await expect(got).toHaveCount(1);
+    await expect(got).toContainText(emoji);
+    await shot(page, 'album');
+    await got.click();
+    await page.getByTestId('album-close').click();
+    await expect(page.getByTestId('album')).toHaveCount(0);
   });
 });
