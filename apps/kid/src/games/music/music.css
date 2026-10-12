@@ -432,3 +432,191 @@
     animation: none;
   }
 }
+
+/* ─── Весёлая музыка (этап 18б) ─────────────────────────────────────────────── */
+
+/* Сыграй песенку: светится клавиша, которую нажать */
+.song-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.song-emoji {
+  font-size: min(18vw, 11vh);
+  line-height: 1;
+  animation: song-bob 1.6s ease-in-out infinite;
+}
+
+.song-dots {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  max-width: 92vw;
+}
+
+.song-dots span {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgb(0 0 0 / 0.1);
+  transition:
+    background 0.2s,
+    transform 0.2s;
+}
+
+.song-dots span.on {
+  background: var(--k);
+  transform: scale(1.15);
+}
+
+.piano-key.guide {
+  background: linear-gradient(to bottom, #fffbe6 0 55%, var(--k) 55%);
+  animation: key-glow 0.9s ease-in-out infinite;
+}
+
+@keyframes key-glow {
+  50% {
+    box-shadow:
+      inset 0 0 0 4px #fff,
+      0 0 26px 6px var(--k),
+      0 6px 0 color-mix(in srgb, var(--k) 70%, #000);
+  }
+}
+
+@keyframes song-bob {
+  50% {
+    transform: translateY(-8px) rotate(-6deg);
+  }
+}
+
+/* «Замри!»: зверята танцуют, на «замри» — снежинка и все стоят */
+.freeze-stage {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: min(6vw, 40px);
+  width: 100%;
+}
+
+.dancer {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-size: min(24vw, 18vh);
+  line-height: 1;
+  touch-action: manipulation;
+}
+
+.dancer span {
+  display: inline-block;
+}
+
+.game.freeze[data-phase='dance'] .dancer span {
+  animation: dance 0.46s ease-in-out infinite alternate;
+  animation-delay: calc(var(--i) * -0.15s);
+}
+
+.dancer.jump span {
+  animation: dance-jump 0.35s ease-out !important;
+}
+
+.game.freeze[data-phase='freeze'] .dancer span {
+  filter: saturate(0.4) brightness(1.1);
+}
+
+.freeze-ice {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: min(40vw, 30vh);
+  pointer-events: none;
+  background: radial-gradient(circle, rgb(186 230 253 / 0.55), transparent 70%);
+  animation: ice-in 0.35s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+@keyframes dance {
+  from {
+    transform: rotate(-12deg) translateY(0);
+  }
+  to {
+    transform: rotate(12deg) translateY(-14px);
+  }
+}
+
+@keyframes dance-jump {
+  50% {
+    transform: translateY(-40px) scale(1.15);
+  }
+}
+
+@keyframes ice-in {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+}
+
+/* Звериный оркестр */
+.orchestra-notes {
+  display: flex;
+  gap: 12px;
+  font-size: min(10vw, 6vh);
+  font-weight: 900;
+  color: rgb(0 0 0 / 0.15);
+}
+
+.orchestra-notes .on {
+  color: #9b5de5;
+  animation: music-hit 0.3s ease-out;
+}
+
+.orchestra-stage {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: min(4vw, 24px);
+  width: min(94vw, 720px);
+}
+
+.player {
+  aspect-ratio: 1;
+  border: 0;
+  border-radius: 28px;
+  background: var(--card, #fff);
+  box-shadow: 0 6px 0 rgb(0 0 0 / 0.08);
+  font-size: min(15vw, 11vh);
+  touch-action: manipulation;
+  transition: box-shadow 0.2s;
+}
+
+.player span {
+  display: inline-block;
+}
+
+.player.hit span {
+  animation: music-hit 0.26s ease-out;
+}
+
+.player.solo {
+  animation: player-glow 1s ease-in-out infinite;
+}
+
+@keyframes player-glow {
+  50% {
+    box-shadow:
+      0 0 0 5px #facc15,
+      0 0 30px 8px rgb(250 204 21 / 0.7);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .song-emoji,
+  .piano-key.guide,
+  .game.freeze[data-phase='dance'] .dancer span,
+  .player.solo {
+    animation: none;
+  }
+}

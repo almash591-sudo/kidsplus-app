@@ -7,19 +7,32 @@
 // Владелец решил: уроки включаются детям сразу, родитель может скрыть любой в кабинете.
 import type { GameSpec } from '@kidsplus/shared/games';
 import { LETTER_LESSONS } from '@kidsplus/shared/letters-lessons';
-import { MUSIC_LESSONS, MUSIC_OLD_FROM_AGE } from '@kidsplus/shared/music-lessons';
+import {
+  MUSIC_FUN_LESSONS,
+  MUSIC_LESSONS,
+  MUSIC_OLD_FROM_AGE,
+} from '@kidsplus/shared/music-lessons';
 
 /** Набор уроков для импорта: раздел, уроки по возрасту (young / old) и возраст «старших». */
 export interface LessonCatalog {
   category: string;
   oldFromAge: number;
   lessons: { age: 'young' | 'old'; title: string; spec: GameSpec }[];
+  /** Не в конец дорожки, а равномерно между уже назначенными уроками раздела. */
+  spread?: boolean;
 }
 
 export const MUSIC_CATALOG: LessonCatalog = {
   category: 'music',
   oldFromAge: MUSIC_OLD_FROM_AGE,
   lessons: MUSIC_LESSONS,
+};
+/** Весёлая музыка (этап 18б): песенки, «Замри!», оркестр — вперемешку с упражнениями. */
+export const MUSIC_FUN_CATALOG: LessonCatalog = {
+  category: 'music',
+  oldFromAge: MUSIC_OLD_FROM_AGE,
+  lessons: MUSIC_FUN_LESSONS,
+  spread: true,
 };
 /** Буквы (этап 15ж) — только дошкольникам: младшим уроков нет. */
 export const LETTERS_CATALOG: LessonCatalog = {
@@ -41,6 +54,7 @@ const LESSONS = ${JSON.stringify(lessons)};
 const OLD_FROM = ${catalog.oldFromAge};
 const CATEGORY = ${JSON.stringify(catalog.category)};
 const DRY = ${!commit};
+const SPREAD = ${Boolean(catalog.spread)};
 const done = (async () => {
   const c = new Client({ connectionString: process.env.DATABASE_URL });
   await c.connect();
@@ -69,6 +83,26 @@ const done = (async () => {
         "insert into child_items (child_id, kind, interactive_id, position) values ($1, 'interactive', $2, $3) on conflict do nothing",
         [k.id, ids[l.title], ++pos]);
       added += r.rowCount;
+    }
+    if (SPREAD) {
+      // Новые уроки — равномерно между остальными уроками раздела (порядок дорожки — по position).
+      const mine = new Set(LESSONS.filter((x) => x.age === group).map((x) => ids[x.title]));
+      const rows = (await c.query(
+        "select ci.id, ci.interactive_id, ci.position from child_items ci join interactives i on i.id = ci.interactive_id where ci.child_id = $1 and i.category = $2 order by ci.position",
+        [k.id, CATEGORY])).rows;
+      const rest = rows.filter((r) => !mine.has(r.interactive_id));
+      const fun = rows.filter((r) => mine.has(r.interactive_id));
+      const order = [];
+      let f = 0;
+      rest.forEach((r, i) => {
+        order.push(r);
+        // После каждого (rest/fun)-го упражнения — весёлый урок.
+        while (f < fun.length && (f + 1) * rest.length <= (i + 1) * fun.length) order.push(fun[f++]);
+      });
+      while (f < fun.length) order.push(fun[f++]);
+      const positions = rows.map((r) => r.position).sort((a, b) => a - b);
+      for (let i = 0; i < order.length; i++)
+        await c.query('update child_items set position = $1 where id = $2', [positions[i], order[i].id]);
     }
     console.log('ребёнок', String(k.id).slice(0, 8), 'возраст', age, 'уроки', group, 'назначено', added);
   }

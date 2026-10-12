@@ -123,6 +123,31 @@ describe('расписание дня', () => {
     expect(free.closed).toBe('limit');
   });
 
+  it('музыка: на сегодня хватит трёх пройденных уроков, даже если время осталось', async () => {
+    const tunes = [];
+    for (let i = 0; i < 4; i++) tunes.push(await addGame(`Урок ${i}`, 'music'));
+    await addGame('Счёт', 'math');
+    await enable();
+    const done = (id: string) =>
+      t.app.inject({
+        method: 'POST',
+        url: '/api/kid/events',
+        cookies: device,
+        payload: { type: 'interactive_complete', interactiveId: id, payload: {} },
+      });
+    const music = async () =>
+      (await get<KidToday>('/api/kid/today')).subjects.find((s) => s.subject === 'music');
+    await done(tunes[0]!);
+    await done(tunes[0]!); // тот же урок ещё раз — не новый
+    await done(tunes[1]!);
+    expect(await music()).toMatchObject({ done: false, secondsLeft: 1200 });
+    await done(tunes[2]!);
+    expect(await music()).toMatchObject({ done: true, secondsLeft: 0 });
+    // Назавтра — снова.
+    t.advance(86_400_000);
+    expect(await music()).toMatchObject({ done: false });
+  });
+
   it('без сигналов и на паузе время не идёт', async () => {
     await addGame('Счёт', 'math');
     await enable();

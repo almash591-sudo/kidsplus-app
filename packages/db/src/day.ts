@@ -8,6 +8,7 @@ import {
   dayNumber,
   daySubjects,
   DEFAULT_SCHEDULE,
+  LESSONS_PER_DAY,
   localClock,
   planWeek,
   scheduleInput,
@@ -19,7 +20,7 @@ import {
   type Subject,
   type TopicItem,
 } from '@kidsplus/shared/schedule';
-import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, sql } from 'drizzle-orm';
 
 /** Ссылка на материал: фрагмент видео, набор карточек или игра. */
 export interface ItemRef {
@@ -35,6 +36,7 @@ const {
   curriculumTopics,
   dayControls,
   dayUsage,
+  events,
   flashcardDecks,
   interactives,
   videoSegments,
@@ -125,6 +127,35 @@ async function curriculumSubjects(
   return curriculum.subjects.filter(isSubject).filter((s) => present.has(s));
 }
 
+/** Сколько разных уроков-игр ребёнок прошёл сегодня — по предметам с дневной нормой уроков. */
+async function lessonsToday(
+  db: Db,
+  childId: string,
+  clock: { date: string; timezone: string; now: Date },
+): Promise<Partial<Record<Subject, number>>> {
+  const { date, timezone, now } = clock;
+  const subjects = Object.keys(LESSONS_PER_DAY);
+  const rows = await db
+    .select({
+      category: interactives.category,
+      n: sql<number>`count(distinct ${interactives.id})::int`,
+    })
+    .from(events)
+    .innerJoin(interactives, sql`${interactives.id}::text = ${events.payload}->>'interactiveId'`)
+    .where(
+      and(
+        eq(events.childId, childId),
+        eq(events.type, 'interactive_complete'),
+        inArray(interactives.category, subjects),
+        // Только за последние сутки (индекс), и из них — сегодняшние по часам ребёнка.
+        gt(events.createdAt, new Date(now.getTime() - 30 * 3_600_000)),
+        sql`to_char(${events.createdAt} at time zone ${timezone}, 'YYYY-MM-DD') = ${date}`,
+      ),
+    )
+    .groupBy(interactives.category);
+  return Object.fromEntries(rows.map((r) => [r.category, r.n]));
+}
+
 export interface Day {
   schedule: Schedule;
   clock: LocalClock;
@@ -153,6 +184,11 @@ export async function loadDay(db: Db, childId: string, now: Date): Promise<Day> 
     .from(dayUsage)
     .where(and(eq(dayUsage.childId, childId), eq(dayUsage.date, clock.date)));
   const used = Object.fromEntries(usage.map((u) => [u.activity, u.seconds]));
+  const lessons = await lessonsToday(db, childId, {
+    date: clock.date,
+    timezone: schedule.timezone,
+    now,
+  });
   const extend = control?.openUntil
     ? Math.max(0, Math.floor((control.openUntil.getTime() - now.getTime()) / 1000))
     : 0;
@@ -165,6 +201,7 @@ export async function loadDay(db: Db, childId: string, now: Date): Promise<Day> 
     extendSeconds: extend,
     paused: control?.paused ?? false,
     ended: control?.ended ?? false,
+    lessons,
   });
   return { schedule, clock, today, pool, curriculum, control, used };
 }

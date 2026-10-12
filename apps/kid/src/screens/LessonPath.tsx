@@ -1,7 +1,7 @@
 import type { KidItem } from '@kidsplus/shared/api';
 import { useEffect, useRef, useState } from 'react';
 import { ICON } from '../games/GameTile';
-import { doneIds } from '../progress';
+import { doneIds, STUCK_AFTER, triedCounts } from '../progress';
 import { Icon } from '../ui/icons';
 import '../games/music/music.css';
 
@@ -24,10 +24,11 @@ export function LessonPath({
   onPick: (index: number) => void;
 }) {
   const [done] = useState(doneIds);
-  const next = Math.max(
-    0,
-    items.findIndex((i) => !done.has(i.id)),
-  );
+  const [tried] = useState(triedCounts);
+  const isStuck = (id: string) => !done.has(id) && (tried[id] ?? 0) >= STUCK_AFTER;
+  // Светится первый непройденный урок; трудный, из которого ребёнок уже дважды ушёл, — подождёт.
+  const fresh = items.findIndex((i) => !done.has(i.id) && !isStuck(i.id));
+  const next = Math.max(0, fresh >= 0 ? fresh : items.findIndex((i) => !done.has(i.id)));
   const nextRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     nextRef.current?.scrollIntoView?.({ block: 'center' });

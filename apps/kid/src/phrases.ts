@@ -10,6 +10,7 @@ import type {
   TraceShape,
 } from '@kidsplus/shared/games';
 import { NOTE_NAMES } from '@kidsplus/shared/games';
+import { SONGS } from '@kidsplus/shared/songs';
 import { NUMBERS, paint, PALETTE } from './games/common';
 import { SORTER } from './games/sorterShapes';
 import { PICTURES } from './games/pictures';
@@ -66,6 +67,7 @@ export const MOLES_PROMPT = 'Лови зверят, пока не спрятал
 export const MELODY_LISTEN = 'Послушай колокольчики!';
 export const MELODY_AGAIN = 'Послушай ещё раз.';
 export const MELODY_YOU = 'Теперь ты!';
+export const MELODY_GUIDE = 'Нажимай на колокольчик, который светится!';
 export const SORTER_PROMPT = 'Найди каждой фигуре её домик!';
 export const SORTER_TURN = 'Поверни фигуру — нажми на неё.';
 export const ODD_PROMPT = 'Что здесь лишнее?';
@@ -117,11 +119,30 @@ export const BEATS_PROMPT = 'Сколько раз ударил барабан?'
 export const RHYTHM_LISTEN = 'Послушай барабан!';
 export const RHYTHM_YOU = 'Теперь ты! Стучи по барабану.';
 export const RHYTHM_AGAIN = 'Почти! Послушай ещё раз.';
+export const RHYTHM_EASY = 'Стучи столько раз, сколько огоньков!';
 export const PIANO_FREE = 'Играй на пианино! Каждая клавиша — своя нота.';
 export const PIANO_EAR = 'Какая это нота? Найди её на клавишах.';
 export const STAFF_PROMPT = 'Как зовут эту ноту?';
 export const pianoFind = (name: string) => `Найди ноту ${name}!`;
 export const thisNote = (name: string) => `Это ${name}.`;
+export const songIntro = (title: string) => `Сыграем песенку «${title}»!`;
+export const SONG_TAP = 'Нажимай на клавишу, которая светится.';
+export const SONG_LISTEN = 'Ура! Послушай, что у тебя получилось!';
+export const FREEZE_DANCE = 'Танцуем! Хлопай по зверятам! А когда музыка стихнет — замри!';
+export const FREEZE_GO = 'Отомри! Танцуем!';
+export const FREEZE_STOP = 'Замри!';
+export const FREEZE_MOVED = 'Ой, кто-то пошевелился! Замри!';
+export const ORCHESTRA_INTRO = 'Это звериный оркестр! Нажимай на того, кто светится.';
+export const orchestraNow = (name: string) => `Теперь играет ${name}!`;
+/** Музыканты звериного оркестра — в том же порядке, что и в игре. */
+export const PLAYER_NAMES = [
+  'мишка с барабаном',
+  'зайка с колокольчиком',
+  'лягушка с дудочкой',
+  'слон с трубой',
+  'котик с ксилофоном',
+  'птичка со свистком',
+];
 
 // ─── Буквы ───────────────────────────────────────────────────────────────────
 
@@ -166,6 +187,9 @@ export const GAME_INTRO: Record<GameKind, string> = {
   rhythm: 'Послушай барабан и постучи так же.',
   piano: 'Нажимай на клавиши — это ноты до, ре, ми.',
   staff: STAFF_PROMPT,
+  song: SONG_TAP,
+  freeze: FREEZE_DANCE,
+  orchestra: ORCHESTRA_INTRO,
   letter: 'Найди букву, которую я называю.',
   syllable: 'Найди слог, который я называю.',
   firstLetter: 'С какой буквы начинается слово?',
@@ -210,7 +234,7 @@ function gamePhrases(spec: GameSpec): string[] {
     case 'moles':
       return [spec.prompt ?? MOLES_PROMPT];
     case 'melody':
-      return [MELODY_LISTEN, MELODY_AGAIN, MELODY_YOU];
+      return [MELODY_LISTEN, MELODY_AGAIN, MELODY_YOU, MELODY_GUIDE];
     case 'shapes':
       return [SORTER_PROMPT, SORTER_TURN, ...spec.shapes.map((s) => SORTER[s].name)];
     case 'odd':
@@ -238,7 +262,7 @@ function gamePhrases(spec: GameSpec): string[] {
     case 'beats':
       return [BEATS_PROMPT];
     case 'rhythm':
-      return [RHYTHM_LISTEN, RHYTHM_YOU, RHYTHM_AGAIN];
+      return [RHYTHM_LISTEN, RHYTHM_YOU, RHYTHM_AGAIN, RHYTHM_EASY];
     case 'piano': {
       const names = [...new Set(NOTE_NAMES.slice(0, spec.keys))];
       return spec.mode === 'free'
@@ -249,6 +273,12 @@ function gamePhrases(spec: GameSpec): string[] {
     }
     case 'staff':
       return [STAFF_PROMPT, ...new Set(NOTE_NAMES.slice(0, spec.keys))];
+    case 'song':
+      return [...spec.songs.map((s) => songIntro(SONGS[s].title)), SONG_TAP, SONG_LISTEN];
+    case 'freeze':
+      return [FREEZE_DANCE, FREEZE_GO, FREEZE_STOP, FREEZE_MOVED];
+    case 'orchestra':
+      return [ORCHESTRA_INTRO, ...PLAYER_NAMES.slice(0, spec.players).map(orchestraNow)];
     case 'letter':
       return spec.letters.flatMap((l) => [findLetter(l), isLetter(l)]);
     case 'syllable':

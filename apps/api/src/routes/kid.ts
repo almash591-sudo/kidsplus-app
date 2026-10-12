@@ -177,6 +177,7 @@ export function kidRoutes(app: FastifyInstance, ctx: Ctx) {
           ...(body.deckId ? { deckId: body.deckId } : {}),
           ...(body.interactiveId ? { interactiveId: body.interactiveId } : {}),
         },
+        createdAt: ctx.now(),
       });
 
       const code = Number(body.payload?.code);

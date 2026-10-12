@@ -3,7 +3,7 @@ import type { GameKind, GameSpec } from '@kidsplus/shared/games';
 import { useEffect, useState, type ComponentType } from 'react';
 import { sendEvent } from '../api';
 import { stopAudio } from '../audio';
-import { markDone } from '../progress';
+import { markDone, markTried } from '../progress';
 import { Celebrate } from '../Celebrate';
 import { Balloons } from './Balloons';
 import { Coloring } from './Coloring';
@@ -35,6 +35,9 @@ import { MusicChoice } from './music/Choice';
 import { Piano } from './music/Piano';
 import { Rhythm } from './music/Rhythm';
 import { Staff } from './music/Staff';
+import { Song } from './music/Song';
+import { Freeze } from './music/Freeze';
+import { Orchestra } from './music/Orchestra';
 import './games.css';
 import './games-more.css';
 import { GAME_INTRO } from '../phrases';
@@ -76,6 +79,9 @@ const GAMES: { [K in GameKind]: ComponentType<GameProps<K>> } = {
   rhythm: Rhythm,
   piano: Piano,
   staff: Staff,
+  song: Song,
+  freeze: Freeze,
+  orchestra: Orchestra,
   letter: LetterGame as ComponentType<GameProps<'letter'>>,
   syllable: LetterGame as ComponentType<GameProps<'syllable'>>,
   firstLetter: LetterGame as ComponentType<GameProps<'firstLetter'>>,
@@ -156,7 +162,11 @@ export function GameScreen(props: {
         type="button"
         className="corner-button home"
         aria-label="Домой"
-        onClick={props.onExit}
+        onClick={() => {
+          // Ушёл, не пройдя, — дорожка уроков это запомнит и не будет звать сюда без конца.
+          if (!finished) markTried(id);
+          props.onExit();
+        }}
         data-testid="go-home"
       >
         <Icon name="home" size={34} stroke={2.6} />

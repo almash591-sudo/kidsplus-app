@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { LETTERS_CATALOG, musicImportScript } from './music-import';
+import { LETTERS_CATALOG, MUSIC_FUN_CATALOG, musicImportScript } from './music-import';
 import { createChild, girl, makeApp, setupParent, SETUP_TOKEN, type TestApp } from './test/helpers';
 
 interface Pg {
@@ -91,6 +91,30 @@ describe('импорт уроков музыки', () => {
     expect(await count('select count(*) as n from child_items where child_id = $1', [big])).toBe(
       60,
     );
+  });
+
+  it('весёлая музыка — вперемешку с упражнениями, повтор порядок не меняет', async () => {
+    const parent = await setupParent(t);
+    const year = new Date().getFullYear();
+    const big = await createChild(t, parent, girl({ nickname: 'Солнышко', birthYear: year - 6 }));
+    await run(true);
+    await run(true, MUSIC_FUN_CATALOG);
+    const titles = async () =>
+      (
+        await pg.query(
+          `select i.title from child_items c join interactives i on i.id = c.interactive_id
+           where c.child_id = $1 order by c.position`,
+          [big],
+        )
+      ).rows.map((r) => r.title as string);
+    const list = await titles();
+    expect(list).toHaveLength(80);
+    expect(list[0]).toMatch(/^Музыка 01 · /);
+    // 60 упражнений и 20 весёлых: весёлый — после каждых трёх упражнений.
+    expect(list[3]).toMatch(/^Весёлая музыка 01 · Сыграй песенку/);
+    expect(list.filter((x, i) => i < 40 && x.startsWith('Весёлая'))).toHaveLength(10);
+    await run(true, MUSIC_FUN_CATALOG);
+    expect(await titles()).toEqual(list);
   });
 
   it('«Буквы»: 40 уроков только старшему ребёнку, раздел letters', async () => {

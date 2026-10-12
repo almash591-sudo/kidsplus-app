@@ -19,6 +19,7 @@ import {
   type GameKind,
   type GameSpec,
 } from '@kidsplus/shared/games';
+import { SONG_IDS, SONGS, type SongId } from '@kidsplus/shared/songs';
 import {
   ActionIcon,
   Alert,
@@ -26,6 +27,7 @@ import {
   Checkbox,
   Chip,
   Group,
+  MultiSelect,
   NumberInput,
   Select,
   Stack,
@@ -147,6 +149,9 @@ const DEFAULTS: { [K in GameKind]: Extract<GameSpec, { kind: K }> } = {
   rhythm: { kind: 'rhythm', beats: 3, timing: false, rounds: 4 },
   piano: { kind: 'piano', mode: 'find', keys: 5, rounds: 5 },
   staff: { kind: 'staff', keys: 5, rounds: 5 },
+  song: { kind: 'song', songs: ['zvezdochka'] },
+  freeze: { kind: 'freeze', rounds: 4 },
+  orchestra: { kind: 'orchestra', players: 4, rounds: 4 },
   letter: { kind: 'letter', letters: ['А', 'О', 'У'], choices: 3, rounds: 5 },
   syllable: { kind: 'syllable', syllables: ['МА', 'МО', 'МУ'], choices: 3, rounds: 5 },
   firstLetter: {
@@ -1129,6 +1134,45 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
             onChange={(v) => onChange({ ...spec, keys: num(v, 3) })}
           />
           <MusicRounds value={spec.rounds} onChange={(rounds) => onChange({ ...spec, rounds })} />
+        </Group>
+      );
+    case 'song':
+      return (
+        <MultiSelect
+          label="Песенки (по одной на раунд)"
+          data={SONG_IDS.map((id) => ({ value: id, label: SONGS[id].title }))}
+          value={spec.songs}
+          maxValues={4}
+          onChange={(v) => v.length && onChange({ ...spec, songs: v as [SongId, ...SongId[]] })}
+        />
+      );
+    case 'freeze':
+      return (
+        <NumberInput
+          label="Сколько раз замереть"
+          min={2}
+          max={8}
+          value={spec.rounds}
+          onChange={(v) => onChange({ ...spec, rounds: num(v, 2) })}
+        />
+      );
+    case 'orchestra':
+      return (
+        <Group grow>
+          <NumberInput
+            label="Зверят в оркестре"
+            min={3}
+            max={6}
+            value={spec.players}
+            onChange={(v) => onChange({ ...spec, players: num(v, 3) })}
+          />
+          <NumberInput
+            label="Раундов"
+            min={2}
+            max={8}
+            value={spec.rounds}
+            onChange={(v) => onChange({ ...spec, rounds: num(v, 2) })}
+          />
         </Group>
       );
     case 'letter':
