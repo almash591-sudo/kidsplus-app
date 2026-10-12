@@ -53,6 +53,7 @@ const ART: Record<Art, React.ReactNode> = {
       <circle cx="20" cy="14" r="3.5" fill="var(--c-tint)" />
     </>
   ),
+  letters: <Glyph text="АБВ" size={19} />,
   music: (
     <>
       <path

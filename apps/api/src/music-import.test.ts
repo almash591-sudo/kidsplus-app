@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { musicImportScript } from './music-import';
+import { LETTERS_CATALOG, musicImportScript } from './music-import';
 import { createChild, girl, makeApp, setupParent, SETUP_TOKEN, type TestApp } from './test/helpers';
 
 interface Pg {
@@ -18,7 +18,7 @@ beforeEach(async () => {
 afterEach(() => t.close());
 
 /** Запустить готовый скрипт так же, как `node -` в контейнере, но с PGlite вместо pg. */
-async function run(commit: boolean) {
+async function run(commit: boolean, catalog?: typeof LETTERS_CATALOG) {
   const log: string[] = [];
   class Client {
     connect() {}
@@ -28,7 +28,7 @@ async function run(commit: boolean) {
       return { rows: r.rows, rowCount: r.affectedRows ?? r.rows.length };
     }
   }
-  const script = `${musicImportScript(commit)}\nreturn done;`;
+  const script = `${musicImportScript(commit, catalog)}\nreturn done;`;
   const fn = new Function('require', 'process', 'console', script) as (
     ...a: unknown[]
   ) => Promise<void>;
@@ -90,6 +90,23 @@ describe('импорт уроков музыки', () => {
     );
     expect(await count('select count(*) as n from child_items where child_id = $1', [big])).toBe(
       60,
+    );
+  });
+
+  it('«Буквы»: 40 уроков только старшему ребёнку, раздел letters', async () => {
+    const parent = await setupParent(t);
+    const year = new Date().getFullYear();
+    const small = await createChild(t, parent, girl({ nickname: 'Зайка', birthYear: year - 2 }));
+    const big = await createChild(t, parent, girl({ nickname: 'Солнышко', birthYear: year - 6 }));
+    await run(true, LETTERS_CATALOG);
+    expect(await count("select count(*) as n from interactives where category = 'letters'")).toBe(
+      40,
+    );
+    expect(await count('select count(*) as n from child_items where child_id = $1', [big])).toBe(
+      40,
+    );
+    expect(await count('select count(*) as n from child_items where child_id = $1', [small])).toBe(
+      0,
     );
   });
 });

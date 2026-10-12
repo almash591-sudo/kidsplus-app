@@ -16,6 +16,7 @@
     "./backup": "./src/backup.ts",
     "./voice": "./src/voice.ts",
     "./music-lessons": "./src/music-lessons.ts",
+    "./letters-lessons": "./src/letters-lessons.ts",
     "./schedule": "./src/schedule.ts",
     "./analytics": "./src/analytics.ts",
     "./push": "./src/push.ts",

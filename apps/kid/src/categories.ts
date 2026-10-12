@@ -8,6 +8,7 @@ export const CATEGORY_ORDER: readonly KidCategory[] = [
   'chinese',
   'geography',
   'nature',
+  'letters',
   'music',
   'games',
   'other',
