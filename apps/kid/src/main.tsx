@@ -4,6 +4,7 @@ import { registerServiceWorker } from '@kidsplus/shared/sw-register';
 import { App } from './App';
 import { ErrorBoundary } from './ErrorBoundary';
 import { installTapFeedback } from './fx';
+import { startOutbox } from './offline';
 import { dropServiceWorker, inAndroidWebView } from './kiosk';
 import './styles.css';
 import './motion.css';
@@ -14,6 +15,8 @@ import '@fontsource/nunito/900.css';
 import './theme.css';
 
 installTapFeedback();
+// События прогресса, накопленные без сети, — на сервер, когда связь появится.
+startOutbox();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

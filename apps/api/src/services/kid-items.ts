@@ -13,6 +13,7 @@ import {
 import { gameImageIds, gameSpec, type GameSpec } from '@kidsplus/shared/games';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { loadAssets, type TtsSettings } from './media';
+import { cardStates, orderCards, type CardState } from './srs';
 
 const {
   flashcardDecks,
@@ -51,6 +52,8 @@ export async function buildKidItems(
   db: Db,
   tts: TtsSettings,
   items: readonly ItemRef[],
+  /** Интервальное повторение: чьи ответы учитывать при порядке карточек. */
+  srs?: { childId: string; now: Date },
 ): Promise<KidItem[]> {
   const segmentIds = items.flatMap((i) => (i.segmentId ? [i.segmentId] : []));
   const deckIds = items.flatMap((i) => (i.deckId ? [i.deckId] : []));
@@ -102,7 +105,13 @@ export async function buildKidItems(
   const assets = await loadAssets(db, [
     ...questions.map((q) => q.promptAudioId),
     ...options.map((o) => o.imageId),
-    ...cards.flatMap((c) => [c.imageId, c.audioId, c.translationAudioId, c.questionAudioId]),
+    ...cards.flatMap((c) => [
+      c.imageId,
+      c.audioId,
+      c.translationAudioId,
+      c.questionAudioId,
+      c.customAudioId,
+    ]),
     ...[...games.values()].flatMap((g) => gameImageIds(g.spec)),
   ]);
   const ready = (id: string | null) => Boolean(id && assets.get(id)?.status === 'ready');
@@ -148,12 +157,24 @@ export async function buildKidItems(
     }
   }
 
+  const states = srs ? await cardStates(db, srs.childId) : new Map<string, CardState>();
   const kidCards = (deckId: string): KidCard[] =>
-    cards
-      .filter((c) => c.deckId === deckId && ready(c.imageId))
+    orderCards(
+      cards.filter((c) => c.deckId === deckId && ready(c.imageId)),
+      states,
+      srs?.now ?? new Date(),
+    )
       .map((c) => ({
         c,
-        word: speech(c.text, deckLang.get(deckId) ?? 'ru', c.audioId),
+        // Слово, записанное голосом родителя, — вместо нейроголоса (и в режиме голоса телефона).
+        word:
+          c.customAudioId && ready(c.customAudioId)
+            ? {
+                text: c.text,
+                lang: (deckLang.get(deckId) ?? 'ru') as Language,
+                audioUrl: mediaUrl(c.customAudioId),
+              }
+            : speech(c.text, deckLang.get(deckId) ?? 'ru', c.audioId),
         translation: c.translation ? speech(c.translation, 'ru', c.translationAudioId) : null,
         question: c.question
           ? speech(c.question, deckLang.get(deckId) ?? 'ru', c.questionAudioId)
@@ -185,6 +206,7 @@ export async function buildKidItems(
         startSec: row.segment.startSec,
         endSec: row.segment.endSec,
         thumbnailUrl: row.source.thumbnailUrl,
+        subject: (row.segment.subject as GameCategory | null) ?? null,
         questions: kidQuestions(row.segment.id),
       });
     } else if (item.interactiveId) {

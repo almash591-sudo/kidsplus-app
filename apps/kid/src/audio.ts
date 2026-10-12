@@ -4,6 +4,7 @@
 import type { Language, Speech } from '@kidsplus/shared/api';
 import { cachedSpeechUrl, wantSpeech } from './speechCache';
 import { withoutStress } from '@kidsplus/shared/voice';
+import { cachedObjectUrl } from './offline';
 
 const SPEECH_LANG: Record<Language, string> = { ru: 'ru-RU', en: 'en-US', zh: 'zh-CN' };
 /** Медленнее обычного — для малышей. */
@@ -65,21 +66,24 @@ function interrupt() {
   finishCurrent?.();
 }
 
-function playFile(url: string): Promise<void> {
+/** 'error' — файл не загрузился (например, нет сети): тогда фразу скажет голос телефона. */
+function playFile(url: string, original = url): Promise<'done' | 'error'> {
   return new Promise((resolve) => {
     const audio = new Audio(url);
+    // Исходный адрес (из кэша src становится blob:) — для отладки и тестов.
+    audio.dataset.src = original;
     current = audio;
-    const done = () => {
+    const done = (result: 'done' | 'error' = 'done') => {
       audio.onended = audio.onerror = null;
       if (current === audio) current = null;
       finishCurrent = null;
-      resolve();
+      resolve(result);
     };
-    finishCurrent = done;
-    audio.onended = done;
-    audio.onerror = done;
-    // Ошибку (нет файла, запрет автовоспроизведения) считаем окончанием — экран не должен зависнуть.
-    audio.play().catch(done);
+    finishCurrent = () => done();
+    audio.onended = () => done();
+    audio.onerror = () => done('error');
+    // Запрет автовоспроизведения считаем окончанием — экран не должен зависнуть.
+    audio.play().catch(() => done());
   });
 }
 
@@ -132,8 +136,20 @@ function say(s: Speech): Promise<void> {
   // Нет готового файла — ищем нейроголос фразы приложения; нет и его — говорит телефон,
   // а сервер озвучит фразу к следующему разу.
   const url = s.audioUrl ?? cachedSpeechUrl(s);
-  if (!url) wantSpeech([s]);
-  return (url ? playFile(url) : speakText(s)).catch(() => {});
+  if (!url) {
+    wantSpeech([s]);
+    return speakText(s).catch(() => {});
+  }
+  // Файл из кэша занятий — звучит и без сети (этап 15г); не скачался — говорит телефон.
+  return cachedObjectUrl(url)
+    .then(async (local) => {
+      try {
+        if ((await playFile(local ?? url, url)) === 'error' && !local) await speakText(s);
+      } finally {
+        if (local) URL.revokeObjectURL(local);
+      }
+    })
+    .catch(() => {});
 }
 
 /** Произносит фразу и ждёт окончания (или остановки). */

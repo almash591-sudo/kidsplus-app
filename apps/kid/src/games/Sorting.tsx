@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ask, nice, praise, retry, say, shuffled, type GameProps } from './common';
 import { DragItem, Pic } from './DragItem';
 import { inside } from './useDrag';
+import { CachedImg } from '../ui/CachedImg';
 
 /** Разложи по местам: перетащить каждый предмет в свою корзину. Не туда — предмет вернётся. */
 export function Sorting({ spec, phrases, onFinish }: GameProps<'sorting'>) {
@@ -53,12 +54,12 @@ export function Sorting({ spec, phrases, onFinish }: GameProps<'sorting'>) {
             data-hint-target={hint?.bin === i ? '' : undefined}
             onClick={() => void say(b.name)}
           >
-            <img className="bin-icon" src={mediaUrl(b.imageId)} alt="" draggable={false} />
+            <CachedImg className="bin-icon" src={mediaUrl(b.imageId)} alt="" draggable={false} />
             <div className="bin-content">
               {items
                 .filter((it) => placed[it.key] === i)
                 .map((it) => (
-                  <img key={it.key} src={mediaUrl(it.imageId)} alt="" draggable={false} />
+                  <CachedImg key={it.key} src={mediaUrl(it.imageId)} alt="" draggable={false} />
                 ))}
             </div>
           </div>

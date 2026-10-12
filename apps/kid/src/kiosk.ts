@@ -19,6 +19,14 @@ interface KioskPlugin {
     event: 'battery',
     cb: (b: { level: number; charging: boolean }) => void,
   ): Promise<ListenerHandle> | ListenerHandle;
+  addListener?(
+    event: 'voice',
+    cb: (e: { command: string }) => void,
+  ): Promise<ListenerHandle> | ListenerHandle;
+  /** Голосовое управление экраном малыша (этап 16в); available — модель есть в APK. */
+  setVoiceControl?(options: { on: boolean }): Promise<{ available: boolean }>;
+  /** Экран не гаснет (видео у малыша). */
+  setKeepAwake?(options: { on: boolean }): Promise<void>;
 }
 
 type ListenerHandle = { remove(): Promise<void> | void };
@@ -103,4 +111,30 @@ export async function dropServiceWorker() {
   const regs = await navigator.serviceWorker.getRegistrations();
   await Promise.all(regs.map((r) => r.unregister()));
   if (navigator.serviceWorker.controller && regs.length) window.location.reload();
+}
+
+/** Экран не гаснет, пока малыш смотрит видео (этап 16б). */
+export function setKeepAwake(on: boolean) {
+  void call(() => plugin()?.setKeepAwake?.({ on }));
+}
+
+/**
+ * Голосовое управление экраном малыша (этап 16в): киоск слушает «Малыш, …» офлайн и присылает
+ * команду. Возвращает «выключить». Вне киоска (или в старом киоске) — ничего не делает.
+ */
+export function voiceControl(onCommand: (command: string) => void): () => void {
+  const kiosk = plugin();
+  if (!kiosk?.setVoiceControl || !kiosk.addListener) return () => {};
+  let handle: ListenerHandle | undefined;
+  let stopped = false;
+  void call(() => kiosk.addListener!('voice', (e) => onCommand(e.command))).then((h) => {
+    if (stopped) void call(() => h?.remove());
+    else handle = h;
+  });
+  void call(() => kiosk.setVoiceControl!({ on: true }));
+  return () => {
+    stopped = true;
+    void call(() => kiosk.setVoiceControl!({ on: false }));
+    void call(() => handle?.remove());
+  };
 }

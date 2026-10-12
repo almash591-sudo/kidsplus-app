@@ -31,6 +31,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { api } from '../api';
 import { AudioStatus } from '../components/AudioStatus';
+import { VoiceRecorder } from '../components/VoiceRecorder';
 import { ImageSlot } from '../components/ImagePicker';
 import { LANGUAGE_LABELS } from '../lib/child';
 import { modals } from '../lib/modals';
@@ -278,6 +279,12 @@ function CardRow({ deck, card }: { deck: Deck; card: CardT }) {
     mutationFn: () => api.delete<Deck>(`/parent/cards/${card.id}`),
     onSuccess: refreshDecks,
   });
+  // Слово своим голосом (этап 15в): запись звучит вместо нейроголоса.
+  const voice = useMutation({
+    mutationFn: (audioId: string | null) =>
+      api.put<Deck>(`/parent/cards/${card.id}/voice`, { audioId }),
+    onSuccess: refreshDecks,
+  });
   if (editing) return <CardForm deck={deck} card={card} onDone={() => setEditing(false)} />;
   return (
     <Card withBorder padding="sm">
@@ -287,6 +294,34 @@ function CardRow({ deck, card }: { deck: Deck; card: CardT }) {
           <Group gap="xs">
             <Text fw={600}>{card.text}</Text>
             <AudioStatus audio={card.audio} text={card.text} lang={deck.lang} />
+          </Group>
+          <Group gap={6}>
+            {card.voice ? (
+              <>
+                <Button
+                  size="compact-xs"
+                  variant="light"
+                  radius="xl"
+                  onClick={() => void new Audio(card.voice!.url).play().catch(() => {})}
+                >
+                  ▶ Мой голос
+                </Button>
+                <Button
+                  size="compact-xs"
+                  variant="subtle"
+                  color="gray"
+                  onClick={() => voice.mutate(null)}
+                >
+                  Вернуть нейроголос
+                </Button>
+              </>
+            ) : (
+              <VoiceRecorder
+                size="xs"
+                label="🎙 Своим голосом"
+                onRecorded={(a) => voice.mutate(a.id)}
+              />
+            )}
           </Group>
           {card.translation && (
             <Group gap="xs">

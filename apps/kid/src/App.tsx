@@ -5,6 +5,7 @@ import { kidApi, NotPairedError } from './api';
 import { playSequence, speechLanguages } from './audio';
 import { categoriesOf, itemsOf, needsCategoryPick } from './categories';
 import { useBattery } from './battery';
+import { BabyScreen } from './baby/BabyScreen';
 import { BatteryBadge } from './BatteryBadge';
 import { BrightnessButton } from './ui/Brightness';
 import { CameraScreen } from './camera/CameraScreen';
@@ -16,6 +17,7 @@ import { onMonitorEvent, useMonitor } from './monitor/state';
 import { CameraButton, GalleryScreen } from './camera/GalleryScreen';
 import { fx } from './fx';
 import { appPhrases, CATEGORY_DONE, LESSON_DONE } from './phrases';
+import { playlistMedia, warmMedia } from './offline';
 import { setServerVoice, wantSpeech } from './speechCache';
 import { ru } from './games/common';
 import { KidPlayer, type ExitReason } from './player/KidPlayer';
@@ -175,7 +177,12 @@ export function App() {
       reportVoicesOnce();
       // Нейроголос: фразы приложения озвучиваются на сервере заранее.
       setServerVoice(playlist.serverVoice);
+      // Просмотр из кабинета — метка «Просмотр» на всех экранах (этап 16а).
+      if (playlist.preview) document.documentElement.dataset.preview = '';
+      else delete document.documentElement.dataset.preview;
       wantSpeech(appPhrases(playlist));
+      // Без сети занятия продолжаются: картинки и озвучка — заранее в кэш (этап 15г).
+      warmMedia(playlistMedia(playlist));
       setToday(day);
       // Во время занятия список не подменяем — обновится, когда ребёнок вернётся.
       setState((s) => {
@@ -432,6 +439,16 @@ export function App() {
     case 'unpaired':
       return <PairScreen initialCode={state.initialCode} onPaired={() => void load()} />;
     case 'today':
+      // Малыш (до 1,5 лет): свой экран вместо занятий (этап 16б).
+      if (state.playlist.baby)
+        return (
+          <>
+            <BabyScreen playlist={state.playlist} />
+            <BatteryBadge battery={battery} />
+            {/* Уголок родителя: PIN → Wi-Fi и настройки (в машине — раздача с телефона мамы). */}
+            <ParentCorner onUnlock={() => setParentMenu(true)} />
+          </>
+        );
       return (
         <>
           <TodayScreen
@@ -444,6 +461,14 @@ export function App() {
       );
     case 'home': {
       const { playlist, category } = state;
+      if (playlist.baby)
+        return (
+          <>
+            <BabyScreen playlist={playlist} />
+            <BatteryBadge battery={battery} />
+            <ParentCorner onUnlock={() => setParentMenu(true)} />
+          </>
+        );
       // В режиме плана — назад к «Сегодня».
       const toToday = isPlan
         ? () => {

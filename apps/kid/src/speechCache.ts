@@ -2,9 +2,27 @@
 // Пока файла нет — фразу говорит голос телефона, а сервер её озвучивает к следующему разу.
 import { API_PREFIX } from '@kidsplus/shared';
 import type { Speech } from '@kidsplus/shared/api';
+import { warmMedia } from './offline';
 import type { Phrase } from './phrases';
 
-const urls = new Map<string, string>();
+/** Ссылки на озвученные фразы — переживают перезапуск: без сети файлы берутся из кэша (этап 15г). */
+const STORE = 'kidsplus.speech';
+const urls = new Map<string, string>(loadUrls());
+
+function loadUrls(): [string, string][] {
+  try {
+    return JSON.parse(localStorage.getItem(STORE) ?? '[]') as [string, string][];
+  } catch {
+    return [];
+  }
+}
+function saveUrls() {
+  try {
+    localStorage.setItem(STORE, JSON.stringify([...urls].slice(-3000)));
+  } catch {
+    // хранилище недоступно — просто без памяти между запусками
+  }
+}
 const queued = new Map<string, Phrase>();
 let enabled = false;
 let timer: ReturnType<typeof setTimeout> | null = null;
@@ -56,7 +74,10 @@ async function flush() {
       if (!s.audioUrl) continue;
       urls.set(key(s), s.audioUrl);
       queued.delete(key(s));
+      // Файл — в кэш заранее, чтобы звучал и без сети.
+      warmMedia([s.audioUrl]);
     }
+    saveUrls();
   } catch {
     // нет сети — фразы скажет голос телефона
     return;
@@ -68,6 +89,11 @@ async function flush() {
 /** Для тестов. */
 export function resetSpeechCache() {
   urls.clear();
+  try {
+    localStorage.removeItem(STORE);
+  } catch {
+    // нет хранилища
+  }
   queued.clear();
   rechecks = 0;
   if (timer) clearTimeout(timer);
