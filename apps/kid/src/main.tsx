@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { registerServiceWorker } from '@kidsplus/shared/sw-register';
 import { App } from './App';
+import { Sky } from './ui/Sky';
 import { ErrorBoundary } from './ErrorBoundary';
 import { installTapFeedback } from './fx';
 import { startOutbox } from './offline';
@@ -13,6 +14,7 @@ import '@fontsource/nunito/700.css';
 import '@fontsource/nunito/800.css';
 import '@fontsource/nunito/900.css';
 import './theme.css';
+import './wow.css';
 
 installTapFeedback();
 // События прогресса, накопленные без сети, — на сервер, когда связь появится.
@@ -21,6 +23,7 @@ startOutbox();
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
+      <Sky />
       <App />
     </ErrorBoundary>
   </StrictMode>,

@@ -1,0 +1,330 @@
+/* ─── Этап 17: красиво и запоминающе ─── */
+
+/* Живой фон: мягкие цветные облака медленно плывут, иногда мерцают звёздочки. */
+.sky {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--bg);
+}
+
+.sky i {
+  position: absolute;
+  width: 60vmax;
+  height: 60vmax;
+  border-radius: 50%;
+  /* Мягкий край — градиентом, а не filter: blur (дорого для телефона). */
+  -webkit-mask-image: radial-gradient(circle, #000 0%, transparent 70%);
+  mask-image: radial-gradient(circle, #000 0%, transparent 70%);
+  opacity: 0.6;
+  animation: sky-drift 26s ease-in-out infinite alternate;
+}
+
+.sky i:nth-child(1) {
+  left: -20vmax;
+  top: -20vmax;
+  background: #ffd6a5;
+}
+.sky i:nth-child(2) {
+  right: -25vmax;
+  top: 10vmax;
+  background: #cde8ff;
+  animation-duration: 32s;
+  animation-delay: -8s;
+}
+.sky i:nth-child(3) {
+  left: 10vmax;
+  bottom: -30vmax;
+  background: #d8f5df;
+  animation-duration: 29s;
+  animation-delay: -14s;
+}
+.sky i:nth-child(4) {
+  right: 0;
+  bottom: -10vmax;
+  width: 40vmax;
+  height: 40vmax;
+  background: #f9d1ec;
+  animation-duration: 36s;
+  animation-delay: -3s;
+}
+
+.sky b {
+  position: absolute;
+  font-size: 18px;
+  opacity: 0;
+  animation: sky-twinkle 7s ease-in-out infinite;
+}
+
+@keyframes sky-drift {
+  to {
+    transform: translate(12vmax, 8vmax) scale(1.15);
+  }
+}
+
+@keyframes sky-twinkle {
+  0%,
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(0.5) rotate(0deg);
+  }
+  80% {
+    opacity: 0.8;
+    transform: scale(1) rotate(30deg);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .sky i {
+    opacity: 0.22;
+  }
+}
+
+/* Экраны появляются мягко: чуть снизу и из прозрачности. */
+.screen,
+.game-screen,
+.album {
+  animation: screen-in 0.42s var(--ease, cubic-bezier(0.2, 0.8, 0.2, 1)) both;
+}
+
+@keyframes screen-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+}
+
+/* Значки разделов дышат, а тот, на который зовёт подсказка, — подпрыгивает.
+   Анимация — у значка внутри, сама кнопка стоит на месте (касания попадают точно). */
+.tile.category .tile-badge {
+  animation: badge-bob 4.5s ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * -0.7s);
+}
+
+.tile[data-hint] .tile-badge {
+  animation: badge-invite 2.4s ease-in-out infinite;
+}
+
+@keyframes badge-bob {
+  50% {
+    transform: translateY(-4px) rotate(-2deg);
+  }
+}
+
+@keyframes badge-invite {
+  0%,
+  60%,
+  100% {
+    transform: none;
+  }
+  70% {
+    transform: translateY(-10px) rotate(-6deg) scale(1.08);
+  }
+  80% {
+    transform: translateY(0) rotate(4deg);
+  }
+  90% {
+    transform: translateY(-4px) rotate(-2deg);
+  }
+}
+
+/* Конфетти: ещё и ленточки. */
+.confetti span.strip {
+  width: 6px;
+  height: 22px;
+  border-radius: 3px;
+}
+
+/* Наклейка-награда: влетает с поворотом и покачивается, как на пружинке. */
+.celebrate-sticker {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(56vw, 46vh);
+  aspect-ratio: 1;
+  border-radius: 36%;
+  background: #fff;
+  box-shadow:
+    0 0 0 10px rgb(255 255 255 / 0.65),
+    0 24px 60px rgb(245 158 11 / 0.45);
+  animation:
+    sticker-in 0.8s cubic-bezier(0.2, 1.5, 0.4, 1) 0.25s both,
+    sticker-sway 2.2s ease-in-out 1.1s infinite;
+}
+
+.celebrate-emoji {
+  font-size: min(34vw, 28vh);
+  line-height: 1;
+}
+
+.celebrate-new {
+  position: absolute;
+  top: -6%;
+  right: -8%;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: #e8453c;
+  color: #fff;
+  font-size: min(6vw, 4vh);
+  font-weight: 900;
+  transform: rotate(12deg);
+  box-shadow: 0 6px 14px rgb(232 69 60 / 0.4);
+  animation: new-pop 0.5s cubic-bezier(0.2, 1.8, 0.4, 1) 0.9s both;
+}
+
+@keyframes sticker-in {
+  from {
+    opacity: 0;
+    transform: translateY(40vh) rotate(-35deg) scale(0.3);
+  }
+}
+
+@keyframes sticker-sway {
+  50% {
+    transform: rotate(4deg) scale(1.03);
+  }
+}
+
+@keyframes new-pop {
+  from {
+    opacity: 0;
+    transform: rotate(12deg) scale(0);
+  }
+}
+
+/* Кнопка альбома в доке. */
+.dock .album-open {
+  width: 66px;
+  height: 66px;
+  border: 0;
+  border-radius: 24px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(145deg, #ffcf3f, #ff9f1c);
+  font-size: 34px;
+  transition: transform 0.32s var(--spring, cubic-bezier(0.3, 1.6, 0.5, 1));
+}
+
+.dock .album-open:active {
+  transform: scale(0.9);
+}
+
+/* Альбом. */
+.album {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  padding: calc(max(16px, env(safe-area-inset-top)) + 84px) 16px 32px;
+  background: linear-gradient(180deg, #fff7e0 0%, #ffe3f0 100%);
+}
+
+.album-head {
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+.album-head h1 {
+  margin: 0 0 10px;
+  font-size: 30px;
+  font-weight: 900;
+}
+
+.album-head p {
+  margin: 6px 0 0;
+  font-size: 18px;
+  opacity: 0.7;
+}
+
+.album-progress {
+  height: 14px;
+  max-width: 420px;
+  margin: 0 auto;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.08);
+  overflow: hidden;
+}
+
+.album-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ffb703, #fb5607, #ff006e);
+  transition: width 1s var(--ease, ease);
+}
+
+.album-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+  gap: 12px;
+}
+
+.album-cell {
+  position: relative;
+  aspect-ratio: 1;
+  border: 0;
+  border-radius: 28%;
+  font: inherit;
+  display: grid;
+  place-items: center;
+  animation: cell-in 0.4s calc(var(--i) * 30ms) both;
+}
+
+.album-cell.got {
+  background: #fff;
+  box-shadow: 0 6px 0 rgb(0 0 0 / 0.07);
+}
+
+.album-cell.empty {
+  background: rgb(0 0 0 / 0.06);
+  color: rgb(0 0 0 / 0.22);
+  font-size: 26px;
+  font-weight: 900;
+}
+
+.album-emoji {
+  font-size: 42px;
+  line-height: 1;
+}
+
+.album-cell.popped .album-emoji {
+  animation: cell-pop 0.6s cubic-bezier(0.2, 1.8, 0.4, 1);
+}
+
+.album-count {
+  position: absolute;
+  right: 6px;
+  bottom: 4px;
+  font-size: 13px;
+  font-weight: 900;
+  color: #fb5607;
+}
+
+@keyframes cell-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+@keyframes cell-pop {
+  40% {
+    transform: scale(1.5) rotate(-12deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sky i,
+  .sky b,
+  .screen,
+  .game-screen,
+  .album,
+  .tile.category .tile-badge,
+  .tile[data-hint] .tile-badge,
+  .celebrate-sticker,
+  .album-cell {
+    animation: none;
+  }
+}
