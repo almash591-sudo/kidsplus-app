@@ -298,6 +298,69 @@ describe('учебный план', () => {
     ]);
   });
 
+  it('«Заполнить материалами»: видео, карточки и игры раздела расходятся по неделям', async () => {
+    const [source] = await t.db
+      .insert(schema.videoSources)
+      .values({ provider: 'youtube', externalId: 'aaaaaaaaaaa', title: 'Hello song' })
+      .returning();
+    const segments = await t.db
+      .insert(schema.videoSegments)
+      .values(
+        ['Привет!', 'Как тебя зовут', 'Цвета'].map((title, i) => ({
+          sourceId: source!.id,
+          title,
+          startSec: i * 100,
+          endSec: i * 100 + 90,
+          subject: 'english',
+        })),
+      )
+      .returning();
+    for (const sg of segments)
+      await t.db
+        .insert(schema.childItems)
+        .values({ childId: child, kind: 'segment', segmentId: sg.id, position: position++ });
+    const game = await addGame('Цвета: раскрась', 'english');
+    await addGame('Счёт', 'math');
+
+    const plan = {
+      title: 'Осень',
+      startsOn: '2026-10-12',
+      weeks: 2,
+      subjects: ['english', 'math'],
+      topics: [
+        { subject: 'english', week: 1, title: 'Приветствия и знакомство', items: [] },
+        { subject: 'english', week: 2, title: 'Цвета', items: [] },
+      ],
+    };
+    const res = await t.app.inject({
+      method: 'POST',
+      url: `/api/parent/children/${child}/curriculum-fill`,
+      cookies: parent,
+      payload: plan,
+    });
+    expect(res.statusCode).toBe(200);
+    const { topics, added } = res.json<{ topics: Curriculum['topics']; added: number }>();
+    expect(added).toBe(4);
+    // «Цвета» — по словам в названии; остальное — по порядку в первую неделю.
+    expect(topics[1]!.items.map((i) => i.refId).sort()).toEqual([segments[2]!.id, game].sort());
+    expect(topics[0]!.items.map((i) => i.refId)).toEqual([segments[0]!.id, segments[1]!.id]);
+    // Тем по математике нет — их не придумываем.
+    expect(topics).toHaveLength(2);
+
+    // Сохранённый план: урок недели — видео вперемешку с остальным.
+    await enable();
+    await t.app.inject({
+      method: 'POST',
+      url: `/api/parent/children/${child}/curricula`,
+      cookies: parent,
+      payload: { ...plan, topics },
+    });
+    t.advance(7 * 86_400_000);
+    const lesson = await get<{ items: KidItem[] }>('/api/kid/lesson/english');
+    expect(lesson.items.map((i) => i.kind)).toContain('segment');
+    expect(lesson.items.map((i) => i.kind)).toContain('interactive');
+  });
+
   it('тема вне плана или по чужому предмету — ошибка', async () => {
     const payload = { title: 'План', startsOn: '2026-10-12', weeks: 4, subjects: ['math'] };
     for (const topic of [

@@ -7,6 +7,7 @@ import {
   localClock,
   planWeek,
   scheduleInput,
+  subjectFromTopic,
   type DayState,
 } from './schedule';
 
@@ -120,5 +121,15 @@ describe('настройки расписания', () => {
       bad({ windows: { ...DEFAULT_SCHEDULE.windows, mon: { from: '9:00', to: '21:00' } } }),
     ).toBe(false);
     expect(bad({ minutesPerSubject: 2 })).toBe(false);
+  });
+});
+
+describe('subjectFromTopic', () => {
+  it('название предмета, код, неизвестная и пустая тема', () => {
+    expect(subjectFromTopic('Английский')).toBe('english');
+    expect(subjectFromTopic(' математика и геометрия ')).toBe('math');
+    expect(subjectFromTopic('music')).toBe('music');
+    expect(subjectFromTopic('роботы-игрушки')).toBe('other');
+    expect(subjectFromTopic(null)).toBeNull();
   });
 });

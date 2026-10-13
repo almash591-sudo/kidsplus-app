@@ -24,6 +24,19 @@ export const SUBJECT_LABELS: Record<Subject, string> = {
 };
 const subject = z.enum(SUBJECTS);
 
+/**
+ * Предмет по теме, с которой видео ставили в модерацию («Английский», «Математика и
+ * геометрия», english…). Неизвестная тема — «Разное», пустая — без предмета.
+ */
+export function subjectFromTopic(topic: string | null | undefined): Subject | null {
+  const t = topic?.trim().toLowerCase();
+  if (!t) return null;
+  for (const s of SUBJECTS) {
+    if (s === t || SUBJECT_LABELS[s].toLowerCase() === t) return s;
+  }
+  return 'other';
+}
+
 const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'время в виде ЧЧ:ММ');
 const toMinutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3));
 
