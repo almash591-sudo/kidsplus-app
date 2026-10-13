@@ -69,6 +69,11 @@ export default defineRailway(() => {
       // Push-уведомления родителям (этап 5): ключи VAPID задаются вне репозитория.
       VAPID_PUBLIC_KEY: preserve(),
       VAPID_PRIVATE_KEY: preserve(),
+      // Аудиотека (этап 20): bucket Cloudflare R2; картинки остаются в базе (STORAGE_DRIVER=db).
+      S3_ENDPOINT: preserve(),
+      S3_BUCKET: preserve(),
+      S3_ACCESS_KEY_ID: preserve(),
+      S3_SECRET_ACCESS_KEY: preserve(),
       ...STORAGE_ENV,
     },
   });

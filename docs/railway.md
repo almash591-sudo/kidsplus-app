@@ -28,6 +28,24 @@ railway variable set SETUP_TOKEN --stdin --service api --skip-deploys
 railway variable set GOOGLE_TTS_API_KEY --stdin --service worker --skip-deploys
 ```
 
+### Аудиотека: Cloudflare R2 (этап 20)
+
+mp3 из «Контент → Аудио» хранятся в bucket R2 (ключи `audio/tracks/…`), картинки — по-прежнему в
+базе. Без этих переменных аудио пишется в базу — годится только для проверки.
+
+1. Cloudflare → R2 → создать bucket (например, `kidsplus-audio`), публичный доступ не нужен.
+2. R2 → Manage API tokens → токен с правом **Object Read & Write** только на этот bucket.
+3. Задать у сервиса api (значения — из буфера обмена, в чат не вставлять):
+
+```sh
+railway variable set S3_ENDPOINT --stdin --service api --skip-deploys   # https://<id аккаунта>.r2.cloudflarestorage.com
+railway variable set S3_BUCKET --stdin --service api --skip-deploys
+railway variable set S3_ACCESS_KEY_ID --stdin --service api --skip-deploys
+railway variable set S3_SECRET_ACCESS_KEY --stdin --service api
+```
+
+`S3_REGION` по умолчанию `auto` — так и нужно для R2.
+
 ### Модерация видео (Gemini и YouTube Data API)
 
 1. Ключ Gemini: https://aistudio.google.com → Get API key → выбрать проект Google Cloud с картой.

@@ -39,6 +39,8 @@ export interface Ctx {
   db: Db;
   config: AppConfig;
   storage: MediaStorage;
+  /** Аудиотека — отдельный bucket (R2) или то же хранилище медиа. */
+  audioStorage: MediaStorage;
   emoji: EmojiCatalog;
   fetch: typeof fetch;
   now: () => Date;

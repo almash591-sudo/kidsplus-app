@@ -10,6 +10,7 @@ import { AlbumButton, AlbumScreen } from './screens/AlbumScreen';
 import { BatteryBadge } from './BatteryBadge';
 import { BrightnessButton } from './ui/Brightness';
 import { CameraScreen } from './camera/CameraScreen';
+import { AudioButton, AudioScreen, useAudioTracks } from './screens/AudioScreen';
 import { CallOverlay } from './calls/CallOverlay';
 import { CallsButton, CallsScreen } from './calls/CallsScreen';
 import { callMe, onCallEvent, startCalls, useCallView } from './calls/engine';
@@ -124,7 +125,9 @@ export function App() {
   const [today, setToday] = useState<KidToday | null>(null);
   const [parentMenu, setParentMenu] = useState(false);
   /** Камера или галерея поверх экрана выбора (этап 9); время занятий не тратит. */
-  const [camera, setCamera] = useState<'camera' | 'gallery' | 'calls' | 'album' | null>(null);
+  const [camera, setCamera] = useState<'camera' | 'gallery' | 'calls' | 'album' | 'audio' | null>(
+    null,
+  );
   const callView = useCallView();
   const inCall = Boolean(
     callView?.call &&
@@ -354,6 +357,9 @@ export function App() {
   // Камера — всегда в окне дня: и после того как время занятий вышло, но не на паузе и не ночью.
   const cameraAllowed =
     paired && (!isPlan || !today || (!today.paused && (!today.closed || today.closed === 'limit')));
+  // Аудиотека — в окне дня, как камера (после уроков тоже можно слушать).
+  const tracks = useAudioTracks(paired);
+  const audioAllowed = cameraAllowed && tracks.length > 0;
   const corner = (
     <>
       <ParentCorner onUnlock={() => setParentMenu(true)} />
@@ -363,6 +369,7 @@ export function App() {
           {cameraAllowed && <CameraButton onOpen={() => setCamera('camera')} />}
           {paired && <CallsButton onOpen={() => setCamera('calls')} />}
           <AlbumButton onOpen={() => setCamera('album')} />
+          {audioAllowed && <AudioButton onOpen={() => setCamera('audio')} />}
           <BrightnessButton />
         </nav>
       )}
@@ -383,6 +390,16 @@ export function App() {
   if (camera === 'album')
     return (
       <AlbumScreen
+        onExit={() => {
+          fx.whoosh();
+          setCamera(null);
+        }}
+      />
+    );
+  if (camera === 'audio' && audioAllowed)
+    return (
+      <AudioScreen
+        tracks={tracks}
         onExit={() => {
           fx.whoosh();
           setCamera(null);

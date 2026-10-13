@@ -20,7 +20,7 @@ export interface S3StorageConfig {
   forcePathStyle?: boolean;
 }
 
-/** S3-совместимое хранилище (Railway Bucket) — общее для api и worker. */
+/** S3-совместимое хранилище (Railway Bucket, Cloudflare R2) — общее для api и worker. */
 export class S3Storage implements MediaStorage {
   private readonly client: S3Client;
 
@@ -53,6 +53,22 @@ export class S3Storage implements MediaStorage {
     try {
       const res = await this.client.send(
         new GetObjectCommand({ Bucket: this.config.bucket, Key: this.key(key) }),
+      );
+      return res.Body ? await res.Body.transformToByteArray() : null;
+    } catch (err) {
+      if (err instanceof NoSuchKey || err instanceof NotFound) return null;
+      throw err;
+    }
+  }
+
+  async getRange(key: string, start: number, end: number): Promise<Uint8Array | null> {
+    try {
+      const res = await this.client.send(
+        new GetObjectCommand({
+          Bucket: this.config.bucket,
+          Key: this.key(key),
+          Range: `bytes=${start}-${end}`,
+        }),
       );
       return res.Body ? await res.Body.transformToByteArray() : null;
     } catch (err) {

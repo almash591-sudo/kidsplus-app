@@ -17,6 +17,7 @@
     "./voice": "./src/voice.ts",
     "./music-lessons": "./src/music-lessons.ts",
     "./songs": "./src/songs.ts",
+    "./audio": "./src/audio.ts",
     "./letters-lessons": "./src/letters-lessons.ts",
     "./schedule": "./src/schedule.ts",
     "./plan-fill": "./src/plan-fill.ts",

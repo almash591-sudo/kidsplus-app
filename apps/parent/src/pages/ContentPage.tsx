@@ -1,7 +1,8 @@
-// «Контент» (Кабинет 2.0): видео, карточки, игры и проверка видео — в одном месте.
+// «Контент» (Кабинет 2.0): видео, карточки, игры, аудио и проверка видео — в одном месте.
 // Часть 1 — общая вкладка с переключателем; внутри пока прежние страницы (часть 2 их переделает).
 import { SegmentedControl, Stack } from '@mantine/core';
 import { useSearchParams } from 'react-router';
+import { AudioPage } from './AudioPage';
 import { DecksPage } from './DecksPage';
 import { GamesPage } from './GamesPage';
 import { ReviewTab } from './ReviewTab';
@@ -12,6 +13,7 @@ const TABS = [
   { value: 'videos', label: 'Видео' },
   { value: 'decks', label: 'Карточки' },
   { value: 'games', label: 'Игры' },
+  { value: 'audio', label: 'Аудио' },
 ] as const;
 type Tab = (typeof TABS)[number]['value'];
 
@@ -34,6 +36,7 @@ export function ContentPage() {
         {tab === 'videos' && <VideosPage />}
         {tab === 'decks' && <DecksPage />}
         {tab === 'games' && <GamesPage />}
+        {tab === 'audio' && <AudioPage />}
       </div>
     </Stack>
   );

@@ -684,3 +684,23 @@ export const familyPhrases = pgTable('family_phrases', {
   label: text().notNull(),
   createdAt: createdAt(),
 });
+
+/**
+ * Аудиотека семьи (этап 20): mp3, которые родители загружают в кабинете. Одна на всех родителей;
+ * на телефоны детей попадают только треки с forKids. Файл — в хранилище аудио (R2), ключ audio/….
+ */
+export const audioTracks = pgTable(
+  'audio_tracks',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    title: text().notNull(),
+    mimeType: text().notNull(),
+    bytes: integer().notNull(),
+    storageKey: text().notNull(),
+    /** Показывать на телефонах детей. */
+    forKids: boolean().notNull().default(false),
+    createdBy: uuid().references(() => parentUsers.id, { onDelete: 'set null' }),
+    createdAt: createdAt(),
+  },
+  (t) => [index().on(t.createdAt)],
+);

@@ -35,6 +35,7 @@ export const keys = {
   childItems: (childId: string) => ['child-items', childId] as const,
   decks: ['decks'] as const,
   games: ['games'] as const,
+  audio: ['audio'] as const,
   moderation: ['moderation'] as const,
   llmUsage: ['llm-usage'] as const,
   questions: (segmentId: string) => ['questions', segmentId] as const,
