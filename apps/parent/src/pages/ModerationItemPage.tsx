@@ -66,6 +66,8 @@ function Review({ item }: { item: ModerationItem }) {
   const r = item.report;
   const [segments, setSegments] = useState<EditSegment[]>(() => r?.segments.map(toEdit) ?? []);
   const [childIds, setChildIds] = useState<string[]>([]);
+  // Видео, которое YouTube не даёт встроить, не откроется и у детей — одобрять бесполезно.
+  const [blocked, setBlocked] = useState(false);
   const [subject, setSubject] = useState<Subject | null>(() => subjectFromTopic(item.topic));
   const decided = item.status === 'approved' || item.status === 'rejected';
   const busy = item.status === 'queued' || item.status === 'processing';
@@ -108,7 +110,18 @@ function Review({ item }: { item: ModerationItem }) {
           {item.topic ? ` · тема: ${item.topic}` : ''}
         </Text>
       </div>
-      <YouTubePreview ref={preview} videoId={item.externalId} startSec={0} />
+      <YouTubePreview
+        ref={preview}
+        videoId={item.externalId}
+        startSec={0}
+        onError={(code) => setBlocked(code === 101 || code === 150 || code === 100)}
+      />
+      {blocked && !decided && (
+        <Alert color="red">
+          YouTube не разрешает показывать это видео в приложениях (так решил автор или
+          правообладатель музыки) — у детей оно не откроется. Лучше отклонить.
+        </Alert>
+      )}
       {busy && <Alert color="blue">ИИ смотрит видео — отчёт появится через несколько минут.</Alert>}
       {item.skipReason && <Alert color="gray">Отсеяно: {item.skipReason}</Alert>}
       {item.error && <Alert color="red">Ошибка анализа: {item.error}</Alert>}
@@ -232,7 +245,7 @@ function Review({ item }: { item: ModerationItem }) {
           <Group>
             <Button
               color="green"
-              disabled={!approval.body}
+              disabled={!approval.body || blocked}
               loading={approve.isPending}
               onClick={() => approval.body && approve.mutate({ ...approval.body, subject })}
             >

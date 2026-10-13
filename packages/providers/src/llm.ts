@@ -26,6 +26,8 @@ export class LlmError extends Error {
   constructor(
     message: string,
     readonly retryable: boolean,
+    /** Закончились деньги на счёте модели: очередь ждёт пополнения, видео не «ломаются». */
+    readonly billing = false,
   ) {
     super(message);
   }

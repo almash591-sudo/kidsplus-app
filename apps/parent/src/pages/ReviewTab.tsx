@@ -186,7 +186,12 @@ export function ReviewTab() {
       {usage.data?.paused && (
         <Alert color="orange">
           Анализ на паузе:{' '}
-          {usage.data.paused === 'no_key' ? 'нет ключа модели' : 'достигнут лимит токенов'}.
+          {usage.data.paused === 'no_key'
+            ? 'нет ключа модели'
+            : usage.data.paused === 'no_credits'
+              ? 'закончились кредиты Gemini — пополните счёт в AI Studio'
+              : 'достигнут лимит токенов'}
+          .
         </Alert>
       )}
 

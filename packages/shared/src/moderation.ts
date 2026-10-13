@@ -210,5 +210,5 @@ export interface LlmUsageSummary {
   dailyLimit: number;
   totalLimit: number;
   /** Анализ приостановлен: лимит исчерпан или ключ не задан. */
-  paused: 'daily_limit' | 'total_limit' | 'no_key' | null;
+  paused: 'daily_limit' | 'total_limit' | 'no_key' | 'no_credits' | null;
 }

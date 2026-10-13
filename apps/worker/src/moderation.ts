@@ -247,6 +247,20 @@ export async function processModeration(deps: ModerationDeps): Promise<Moderatio
     await tokenAlert(db, deps.limits, deps.notify, now);
     return 'done';
   } catch (err) {
+    if (err instanceof LlmError && err.billing) {
+      // Нет денег на счёте модели — видео обратно в очередь без потраченной попытки, анализ на паузе.
+      await db
+        .update(moderationItems)
+        .set({
+          status: 'queued',
+          attempts: sql`greatest(${moderationItems.attempts} - 1, 0)`,
+          updatedAt: new Date(),
+        })
+        .where(eq(moderationItems.id, item.id));
+      await writeStatus(db, { paused: 'no_credits', at: now.toISOString() });
+      log.warn({ itemId: item.id }, 'модерация: закончились кредиты модели — пауза');
+      return 'paused';
+    }
     const retryable = err instanceof LlmError ? err.retryable : true;
     const final = !retryable || item.attempts >= MAX_MODERATION_ATTEMPTS;
     const message = (err as Error).message.slice(0, 500);
