@@ -13,6 +13,7 @@ import {
   type ModerationStatus,
 } from '@kidsplus/shared/moderation';
 import { parseYouTubeTarget } from '@kidsplus/shared/youtube';
+import { subjectFromTopic } from '@kidsplus/shared/schedule';
 import { and, desc, eq, inArray } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { requireParent } from '../auth';
@@ -244,6 +245,8 @@ export function moderationRoutes(app: FastifyInstance, ctx: Ctx) {
       if (meta.durationSec && body.segments.some((s) => s.endSec > meta.durationSec!)) {
         throw new HttpError(400, 'validation', 'фрагмент выходит за конец видео');
       }
+      // Предмет — чтобы фрагменты попадали в уроки плана вместе с карточками и играми.
+      const subject = body.subject !== undefined ? body.subject : subjectFromTopic(item.topic);
       await db.transaction(async (tx) => {
         const [source] = await tx
           .insert(videoSources)
@@ -268,6 +271,7 @@ export function moderationRoutes(app: FastifyInstance, ctx: Ctx) {
               title: s.title,
               startSec: s.startSec,
               endSec: s.endSec,
+              subject,
               createdBy: request.parent!.id,
             })
             .returning({ id: videoSegments.id });

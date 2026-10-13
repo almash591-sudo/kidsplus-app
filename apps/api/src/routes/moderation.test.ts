@@ -138,8 +138,8 @@ describe('добавление в очередь', () => {
 });
 
 describe('решение родителя', () => {
-  async function readyItem(parent: Record<string, string>) {
-    await add(parent, 'https://youtu.be/aaaaaaaaaaa');
+  async function readyItem(parent: Record<string, string>, topic?: string) {
+    await add(parent, 'https://youtu.be/aaaaaaaaaaa', topic);
     const [item] = await list(parent);
     const report: ModerationReport = {
       model: 'gemini-3.8-flash',
@@ -224,6 +224,27 @@ describe('решение родителя', () => {
       payload: body,
     });
     expect(again.statusCode).toBe(409);
+  });
+
+  it('предмет фрагментов — по теме модерации или выбранный родителем', async () => {
+    const { parent } = await start();
+    const segment = { title: 'Hello', startSec: 0, endSec: 90, questions: [] };
+    const approve = (id: string, extra: object = {}) =>
+      t.app.inject({
+        method: 'POST',
+        url: `/api/parent/moderation/${id}/approve`,
+        cookies: parent,
+        payload: { childIds: [], segments: [segment], ...extra },
+      });
+    expect((await approve(await readyItem(parent, 'Английский'))).statusCode).toBe(200);
+    expect((await t.db.select().from(videoSegments)).map((s) => s.subject)).toEqual(['english']);
+
+    await t.db.delete(moderationItems);
+    await approve(await readyItem(parent, 'Английский'), { subject: 'music' });
+    expect((await t.db.select().from(videoSegments)).map((s) => s.subject).sort()).toEqual([
+      'english',
+      'music',
+    ]);
   });
 
   it('фрагмент вне 1–5 минут — ошибка проверки', async () => {
