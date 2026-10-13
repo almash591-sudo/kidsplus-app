@@ -7,6 +7,7 @@ import {
 import {
   Accordion,
   Alert,
+  Button,
   Card,
   List,
   SegmentedControl,
@@ -15,9 +16,11 @@ import {
   Text,
   Title,
 } from '@mantine/core';
+import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
+import { api } from '../api';
 import { AccuracyBars, TimeChart } from '../components/Charts';
-import { useAnalytics, useChildren, useReports } from '../queries';
+import { queryClient, useAnalytics, useChildren, useReports } from '../queries';
 import { CountUp } from '../components/Chrome';
 
 const pct = (s: { answers: number; firstTry: number }) => `${Math.round((rate(s) ?? 0) * 100)} %`;
@@ -95,7 +98,47 @@ function Materials({
   );
 }
 
-function Overview({ a, advice }: { a: ChildAnalytics; advice: string | null }) {
+/** Недоступные видео: в уроках они уже заменены другими по предмету; можно убрать у ребёнка. */
+function UnavailableVideos({ childId, videos }: { childId: string; videos: { title: string }[] }) {
+  const drop = useMutation({
+    mutationFn: () =>
+      api.delete<{ removed: number }>(`/parent/children/${childId}/items/unavailable`),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['analytics', childId] });
+      void queryClient.invalidateQueries({ queryKey: ['child-items'] });
+    },
+  });
+  return (
+    <Alert color="orange" p="xs">
+      <Stack gap={6}>
+        <Text size="sm">
+          YouTube больше не показывает: {videos.map((v) => `«${v.title}»`).join(', ')}. В уроках
+          вместо них идут другие видео того же предмета.
+        </Text>
+        <Button
+          size="compact-sm"
+          variant="light"
+          color="orange"
+          loading={drop.isPending}
+          onClick={() => drop.mutate()}
+          style={{ alignSelf: 'flex-start' }}
+        >
+          Убрать их из списка ребёнка
+        </Button>
+      </Stack>
+    </Alert>
+  );
+}
+
+function Overview({
+  a,
+  childId,
+  advice,
+}: {
+  a: ChildAnalytics;
+  childId: string;
+  advice: string | null;
+}) {
   const total = a.days.reduce(
     (n, d) => n + Object.values(d.seconds).reduce((x, y) => x + (y ?? 0), 0),
     0,
@@ -156,10 +199,7 @@ function Overview({ a, advice }: { a: ChildAnalytics; advice: string | null }) {
             </Stack>
           </Card>
           {a.video.unavailable.length > 0 && (
-            <Alert color="orange" p="xs">
-              Недоступно видео: {a.video.unavailable.map((v) => `«${v.title}»`).join(', ')} —
-              замените в разделе «Видео».
-            </Alert>
+            <UnavailableVideos childId={childId} videos={a.video.unavailable} />
           )}
         </Stack>
       </SimpleGrid>
@@ -264,7 +304,11 @@ export function AnalyticsPage() {
         ]}
       />
       {analytics.data && (
-        <Overview a={analytics.data} advice={reports.data?.[0]?.advice?.summary ?? null} />
+        <Overview
+          a={analytics.data}
+          childId={childId!}
+          advice={reports.data?.[0]?.advice?.summary ?? null}
+        />
       )}
       <Title order={3}>Недельные отчёты</Title>
       {reports.data && <Reports reports={reports.data} />}

@@ -361,6 +361,68 @@ describe('учебный план', () => {
     expect(lesson.items.map((i) => i.kind)).toContain('interactive');
   });
 
+  it('недоступное видео темы в уроке заменяется другим видео предмета; его можно убрать у ребёнка', async () => {
+    const source = async (externalId: string, status: 'available' | 'unavailable') =>
+      (
+        await t.db
+          .insert(schema.videoSources)
+          .values({ provider: 'youtube', externalId, title: 'v', status })
+          .returning()
+      )[0]!;
+    const segment = async (sourceId: string, title: string) => {
+      const [sg] = await t.db
+        .insert(schema.videoSegments)
+        .values({ sourceId, title, startSec: 0, endSec: 90, subject: 'chinese' })
+        .returning();
+      await t.db
+        .insert(schema.childItems)
+        .values({ childId: child, kind: 'segment', segmentId: sg!.id, position: position++ });
+      return sg!.id;
+    };
+    const broken = await segment(
+      (await source('aaaaaaaaaaa', 'unavailable')).id,
+      'Семья по-китайски',
+    );
+    const other = await segment((await source('bbbbbbbbbbb', 'available')).id, 'Цвета');
+    const family = await segment(
+      (await source('ccccccccccc', 'available')).id,
+      'Песенка про семью',
+    );
+    await enable();
+    await t.app.inject({
+      method: 'POST',
+      url: `/api/parent/children/${child}/curricula`,
+      cookies: parent,
+      payload: {
+        title: 'Осень',
+        startsOn: '2026-10-12',
+        weeks: 4,
+        subjects: ['chinese'],
+        topics: [
+          {
+            subject: 'chinese',
+            week: 1,
+            title: 'Семья',
+            items: [{ kind: 'segment', refId: broken }],
+          },
+        ],
+      },
+    });
+    const lesson = await get<{ items: KidItem[] }>('/api/kid/lesson/chinese');
+    // Похожее по названию — «про семью», а не «Цвета».
+    expect(lesson.items.map((i) => i.id)).toEqual([family]);
+    expect(other).toBeTruthy();
+
+    const res = await t.app.inject({
+      method: 'DELETE',
+      url: `/api/parent/children/${child}/items/unavailable`,
+      cookies: parent,
+    });
+    expect(res.json()).toEqual({ removed: 1 });
+    const left = await t.db.select().from(schema.childItems);
+    expect(left.map((i) => i.segmentId)).not.toContain(broken);
+  });
+
   it('тема вне плана или по чужому предмету — ошибка', async () => {
     const payload = { title: 'План', startsOn: '2026-10-12', weeks: 4, subjects: ['math'] };
     for (const topic of [

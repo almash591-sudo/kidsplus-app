@@ -201,6 +201,25 @@ export function videosRoutes(app: FastifyInstance, ctx: Ctx) {
     return reply.code(204).send();
   });
 
+  // Убрать у ребёнка недоступные видео (в уроках они и так заменяются другими по предмету).
+  app.delete(
+    '/api/parent/children/:id/items/unavailable',
+    { preHandler: parentOnly },
+    async (request): Promise<{ removed: number }> => {
+      const childId = idFrom(request.params);
+      const broken = db
+        .select({ id: videoSegments.id })
+        .from(videoSegments)
+        .innerJoin(videoSources, eq(videoSources.id, videoSegments.sourceId))
+        .where(eq(videoSources.status, 'unavailable'));
+      const removed = await db
+        .delete(childItems)
+        .where(and(eq(childItems.childId, childId), inArray(childItems.segmentId, broken)))
+        .returning({ id: childItems.id });
+      return { removed: removed.length };
+    },
+  );
+
   // Повторная проверка видео, помеченного недоступным (после ошибки плеера у ребёнка).
   app.post(
     '/api/parent/segments/:id/recheck',

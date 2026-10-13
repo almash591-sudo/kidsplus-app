@@ -3,7 +3,7 @@
 import type { Db } from './index';
 import * as schema from './schema';
 import { gameCategory } from '@kidsplus/shared/api';
-import type { FillMaterial } from '@kidsplus/shared/plan-fill';
+import { stems, type FillMaterial } from '@kidsplus/shared/plan-fill';
 import {
   computeToday,
   dayNumber,
@@ -386,6 +386,53 @@ export function lessonOrder(refs: readonly ItemRef[], date: string): ItemRef[] {
   return out;
 }
 
+/**
+ * Видео темы, которое стало недоступно (удалено, YouTube не даёт встроить), заменяется другим
+ * доступным видео ребёнка по тому же предмету — сначала похожим по названию. Замены нет — пункт
+ * просто выпадает (buildKidItems недоступное не отдаёт).
+ */
+async function replaceUnavailable(
+  db: Db,
+  childId: string,
+  subject: Subject,
+  refs: ItemRef[],
+): Promise<ItemRef[]> {
+  const ids = refs.flatMap((r) => (r.segmentId ? [r.segmentId] : []));
+  if (!ids.length) return refs;
+  const rows = await db
+    .select({ id: videoSegments.id, title: videoSegments.title, status: videoSources.status })
+    .from(videoSegments)
+    .innerJoin(videoSources, eq(videoSources.id, videoSegments.sourceId))
+    .where(inArray(videoSegments.id, ids));
+  const broken = new Map(
+    rows.filter((r) => r.status !== 'available').map((r) => [r.id, r.title] as const),
+  );
+  // Удалённые фрагменты (нет строки) — тоже заменяем.
+  for (const id of ids) if (!rows.some((r) => r.id === id)) broken.set(id, '');
+  if (!broken.size) return refs;
+
+  const used = new Set(refs.map(refKey));
+  const spare = (await childMaterials(db, childId)).filter(
+    (m) => m.subject === subject && m.item.kind === 'segment' && !used.has(m.item.refId),
+  );
+  return refs.flatMap((r) => {
+    if (!r.segmentId || !broken.has(r.segmentId)) return [r];
+    const want = stems(broken.get(r.segmentId)!);
+    let best = 0;
+    let bestScore = -1;
+    spare.forEach((m, i) => {
+      let n = 0;
+      for (const x of stems(m.title)) if (want.has(x)) n++;
+      if (n > bestScore) {
+        bestScore = n;
+        best = i;
+      }
+    });
+    const [pick] = spare.splice(best, 1);
+    return pick ? [{ segmentId: pick.item.refId, deckId: null, interactiveId: null }] : [];
+  });
+}
+
 /** Урок по предмету на сегодня: тема недели (+ повторение прошлой), иначе материалы раздела. */
 export async function lessonRefs(
   db: Db,
@@ -412,10 +459,10 @@ export async function lessonRefs(
     if (current.length) {
       // Повторение: материалы прошлой недели — после новых.
       const seen = new Set(current.map(refKey));
-      return [
+      return replaceUnavailable(db, childId, subject, [
         ...lessonOrder(current, day.clock.date),
         ...items(week - 1).filter((r) => !seen.has(refKey(r))),
-      ];
+      ]);
     }
   }
   return lessonOrder(await assignedRefs(db, childId, subject), day.clock.date);
