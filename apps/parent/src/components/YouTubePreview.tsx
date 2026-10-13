@@ -17,14 +17,23 @@ export interface YouTubePreviewHandle {
 /** Предпросмотр для родителя: обычные элементы управления YouTube, домен youtube-nocookie. */
 export const YouTubePreview = forwardRef<
   YouTubePreviewHandle,
-  { videoId: string; startSec: number }
->(function YouTubePreview({ videoId, startSec }, ref) {
+  {
+    videoId: string;
+    startSec: number;
+    /** YouTube отказался показать видео (код ошибки плеера: 101/150 — встраивание запрещено). */
+    onError?: (code: number) => void;
+  }
+>(function YouTubePreview({ videoId, startSec, onError }, ref) {
   const container = useRef<HTMLDivElement>(null);
   const player = useRef<YTPlayer | null>(null);
   const stopAt = useRef<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Начальная позиция нужна только при создании плеера — не пересоздаём его при правке таймкодов.
   const initialStart = useRef(startSec);
+  const onErrorRef = useRef(onError);
+  useEffect(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
 
   useEffect(() => {
     let cancelled = false;
@@ -40,7 +49,10 @@ export const YouTubePreview = forwardRef<
           controls: true,
           autoplay: false,
           onReady: (p) => (player.current = p),
-          onError: (code) => setError(`YouTube не может показать это видео (код ${code})`),
+          onError: (code) => {
+            setError(`YouTube не может показать это видео (код ${code})`);
+            onErrorRef.current?.(Number(code));
+          },
         });
         destroy = created.destroy;
       })

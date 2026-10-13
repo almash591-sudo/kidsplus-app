@@ -42,8 +42,14 @@ export class GeminiLlmProvider implements LlmProvider {
       });
     } catch (err) {
       if (err instanceof ApiError) {
-        const retryable = err.status === 429 || err.status >= 500;
-        throw new LlmError(`Gemini ${err.status}: ${err.message.slice(0, 300)}`, retryable);
+        // 402 — закончились предоплаченные кредиты AI Studio: ждать пополнения, а не бросать видео.
+        const billing = err.status === 402;
+        const retryable = billing || err.status === 429 || err.status >= 500;
+        throw new LlmError(
+          `Gemini ${err.status}: ${err.message.slice(0, 300)}`,
+          retryable,
+          billing,
+        );
       }
       throw new LlmError(`Gemini недоступен: ${(err as Error).message}`, true);
     }

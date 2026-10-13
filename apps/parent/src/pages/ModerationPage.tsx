@@ -70,6 +70,8 @@ export const useModeration = () =>
 
 const PAUSED: Record<NonNullable<LlmUsageSummary['paused']>, string> = {
   no_key: 'Анализ ждёт ключа Gemini API (задаётся в Railway у worker’а).',
+  no_credits:
+    'Анализ на паузе: закончились кредиты Gemini. Пополните счёт в AI Studio — очередь продолжится сама.',
   daily_limit: 'Суточный лимит токенов исчерпан — анализ продолжится завтра.',
   total_limit: 'Общий лимит токенов исчерпан — анализ остановлен.',
 };

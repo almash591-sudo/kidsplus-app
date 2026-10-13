@@ -175,6 +175,21 @@ describe('processModeration', () => {
     expect(row).toMatchObject({ status: 'failed', attempts: 3, error: 'Gemini 503' });
   });
 
+  it('закончились кредиты модели (402) — видео ждут в очереди, анализ на паузе', async () => {
+    const item = await queue();
+    const llm: LlmProvider = {
+      id: 'gemini',
+      completeJson: async () => {
+        throw new LlmError('Gemini 402: credits depleted', true, true);
+      },
+    };
+    for (let i = 0; i < 5; i++) expect(await processModeration(deps(llm))).toBe('paused');
+    const [row] = await db.select().from(moderationItems).where(eq(moderationItems.id, item.id));
+    expect(row).toMatchObject({ status: 'queued', attempts: 0 });
+    const [meta] = await db.select().from(appMeta).where(eq(appMeta.key, MODERATION_STATUS_KEY));
+    expect(JSON.parse(meta!.value)).toMatchObject({ paused: 'no_credits' });
+  });
+
   it('невалидный ответ модели — повтор, затем failed без зацикливания', async () => {
     const item = await queue();
     const llm = fakeLlm({ nope: true });

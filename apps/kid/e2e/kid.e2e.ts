@@ -2872,3 +2872,15 @@ test.describe('аудиотека', () => {
     await expect(page.getByTestId('home')).toBeVisible();
   });
 });
+
+test.describe('урок из одних видео', () => {
+  test('«Разное», где только видео, открывается плеером', async ({ page, backend }) => {
+    backend.today = planDay({ subjects: [{ subject: 'other', secondsLeft: 1200, done: false }] });
+    backend.lessons = {
+      other: [{ ...SEGMENTS[0]!, kind: 'segment', subject: 'other', questions: [] } as Item],
+    };
+    await page.goto('/');
+    await page.locator('[data-subject=other]').click();
+    await expect(page.getByTestId('player')).toBeVisible();
+  });
+});
