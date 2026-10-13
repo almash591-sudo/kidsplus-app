@@ -19,6 +19,7 @@
     "./songs": "./src/songs.ts",
     "./letters-lessons": "./src/letters-lessons.ts",
     "./schedule": "./src/schedule.ts",
+    "./plan-fill": "./src/plan-fill.ts",
     "./analytics": "./src/analytics.ts",
     "./push": "./src/push.ts",
     "./battery": "./src/battery.ts",

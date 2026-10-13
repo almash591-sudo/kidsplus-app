@@ -1,5 +1,6 @@
 import type { MediaRef } from '@kidsplus/shared/api';
 import type { ModerationApproveRequest, ModerationItem } from '@kidsplus/shared/moderation';
+import { SUBJECTS, subjectFromTopic, type Subject } from '@kidsplus/shared/schedule';
 import { formatTime, parseTime } from '@kidsplus/shared/time';
 import {
   Alert,
@@ -10,6 +11,7 @@ import {
   Group,
   Loader,
   Radio,
+  Select,
   Stack,
   Table,
   Text,
@@ -25,6 +27,7 @@ import { ImageSlot } from '../components/ImagePicker';
 import { YouTubePreview, type YouTubePreviewHandle } from '../components/YouTubePreview';
 import { buildApproval, draftToEdit, type EditSegment } from '../lib/moderation';
 import { modals } from '../lib/modals';
+import { SUBJECT_LABELS } from '../lib/subjects';
 import { keys, queryClient, useChildren } from '../queries';
 import { RECOMMENDATION, STATUS_LABELS } from './ModerationPage';
 
@@ -63,6 +66,7 @@ function Review({ item }: { item: ModerationItem }) {
   const r = item.report;
   const [segments, setSegments] = useState<EditSegment[]>(() => r?.segments.map(toEdit) ?? []);
   const [childIds, setChildIds] = useState<string[]>([]);
+  const [subject, setSubject] = useState<Subject | null>(() => subjectFromTopic(item.topic));
   const decided = item.status === 'approved' || item.status === 'rejected';
   const busy = item.status === 'queued' || item.status === 'processing';
 
@@ -209,6 +213,16 @@ function Review({ item }: { item: ModerationItem }) {
               ))}
             </Group>
           </Checkbox.Group>
+          <Select
+            label="Предмет"
+            description="Фрагменты попадут в уроки этого предмета вместе с карточками и играми"
+            placeholder="Без предмета — только в «Видео»"
+            clearable
+            data={SUBJECTS.map((s) => ({ value: s, label: SUBJECT_LABELS[s] }))}
+            value={subject}
+            onChange={(v) => setSubject(v as Subject | null)}
+            maw={360}
+          />
           {approval.problem && (
             <Text c="dimmed" size="sm">
               {approval.problem}
@@ -220,7 +234,7 @@ function Review({ item }: { item: ModerationItem }) {
               color="green"
               disabled={!approval.body}
               loading={approve.isPending}
-              onClick={() => approval.body && approve.mutate(approval.body)}
+              onClick={() => approval.body && approve.mutate({ ...approval.body, subject })}
             >
               Одобрить
             </Button>

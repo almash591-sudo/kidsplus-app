@@ -3,6 +3,7 @@
 import type { Db } from './index';
 import * as schema from './schema';
 import { gameCategory } from '@kidsplus/shared/api';
+import type { FillMaterial } from '@kidsplus/shared/plan-fill';
 import {
   computeToday,
   dayNumber,
@@ -287,6 +288,50 @@ export async function applyControl(
     .insert(dayControls)
     .values({ ...key, ...set })
     .onConflictDoUpdate({ target: [dayControls.childId, dayControls.date], set });
+}
+
+/** Все материалы ребёнка с названиями и предметами — для раскладки по темам плана. */
+export async function childMaterials(db: Db, childId: string): Promise<FillMaterial[]> {
+  const rows = await db
+    .select({
+      segmentId: childItems.segmentId,
+      deckId: childItems.deckId,
+      interactiveId: childItems.interactiveId,
+      deck: flashcardDecks.category,
+      deckTitle: flashcardDecks.title,
+      game: interactives.category,
+      gameTitle: interactives.title,
+      segment: videoSegments.subject,
+      segmentTitle: videoSegments.title,
+      sourceTitle: videoSources.title,
+      sourceStatus: videoSources.status,
+    })
+    .from(childItems)
+    .leftJoin(flashcardDecks, eq(flashcardDecks.id, childItems.deckId))
+    .leftJoin(interactives, eq(interactives.id, childItems.interactiveId))
+    .leftJoin(videoSegments, eq(videoSegments.id, childItems.segmentId))
+    .leftJoin(videoSources, eq(videoSources.id, videoSegments.sourceId))
+    .where(eq(childItems.childId, childId))
+    .orderBy(childItems.position);
+  const out: FillMaterial[] = [];
+  for (const r of rows) {
+    if (r.segmentId) {
+      if (r.segment && isSubject(r.segment) && r.sourceStatus === 'available')
+        out.push({
+          item: { kind: 'segment', refId: r.segmentId },
+          title: `${r.segmentTitle} ${r.sourceTitle ?? ''}`,
+          subject: r.segment,
+        });
+    } else if (r.deckId && r.deck && isSubject(r.deck))
+      out.push({ item: { kind: 'deck', refId: r.deckId }, title: r.deckTitle!, subject: r.deck });
+    else if (r.interactiveId && r.game)
+      out.push({
+        item: { kind: 'interactive', refId: r.interactiveId },
+        title: r.gameTitle!,
+        subject: gameCategory(r.game),
+      });
+  }
+  return out;
 }
 
 /** Материалы раздела у ребёнка — урок без плана или без темы на эту неделю. */

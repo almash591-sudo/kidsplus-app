@@ -1,7 +1,7 @@
 // Модерация видео (п. 7.1 ТЗ): ответ модели (Gemini), карточка очереди, одобрение родителем.
 // Ответ модели всегда проверяется схемой videoAnalysis; при ошибке запрос повторяется.
 import { z } from 'zod';
-import { LANGUAGES, questionInput, SEGMENT_MAX_SEC, SEGMENT_MIN_SEC } from './api';
+import { GAME_CATEGORIES, LANGUAGES, questionInput, SEGMENT_MAX_SEC, SEGMENT_MIN_SEC } from './api';
 
 const uuid = z.uuid();
 
@@ -199,6 +199,8 @@ const approvedSegment = z
 export const moderationApproveRequest = z.object({
   segments: z.array(approvedSegment).min(1).max(6),
   childIds: z.array(uuid).max(20),
+  /** Предмет плана для уроков; не задан — по теме модерации. */
+  subject: z.enum(GAME_CATEGORIES).nullable().optional(),
 });
 export type ModerationApproveRequest = z.input<typeof moderationApproveRequest>;
 

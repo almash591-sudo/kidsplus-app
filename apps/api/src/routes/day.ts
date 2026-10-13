@@ -26,7 +26,15 @@ import type { Ctx } from '../context';
 import { HttpError, idFrom, notFound, parse } from '../lib/http';
 import { hashPassword, verifyDummy, verifyPassword } from '../lib/password';
 import { childAnalytics, weakRefs, withReview } from '@kidsplus/db/analytics';
-import { applyControl, lessonRefs, loadDay, loadSchedule, recordBeat } from '@kidsplus/db/day';
+import {
+  applyControl,
+  childMaterials,
+  lessonRefs,
+  loadDay,
+  loadSchedule,
+  recordBeat,
+} from '@kidsplus/db/day';
+import { fillTopics, type CurriculumFillResult } from '@kidsplus/shared/plan-fill';
 import { notifyParents } from '@kidsplus/db/notify';
 import { pushMessages } from '@kidsplus/shared/push';
 import { BATTERY_PUSH_LEVEL, BATTERY_RESET_LEVEL, batteryReport } from '@kidsplus/shared/battery';
@@ -341,6 +349,20 @@ export function dayRoutes(app: FastifyInstance, ctx: Ctx) {
     notify(row.childId);
     return reply.code(204).send();
   });
+
+  /**
+   * «Заполнить материалами»: раскладывает видео, карточки и игры ребёнка по пустым темам плана.
+   * Ничего не сохраняет — родитель видит результат в редакторе и сохраняет сам.
+   */
+  app.post(
+    '/api/parent/children/:id/curriculum-fill',
+    { preHandler: parentOnly },
+    async (request): Promise<CurriculumFillResult> => {
+      const childId = await ownChild(request.params);
+      const body = parse(curriculumInput, request.body);
+      return fillTopics(body, await childMaterials(db, childId));
+    },
+  );
 
   // ─── Родитель: черновик плана от языковой модели ──────────────────────────
 

@@ -35,6 +35,7 @@ import {
   Title,
   UnstyledButton,
 } from '@mantine/core';
+import type { CurriculumFillResult } from '@kidsplus/shared/plan-fill';
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api } from '../api';
@@ -356,6 +357,13 @@ function PlanEditor({
     const keep = next.title.trim() || (next.items ?? []).length;
     setV({ ...v, topics: keep ? [...rest, next] : rest });
   };
+  // «Заполнить материалами»: сервер раскладывает видео, карточки и игры ребёнка по пустым темам.
+  const fill = useMutation({
+    mutationFn: (plan: CurriculumInput) =>
+      api.post<CurriculumFillResult>(`/parent/children/${childId}/curriculum-fill`, plan),
+    onSuccess: (r, plan) => setV({ ...plan, topics: r.topics }),
+  });
+  const empty = topics.filter((t) => !(t.items ?? []).length).length;
   const current = Math.max(1, planWeek(v.startsOn, todayIso()));
   const incomplete = topics.some((t) => !t.title.trim());
 
@@ -401,8 +409,8 @@ function PlanEditor({
         </Chip.Group>
       </Stack>
       <Text size="sm" c="dimmed">
-        Темы по неделям: урок собирается из выбранных материалов темы, плюс повторение прошлой
-        недели. Неделя без темы — урок из всех материалов раздела, назначенных ребёнку.
+        Темы по неделям: урок собирается из материалов темы (видео, карточки, игры вперемешку), плюс
+        повторение прошлой недели. Неделя без темы — урок из всех материалов раздела ребёнка.
       </Text>
       <DraftButton
         childId={childId}
@@ -414,9 +422,37 @@ function PlanEditor({
           const add = drafted
             .filter((t) => !have.has(`${t.week}:${t.subject}`))
             .map((t) => ({ ...t, items: [] }));
-          setV({ ...v, topics: [...topics, ...add] });
+          const next = { ...v, topics: [...topics, ...add] };
+          setV(next);
+          // Темы сразу с материалами — видео, карточки и задачи вперемешку.
+          fill.mutate(next);
         }}
       />
+      <Stack gap={4}>
+        <Group>
+          <Button
+            variant="light"
+            onClick={() => fill.mutate(v)}
+            loading={fill.isPending}
+            disabled={!empty}
+          >
+            Заполнить материалами
+          </Button>
+          <Text size="xs" c="dimmed">
+            {empty
+              ? `Пустых тем: ${empty}. Видео, карточки и игры ребёнка разойдутся по неделям.`
+              : 'Пустых тем нет.'}
+          </Text>
+        </Group>
+        {fill.isSuccess && (
+          <Text size="sm" c={fill.data.added ? 'green' : 'dimmed'}>
+            {fill.data.added
+              ? `Добавлено материалов: ${fill.data.added}. Проверьте и сохраните план.`
+              : 'Подходящих материалов нет — сначала назначьте ребёнку видео, карточки или игры.'}
+          </Text>
+        )}
+        {fill.error && <Alert color="red">{fill.error.message}</Alert>}
+      </Stack>
       <Accordion defaultValue={String(Math.min(current, v.weeks))} variant="separated">
         {Array.from({ length: v.weeks }, (_, i) => i + 1).map((week) => {
           const filled = v.subjects.filter((s) => topic(week, s)).length;
