@@ -38,6 +38,8 @@ type Item = Record<string, unknown> & { kind: string; id: string };
 
 interface Backend {
   paired: boolean;
+  /** Аудиотека: треки «детям». */
+  audio?: { id: string; title: string; url: string }[];
   /** День по расписанию; по умолчанию расписание выключено. */
   today?: Record<string, unknown>;
   /** Уроки по предметам (для режима расписания). */
@@ -348,6 +350,8 @@ async function mockBackend(page: Page, backend: Backend) {
         return route.fulfill({ status: 204 });
       case '/api/kid/today':
         return route.fulfill({ json: backend.today ?? OFF_TODAY });
+      case '/api/kid/audio':
+        return route.fulfill({ json: backend.audio ?? [] });
       case '/api/kid/heartbeat':
         (backend.beats ??= []).push(route.request().postDataJSON());
         return route.fulfill({
@@ -2831,5 +2835,40 @@ test.describe('наклейки', () => {
     await got.click();
     await page.getByTestId('album-close').click();
     await expect(page.getByTestId('album')).toHaveCount(0);
+  });
+});
+
+test.describe('аудиотека', () => {
+  test('кнопки нет, пока нечего слушать; с треками — плеер: нажал — играет, ещё раз — пауза', async ({
+    page,
+    backend,
+  }) => {
+    await page.goto('/');
+    await expect(page.getByTestId('home')).toBeVisible();
+    await expect(page.getByTestId('album-open')).toBeVisible();
+    await expect(page.getByTestId('audio-open')).toHaveCount(0);
+
+    backend.audio = [
+      { id: 'a1', title: 'Колыбельная', url: '/api/audio/a1/file' },
+      { id: 'a2', title: 'Сказка про репку', url: '/api/audio/a2/file' },
+    ];
+    // Файлы — тишина: проверяем, что плеер их запрашивает и переключает плитки.
+    const asked: string[] = [];
+    await page.route('**/api/audio/**', (r) => {
+      asked.push(new URL(r.request().url()).pathname);
+      return r.fulfill({ status: 200, contentType: 'audio/mpeg', body: Buffer.alloc(0) });
+    });
+    await page.reload();
+    await page.getByTestId('audio-open').click();
+    const tiles = page.getByTestId('audio-tile');
+    await expect(tiles).toHaveCount(2);
+    await expect(tiles.nth(1)).toContainText('Сказка про репку');
+    await shot(page, 'audio-library');
+    await tiles.nth(1).click();
+    await expect(tiles.nth(1)).toContainClass('on');
+    await expect.poll(() => asked).toContain('/api/audio/a2/file');
+    await page.getByTestId('audio-close').click();
+    await expect(page.getByTestId('audio-library')).toHaveCount(0);
+    await expect(page.getByTestId('home')).toBeVisible();
   });
 });

@@ -2,7 +2,7 @@ import type { IceConfig } from '@kidsplus/shared/calls';
 import { createDb } from '@kidsplus/db';
 import { DbStorage } from '@kidsplus/db/blob-storage';
 import { WebPushSender, YouTubeDataApi } from '@kidsplus/providers';
-import { createStorage } from '@kidsplus/providers/storage-factory';
+import { createAudioStorage, createStorage } from '@kidsplus/providers/storage-factory';
 import { apiEnvSchema, parseEnv, ttsVoices } from '@kidsplus/shared/env';
 import { buildApp } from './app';
 import { backfillTts } from './services/tts-backfill';
@@ -17,9 +17,11 @@ const tts = { providerId: env.TTS_PROVIDER, speed: env.TTS_SPEED, voices: ttsVoi
 const chosenVoice = await loadVoice(db).catch(() => null);
 if (chosenVoice) applyVoice(tts, chosenVoice);
 
+const storage = createStorage(env, new DbStorage(db));
 const app = await buildApp({
   db,
-  storage: createStorage(env, new DbStorage(db)),
+  storage,
+  audioStorage: createAudioStorage(env, storage),
   config: {
     setupToken: env.SETUP_TOKEN,
     kidAppUrl: env.KID_APP_URL,

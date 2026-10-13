@@ -7,6 +7,8 @@ export interface MediaStorage {
   get(key: string): Promise<Uint8Array | null>;
   exists(key: string): Promise<boolean>;
   delete(key: string): Promise<void>;
+  /** Часть файла (байты start…end включительно) — для перемотки аудио; нет — читается целиком. */
+  getRange?(key: string, start: number, end: number): Promise<Uint8Array | null>;
 }
 
 /** Ключ: латиница, цифры, `-`, `_`, `.` и `/` между сегментами; без `..` и ведущего `/`. */

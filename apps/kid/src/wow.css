@@ -328,3 +328,123 @@
     animation: none;
   }
 }
+
+/* ─── Аудиотека (этап 20): кнопка в доке и плеер ─── */
+.dock .audio-open {
+  width: 66px;
+  height: 66px;
+  border: 0;
+  border-radius: 24px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(145deg, #7ad3ff, #5b4bdb);
+  font-size: 34px;
+  transition: transform 0.32s var(--spring, cubic-bezier(0.3, 1.6, 0.5, 1));
+}
+
+.dock .audio-open:active {
+  transform: scale(0.9);
+}
+
+.audio-library {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  padding: calc(max(16px, env(safe-area-inset-top)) + 84px) 16px 32px;
+  background: linear-gradient(180deg, #e8f4ff 0%, #f1e8ff 100%);
+  animation: screen-in 0.42s var(--ease, cubic-bezier(0.2, 0.8, 0.2, 1)) both;
+}
+
+.audio-head {
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+.audio-head h1 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 900;
+}
+
+.audio-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 14px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.audio-tile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 92px;
+  padding: 14px 18px;
+  border: 0;
+  border-radius: 28px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgb(40 30 90 / 0.12);
+  text-align: left;
+  font: inherit;
+  overflow: hidden;
+  transition: transform 0.32s var(--spring, cubic-bezier(0.3, 1.6, 0.5, 1));
+}
+
+.audio-tile:active {
+  transform: scale(0.96);
+}
+
+.audio-tile.on {
+  box-shadow:
+    0 0 0 4px var(--c),
+    0 12px 28px rgb(40 30 90 / 0.18);
+}
+
+.audio-icon {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--c);
+  color: #ffffff;
+  font-size: 26px;
+  font-weight: 900;
+}
+
+.audio-tile.playing .audio-icon {
+  animation: badge-bob 1.2s ease-in-out infinite;
+}
+
+.audio-title {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.audio-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 6px;
+  background: rgb(0 0 0 / 0.06);
+}
+
+.audio-progress span {
+  display: block;
+  height: 100%;
+  background: var(--c);
+}
+
+/* Пять кнопок в доке — чуть мельче, чтобы док помещался на узком экране. */
+.dock:has(> :nth-child(5)) {
+  gap: 10px;
+}
+
+.dock:has(> :nth-child(5)) > * {
+  width: 58px;
+  height: 58px;
+}

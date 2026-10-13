@@ -17,6 +17,7 @@ import { moderationRoutes } from './routes/moderation';
 import { CAPTURES_QUOTA_MB } from '@kidsplus/shared/captures';
 import { parentAuthRoutes } from './routes/parent-auth';
 import { pushRoutes } from './routes/push';
+import { audioRoutes } from './routes/audio';
 import { capturesRoutes } from './routes/captures';
 import { callsRoutes } from './routes/calls';
 import { quizRoutes } from './routes/quiz';
@@ -41,6 +42,8 @@ export interface AppDeps {
     captures?: AppConfig['captures'];
   };
   storage: MediaStorage;
+  /** Хранилище аудиотеки (R2); не задано — общее хранилище медиа. */
+  audioStorage?: MediaStorage;
   /** Проверка связи с БД; бросает исключение, если БД недоступна. */
   pingDb: () => Promise<void>;
   logger?: FastifyServerOptions['logger'];
@@ -56,6 +59,7 @@ export async function buildApp({
   db,
   config,
   storage,
+  audioStorage = storage,
   pingDb,
   logger = false,
   fetch = globalThis.fetch,
@@ -78,6 +82,7 @@ export async function buildApp({
       captures: config.captures ?? { quotaBytes: CAPTURES_QUOTA_MB * 1024 * 1024 },
     },
     storage,
+    audioStorage,
     emoji: new EmojiCatalog(),
     fetch,
     now,
@@ -114,6 +119,7 @@ export async function buildApp({
   dayRoutes(app, ctx);
   pushRoutes(app, ctx);
   capturesRoutes(app, ctx);
+  audioRoutes(app, ctx);
   callsRoutes(app, ctx);
   voiceRoutes(app, ctx);
   backupRoutes(app, ctx);

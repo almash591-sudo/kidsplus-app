@@ -38,3 +38,21 @@ export function createStorage(
     prefix,
   });
 }
+
+/**
+ * Хранилище аудиотеки: S3-совместимый bucket (Cloudflare R2), если заданы S3_ENDPOINT, S3_BUCKET
+ * и ключи, — даже при STORAGE_DRIVER=db (картинки остаются в базе). Иначе — общее хранилище медиа.
+ */
+export function createAudioStorage(env: StorageSettings, fallback: MediaStorage): MediaStorage {
+  if (!env.S3_ENDPOINT || !env.S3_BUCKET || !env.S3_ACCESS_KEY_ID || !env.S3_SECRET_ACCESS_KEY)
+    return fallback;
+  return new S3Storage({
+    endpoint: env.S3_ENDPOINT,
+    region: env.S3_REGION,
+    bucket: env.S3_BUCKET,
+    accessKeyId: env.S3_ACCESS_KEY_ID,
+    secretAccessKey: env.S3_SECRET_ACCESS_KEY,
+    forcePathStyle: env.S3_FORCE_PATH_STYLE,
+    prefix: 'audio/',
+  });
+}
