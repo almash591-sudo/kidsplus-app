@@ -1,5 +1,4 @@
-import type { ChildItem, Deck, Game, Segment } from '@kidsplus/shared/api';
-import { GAME_KINDS } from '@kidsplus/shared/games';
+import type { ChildItem, Segment } from '@kidsplus/shared/api';
 import { formatTime } from '@kidsplus/shared/time';
 import {
   ActionIcon,
@@ -17,18 +16,9 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { api } from '../api';
 import { modals } from '../lib/modals';
-import {
-  keys,
-  queryClient,
-  useChildItems,
-  useChildren,
-  useDecks,
-  useGames,
-  useSegments,
-} from '../queries';
-import { gameSummary } from './GamesPage';
+import { keys, queryClient, useChildItems, useChildren, useSegments } from '../queries';
 
-type Row = { item: ChildItem; segment?: Segment; deck?: Deck; game?: Game };
+type Row = { item: ChildItem; segment: Segment };
 
 /** Быстрые фильтры общего списка — то, что требует внимания родителя. */
 const FILTERS = {
@@ -41,8 +31,6 @@ type FilterKey = keyof typeof FILTERS;
 
 export function VideosPage() {
   const segments = useSegments();
-  const decks = useDecks();
-  const games = useGames();
   const children = useChildren();
   const [filter, setFilter] = useState<string>('all');
   const [query, setQuery] = useState('');
@@ -55,20 +43,15 @@ export function VideosPage() {
     [children.data],
   );
 
-  // Для конкретного ребёнка — его список (видео и карточки) в порядке показа.
+  // Для конкретного ребёнка — только его видео в порядке показа (карточки и игры — в своих
+  // вкладках; в «Сегодня» уроки собираются по предметам, вперемешку).
   const rows = useMemo((): Row[] => {
     if (!childId) return [];
     const seg = new Map(segments.data?.map((s) => [s.id, s]));
-    const dk = new Map(decks.data?.map((d) => [d.id, d]));
-    const gm = new Map(games.data?.map((g) => [g.id, g]));
-    return (items.data ?? []).map((item) =>
-      item.kind === 'segment'
-        ? { item, ...(seg.get(item.refId) ? { segment: seg.get(item.refId)! } : {}) }
-        : item.kind === 'deck'
-          ? { item, ...(dk.get(item.refId) ? { deck: dk.get(item.refId)! } : {}) }
-          : { item, ...(gm.get(item.refId) ? { game: gm.get(item.refId)! } : {}) },
-    );
-  }, [childId, items.data, segments.data, decks.data, games.data]);
+    return (items.data ?? [])
+      .filter((item) => item.kind === 'segment' && seg.has(item.refId))
+      .map((item) => ({ item, segment: seg.get(item.refId)! }));
+  }, [childId, items.data, segments.data]);
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -90,11 +73,14 @@ export function VideosPage() {
     onSettled: () => queryClient.invalidateQueries({ queryKey: keys.childItems(childId!) }),
   });
 
+  /** Видео меняются местами в общем списке ребёнка — карточки и игры остаются на своих местах. */
   const move = (index: number, delta: number) => {
-    const ids = rows.map((r) => r.item.id);
     const target = index + delta;
-    if (target < 0 || target >= ids.length) return;
-    [ids[index], ids[target]] = [ids[target]!, ids[index]!];
+    if (target < 0 || target >= rows.length) return;
+    const ids = (items.data ?? []).map((i) => i.id);
+    const a = ids.indexOf(rows[index]!.item.id);
+    const b = ids.indexOf(rows[target]!.item.id);
+    [ids[a], ids[b]] = [ids[b]!, ids[a]!];
     reorder.mutate(ids);
   };
 
@@ -117,14 +103,14 @@ export function VideosPage() {
       {childId ? (
         <>
           <Text size="sm" c="dimmed" px={4}>
-            Так ребёнок проходит свой список: видео → вопросы к нему → следующий пункт. Порядок —
-            стрелками; карточки добавляются в разделе «Карточки».
+            Видео ребёнка в порядке показа, порядок — стрелками. В уроках «Сегодня» видео идут
+            вперемешку с карточками и играми своего предмета.
           </Text>
           <Card padding={0}>
             <Stack gap={0} className="grouped thumbs">
-              {items.data?.length === 0 && (
+              {items.data && rows.length === 0 && (
                 <div className="attention-row">
-                  <Text c="dimmed">Список пока пуст.</Text>
+                  <Text c="dimmed">Видео пока не назначены.</Text>
                 </div>
               )}
               {rows.map((r, i) => (
@@ -135,9 +121,7 @@ export function VideosPage() {
                   first={i === 0}
                   last={i === rows.length - 1}
                 >
-                  {r.segment && <SegmentRow segment={r.segment} names={names} />}
-                  {r.deck && <DeckRow deck={r.deck} />}
-                  {r.game && <GameRow game={r.game} />}
+                  <SegmentRow segment={r.segment} names={names} />
                 </Ordered>
               ))}
             </Stack>
@@ -230,58 +214,6 @@ function Ordered(props: {
         </ActionIcon>
       </Stack>
     </div>
-  );
-}
-
-/** Значок вместо превью: того же размера, что превью видео. */
-function Tile({ emoji, color }: { emoji: string; color: string }) {
-  return (
-    <span className="video-thumb" style={{ background: color }} aria-hidden>
-      <Text fz={28}>{emoji}</Text>
-    </span>
-  );
-}
-
-function GameRow({ game }: { game: Game }) {
-  return (
-    <UnstyledButton component={Link} to="/games" className="attention-row">
-      <Tile emoji="🎨" color="var(--mantine-color-pink-light)" />
-      <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
-        <Text fw={600} truncate>
-          {game.title}
-        </Text>
-        <Text size="sm" c="dimmed" truncate>
-          {GAME_KINDS[game.spec.kind]} · {gameSummary(game.spec)}
-        </Text>
-      </Stack>
-      <span className="chevron" aria-hidden="true">
-        ›
-      </span>
-    </UnstyledButton>
-  );
-}
-
-function DeckRow({ deck }: { deck: Deck }) {
-  const cover = deck.cards[0]?.image.url;
-  return (
-    <UnstyledButton component={Link} to={`/decks/${deck.id}`} className="attention-row">
-      {cover ? (
-        <img className="video-thumb contain" src={cover} alt="" />
-      ) : (
-        <Tile emoji="🃏" color="var(--mantine-color-grape-light)" />
-      )}
-      <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
-        <Text fw={600} truncate>
-          {deck.title}
-        </Text>
-        <Text size="sm" c="dimmed">
-          Карточки · {deck.cards.length} шт.
-        </Text>
-      </Stack>
-      <span className="chevron" aria-hidden="true">
-        ›
-      </span>
-    </UnstyledButton>
   );
 }
 
