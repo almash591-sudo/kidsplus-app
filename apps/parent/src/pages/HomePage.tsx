@@ -24,7 +24,7 @@ import { Link, useNavigate } from 'react-router';
 import { api } from '../api';
 import { parentCalls } from '../calls/CallLayer';
 import { SUBJECT_LABELS } from '../lib/subjects';
-import { keys, queryClient, useChildNow, useChildren, useSegments } from '../queries';
+import { keys, queryClient, useChildNow, useChildren, useMe, useSegments } from '../queries';
 import { PreviewButton } from '../components/PreviewButton';
 
 /** Цвет ребёнка — по порядку: аватар, кольца. */
@@ -129,9 +129,12 @@ function useMinuteClock() {
 
 function Attention({ kids }: { kids: Child[] }) {
   const clock = useMinuteClock();
+  const me = useMe();
   const moderation = useQuery({
     queryKey: keys.moderation,
     queryFn: () => api.get<ModerationItem[]>('/parent/moderation'),
+    // Проверку видео ведёт только семья-администратор (этап 23).
+    enabled: me.data?.isAdmin === true,
     refetchInterval: 60_000,
   });
   const segments = useSegments();

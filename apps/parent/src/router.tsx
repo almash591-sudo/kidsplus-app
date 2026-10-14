@@ -23,6 +23,7 @@ import { VoicePage } from './pages/VoicePage';
 import { BackupPage } from './pages/BackupPage';
 import { MomVoicePage } from './pages/MomVoicePage';
 import { VoicesPage } from './pages/VoicesPage';
+import { FamiliesPage } from './pages/FamiliesPage';
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -60,6 +61,7 @@ export const router = createBrowserRouter([
       { path: 'children', element: <ChildrenPage /> },
       { path: 'devices', element: <DevicesPage /> },
       { path: 'account', element: <AccountPage /> },
+      { path: 'families', element: <FamiliesPage /> },
       { path: '*', element: <Navigate to="/home" replace /> },
     ],
   },
