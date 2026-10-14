@@ -50,12 +50,13 @@ const STOP = new Set([
   'with',
 ]);
 
-/** Основы слов названия: первые 5 букв слов длиннее трёх, без служебных. */
+/** Основы слов названия: до 5 первых букв слов длиннее трёх, без служебных. */
 export function stems(title: string): Set<string> {
   const out = new Set<string>();
   for (const w of title.toLowerCase().split(/[^a-zа-яё]+/u)) {
     if (w.length < 4) continue;
-    const s = w.slice(0, 5);
+    // Без последней буквы: «семья» и «семью», «кот» и «кота» совпадают.
+    const s = w.slice(0, Math.min(5, w.length - 1));
     if (!STOP.has(s) && !STOP.has(w)) out.add(s);
   }
   return out;
