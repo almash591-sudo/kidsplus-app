@@ -29,7 +29,7 @@ export default defineConfig({
         // Новая версия сразу берёт управление открытыми страницами.
         skipWaiting: true,
         clientsClaim: true,
-        navigateFallbackDenylist: [/^\/api\//],
+        navigateFallbackDenylist: [/^\/api\//, /^\/start/],
         // Обработчик push-уведомлений (public/push-sw.js).
         importScripts: ['push-sw.js'],
       },

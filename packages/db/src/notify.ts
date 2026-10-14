@@ -1,9 +1,9 @@
 // Рассылка push-уведомлений родителям (п. 6.2 ТЗ). Отправка — через переданный sender
 // (Web Push из @kidsplus/providers), чтобы пакет БД не зависел от внешних сервисов.
 import type { PushMessage } from '@kidsplus/shared/push';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { Db } from './index';
-import { pushSubscriptions } from './schema';
+import { children, families, parentUsers, pushSubscriptions } from './schema';
 
 export interface PushSend {
   send(
@@ -24,6 +24,22 @@ export async function notifyParents(
 ): Promise<number> {
   if (!sender) return 0;
   const wanted = sql`${message.kind} = any(${pushSubscriptions.kinds})`;
+  // Этап 23: про ребёнка — только родителям его семьи; общее (библиотека) — семье-администратору.
+  const familyParents = db
+    .select({ id: parentUsers.id })
+    .from(parentUsers)
+    .where(
+      inArray(
+        parentUsers.familyId,
+        message.childId
+          ? db
+              .select({ f: children.familyId })
+              .from(children)
+              .where(eq(children.id, message.childId))
+          : db.select({ f: families.id }).from(families).where(eq(families.isAdmin, true)),
+      ),
+    );
+  const inFamily = inArray(pushSubscriptions.parentId, familyParents);
   const subs = await db
     .select()
     .from(pushSubscriptions)
@@ -32,7 +48,7 @@ export async function notifyParents(
         ? only.respectKinds
           ? and(eq(pushSubscriptions.parentId, only.parentId), wanted)
           : eq(pushSubscriptions.parentId, only.parentId)
-        : wanted,
+        : and(wanted, inFamily),
     );
   let sent = 0;
   for (const s of subs) {

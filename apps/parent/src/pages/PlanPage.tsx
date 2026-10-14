@@ -72,6 +72,12 @@ const TIMEZONES = [
   'Asia/Krasnoyarsk',
   'Asia/Irkutsk',
   'Asia/Vladivostok',
+  'Asia/Bishkek',
+  'Asia/Tashkent',
+  'America/New_York',
+  'America/Chicago',
+  'America/Denver',
+  'America/Los_Angeles',
 ];
 
 /** Сегодня в формате ГГГГ-ММ-ДД (по часам телефона родителя). */
@@ -150,7 +156,13 @@ function ScheduleForm({
           label="Часовой пояс"
           allowDeselect={false}
           value={v.timezone}
-          data={[...new Set([v.timezone, ...TIMEZONES])]}
+          data={[
+            ...new Set([
+              v.timezone,
+              Intl.DateTimeFormat().resolvedOptions().timeZone,
+              ...TIMEZONES,
+            ]),
+          ]}
           onChange={(tz) => tz && setV({ ...v, timezone: tz })}
         />
         <Stack gap={6}>

@@ -29,8 +29,29 @@ export const appMeta = pgTable('app_meta', {
 
 // ─── Родители ────────────────────────────────────────────────────────────────
 
+/** Семья основателя: ей принадлежат данные, созданные до этапа 23; она же ведёт общую библиотеку. */
+export const MAIN_FAMILY_ID = '00000000-0000-4000-8000-000000000001';
+
+/**
+ * Семьи (этап 23): у каждой свои родители, дети, телефоны, звонки, голос и аудиотека.
+ * Библиотека (видео, карточки, игры) общая; меняет её и модерирует только семья с isAdmin.
+ */
+export const families = pgTable('families', {
+  id: uuid().primaryKey().defaultRandom(),
+  name: text().notNull(),
+  isAdmin: boolean().notNull().default(false),
+  createdAt: createdAt(),
+});
+
+const familyId = () =>
+  uuid()
+    .notNull()
+    .default(MAIN_FAMILY_ID)
+    .references(() => families.id, { onDelete: 'cascade' });
+
 export const parentUsers = pgTable('parent_users', {
   id: uuid().primaryKey().defaultRandom(),
+  familyId: familyId(),
   /** Хранится в нижнем регистре. */
   email: text().notNull().unique(),
   passwordHash: text().notNull(),
@@ -62,6 +83,10 @@ export const parentInvites = pgTable('parent_invites', {
   createdAt: createdAt(),
   expiresAt: timestamp({ withTimezone: true }).notNull(),
   usedAt: timestamp({ withTimezone: true }),
+  /** Приглашение основать новую семью (а не стать вторым родителем в своей). */
+  newFamily: boolean().notNull().default(false),
+  /** Название новой семьи — для списка в кабинете. */
+  familyName: text(),
 });
 
 // ─── Дети и устройства ───────────────────────────────────────────────────────
@@ -73,6 +98,7 @@ export const children = pgTable(
   'children',
   {
     id: uuid().primaryKey().defaultRandom(),
+    familyId: familyId(),
     nickname: text().notNull(),
     birthYear: integer().notNull(),
     birthMonth: integer().notNull(),
@@ -675,6 +701,7 @@ export const appSettings = pgTable('app_settings', {
 /** Фразы, записанные голосом родителя (этап 15в): похвала, «попробуй ещё», конец урока. */
 export const familyPhrases = pgTable('family_phrases', {
   id: uuid().primaryKey().defaultRandom(),
+  familyId: familyId(),
   /** correct | retry | done */
   kind: text().notNull(),
   audioId: uuid()
@@ -693,6 +720,7 @@ export const audioTracks = pgTable(
   'audio_tracks',
   {
     id: uuid().primaryKey().defaultRandom(),
+    familyId: familyId(),
     title: text().notNull(),
     mimeType: text().notNull(),
     bytes: integer().notNull(),

@@ -43,11 +43,41 @@ export interface ParentMe {
   email: string;
   /** Как ребёнок видит родителя в звонках; null — «Родитель». */
   displayName?: string | null;
+  /** Семья-администратор: модерация и общая библиотека (этап 23). */
+  isAdmin?: boolean;
 }
 
 export interface InviteCreated {
   token: string;
   expiresAt: string;
+}
+
+// ─── Семьи (этап 23) ─────────────────────────────────────────────────────────
+
+export const familyInviteRequest = z.object({
+  name: z.string().trim().min(1, 'укажите название').max(60),
+});
+export type FamilyInviteRequest = z.input<typeof familyInviteRequest>;
+
+export interface FamilyInfo {
+  id: string;
+  name: string;
+  isAdmin: boolean;
+  parents: number;
+  children: number;
+  createdAt: string;
+}
+
+export interface FamilyInvite {
+  name: string;
+  createdAt: string;
+  expiresAt: string;
+}
+
+export interface FamiliesOverview {
+  families: FamilyInfo[];
+  /** Ещё не принятые приглашения новых семей. */
+  pending: FamilyInvite[];
 }
 
 // ─── Дети ────────────────────────────────────────────────────────────────────

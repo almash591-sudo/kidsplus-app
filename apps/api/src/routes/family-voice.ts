@@ -47,8 +47,12 @@ export function familyVoiceRoutes(app: FastifyInstance, ctx: Ctx) {
     if (a?.kind !== 'audio' || a.source !== 'upload') throw notFound('запись');
   };
 
-  const list = async (): Promise<FamilyPhrase[]> => {
-    const rows = await db.select().from(familyPhrases).orderBy(asc(familyPhrases.createdAt));
+  const list = async (familyId: string): Promise<FamilyPhrase[]> => {
+    const rows = await db
+      .select()
+      .from(familyPhrases)
+      .where(eq(familyPhrases.familyId, familyId))
+      .orderBy(asc(familyPhrases.createdAt));
     const assets = await loadAssets(
       db,
       rows.map((r) => r.audioId),
@@ -61,14 +65,16 @@ export function familyVoiceRoutes(app: FastifyInstance, ctx: Ctx) {
     }));
   };
 
-  app.get('/api/parent/family-phrases', { preHandler }, list);
+  app.get('/api/parent/family-phrases', { preHandler }, (request) =>
+    list(request.parent!.familyId),
+  );
 
   app.post('/api/parent/family-phrases', { preHandler }, async (request, reply) => {
     const body = parse(familyPhraseInput, request.body);
     await assertRecording(body.audioId);
-    await db.insert(familyPhrases).values(body);
+    await db.insert(familyPhrases).values({ ...body, familyId: request.parent!.familyId });
     reply.code(201);
-    return list();
+    return list(request.parent!.familyId);
   });
 
   app.delete('/api/parent/family-phrases/:id', { preHandler }, async (request) => {
@@ -77,7 +83,7 @@ export function familyVoiceRoutes(app: FastifyInstance, ctx: Ctx) {
       .where(eq(familyPhrases.id, idFrom(request.params)))
       .returning();
     if (!row) throw notFound('запись');
-    return list();
+    return list(request.parent!.familyId);
   });
 
   /** Слово карточки своим голосом; audioId: null — снова нейроголос. */

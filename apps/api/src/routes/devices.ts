@@ -33,13 +33,14 @@ export function devicesRoutes(app: FastifyInstance, ctx: Ctx) {
   const { db } = ctx;
   const parentOnly = requireParent(ctx);
 
-  app.get('/api/parent/devices', { preHandler: parentOnly }, async (): Promise<Device[]> => {
+  app.get('/api/parent/devices', { preHandler: parentOnly }, async (request): Promise<Device[]> => {
     const rows = await db
-      .select()
+      .select({ d: devices })
       .from(devices)
-      .where(eq(devices.preview, false))
+      .innerJoin(children, eq(children.id, devices.childId))
+      .where(and(eq(devices.preview, false), eq(children.familyId, request.parent!.familyId)))
       .orderBy(desc(devices.createdAt));
-    return rows.map(toDevice);
+    return rows.map((r) => toDevice(r.d));
   });
 
   // Родитель создаёт одноразовый код привязки для конкретного ребёнка.
