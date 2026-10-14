@@ -13,7 +13,7 @@ import type { FastifyInstance } from 'fastify';
 import { requireParent } from '../auth';
 import type { Ctx } from '../context';
 import { idFrom, notFound, parse } from '../lib/http';
-import { childIdsByRef, syncChildItems } from '../services/child-items';
+import { assignOnly, childIdsByRef, syncChildItems } from '../services/child-items';
 import { assertImages, ensureTts, loadAssets, toMediaRef } from '../services/media';
 
 const { flashcardDecks, flashcards } = schema;
@@ -102,7 +102,7 @@ export function decksRoutes(app: FastifyInstance, ctx: Ctx) {
         .insert(flashcardDecks)
         .values({ title: body.title, lang: body.lang, category: body.category })
         .returning();
-      await syncChildItems(tx, 'deck', deck!.id, body.childIds);
+      await syncChildItems(tx, 'deck', deck!.id, body.childIds, request.parent!.familyId);
       return deck!.id;
     });
     reply.code(201);
@@ -112,6 +112,10 @@ export function decksRoutes(app: FastifyInstance, ctx: Ctx) {
   app.put('/api/parent/decks/:id', { preHandler }, async (request): Promise<Deck> => {
     const id = idFrom(request.params);
     const body = parse(deckInput, request.body);
+    if (!request.parent!.isAdmin) {
+      await assignOnly(db, 'deck', id, body.childIds, request.parent!.familyId);
+      return one(id);
+    }
     await db.transaction(async (tx) => {
       const [deck] = await tx
         .update(flashcardDecks)
@@ -119,7 +123,7 @@ export function decksRoutes(app: FastifyInstance, ctx: Ctx) {
         .where(eq(flashcardDecks.id, id))
         .returning();
       if (!deck) throw notFound('набор не найден');
-      await syncChildItems(tx, 'deck', id, body.childIds);
+      await syncChildItems(tx, 'deck', id, body.childIds, request.parent!.familyId);
       // Язык набора мог смениться — озвучка карточек пересчитывается (кэш переиспользуется).
       const cards = await tx.select().from(flashcards).where(eq(flashcards.deckId, id));
       for (const c of cards) {

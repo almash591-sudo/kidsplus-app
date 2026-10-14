@@ -6,7 +6,7 @@ import type { FastifyInstance } from 'fastify';
 import { requireParent } from '../auth';
 import type { Ctx } from '../context';
 import { idFrom, notFound, parse } from '../lib/http';
-import { childIdsByRef, syncChildItems } from '../services/child-items';
+import { assignOnly, childIdsByRef, syncChildItems } from '../services/child-items';
 import { assertImages } from '../services/media';
 
 const { interactives } = schema;
@@ -62,7 +62,7 @@ export function gamesRoutes(app: FastifyInstance, ctx: Ctx) {
         .insert(interactives)
         .values({ title: body.title, category: body.category, kind, params })
         .returning({ id: interactives.id });
-      await syncChildItems(tx, 'interactive', row!.id, body.childIds);
+      await syncChildItems(tx, 'interactive', row!.id, body.childIds, request.parent!.familyId);
       return row!.id;
     });
     reply.code(201);
@@ -72,6 +72,10 @@ export function gamesRoutes(app: FastifyInstance, ctx: Ctx) {
   app.put('/api/parent/games/:id', { preHandler }, async (request): Promise<Game> => {
     const id = idFrom(request.params);
     const body = parse(gameInput, request.body);
+    if (!request.parent!.isAdmin) {
+      await assignOnly(db, 'interactive', id, body.childIds, request.parent!.familyId);
+      return one(id);
+    }
     const { kind, ...params } = body.spec;
     await db.transaction(async (tx) => {
       await assertImages(tx, gameImageIds(body.spec));
@@ -81,7 +85,7 @@ export function gamesRoutes(app: FastifyInstance, ctx: Ctx) {
         .where(eq(interactives.id, id))
         .returning({ id: interactives.id });
       if (!row) throw notFound('игра не найдена');
-      await syncChildItems(tx, 'interactive', id, body.childIds);
+      await syncChildItems(tx, 'interactive', id, body.childIds, request.parent!.familyId);
     });
     return one(id);
   });

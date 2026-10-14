@@ -2,7 +2,7 @@ import { schema, type Db } from '@kidsplus/db';
 import { and, eq, inArray, max } from 'drizzle-orm';
 import { HttpError } from '../lib/http';
 
-const { childItems, children } = schema;
+const { childItems, children, videoSegments, flashcardDecks, interactives } = schema;
 
 type Exec = Pick<Db, 'select' | 'insert' | 'delete'>;
 export type ItemKind = 'segment' | 'deck' | 'interactive';
@@ -40,15 +40,22 @@ export async function syncChildItems(
   kind: ItemKind,
   refId: string,
   childIds: string[],
+  /** Этап 23: меняются назначения только детям этой семьи; чужие дети не трогаются. */
+  familyId: string,
 ) {
   await assertChildrenExist(exec, childIds);
+  const own = new Set(
+    (
+      await exec.select({ id: children.id }).from(children).where(eq(children.familyId, familyId))
+    ).map((c) => c.id),
+  );
   const col = refColumn(kind);
-  const wanted = new Set(childIds);
+  const wanted = new Set(childIds.filter((id) => own.has(id)));
   const current = await exec
     .select({ childId: childItems.childId })
     .from(childItems)
     .where(eq(col, refId));
-  const have = new Set(current.map((c) => c.childId));
+  const have = new Set(current.map((c) => c.childId).filter((id) => own.has(id)));
 
   const removed = [...have].filter((id) => !wanted.has(id));
   if (removed.length) {
@@ -66,6 +73,24 @@ export async function syncChildItems(
       position: (last?.pos ?? -1) + 1,
     });
   }
+}
+
+/**
+ * Семья без прав администратора меняет у общего материала только назначение своим детям.
+ * Материал должен существовать — иначе 404.
+ */
+export async function assignOnly(
+  db: Db,
+  kind: ItemKind,
+  refId: string,
+  childIds: string[],
+  familyId: string,
+) {
+  const table =
+    kind === 'segment' ? videoSegments : kind === 'deck' ? flashcardDecks : interactives;
+  const [row] = await db.select({ id: table.id }).from(table).where(eq(table.id, refId));
+  if (!row) throw new HttpError(404, 'not_found', 'не найдено');
+  await db.transaction((tx) => syncChildItems(tx, kind, refId, childIds, familyId));
 }
 
 /** childIds для фрагментов, наборов карточек или игр. */

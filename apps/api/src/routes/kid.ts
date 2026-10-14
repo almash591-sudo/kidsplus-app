@@ -31,6 +31,8 @@ export async function kidPhrases(
   tts: TtsSettings,
   gender: 'f' | 'm',
   lang: 'ru' | 'en' = 'ru',
+  /** Чьи записи «маминого голоса» подставлять; без семьи — только нейроголос. */
+  familyId?: string,
 ): Promise<KidPhrases> {
   const result: KidPhrases = { correct: [], retry: [], done: [] };
   const source = lang === 'en' ? PHRASES_EN : PHRASES[gender];
@@ -48,8 +50,11 @@ export async function kidPhrases(
     result[kind].push(toSpeech(tts, text, lang, id, ready));
   }
   // «Мамин голос»: есть записи родителя для этого вида фраз — звучат они вместо нейроголоса.
-  if (lang === 'ru') {
-    const own = await db.select().from(schema.familyPhrases);
+  if (lang === 'ru' && familyId) {
+    const own = await db
+      .select()
+      .from(schema.familyPhrases)
+      .where(eq(schema.familyPhrases.familyId, familyId));
     const ownAssets = await loadAssets(
       db,
       own.map((p) => p.audioId),
@@ -73,11 +78,13 @@ export function kidRoutes(app: FastifyInstance, ctx: Ctx) {
   const { db } = ctx;
 
   /** Колыбельные голосом мамы (этап 16б) — готовые записи по порядку. */
-  const lullabies = async () => {
+  const lullabies = async (familyId: string) => {
     const rows = await db
       .select()
       .from(schema.familyPhrases)
-      .where(eq(schema.familyPhrases.kind, 'lullaby'))
+      .where(
+        and(eq(schema.familyPhrases.kind, 'lullaby'), eq(schema.familyPhrases.familyId, familyId)),
+      )
       .orderBy(asc(schema.familyPhrases.createdAt));
     const assets = await loadAssets(
       db,
@@ -114,12 +121,12 @@ export function kidRoutes(app: FastifyInstance, ctx: Ctx) {
       return {
         quiz: quizSettings(child, ctx.now()),
         items: result,
-        phrases: await kidPhrases(db, ctx.config.tts, child.gender),
+        phrases: await kidPhrases(db, ctx.config.tts, child.gender, 'ru', child.familyId),
         immersion: child.foreignImmersion,
         serverVoice: ctx.config.tts.providerId !== 'browser',
         preview: request.device!.preview,
         baby: isBaby(child, ctx.now()),
-        lullabies: await lullabies(),
+        lullabies: await lullabies(child.familyId),
         phrasesEn: await kidPhrases(db, ctx.config.tts, child.gender, 'en'),
       };
     },

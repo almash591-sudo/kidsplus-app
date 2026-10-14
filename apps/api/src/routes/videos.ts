@@ -15,7 +15,7 @@ import { z } from 'zod';
 import { requireParent } from '../auth';
 import type { Ctx } from '../context';
 import { HttpError, idFrom, notFound, parse } from '../lib/http';
-import { childIdsByRef, syncChildItems } from '../services/child-items';
+import { assignOnly, childIdsByRef, syncChildItems } from '../services/child-items';
 import { fetchYouTubeOEmbed } from '../services/oembed';
 
 const { childItems, quizQuestions, videoSegments, videoSources } = schema;
@@ -114,7 +114,7 @@ export function videosRoutes(app: FastifyInstance, ctx: Ctx) {
             createdBy: request.parent!.id,
           })
           .returning({ id: videoSegments.id });
-        await syncChildItems(tx, 'segment', segment!.id, body.childIds);
+        await syncChildItems(tx, 'segment', segment!.id, body.childIds, request.parent!.familyId);
         return segment!.id;
       });
 
@@ -129,6 +129,10 @@ export function videosRoutes(app: FastifyInstance, ctx: Ctx) {
     async (request): Promise<Segment> => {
       const id = idFrom(request.params);
       const body = parse(segmentUpdateRequest, request.body);
+      if (!request.parent!.isAdmin) {
+        await assignOnly(db, 'segment', id, body.childIds, request.parent!.familyId);
+        return (await loadSegments(eq(videoSegments.id, id)))[0]!;
+      }
       await db.transaction(async (tx) => {
         const [row] = await tx
           .update(videoSegments)
@@ -141,7 +145,7 @@ export function videosRoutes(app: FastifyInstance, ctx: Ctx) {
           .where(eq(videoSegments.id, id))
           .returning({ id: videoSegments.id });
         if (!row) throw notFound('фрагмент не найден');
-        await syncChildItems(tx, 'segment', id, body.childIds);
+        await syncChildItems(tx, 'segment', id, body.childIds, request.parent!.familyId);
       });
       return (await loadSegments(eq(videoSegments.id, id)))[0]!;
     },

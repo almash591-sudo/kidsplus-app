@@ -20,7 +20,7 @@ import { requireDevice, requireParent } from '../auth';
 import type { Ctx } from '../context';
 import { HttpError, idFrom, notFound, parse } from '../lib/http';
 
-const { kidCaptures } = schema;
+const { kidCaptures, children } = schema;
 
 const EXT: Record<string, string> = {
   'image/jpeg': 'jpg',
@@ -152,12 +152,18 @@ export function capturesRoutes(app: FastifyInstance, ctx: Ctx) {
   app.get('/api/parent/captures', { preHandler: parentOnly }, async (request) => {
     const { childId } = parse(listQuery, request.query);
     const rows = await db
-      .select()
+      .select({ c: kidCaptures })
       .from(kidCaptures)
-      .where(childId ? eq(kidCaptures.childId, childId) : undefined)
+      .innerJoin(children, eq(children.id, kidCaptures.childId))
+      .where(
+        and(
+          eq(children.familyId, request.parent!.familyId),
+          childId ? eq(kidCaptures.childId, childId) : undefined,
+        ),
+      )
       .orderBy(desc(kidCaptures.takenAt))
       .limit(500);
-    return rows.map(toParent);
+    return rows.map((r) => toParent(r.c));
   });
 
   app.get(

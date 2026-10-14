@@ -57,11 +57,16 @@ export function callsRoutes(app: FastifyInstance, ctx: Ctx) {
   const me = (r: FastifyRequest): Peer =>
     r.parent ? parentPeer(r.parent.id) : childPeer(r.device!.childId);
 
-  async function contactsAll(): Promise<Contact[]> {
-    const kids = await db.select({ id: children.id, name: children.nickname }).from(children);
+  /** Контакты семьи; без familyId — все (только для подписей в уже существующих звонках). */
+  async function contactsAll(familyId?: string): Promise<Contact[]> {
+    const kids = await db
+      .select({ id: children.id, name: children.nickname })
+      .from(children)
+      .where(familyId ? eq(children.familyId, familyId) : undefined);
     const parents = await db
       .select({ id: parentUsers.id, name: parentUsers.displayName })
-      .from(parentUsers);
+      .from(parentUsers)
+      .where(familyId ? eq(parentUsers.familyId, familyId) : undefined);
     return [
       ...parents.map((p) => ({
         id: parentPeer(p.id),
@@ -189,9 +194,19 @@ export function callsRoutes(app: FastifyInstance, ctx: Ctx) {
     return row;
   }
 
+  /** Семья того, кто спрашивает: родителя — из сессии, телефона — по ребёнку. */
+  const familyOf = async (r: FastifyRequest): Promise<string> => {
+    if (r.parent) return r.parent.familyId;
+    const [c] = await db
+      .select({ f: children.familyId })
+      .from(children)
+      .where(eq(children.id, r.device!.childId));
+    return c?.f ?? '';
+  };
+
   app.get('/api/calls/contacts', { preHandler: either }, async (request) => {
     const self = me(request);
-    return (await contactsAll()).filter((c) => c.id !== self);
+    return (await contactsAll(await familyOf(request))).filter((c) => c.id !== self);
   });
 
   /** Кто я в звонках: «c:<id ребёнка>» или «p:<id родителя>». */
@@ -210,7 +225,7 @@ export function callsRoutes(app: FastifyInstance, ctx: Ctx) {
       const self = me(request);
       const body = parse(callStartRequest, request.body);
       const to = [...new Set(body.to)].filter((p) => p !== self);
-      const family = new Set((await contactsAll()).map((c) => c.id));
+      const family = new Set((await contactsAll(await familyOf(request))).map((c) => c.id));
       if (!to.length || to.some((p) => !family.has(p)))
         throw new HttpError(400, 'validation', 'звонить можно только своей семье');
 
@@ -494,9 +509,15 @@ export function callsRoutes(app: FastifyInstance, ctx: Ctx) {
   });
 
   /** Журнал звонков: кто, кому, когда, сколько длился. Содержимого звонков нет нигде. */
-  app.get('/api/parent/calls', { preHandler: parentOnly }, async () => {
-    const rows = await db.select().from(calls).orderBy(desc(calls.createdAt)).limit(50);
-    const names = new Map((await contactsAll()).map((x) => [x.id, x.name]));
+  app.get('/api/parent/calls', { preHandler: parentOnly }, async (request) => {
+    const names = new Map((await contactsAll(request.parent!.familyId)).map((x) => [x.id, x.name]));
+    // Только звонки, начатые кем-то из своей семьи.
+    const rows = await db
+      .select()
+      .from(calls)
+      .where(inArray(calls.createdBy, [...names.keys()]))
+      .orderBy(desc(calls.createdAt))
+      .limit(50);
     const members = rows.length
       ? await db
           .select()

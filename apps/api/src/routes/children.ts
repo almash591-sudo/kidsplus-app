@@ -36,13 +36,20 @@ export function childrenRoutes(app: FastifyInstance, ctx: Ctx) {
     return { ...input, languages: [...new Set(input.languages)] };
   }
 
-  app.get('/api/parent/children', { preHandler }, async (): Promise<Child[]> => {
-    const rows = await db.select().from(children).orderBy(asc(children.createdAt));
+  app.get('/api/parent/children', { preHandler }, async (request): Promise<Child[]> => {
+    const rows = await db
+      .select()
+      .from(children)
+      .where(eq(children.familyId, request.parent!.familyId))
+      .orderBy(asc(children.createdAt));
     return rows.map(toChild);
   });
 
   app.post('/api/parent/children', { preHandler }, async (request, reply): Promise<Child> => {
-    const [row] = await db.insert(children).values(parseChild(request.body)).returning();
+    const [row] = await db
+      .insert(children)
+      .values({ ...parseChild(request.body), familyId: request.parent!.familyId })
+      .returning();
     // Озвучка похвалы для рода ребёнка ставится в очередь заранее.
     await kidPhrases(db, ctx.config.tts, row!.gender);
     reply.code(201);

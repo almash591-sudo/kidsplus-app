@@ -277,7 +277,7 @@ export function moderationRoutes(app: FastifyInstance, ctx: Ctx) {
             .returning({ id: videoSegments.id });
           for (const q of s.questions)
             await insertQuestion(tx as Db, ctx.config.tts, segment!.id, q);
-          await syncChildItems(tx, 'segment', segment!.id, body.childIds);
+          await syncChildItems(tx, 'segment', segment!.id, body.childIds, request.parent!.familyId);
         }
         await tx
           .update(moderationItems)

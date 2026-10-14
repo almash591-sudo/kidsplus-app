@@ -11,7 +11,7 @@ import {
   type AudioTrack,
   type KidAudioTrack,
 } from '@kidsplus/shared/audio';
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { requireDevice, requireParent, requireParentOrDevice } from '../auth';
 import type { Ctx } from '../context';
@@ -46,8 +46,14 @@ export function audioRoutes(app: FastifyInstance, ctx: Ctx) {
     return row;
   };
 
-  app.get('/api/parent/audio', { preHandler: parentOnly }, async (): Promise<AudioTrack[]> =>
-    (await db.select().from(audioTracks).orderBy(desc(audioTracks.createdAt))).map(toTrack),
+  app.get('/api/parent/audio', { preHandler: parentOnly }, async (request): Promise<AudioTrack[]> =>
+    (
+      await db
+        .select()
+        .from(audioTracks)
+        .where(eq(audioTracks.familyId, request.parent!.familyId))
+        .orderBy(desc(audioTracks.createdAt))
+    ).map(toTrack),
   );
 
   app.post(
@@ -78,6 +84,7 @@ export function audioRoutes(app: FastifyInstance, ctx: Ctx) {
           storageKey: key,
           forKids: q.forKids,
           createdBy: request.parent!.id,
+          familyId: request.parent!.familyId,
         })
         .returning();
       reply.code(201);
@@ -103,12 +110,13 @@ export function audioRoutes(app: FastifyInstance, ctx: Ctx) {
     reply.code(204);
   });
 
-  app.get('/api/kid/audio', { preHandler: deviceOnly }, async (): Promise<KidAudioTrack[]> =>
+  app.get('/api/kid/audio', { preHandler: deviceOnly }, async (request): Promise<KidAudioTrack[]> =>
     (
       await db
         .select({ id: audioTracks.id, title: audioTracks.title })
         .from(audioTracks)
-        .where(eq(audioTracks.forKids, true))
+        .innerJoin(schema.children, eq(schema.children.familyId, audioTracks.familyId))
+        .where(and(eq(audioTracks.forKids, true), eq(schema.children.id, request.device!.childId)))
         .orderBy(desc(audioTracks.createdAt))
     ).map((t) => ({ ...t, url: fileUrl(t.id) })),
   );
