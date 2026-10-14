@@ -40,6 +40,14 @@
 		respond "ok" 200
 	}
 
+	# Лендинг для родственников (этап 23): статическая страница с инструкцией.
+	handle /start {
+		root * /srv
+		rewrite * /start.html
+		header Cache-Control "no-cache"
+		file_server
+	}
+
 	handle /api/* {
 		reverse_proxy {$API_UPSTREAM}
 	}
