@@ -26,6 +26,11 @@ export default tseslint.config(
     ...reactHooks.configs.flat.recommended,
   },
   {
+    // Статические страницы кабинета (лендинг /start) — обычные браузерные скрипты.
+    files: ['apps/parent/public/start.js'],
+    languageOptions: { globals: globals.browser },
+  },
+  {
     // e2e: тесты Playwright выполняются в Node, а их фрагменты — в браузере.
     files: ['apps/*/e2e/**'],
     languageOptions: { globals: { ...globals.browser, ...globals.node } },
