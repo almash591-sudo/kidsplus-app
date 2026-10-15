@@ -5,8 +5,6 @@ import { defineRailway, github, postgres, preserve, project, service, volume } f
 // Дневной лимит токенов Gemini: 5 млн — разбор большой партии видео (2026-10-10, владелец).
 const LLM_DAILY_TOKEN_LIMIT = '5000000';
 const REGION = 'europe-west4-drams3a';
-/** Короткий адрес лендинга, который отправляют родственникам. */
-const LANDING_DOMAIN = 'kidsplus.up.railway.app';
 const BRANCH = 'main';
 // Публичный репозиторий (с 2026-10-11): бесплатные минуты CI; история разработки — в приватном архиве.
 const REPO = 'almash591-sudo/kidsplus-app';
@@ -120,36 +118,28 @@ export default defineRailway(() => {
       build: {
         builder: 'DOCKERFILE',
         dockerfilePath: 'deploy/web/Dockerfile',
-        watchPatterns: [`/apps/${app}/**`, '/packages/shared/**', '/deploy/web/**', ...ROOT_FILES],
+        // apps/landing — лендинг (/start, /guide) в том же образе.
+        watchPatterns: [
+          `/apps/${app}/**`,
+          '/apps/landing/**',
+          '/packages/shared/**',
+          '/deploy/web/**',
+          ...ROOT_FILES,
+        ],
       },
       healthcheck: '/healthz',
       replicas: { [REGION]: 1 },
-      // Старые ссылки /start и /guide ведут на лендинг (этап 24).
-      env: {
-        APP: app,
-        API_UPSTREAM: apiUpstream,
-        LANDING_URL: 'https://${{landing.RAILWAY_PUBLIC_DOMAIN}}',
-      },
+      env: { APP: app, API_UPSTREAM: apiUpstream },
     });
 
   const kidWeb = web('kid-web', 'kid');
   const parentWeb = web('parent-web', 'parent');
 
-  // Лендинг (этап 24): статический сайт на коротком домене; вход и приглашения — в кабинет.
-  const landing = service('landing', {
-    source,
-    build: {
-      builder: 'DOCKERFILE',
-      dockerfilePath: 'deploy/landing/Dockerfile',
-      watchPatterns: ['/apps/landing/**', '/deploy/landing/**'],
-    },
-    healthcheck: '/healthz',
-    replicas: { [REGION]: 1 },
-    networking: { serviceDomains: { [LANDING_DOMAIN]: {} } },
-    env: { PARENT_URL: 'https://${{parent-web.RAILWAY_PUBLIC_DOMAIN}}' },
-  });
+  // Лендинг (этап 24) отдаёт parent-web: /start и /guide. Отдельный сервис на коротком домене
+  // (deploy/landing) бесплатный тариф создать не даёт — «resource provision limit»; при переходе
+  // на Hobby: service('landing', { …, networking: { serviceDomains: { 'kidsplus.up.railway.app': {} } } }).
 
   return project('noble-contentment', {
-    resources: [Postgres, postgresVolume, api, worker, kidWeb, parentWeb, landing],
+    resources: [Postgres, postgresVolume, api, worker, kidWeb, parentWeb],
   });
 });

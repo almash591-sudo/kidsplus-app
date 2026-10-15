@@ -1,14 +1,12 @@
-// Лендинг (apps/landing, этап 24) на телефонах: без ошибок и горизонтальной прокрутки,
+// Лендинг (apps/landing, этап 24; /start и /guide на домене кабинета) на телефонах: без ошибок и горизонтальной прокрутки,
 // карточки переворачиваются (в Safari — без «зеркальной» обратной стороны), детское демо отвечает.
 import { expect, test } from '@playwright/test';
-
-const LANDING = 'http://127.0.0.1:4802';
 
 test('лендинг помещается в экран и работает без ошибок', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
-  await page.goto(`${LANDING}/`);
+  await page.goto('/start');
   await expect(page.getByRole('heading', { level: 1 })).toContainText('можно доверить');
 
   // Пролистать всю страницу — появляются все блоки, картинки грузятся.
@@ -42,7 +40,7 @@ test('лендинг помещается в экран и работает бе
 });
 
 test('инструкция: переключатель iPhone / Android', async ({ page }) => {
-  await page.goto(`${LANDING}/guide`);
+  await page.goto('/guide');
   await page.getByRole('tab', { name: 'У меня iPhone' }).click();
   await expect(page.getByText('В Safari нажмите кнопку').first()).toBeVisible();
   await page.getByRole('tab', { name: 'У меня Android' }).click();
@@ -51,8 +49,8 @@ test('инструкция: переключатель iPhone / Android', async 
 });
 
 test('«Войти» с лендинга ведёт в кабинет', async ({ page }) => {
-  await page.goto(`${LANDING}/guide`);
+  await page.goto('/guide');
   await page.getByRole('link', { name: 'Войти', exact: true }).click();
-  await expect(page).toHaveURL(/:4800\/login/);
+  await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByRole('button', { name: 'Войти' })).toBeVisible();
 });

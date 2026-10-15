@@ -2,7 +2,6 @@
 # Переменные окружения:
 #   APP           kid | parent — выбирает политику CSP (задаётся в образе)
 #   API_UPSTREAM  адрес api, например api.railway.internal:3000 или api:3000
-#   LANDING_URL   адрес лендинга (для старых ссылок /start и /guide)
 #   PORT          порт (Railway задаёт сам)
 
 {
@@ -41,13 +40,25 @@
 		respond "ok" 200
 	}
 
-	# Лендинг и инструкция переехали на отдельный сайт (этап 24) — старые ссылки ведут туда.
-	handle /start {
-		redir {$LANDING_URL}/ 302
+	# Лендинг (apps/landing, этап 24): /start — лендинг, /guide — инструкция подключения.
+	# templates подставляет адрес сайта в og:image (превью ссылки в мессенджерах).
+	@landingPage path /start /guide
+	handle @landingPage {
+		root * /srv-landing
+		rewrite /start /index.html
+		rewrite /guide /guide.html
+		templates
+		header Cache-Control "no-cache"
+		file_server
 	}
 
-	handle /guide {
-		redir {$LANDING_URL}/guide 302
+	@landingAsset path /landing.css /landing.js /guide.js /img/* /fonts/*
+	handle @landingAsset {
+		root * /srv-landing
+		@woff2 path *.woff2
+		header @woff2 Content-Type font/woff2
+		header Cache-Control "public, max-age=86400"
+		file_server
 	}
 
 	handle /api/* {

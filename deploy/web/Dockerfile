@@ -15,3 +15,5 @@ ARG APP
 ENV APP=${APP}
 COPY deploy/web/Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /repo/apps/${APP}/dist /srv
+# Лендинг (этап 24): статический сайт без сборки — /start и /guide на домене кабинета.
+COPY apps/landing /srv-landing
