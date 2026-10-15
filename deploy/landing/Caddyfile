@@ -1,4 +1,5 @@
-# Лендинг KidsPlus (этап 24): статический сайт apps/landing на коротком домене.
+# Лендинг KidsPlus (этап 24) отдельным сервисом на коротком домене — для тарифа Hobby.
+# Сейчас лендинг отдаёт parent-web (/start, /guide) — см. deploy/web/Caddyfile.
 # Вход и приглашения ведут в кабинет родителя (PARENT_URL).
 # Переменные окружения:
 #   PARENT_URL  адрес кабинета, например https://parent-web-…up.railway.app
@@ -36,7 +37,9 @@
 		@woff2 path *.woff2
 		header @woff2 Content-Type font/woff2
 		@pages path / /guide /index.html /guide.html
+		rewrite /start /index.html
 		header @pages Cache-Control "no-cache"
+		templates
 		try_files {path} {path}.html /index.html
 		file_server
 	}

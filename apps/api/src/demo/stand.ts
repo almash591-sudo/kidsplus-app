@@ -15,7 +15,6 @@ import { buildApp } from '../app';
 const API_PORT = Number(process.env.DEMO_API_PORT ?? 3999);
 const PARENT_PORT = Number(process.env.DEMO_PARENT_PORT ?? 4800);
 const KID_PORT = Number(process.env.DEMO_KID_PORT ?? 4801);
-const LANDING_PORT = Number(process.env.DEMO_LANDING_PORT ?? 4802);
 export const DEMO_EMAIL = 'demo@example.com';
 export const DEMO_PASSWORD = 'demo-password-123';
 const SETUP = 'demo-setup-token-0123456789';
@@ -353,12 +352,19 @@ async function main() {
       if (up.body) for await (const c of up.body) r.write(c);
       return r.end();
     }
-    // Лендинг (как Caddy в deploy/landing): вход и приглашения — в кабинет.
-    if (dist.endsWith('landing') && /^\/(login|invite|setup)(\/|$)/.test(path)) {
-      r.writeHead(302, { location: `http://localhost:${PARENT_PORT}${q.url}` });
-      return r.end();
+    // Лендинг (как Caddy в deploy/web): /start, /guide и их файлы — из apps/landing.
+    const landingDir = join(root, 'apps/landing');
+    const pages: Record<string, string> = { '/start': '/index.html', '/guide': '/guide.html' };
+    if (pages[path] || /^\/(landing\.css|landing\.js|guide\.js|img\/|fonts\/)/.test(path)) {
+      const f = join(landingDir, pages[path] ?? path);
+      if (existsSync(f)) {
+        const type = types[extname(f)] ?? (f.endsWith('.woff2') ? 'font/woff2' : 'application/octet-stream');
+        r.writeHead(200, { 'content-type': type });
+        const body = readFileSync(f);
+        return r.end(pages[path] ? body.toString('utf8').replaceAll('{{.Host}}', q.headers.host ?? '') : body);
+      }
     }
-    const named: Record<string, string> = { '/': '/index.html', '/guide': '/guide.html' };
+    const named: Record<string, string> = { '/': '/index.html' };
     let file = join(dist, named[path] ?? path);
     if (!existsSync(file) || statSync(file).isDirectory()) file = join(dist, 'index.html');
     r.writeHead(200, { 'content-type': types[extname(file)] ?? 'application/octet-stream' });
@@ -373,7 +379,6 @@ async function main() {
     }).listen(port, '127.0.0.1');
   web(join(root, 'apps/parent/dist'), PARENT_PORT);
   web(join(root, 'apps/kid/dist'), KID_PORT);
-  web(join(root, 'apps/landing'), LANDING_PORT);
 
   // Ссылка привязки телефона Зайки — для детского приложения.
   const pair = await as<{ url: string }>('POST', '/api/parent/pairings', {
@@ -383,7 +388,7 @@ async function main() {
   console.log(
     JSON.stringify({
       parent: `http://localhost:${PARENT_PORT}`,
-      landing: `http://localhost:${LANDING_PORT}`,
+      landing: `http://localhost:${PARENT_PORT}/start`,
       kid: pair.body.url,
       email: DEMO_EMAIL,
       password: DEMO_PASSWORD,
