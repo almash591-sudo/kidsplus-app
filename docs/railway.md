@@ -5,13 +5,13 @@
 
 ## Что описано
 
-| Ресурс         | Что это                                                                     |
-| -------------- | --------------------------------------------------------------------------- |
-| Postgres + том | База данных, регион EU West (Амстердам)                                     |
-| api            | `deploy/node.Dockerfile` (`APP=api`), миграции перед деплоем, `/api/health` |
-| worker         | `deploy/node.Dockerfile` (`APP=worker`), фоновые задачи                     |
-| kid-web        | `deploy/web/Dockerfile` (`APP=kid`): Caddy + детское PWA, `/healthz`        |
-| parent-web     | `deploy/web/Dockerfile` (`APP=parent`): Caddy + родительское PWA            |
+| Ресурс         | Что это                                                                           |
+| -------------- | --------------------------------------------------------------------------------- |
+| Postgres + том | База данных, регион EU West (Амстердам)                                           |
+| api            | `deploy/node.Dockerfile` (`APP=api`), миграции перед деплоем, `/api/health`       |
+| worker         | `deploy/node.Dockerfile` (`APP=worker`), фоновые задачи                           |
+| kid-web        | `deploy/web/Dockerfile` (`APP=kid`): Caddy + детское PWA, `/healthz`              |
+| parent-web     | `deploy/web/Dockerfile` (`APP=parent`): Caddy + родительское PWA                  |
 | (лендинг)      | `apps/landing` отдаёт parent-web: `/start`, `/guide`; `deploy/landing` — на Hobby |
 
 Медиа (картинки) хранятся в PostgreSQL (`STORAGE_DRIVER=db`): на бесплатном тарифе bucket недоступен.

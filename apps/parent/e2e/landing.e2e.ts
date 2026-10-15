@@ -2,7 +2,6 @@
 // карточки переворачиваются (в Safari — без «зеркальной» обратной стороны), детское демо отвечает.
 import { expect, test } from '@playwright/test';
 
-
 test('лендинг помещается в экран и работает без ошибок', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));

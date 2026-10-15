@@ -358,10 +358,13 @@ async function main() {
     if (pages[path] || /^\/(landing\.css|landing\.js|guide\.js|img\/|fonts\/)/.test(path)) {
       const f = join(landingDir, pages[path] ?? path);
       if (existsSync(f)) {
-        const type = types[extname(f)] ?? (f.endsWith('.woff2') ? 'font/woff2' : 'application/octet-stream');
+        const type =
+          types[extname(f)] ?? (f.endsWith('.woff2') ? 'font/woff2' : 'application/octet-stream');
         r.writeHead(200, { 'content-type': type });
         const body = readFileSync(f);
-        return r.end(pages[path] ? body.toString('utf8').replaceAll('{{.Host}}', q.headers.host ?? '') : body);
+        return r.end(
+          pages[path] ? body.toString('utf8').replaceAll('{{.Host}}', q.headers.host ?? '') : body,
+        );
       }
     }
     const named: Record<string, string> = { '/': '/index.html' };
