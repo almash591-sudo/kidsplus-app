@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "node --env-file-if-exists=../../.env --watch --import tsx src/index.ts",
+    "demo": "node --import tsx src/demo/stand.ts",
     "build": "tsup",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",

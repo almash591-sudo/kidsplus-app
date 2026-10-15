@@ -15,9 +15,17 @@
   --app-glass: rgb(22 22 24 / 0.82);
 }
 
+html {
+  /* iPhone не увеличивает шрифт при повороте экрана. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   background: var(--app-bg);
   -webkit-font-smoothing: antialiased;
+  /* Подсветка касания iOS — серым прямоугольником; у кнопок есть свой отклик. */
+  -webkit-tap-highlight-color: transparent;
 }
 
 .mantine-AppShell-main {
@@ -580,5 +588,94 @@ a.attention-row:active {
   .ring-arc,
   .skeleton {
     animation: none;
+  }
+}
+
+/* ─── Этап 24: iPhone и маленькие экраны ─── */
+
+/*
+ * Safari на iPhone приближает страницу, если у поля ввода шрифт меньше 16px, — и при открытом
+ * окне (прокрутка заблокирована) её уже не отдалить: кнопки остаются за краем экрана.
+ * На сенсорных экранах поля — не меньше 16px.
+ */
+@media (pointer: coarse), (max-width: 47.99em) {
+  .mantine-Input-input,
+  .mantine-PillsInput-input,
+  .mantine-PillsInputField-field,
+  .mantine-PinInput-input,
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  textarea,
+  select {
+    font-size: max(16px, 1em) !important;
+  }
+}
+
+/* Телефон: окна — «шторкой» снизу, как в iOS. Высота — в пределах экрана, прокрутка внутри. */
+@media (max-width: 47.99em) {
+  .mantine-Modal-inner {
+    padding: env(safe-area-inset-top) 0 0 !important;
+    align-items: flex-end !important;
+  }
+
+  .mantine-Modal-content {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+    max-height: calc(100dvh - env(safe-area-inset-top) - 10px) !important;
+    border-radius: 22px 22px 0 0 !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mantine-Modal-body {
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  }
+
+  /* Ручка шторки. */
+  .mantine-Modal-header::before {
+    content: '';
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    width: 36px;
+    height: 5px;
+    margin-left: -18px;
+    border-radius: 3px;
+    background: var(--app-separator);
+  }
+
+  /* Выпадающие списки не шире экрана. */
+  .mantine-Popover-dropdown,
+  .mantine-Combobox-dropdown {
+    max-width: calc(100vw - 16px);
+  }
+
+  /* Вход и регистрация: блок прижат к верху, чтобы клавиатура не закрывала кнопку. */
+  .auth-screen {
+    align-items: flex-start;
+    padding-top: max(24px, env(safe-area-inset-top)) !important;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom)) !important;
+  }
+}
+
+/* Уведомления не под «чёлкой». */
+.mantine-Notifications-root[data-position='top-center'] {
+  top: max(16px, env(safe-area-inset-top));
+}
+
+/* Переключатели разделов не вылезают за экран: на узких телефонах компактнее и листаются. */
+.mantine-SegmentedControl-root {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.mantine-SegmentedControl-root::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 400px) {
+  .mantine-SegmentedControl-label {
+    padding-inline: 6px;
+    font-size: 13px;
   }
 }

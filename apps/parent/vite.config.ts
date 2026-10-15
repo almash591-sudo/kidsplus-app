@@ -9,7 +9,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       // Регистрация — в коде приложения (@kidsplus/shared/sw-register), с автообновлением.
       injectRegister: false,
-      includeAssets: ['favicon.svg'],
+      includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'KidsPlus — родителям',
         short_name: 'KidsPlus',

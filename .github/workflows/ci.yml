@@ -113,6 +113,50 @@ jobs:
           path: apps/kid/playwright-report
           retention-days: 7
 
+  # Кабинет на телефонах (этап 24): Safari-движок с экранами iPhone и узкий Android, демо-стенд на PGlite.
+  e2e-phone:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - id: changed
+        run: bash .github/changed.sh '^(apps/parent/|apps/api/|packages/|pnpm-lock\.yaml|package\.json|\.github/)'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+      - uses: actions/setup-node@v5
+        if: steps.changed.outputs.run == 'true'
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - if: steps.changed.outputs.run == 'true'
+        run: corepack enable
+      - id: pnpm-store
+        if: steps.changed.outputs.run == 'true'
+        run: echo "dir=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        if: steps.changed.outputs.run == 'true'
+        with:
+          path: ${{ steps.pnpm-store.outputs.dir }}
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+      - if: steps.changed.outputs.run == 'true'
+        run: pnpm install --frozen-lockfile
+      - if: steps.changed.outputs.run == 'true'
+        run: pnpm --filter @kidsplus/parent exec playwright install --with-deps webkit chromium
+      - if: steps.changed.outputs.run == 'true'
+        run: pnpm --filter @kidsplus/parent e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-phone
+          path: apps/parent/playwright-report
+          retention-days: 7
+
   # Киоск для детских телефонов (Android, этап 6): unit-тесты VPN и сборка APK.
   kiosk:
     runs-on: ubuntu-latest

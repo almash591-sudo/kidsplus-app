@@ -7,7 +7,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@fontsource/onest": "^5.3.1",
@@ -24,6 +25,7 @@
   },
   "devDependencies": {
     "@kidsplus/shared": "workspace:*",
+    "@playwright/test": "^1.63.0",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",

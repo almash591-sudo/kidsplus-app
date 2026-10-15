@@ -54,7 +54,7 @@ export function AuthFormPage({ mode }: { mode: keyof typeof TEXT }) {
   });
 
   return (
-    <Center mih="100vh" p="md">
+    <Center mih="100dvh" p="md" className="auth-screen">
       <Paper withBorder shadow="sm" p="xl" w="100%" maw={400}>
         <form onSubmit={form.onSubmit((v) => create.mutate(v))}>
           <Stack>

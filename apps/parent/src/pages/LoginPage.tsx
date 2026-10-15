@@ -37,7 +37,7 @@ export function LoginPage() {
   if (me.data) return <Navigate to={from} replace />;
 
   return (
-    <Center mih="100vh" p="md">
+    <Center mih="100dvh" p="md" className="auth-screen">
       <Paper withBorder shadow="sm" p="xl" w="100%" maw={380}>
         <form onSubmit={form.onSubmit((v) => login.mutate(v))}>
           <Stack>
