@@ -1,0 +1,108 @@
+// Кабинет на телефоне (этап 24). На iPhone страница «уезжала»: Safari приближал её при касании
+// поля со шрифтом меньше 16px, а в открытом окне отдалить было нельзя — кнопки оставались за краем.
+import { expect, test, type Page } from '@playwright/test';
+
+const EMAIL = 'demo@example.com';
+const PASSWORD = 'demo-password-123';
+
+const PAGES = [
+  '/home',
+  '/content',
+  '/content?tab=videos',
+  '/content?tab=decks',
+  '/content?tab=games',
+  '/content?tab=audio',
+  '/plan',
+  '/progress',
+  '/more',
+  '/children',
+  '/devices',
+  '/account',
+  '/mom-voice',
+  '/captures',
+  '/calls',
+  '/now',
+  '/families',
+];
+
+async function login(page: Page) {
+  await page.goto('/login');
+  await page.getByLabel('Email').fill(EMAIL);
+  await page.getByLabel('Пароль').fill(PASSWORD);
+  await page.getByRole('button', { name: 'Войти' }).click();
+  await expect(page).toHaveURL(/\/home/);
+}
+
+/** Ширина страницы не больше экрана, поля ввода — не мельче 16px (иначе iPhone приближает). */
+async function layoutProblems(page: Page) {
+  return page.evaluate(() => {
+    const problems: string[] = [];
+    const w = window.innerWidth;
+    if (document.documentElement.scrollWidth > w + 1)
+      problems.push(`ширина ${document.documentElement.scrollWidth} > ${w}`);
+    for (const el of document.querySelectorAll('input, textarea, select')) {
+      const input = el as HTMLInputElement;
+      if (['hidden', 'checkbox', 'radio', 'range', 'file'].includes(input.type)) continue;
+      const fz = parseFloat(getComputedStyle(input).fontSize);
+      if (fz < 16) problems.push(`поле ${input.type || el.tagName}: ${fz}px`);
+    }
+    for (const el of document.querySelectorAll('button, a[href], [role=tab], label')) {
+      const r = el.getBoundingClientRect();
+      const clipped = el.closest('.mantine-SegmentedControl-root, .photo-strip, .tabbar');
+      if (r.width > 0 && r.right > w + 1 && !clipped)
+        problems.push(
+          `за краем: ${(el.textContent ?? '').trim().slice(0, 30)} (${Math.round(r.right)})`,
+        );
+    }
+    return [...new Set(problems)];
+  });
+}
+
+test('вход и все разделы помещаются в экран', async ({ page }) => {
+  await login(page);
+  for (const url of PAGES) {
+    await page.goto(url);
+    await page.waitForLoadState('networkidle');
+    await expect(page.getByText('Unexpected Application Error')).toHaveCount(0);
+    expect(await layoutProblems(page), url).toEqual([]);
+  }
+});
+
+test('страница приглашения: поля не мельче 16px', async ({ page }) => {
+  await page.goto('/invite?token=x');
+  await expect(page.getByRole('button', { name: 'Создать аккаунт' })).toBeVisible();
+  expect(await layoutProblems(page)).toEqual([]);
+});
+
+test('окно «Новый профиль» — шторка в пределах экрана, «Сохранить» доступна', async ({ page }) => {
+  await login(page);
+  await page.goto('/children');
+  await page.getByRole('button', { name: 'Добавить ребёнка' }).click();
+  const sheet = page.locator('.mantine-Modal-content');
+  await expect(sheet).toBeVisible();
+  await page.waitForTimeout(600); // анимация появления
+  const box = (await sheet.boundingBox())!;
+  const vp = page.viewportSize()!;
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.y + box.height).toBeLessThanOrEqual(vp.height + 1);
+  expect(await layoutProblems(page)).toEqual([]);
+
+  await page.getByLabel('Прозвище').fill('Солнышко');
+  const save = sheet.getByRole('button', { name: 'Сохранить' });
+  await save.scrollIntoViewIfNeeded();
+  await expect(save).toBeInViewport();
+  await save.click();
+  await expect(sheet).toBeHidden();
+  await expect(page.getByText('Солнышко').first()).toBeVisible();
+});
+
+test('все вкладки «Контента» можно нажать', async ({ page }) => {
+  await login(page);
+  await page.goto('/content');
+  for (const name of ['Видео', 'Карточки', 'Игры', 'Аудио']) {
+    const tab = page.locator('.mantine-SegmentedControl-label', { hasText: name });
+    await tab.scrollIntoViewIfNeeded();
+    await tab.click();
+    await expect(page).toHaveURL(new RegExp(`tab=`));
+  }
+});

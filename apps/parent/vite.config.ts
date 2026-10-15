@@ -9,7 +9,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       // Регистрация — в коде приложения (@kidsplus/shared/sw-register), с автообновлением.
       injectRegister: false,
-      includeAssets: ['favicon.svg'],
+      includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'KidsPlus — родителям',
         short_name: 'KidsPlus',
@@ -29,7 +29,7 @@ export default defineConfig({
         // Новая версия сразу берёт управление открытыми страницами.
         skipWaiting: true,
         clientsClaim: true,
-        navigateFallbackDenylist: [/^\/api\//, /^\/start/],
+        navigateFallbackDenylist: [/^\/api\//, /^\/start/, /^\/guide/],
         // Обработчик push-уведомлений (public/push-sw.js).
         importScripts: ['push-sw.js'],
       },

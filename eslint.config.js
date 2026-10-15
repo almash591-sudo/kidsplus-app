@@ -26,6 +26,11 @@ export default tseslint.config(
     ...reactHooks.configs.flat.recommended,
   },
   {
+    // Лендинг (apps/landing) — обычные браузерные скрипты без сборки.
+    files: ['apps/landing/**/*.js'],
+    languageOptions: { globals: globals.browser },
+  },
+  {
     // e2e: тесты Playwright выполняются в Node, а их фрагменты — в браузере.
     files: ['apps/*/e2e/**'],
     languageOptions: { globals: { ...globals.browser, ...globals.node } },
