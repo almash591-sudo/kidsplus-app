@@ -26,8 +26,8 @@ export default tseslint.config(
     ...reactHooks.configs.flat.recommended,
   },
   {
-    // Статические страницы кабинета (лендинг /start) — обычные браузерные скрипты.
-    files: ['apps/parent/public/start.js'],
+    // Лендинг (apps/landing) — обычные браузерные скрипты без сборки.
+    files: ['apps/landing/**/*.js'],
     languageOptions: { globals: globals.browser },
   },
   {

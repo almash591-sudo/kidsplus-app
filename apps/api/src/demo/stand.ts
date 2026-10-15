@@ -7,6 +7,7 @@
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { extname, join, resolve } from 'node:path';
+import { schema } from '@kidsplus/db';
 import { createTestDb } from '@kidsplus/db/testing';
 import { MemoryStorage } from '@kidsplus/providers';
 import { buildApp } from '../app';
@@ -14,6 +15,7 @@ import { buildApp } from '../app';
 const API_PORT = Number(process.env.DEMO_API_PORT ?? 3999);
 const PARENT_PORT = Number(process.env.DEMO_PARENT_PORT ?? 4800);
 const KID_PORT = Number(process.env.DEMO_KID_PORT ?? 4801);
+const LANDING_PORT = Number(process.env.DEMO_LANDING_PORT ?? 4802);
 export const DEMO_EMAIL = 'demo@example.com';
 export const DEMO_PASSWORD = 'demo-password-123';
 const SETUP = 'demo-setup-token-0123456789';
@@ -33,6 +35,10 @@ const fakeFetch = (async (input: string | URL | Request) => {
   return Response.json({ title: TITLES[id] ?? `Видео ${id}`, author_name: 'Детский канал' });
 }) as typeof fetch;
 
+/** DEMO_NOW=2026-10-16T10:30:00+05:00 — часы стенда сдвинуты к этому моменту (и идут дальше). */
+const shift = process.env.DEMO_NOW ? Date.parse(process.env.DEMO_NOW) - Date.now() : 0;
+const now = () => new Date(Date.now() + shift);
+
 async function main() {
   const { db } = await createTestDb();
   const app = await buildApp({
@@ -48,6 +54,7 @@ async function main() {
     fetch: fakeFetch,
     youtube: null,
     rateLimit: false,
+    now,
   });
 
   // ── Демо-данные ──
@@ -109,8 +116,9 @@ async function main() {
         text,
         translation,
       });
+    return d.id;
   };
-  await deck('Фрукты', 'en', 'english', [
+  const fruits = await deck('Фрукты', 'en', 'english', [
     ['1f34e', 'apple', 'яблоко'],
     ['1f34c', 'banana', 'банан'],
     ['1f347', 'grapes', 'виноград'],
@@ -118,27 +126,27 @@ async function main() {
     ['1f34a', 'orange', 'апельсин'],
     ['1f349', 'watermelon', 'арбуз'],
   ]);
-  await deck('Животные', 'ru', 'nature', [
+  const animals = await deck('Животные', 'ru', 'nature', [
     ['1f98a', 'лиса', null],
     ['1f43b', 'медведь', null],
     ['1f430', 'заяц', null],
     ['1f994', 'ёжик', null],
     ['1f989', 'сова', null],
   ]);
-  await deck('Цвета', 'zh', 'chinese', [
+  const colors = await deck('Цвета', 'zh', 'chinese', [
     ['1f534', '红色', 'красный'],
     ['1f7e2', '绿色', 'зелёный'],
     ['1f535', '蓝色', 'синий'],
     ['1f7e1', '黄色', 'жёлтый'],
   ]);
 
-  await as('POST', '/api/parent/games', {
+  const balloons = await as<Id>('POST', '/api/parent/games', {
     title: 'Лопни шарики',
     category: 'games',
     spec: { kind: 'balloons', count: 8, target: null },
     childIds: kids,
   });
-  await as('POST', '/api/parent/games', {
+  const counting = await as<Id>('POST', '/api/parent/games', {
     title: 'Посчитай ягодки',
     category: 'math',
     spec: { kind: 'counting', max: 5, rounds: 4, imageIds: [await emoji('1f353')] },
@@ -154,6 +162,7 @@ async function main() {
     childIds: kids,
   });
 
+  const segments: Record<string, string> = {};
   for (const [id, subject, end] of [
     ['demofox0001', 'nature', 180],
     ['democolor01', 'english', 150],
@@ -161,14 +170,16 @@ async function main() {
     ['demoafrica1', 'nature', 240],
     ['demomusic01', 'music', 170],
   ] as const)
-    await as('POST', '/api/parent/segments', {
-      url: `https://www.youtube.com/watch?v=${id}`,
-      title: TITLES[id],
-      startSec: 0,
-      endSec: end,
-      subject,
-      childIds: kids,
-    });
+    segments[id] = (
+      await as<Id>('POST', '/api/parent/segments', {
+        url: `https://www.youtube.com/watch?v=${id}`,
+        title: TITLES[id],
+        startSec: 0,
+        endSec: end,
+        subject,
+        childIds: kids,
+      })
+    ).body.id;
 
   // Расписание с окнами на каждый день — «Сегодня» у ребёнка не пустое.
   const day = { from: '07:00', to: '21:00' };
@@ -184,6 +195,122 @@ async function main() {
       ),
     }).catch((e: Error) => console.warn('расписание:', e.message));
 
+  // План на 4 недели с темами и материалами — раздел «План» и уроки ребёнка.
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const localDate = (d: Date) => d.toLocaleDateString('sv-SE', { timeZone: tz });
+  const monday = new Date(now());
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+  const item = (kind: string, refId: string) => ({ kind, refId });
+  for (const id of kids)
+    await as('POST', `/api/parent/children/${id}/curricula`, {
+      title: 'Осень: мир вокруг',
+      startsOn: localDate(monday),
+      weeks: 4,
+      subjects: ['english', 'chinese', 'math', 'nature', 'music'],
+      topics: [
+        {
+          subject: 'english',
+          week: 1,
+          title: 'Фрукты и цвета',
+          items: [item('deck', fruits), item('segment', segments.democolor01!)],
+        },
+        { subject: 'chinese', week: 1, title: 'Цвета по-китайски', items: [item('deck', colors)] },
+        {
+          subject: 'math',
+          week: 1,
+          title: 'Считаем до пяти',
+          items: [item('segment', segments.demonum0001!), item('interactive', counting.body.id)],
+        },
+        {
+          subject: 'nature',
+          week: 1,
+          title: 'Лесные жители',
+          items: [item('deck', animals), item('segment', segments.demofox0001!)],
+        },
+        {
+          subject: 'music',
+          week: 1,
+          title: 'Инструменты',
+          items: [item('segment', segments.demomusic01!), item('interactive', balloons.body.id)],
+        },
+        {
+          subject: 'nature',
+          week: 2,
+          title: 'Животные Африки',
+          items: [item('segment', segments.demoafrica1!)],
+        },
+      ],
+    }).catch((e: Error) => console.warn('план:', e.message));
+
+  // История за 14 дней: время по предметам и ответы — для «Прогресса» и «Главной».
+  const subjects = ['english', 'chinese', 'math', 'nature', 'music'] as const;
+  const quizRefs: [string, { segmentId?: string; deckId?: string }][] = [
+    ['english', { deckId: fruits }],
+    ['chinese', { deckId: colors }],
+    ['nature', { deckId: animals }],
+    ['math', { segmentId: segments.demonum0001! }],
+    ['nature', { segmentId: segments.demofox0001! }],
+    ['english', { segmentId: segments.democolor01! }],
+  ];
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (const [k, childId] of kids.entries()) {
+    for (let back = 13; back >= 0; back--) {
+      const at = new Date(now().getTime() - back * 86_400_000 - (back ? 0 : 3_600_000));
+      if (back > 7 && rnd() < 0.15) continue; // выходной
+      const date = localDate(at);
+      // Сегодня: китайский пройден, математика — наполовину.
+      if (back === 0) {
+        await db.insert(schema.dayUsage).values([
+          { childId, date, activity: 'chinese', seconds: 600 },
+          { childId, date, activity: 'math', seconds: 290 + k * 120 },
+        ]);
+        continue;
+      }
+      for (const subject of subjects) {
+        if (rnd() < 0.3) continue;
+        await db.insert(schema.dayUsage).values({
+          childId,
+          date,
+          activity: subject,
+          seconds: Math.round((240 + rnd() * 420) * (k ? 1.1 : 1)),
+        });
+      }
+      await db
+        .insert(schema.dayUsage)
+        .values({ childId, date, activity: 'free', seconds: Math.round(300 + rnd() * 600) });
+      const ev = (type: string, extra: Partial<typeof schema.events.$inferInsert> = {}) => ({
+        childId,
+        type,
+        createdAt: new Date(at.getTime() + rnd() * 3_600_000),
+        ...extra,
+      });
+      const rows: (typeof schema.events.$inferInsert)[] = [];
+      for (const [, ref] of quizRefs) {
+        if (rnd() < 0.4) continue;
+        const firstTry = rnd() < 0.78 + (13 - back) * 0.012;
+        rows.push(
+          ev('quiz_answer', {
+            segmentId: ref.segmentId ?? null,
+            payload: {
+              firstTry,
+              timeMs: Math.round(1800 + rnd() * 4000),
+              ...(ref.deckId ? { deckId: ref.deckId } : {}),
+            },
+          }),
+        );
+      }
+      rows.push(
+        ev('segment_start'),
+        ev('segment_complete'),
+        ev('deck_complete'),
+        ev('interactive_complete'),
+        ev('quiz_complete'),
+      );
+      await db.insert(schema.events).values(rows);
+    }
+  }
+
   await app.listen({ port: API_PORT, host: '127.0.0.1' });
 
   // ── Раздача PWA: статика + /api через прокси; Secure у cookie снимается (http://localhost) ──
@@ -196,6 +323,8 @@ async function main() {
     '.woff2': 'font/woff2',
     '.json': 'application/json',
     '.webmanifest': 'application/manifest+json',
+    '.webp': 'image/webp',
+    '.jpg': 'image/jpeg',
   };
   const serve = (dist: string) => async (q: IncomingMessage, r: ServerResponse) => {
     const path = (q.url ?? '/').split('?')[0]!;
@@ -224,7 +353,12 @@ async function main() {
       if (up.body) for await (const c of up.body) r.write(c);
       return r.end();
     }
-    const named: Record<string, string> = { '/start': '/start.html', '/guide': '/guide.html' };
+    // Лендинг (как Caddy в deploy/landing): вход и приглашения — в кабинет.
+    if (dist.endsWith('landing') && /^\/(login|invite|setup)(\/|$)/.test(path)) {
+      r.writeHead(302, { location: `http://localhost:${PARENT_PORT}${q.url}` });
+      return r.end();
+    }
+    const named: Record<string, string> = { '/': '/index.html', '/guide': '/guide.html' };
     let file = join(dist, named[path] ?? path);
     if (!existsSync(file) || statSync(file).isDirectory()) file = join(dist, 'index.html');
     r.writeHead(200, { 'content-type': types[extname(file)] ?? 'application/octet-stream' });
@@ -239,6 +373,7 @@ async function main() {
     }).listen(port, '127.0.0.1');
   web(join(root, 'apps/parent/dist'), PARENT_PORT);
   web(join(root, 'apps/kid/dist'), KID_PORT);
+  web(join(root, 'apps/landing'), LANDING_PORT);
 
   // Ссылка привязки телефона Зайки — для детского приложения.
   const pair = await as<{ url: string }>('POST', '/api/parent/pairings', {
@@ -248,6 +383,7 @@ async function main() {
   console.log(
     JSON.stringify({
       parent: `http://localhost:${PARENT_PORT}`,
+      landing: `http://localhost:${LANDING_PORT}`,
       kid: pair.body.url,
       email: DEMO_EMAIL,
       password: DEMO_PASSWORD,

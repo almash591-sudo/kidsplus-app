@@ -125,7 +125,7 @@ jobs:
         with:
           fetch-depth: 0
       - id: changed
-        run: bash .github/changed.sh '^(apps/parent/|apps/api/|packages/|pnpm-lock\.yaml|package\.json|\.github/)'
+        run: bash .github/changed.sh '^(apps/parent/|apps/landing/|apps/api/|packages/|pnpm-lock\.yaml|package\.json|\.github/)'
         env:
           BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
       - uses: actions/setup-node@v5

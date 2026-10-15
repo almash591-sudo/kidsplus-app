@@ -5,6 +5,8 @@ import { defineRailway, github, postgres, preserve, project, service, volume } f
 // Дневной лимит токенов Gemini: 5 млн — разбор большой партии видео (2026-10-10, владелец).
 const LLM_DAILY_TOKEN_LIMIT = '5000000';
 const REGION = 'europe-west4-drams3a';
+/** Короткий адрес лендинга, который отправляют родственникам. */
+const LANDING_DOMAIN = 'kidsplus.up.railway.app';
 const BRANCH = 'main';
 // Публичный репозиторий (с 2026-10-11): бесплатные минуты CI; история разработки — в приватном архиве.
 const REPO = 'almash591-sudo/kidsplus-app';
@@ -122,13 +124,32 @@ export default defineRailway(() => {
       },
       healthcheck: '/healthz',
       replicas: { [REGION]: 1 },
-      env: { APP: app, API_UPSTREAM: apiUpstream },
+      // Старые ссылки /start и /guide ведут на лендинг (этап 24).
+      env: {
+        APP: app,
+        API_UPSTREAM: apiUpstream,
+        LANDING_URL: 'https://${{landing.RAILWAY_PUBLIC_DOMAIN}}',
+      },
     });
 
   const kidWeb = web('kid-web', 'kid');
   const parentWeb = web('parent-web', 'parent');
 
+  // Лендинг (этап 24): статический сайт на коротком домене; вход и приглашения — в кабинет.
+  const landing = service('landing', {
+    source,
+    build: {
+      builder: 'DOCKERFILE',
+      dockerfilePath: 'deploy/landing/Dockerfile',
+      watchPatterns: ['/apps/landing/**', '/deploy/landing/**'],
+    },
+    healthcheck: '/healthz',
+    replicas: { [REGION]: 1 },
+    networking: { serviceDomains: { [LANDING_DOMAIN]: {} } },
+    env: { PARENT_URL: 'https://${{parent-web.RAILWAY_PUBLIC_DOMAIN}}' },
+  });
+
   return project('noble-contentment', {
-    resources: [Postgres, postgresVolume, api, worker, kidWeb, parentWeb],
+    resources: [Postgres, postgresVolume, api, worker, kidWeb, parentWeb, landing],
   });
 });

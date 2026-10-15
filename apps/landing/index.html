@@ -1,0 +1,962 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>KidsPlus — экран, которому можно доверить ребёнка</title>
+    <meta
+      name="description"
+      content="Закрытая семейная система занятий для детей 2–6 лет: короткие уроки, карточки, 35 видов игр и звонки маме. Только то, что выбрали вы."
+    />
+    <meta name="robots" content="noindex" />
+    <meta name="theme-color" content="#0e1222" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="KidsPlus — экран, которому можно доверить ребёнка" />
+    <meta
+      property="og:description"
+      content="Уроки, карточки, 35 видов игр и звонки маме. Только то, что выбрали вы. Персональное приглашение."
+    />
+    <meta property="og:image" content="https://kidsplus.up.railway.app/img/og.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link
+      rel="preload"
+      href="/fonts/playfair-display-cyrillic-600-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/onest-cyrillic-400-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="stylesheet" href="/landing.css" />
+    <script src="/landing.js" defer></script>
+  </head>
+  <body>
+    <!-- Совёнок — тот же, что в детском приложении. -->
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <defs>
+        <symbol id="owl" viewBox="0 0 100 104">
+          <path d="M24,30 L18,8 L38,22 Z" fill="#B45309" />
+          <path d="M76,30 L82,8 L62,22 Z" fill="#B45309" />
+          <ellipse cx="50" cy="58" rx="34" ry="38" fill="#D97706" />
+          <ellipse cx="50" cy="70" rx="22" ry="22" fill="#FDE7C2" />
+          <path
+            d="M42,66 q4,4 8,0 M50,74 q4,4 8,0 M38,76 q4,4 8,0"
+            stroke="#E9C48F"
+            stroke-width="2"
+            fill="none"
+          />
+          <g class="owl-wing owl-wing-l">
+            <ellipse cx="18" cy="62" rx="9" ry="20" fill="#B45309" />
+          </g>
+          <g class="owl-wing owl-wing-r">
+            <ellipse cx="82" cy="62" rx="9" ry="20" fill="#B45309" />
+          </g>
+          <circle cx="36" cy="42" r="14" fill="#fff" />
+          <circle cx="64" cy="42" r="14" fill="#fff" />
+          <g class="owl-eyes" fill="#3a2a14">
+            <circle cx="38" cy="43" r="6" />
+            <circle cx="66" cy="43" r="6" />
+            <circle cx="40" cy="41" r="2" fill="#fff" />
+            <circle cx="68" cy="41" r="2" fill="#fff" />
+          </g>
+          <g class="owl-happy" stroke="#3a2a14" stroke-width="4" fill="none" stroke-linecap="round">
+            <path d="M28,45 q8,-10 16,0" />
+            <path d="M56,45 q8,-10 16,0" />
+          </g>
+          <path d="M45,54 L55,54 L50,62 Z" fill="#F59E0B" />
+          <g class="owl-cheeks">
+            <circle cx="24" cy="56" r="5" fill="#F472B6" opacity="0.6" />
+            <circle cx="76" cy="56" r="5" fill="#F472B6" opacity="0.6" />
+          </g>
+          <path
+            d="M38,95 l-4,4 M38,95 l0,5 M38,95 l4,4 M62,95 l-4,4 M62,95 l0,5 M62,95 l4,4"
+            stroke="#B45309"
+            stroke-width="3"
+            stroke-linecap="round"
+          />
+        </symbol>
+        <symbol id="logo" viewBox="0 0 40 40">
+          <rect width="40" height="40" rx="12" fill="url(#lg)" />
+          <path d="M20 11v18M11 20h18" stroke="#fff" stroke-width="4.2" stroke-linecap="round" />
+          <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#e7c98e" />
+            <stop offset="1" stop-color="#b98a43" />
+          </linearGradient>
+        </symbol>
+      </defs>
+    </svg>
+
+    <!-- ── Навигация ── -->
+    <nav class="nav" id="nav">
+      <div class="wrap nav-in">
+        <a class="brand" href="#top" aria-label="KidsPlus — наверх">
+          <svg><use href="#logo" /></svg><span>KidsPlus</span>
+        </a>
+        <div class="nav-links">
+          <a href="#pain">Зачем</a>
+          <a href="#kids">Детям</a>
+          <a href="#parents">Родителям</a>
+          <a href="#safe">Безопасность</a>
+        </div>
+        <button class="sound" id="sound" type="button" aria-pressed="false" aria-label="Звук">
+          <span class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+          <span class="sound-label">Звук</span>
+        </button>
+        <a class="btn gold sm" href="/guide">Подключить</a>
+      </div>
+    </nav>
+
+    <main id="top">
+      <!-- ═══════════ Первый экран ═══════════ -->
+      <header class="hero">
+        <canvas class="stars" id="stars" aria-hidden="true"></canvas>
+        <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div class="wrap hero-in">
+          <div class="hero-copy">
+            <div class="badge reveal">
+              <span>✦</span> Персональное приглашение · для детей 2–6 лет
+            </div>
+            <h1 class="reveal">Экран, которому <em>можно доверить</em> ребёнка</h1>
+            <p class="lead reveal">
+              KidsPlus — закрытая семейная система занятий. Короткие уроки, карточки, 35 видов игр и
+              звонки маме. Ребёнок видит только то, что выбрали вы: без ленты, без случайных
+              роликов, без бесконечной прокрутки.
+            </p>
+            <div class="cta reveal">
+              <a class="btn gold" href="/guide">Получить доступ <b>→</b></a>
+              <button class="btn glass" type="button" id="heroPlay">
+                <span class="play" aria-hidden="true">▶</span> Послушать, как это звучит
+              </button>
+            </div>
+            <ul class="trust reveal">
+              <li><b>iPhone</b> и Android</li>
+              <li><b>Без VPN</b></li>
+              <li><b>Бесплатно</b> — как подарок</li>
+            </ul>
+          </div>
+
+          <div class="hero-stage" id="heroStage" aria-hidden="true">
+            <div class="device iphone back" data-depth="0.6">
+              <img src="/img/p-home.webp" alt="" width="590" height="1278" />
+            </div>
+            <div class="device android front" data-depth="1.2">
+              <img src="/img/k-today.webp" alt="" width="600" height="1332" />
+            </div>
+            <div class="toast t1" data-depth="1.8">
+              <span class="toast-ic">⭐</span>
+              <span><b>Зайка закончила китайский</b><small>KidsPlus · сейчас</small></span>
+            </div>
+            <div class="toast t2" data-depth="2.2">
+              <span class="toast-ic">📞</span>
+              <span><b>Мишутка звонит маме</b><small>видеозвонок</small></span>
+            </div>
+            <svg class="hero-owl" data-depth="2.6"><use href="#owl" /></svg>
+          </div>
+        </div>
+        <a class="scroll-cue" href="#pain" aria-label="Листать дальше"><span></span></a>
+      </header>
+
+      <!-- ═══════════ Боль родителей ═══════════ -->
+      <section id="pain" class="pain">
+        <div class="wrap">
+          <div class="head center reveal">
+            <div class="eyebrow">Знакомо?</div>
+            <h2>Телефон спасает пять минут тишины — <em>и забирает час</em></h2>
+            <p>
+              Мы прошли через всё это сами. Поэтому сделали систему, в которой экран работает на
+              ребёнка, а не наоборот. Нажмите на карточку.
+            </p>
+          </div>
+
+          <div class="pains">
+            <button class="pcard reveal" type="button">
+              <span class="pface front">
+                <span class="vign v-clock">
+                  <span class="vg-phone"><i>▶</i></span>
+                  <span class="vg-clock"><i class="h"></i><i class="m"></i></span>
+                  <span class="vg-tag">+57 мин</span>
+                </span>
+                <b>«Включила мультик на&nbsp;5&nbsp;минут — прошёл час»</b>
+                <small>Автовоспроизведение не заканчивается никогда.</small>
+                <em class="flip-hint">Как решаем →</em>
+              </span>
+              <span class="pface back">
+                <span class="sol-ic">⏱</span>
+                <b>Время под контролем</b>
+                <small
+                  >Расписание и лимит на день. Время вышло — экран мягко прощается: «На сегодня
+                  всё!» Без ваших уговоров.</small
+                >
+              </span>
+            </button>
+
+            <button class="pcard reveal" type="button">
+              <span class="pface front">
+                <span class="vign v-feed">
+                  <span class="feed-col">
+                    <i>😱</i><i>👻</i><i>🤡</i><i>💥</i><i>😱</i><i>👻</i><i>🤡</i><i>💥</i>
+                  </span>
+                  <span class="vg-warn">!</span>
+                </span>
+                <b>«Алгоритм подсовывает странные ролики»</b>
+                <small>Пять минут назад были мультики — сейчас что-то пугающее.</small>
+                <em class="flip-hint">Как решаем →</em>
+              </span>
+              <span class="pface back">
+                <span class="sol-ic">🛡</span>
+                <b>Только одобренное</b>
+                <small
+                  >Ни ленты, ни поиска, ни рекомендаций. Ребёнок видит только видео, которые
+                  проверены заранее и выбраны вами.</small
+                >
+              </span>
+            </button>
+
+            <button class="pcard reveal" type="button">
+              <span class="pface front">
+                <span class="vign v-tears">
+                  <span class="vg-tab"></span>
+                  <span class="vg-face">😭</span>
+                  <i class="tear t1"></i><i class="tear t2"></i>
+                </span>
+                <b>«Отобрать планшет — это слёзы»</b>
+                <small>Каждый вечер одна и та же битва.</small>
+                <em class="flip-hint">Как решаем →</em>
+              </span>
+              <span class="pface back">
+                <span class="sol-ic">⭐</span>
+                <b>Конец дня — праздник</b>
+                <small
+                  >Ребёнок сам видит, сколько осталось. Финал — звёздочка, наклейка и «Молодец!»
+                  маминым голосом.</small
+                >
+              </span>
+            </button>
+
+            <button class="pcard reveal" type="button">
+              <span class="pface front">
+                <span class="vign v-brain">
+                  <span class="vg-head">🧒</span>
+                  <i class="q q1">?</i><i class="q q2">?</i><i class="q q3">?</i>
+                </span>
+                <b>«Смотрит часами, а в голове пусто»</b>
+                <small>Пассивный просмотр почти ничему не учит.</small>
+                <em class="flip-hint">Как решаем →</em>
+              </span>
+              <span class="pface back">
+                <span class="sol-ic">🧠</span>
+                <b>Смотрит — и отвечает</b>
+                <small
+                  >После каждого фрагмента вопросы с картинками. Слова повторяются, пока не
+                  запомнятся. Это и есть обучение.</small
+                >
+              </span>
+            </button>
+
+            <button class="pcard reveal" type="button">
+              <span class="pface front">
+                <span class="vign v-work">
+                  <span class="vg-lap">💼</span>
+                  <span class="vg-bubble">Чем он сейчас занят?</span>
+                </span>
+                <b>«Я на работе и не знаю, что он смотрит»</b>
+                <small>Бабушка или няня включает «что-нибудь».</small>
+                <em class="flip-hint">Как решаем →</em>
+              </span>
+              <span class="pface back">
+                <span class="sol-ic">📲</span>
+                <b>Всё видно с вашего телефона</b>
+                <small
+                  >Что делает сейчас, сколько занимался, как отвечает. Пауза и «+10 минут» — одной
+                  кнопкой, откуда угодно.</small
+                >
+              </span>
+            </button>
+
+            <button class="pcard reveal" type="button">
+              <span class="pface front">
+                <span class="vign v-cal">
+                  <span class="vg-cal"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                  <span class="vg-sweat">😩</span>
+                </span>
+                <b>«Нет сил каждый день придумывать занятия»</b>
+                <small>А развивать хочется — и языки, и счёт, и буквы.</small>
+                <em class="flip-hint">Как решаем →</em>
+              </span>
+              <span class="pface back">
+                <span class="sol-ic">📅</span>
+                <b>План делает себя сам</b>
+                <small
+                  >Темы на неделю по предметам, и система сама раскладывает уроки по дням. Вам —
+                  пять минут в неделю.</small
+                >
+              </span>
+            </button>
+          </div>
+
+          <div class="also reveal">
+            <div class="also-h">И ещё решает</div>
+            <div class="also-list">
+              <span><i>📞</i>Скучает по маме — видеозвонок одной кнопкой</span>
+              <span><i>🗣</i>Английский и китайский с двух лет — с озвучкой</span>
+              <span><i>🌙</i>Засыпает под колыбельную вашим голосом</span>
+              <span><i>🔤</i>Буквы, слоги и счёт — к школе без зубрёжки</span>
+              <span><i>👂</i>Радионяня: напишет, если в детской шумно</span>
+              <span><i>📷</i>Фото и видео, снятые ребёнком, — у вас</span>
+              <span><i>🔋</i>Предупредит, что телефон садится</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════ Как устроено ═══════════ -->
+      <section id="how" class="how">
+        <div class="wrap">
+          <div class="head reveal">
+            <div class="eyebrow">Как это устроено</div>
+            <h2>Вы — режиссёр. <em>Система — ассистент.</em></h2>
+            <p>
+              Всё, что попадает к ребёнку, проходит через вас. KidsPlus только собирает,
+              раскладывает по дням и показывает результат.
+            </p>
+          </div>
+
+          <div class="loop reveal" id="loop">
+            <svg
+              class="loop-path"
+              viewBox="0 0 1000 300"
+              preserveAspectRatio="none"
+              aria-hidden="true"
+            >
+              <path id="loopLine" d="M90,150 C230,40 330,40 450,150 S700,260 910,150" />
+            </svg>
+            <div class="node n1">
+              <span class="n-ic">📚</span>
+              <b>Библиотека</b>
+              <small>Проверенные видео, карточки на трёх языках и 35 видов игр</small>
+            </div>
+            <div class="node n2">
+              <span class="n-ic">✓</span>
+              <b>Вы выбираете</b>
+              <small>Отмечаете, что показать: одним касанием или готовым планом</small>
+            </div>
+            <div class="node n3">
+              <span class="n-ic">📅</span>
+              <b>План и расписание</b>
+              <small>Когда заниматься, сколько минут и какие предметы сегодня</small>
+            </div>
+            <div class="node n4">
+              <span class="n-ic">🧒</span>
+              <b>«Твои занятия»</b>
+              <small>Ребёнок видит только сегодняшний день: урок, вопросы, игру</small>
+            </div>
+            <div class="node n5">
+              <span class="n-ic">📊</span>
+              <b>Результат у вас</b>
+              <small>Минуты, ответы, слова — и подсказки, что повторить</small>
+            </div>
+          </div>
+
+          <div class="setup reveal">
+            <div>
+              <span>1</span><b>Личная ссылка</b
+              ><small>Приглашение открывает ваш закрытый кабинет</small>
+            </div>
+            <div>
+              <span>2</span><b>Профиль малыша</b
+              ><small>Прозвище, возраст, языки — пара минут</small>
+            </div>
+            <div>
+              <span>3</span><b>Телефон ребёнка</b><small>Навели камеру на QR-код — готово</small>
+            </div>
+            <a class="btn dark" href="/guide">Пошаговая инструкция →</a>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════ Мир малыша ═══════════ -->
+      <section id="kids" class="kids">
+        <div class="sky" aria-hidden="true">
+          <i class="cloud c1"></i><i class="cloud c2"></i><i class="cloud c3"></i
+          ><i class="cloud c4"></i> <i class="bal b1"></i><i class="bal b2"></i
+          ><i class="bal b3"></i> <i class="tw s1">✦</i><i class="tw s2">✦</i><i class="tw s3">✦</i
+          ><i class="tw s4">✦</i><i class="tw s5">✦</i>
+        </div>
+        <div class="wrap">
+          <div class="head center reveal">
+            <div class="eyebrow pink">Мир малыша</div>
+            <h2 class="kid-title">Здесь всё <em>говорит, поёт и радуется</em></h2>
+            <p>
+              Это живая копия детского приложения. Включите звук и потрогайте всё — совёнок
+              подскажет.
+            </p>
+            <button class="btn candy" type="button" id="kidsSound">🔊 Включить музыку</button>
+          </div>
+
+          <div class="kid-stage">
+            <div class="owl-side reveal">
+              <div class="bubble" id="owlBubble">Привет! Я совёнок. Давай поиграем? 🎈</div>
+              <svg class="big-owl" id="bigOwl"><use href="#owl" /></svg>
+            </div>
+
+            <div class="device android kidphone reveal">
+              <div class="kapp" id="kapp">
+                <!-- Главная -->
+                <section class="ks active" data-screen="home">
+                  <div class="k-top"><span class="k-bat">⚡ 100%</span></div>
+                  <h3 class="k-hello">Привет!</h3>
+                  <p class="k-sub">Что будем делать?</p>
+                  <div class="k-grid">
+                    <button data-go="cards" class="kt kt1"><i>ABC</i>Карточки</button>
+                    <button data-go="quiz" class="kt kt2"><i>?</i>Вопросы</button>
+                    <button data-go="balloons" class="kt kt3"><i>🎈</i>Шарики</button>
+                    <button data-go="piano" class="kt kt4"><i>🎹</i>Пианино</button>
+                    <button data-go="call" class="kt kt5"><i>📞</i>Мама</button>
+                    <button data-go="night" class="kt kt6"><i>🌙</i>Баиньки</button>
+                  </div>
+                  <div class="k-dock">
+                    <button class="d-cam" type="button" aria-label="Камера" data-go="cards">
+                      📷
+                    </button>
+                    <button class="d-call" type="button" aria-label="Позвонить маме" data-go="call">
+                      📞
+                    </button>
+                    <button class="d-star" type="button" aria-label="Наклейки" data-go="quiz">
+                      ⭐
+                    </button>
+                  </div>
+                </section>
+
+                <!-- Карточки -->
+                <section class="ks" data-screen="cards">
+                  <div class="k-bar">
+                    <button class="k-home" data-go="home" aria-label="Домой">⌂</button
+                    ><svg class="k-owl"><use href="#owl" /></svg
+                    ><span class="k-dots" id="cardDots"></span>
+                  </div>
+                  <button class="kcard" id="kcard" type="button">
+                    <span class="kc-emoji" id="kcEmoji">🍎</span>
+                    <span class="kc-word" id="kcWord">apple</span>
+                    <span class="kc-tr" id="kcTr">яблоко</span>
+                  </button>
+                  <div class="k-langs" id="kLangs">
+                    <button class="on" data-lang="en">English</button>
+                    <button data-lang="ru">Русский</button>
+                    <button data-lang="zh">中文</button>
+                  </div>
+                  <div class="k-nav">
+                    <button class="k-prev" id="kcPrev" aria-label="Назад">◀</button>
+                    <button class="k-next" id="kcNext" aria-label="Дальше">▶</button>
+                  </div>
+                </section>
+
+                <!-- Вопрос -->
+                <section class="ks" data-screen="quiz">
+                  <div class="k-bar">
+                    <button class="k-home" data-go="home" aria-label="Домой">⌂</button
+                    ><svg class="k-owl" id="quizOwl"><use href="#owl" /></svg
+                    ><span class="k-stars" id="kStars">☆☆☆</span>
+                  </div>
+                  <div class="kq" id="kq">Где лисичка?</div>
+                  <div class="kq-opts" id="kqOpts"></div>
+                </section>
+
+                <!-- Шарики -->
+                <section class="ks balloons" data-screen="balloons">
+                  <div class="k-bar">
+                    <button class="k-home" data-go="home" aria-label="Домой">⌂</button
+                    ><svg class="k-owl"><use href="#owl" /></svg
+                    ><span class="k-count" id="popCount">0</span>
+                  </div>
+                  <div class="bfield" id="bfield"></div>
+                  <p class="k-hint">Лопай шарики!</p>
+                </section>
+
+                <!-- Пианино -->
+                <section class="ks" data-screen="piano">
+                  <div class="k-bar">
+                    <button class="k-home" data-go="home" aria-label="Домой">⌂</button
+                    ><svg class="k-owl"><use href="#owl" /></svg><span></span>
+                  </div>
+                  <div class="note-name" id="noteName">♪</div>
+                  <div class="keys" id="keys">
+                    <button data-n="0" style="--c: #ef4444">до</button>
+                    <button data-n="1" style="--c: #f59e0b">ре</button>
+                    <button data-n="2" style="--c: #facc15">ми</button>
+                    <button data-n="3" style="--c: #22c55e">фа</button>
+                    <button data-n="4" style="--c: #38bdf8">соль</button>
+                    <button data-n="5" style="--c: #6366f1">ля</button>
+                  </div>
+                  <button class="k-song" id="kSong">♫ Сыграй песенку</button>
+                </section>
+
+                <!-- Звонок -->
+                <section class="ks call" data-screen="call">
+                  <div class="k-bar">
+                    <button class="k-home light" data-go="home" aria-label="Домой">⌂</button
+                    ><span></span><span></span>
+                  </div>
+                  <div class="call-av" id="callAv"><span>👩</span><i></i><i></i></div>
+                  <div class="call-who">Мама</div>
+                  <div class="call-st" id="callSt">Нажми зелёную кнопку</div>
+                  <button class="call-btn" id="callBtn" aria-label="Позвонить">📞</button>
+                </section>
+
+                <!-- Ночь -->
+                <section class="ks night" data-screen="night">
+                  <div class="k-bar">
+                    <button class="k-home light" data-go="home" aria-label="Домой">⌂</button
+                    ><span></span><span></span>
+                  </div>
+                  <div class="moon">🌙</div>
+                  <i class="ns n1">✦</i><i class="ns n2">✦</i><i class="ns n3">✦</i
+                  ><i class="ns n4">✦</i>
+                  <p class="night-t">На сегодня всё!</p>
+                  <p class="night-s">Колыбельная маминым голосом…</p>
+                </section>
+              </div>
+              <canvas class="confetti" id="confetti" aria-hidden="true"></canvas>
+            </div>
+
+            <div class="kid-picks reveal" id="kidPicks">
+              <button data-go="cards">
+                <i>🃏</i><b>Карточки</b><small>Слова на 3 языках говорят сами</small>
+              </button>
+              <button data-go="quiz">
+                <i>❓</i><b>Вопросы</b><small>Проверяем, что понял</small>
+              </button>
+              <button data-go="balloons">
+                <i>🎈</i><b>Шарики</b><small>Лопай и считай вслух</small>
+              </button>
+              <button data-go="piano">
+                <i>🎹</i><b>Пианино</b><small>До-ре-ми с первого касания</small>
+              </button>
+              <button data-go="call">
+                <i>📞</i><b>Позвонить маме</b><small>Одна большая кнопка</small>
+              </button>
+              <button data-go="night">
+                <i>🌙</i><b>Баиньки</b><small>Конец дня и колыбельная</small>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════ 35 игр ═══════════ -->
+      <section class="games">
+        <div class="wrap">
+          <div class="head center reveal">
+            <div class="eyebrow">Настоящие экраны</div>
+            <h2><span class="big-num" data-count="35">35</span> видов игр и занятий</h2>
+            <p>
+              Музыка и ноты, буквы и слоги, счёт, логика, внимание, моторика. Каждая игра озвучена и
+              хвалит ребёнка.
+            </p>
+          </div>
+        </div>
+        <div class="marquee" aria-hidden="true">
+          <div class="mq-row r1">
+            <figure>
+              <img src="/img/g-menu.webp" alt="" loading="lazy" width="440" height="977" />
+              <figcaption>Главное меню</figcaption>
+            </figure>
+            <figure>
+              <img src="/img/g-balloons.webp" alt="" loading="lazy" width="440" height="977" />
+              <figcaption>Шарики</figcaption>
+            </figure>
+            <figure>
+              <img src="/img/g-piano.webp" alt="" loading="lazy" width="440" height="977" />
+              <figcaption>Пианино</figcaption>
+            </figure>
+            <figure>
+              <img src="/img/g-memory.webp" alt="" loading="lazy" width="440" height="977" />
+              <figcaption>Найди пару</figcaption>
+            </figure>
+            <figure>
+              <img src="/img/g-word.webp" alt="" loading="lazy" width="440" height="977" />
+              <figcaption>Собери слово</figcaption>
+            </figure>
+            <figure>
+              <img src="/img/g-celebrate.webp" alt="" loading="lazy" width="440" height="977" />
+              <figcaption>Новая наклейка!</figcaption>
+            </figure>
+            <figure>
+              <img src="/img/g-maze.webp" alt="" loading="lazy" width="440" height="977" />
+              <figcaption>Лабиринт</figcaption>
+            </figure>
+            <figure>
+              <img src="/img/g-notes.webp" alt="" loading="lazy" width="440" height="977" />
+              <figcaption>Ноты</figcaption>
+            </figure>
+            <figure>
+              <img src="/img/g-coloring.webp" alt="" loading="lazy" width="440" height="977" />
+              <figcaption>Раскраска</figcaption>
+            </figure>
+            <figure>
+              <img src="/img/g-arith.webp" alt="" loading="lazy" width="440" height="977" />
+              <figcaption>Сложение</figcaption>
+            </figure>
+            <figure>
+              <img src="/img/g-baby.webp" alt="" loading="lazy" width="440" height="977" />
+              <figcaption>Для самых маленьких</figcaption>
+            </figure>
+          </div>
+          <div class="mq-row r2">
+            <figure>
+              <img src="/img/g-puzzle.webp" alt="" loading="lazy" width="440" height="977" />
+              <figcaption>Пазл</figcaption>
+            </figure>
+            <figure>
+              <img src="/img/g-tracing.webp" alt="" loading="lazy" width="440" height="977" />
+              <figcaption>Обведи цифру</figcaption>
+            </figure>
+            <figure>
+              <img src="/img/g-rhythm.webp" alt="" loading="lazy" width="440" height="977" />
+              <figcaption>Ритм</figcaption>
+            </figure>
+            <figure>
+              <img src="/img/g-moles.webp" alt="" loading="lazy" width="440" height="977" />
+              <figcaption>Кроты</figcaption>
+            </figure>
+            <figure>
+              <img src="/img/g-read.webp" alt="" loading="lazy" width="440" height="977" />
+              <figcaption>Читаем слова</figcaption>
+            </figure>
+            <figure>
+              <img src="/img/g-shapes.webp" alt="" loading="lazy" width="440" height="977" />
+              <figcaption>Фигуры</figcaption>
+            </figure>
+            <figure>
+              <img src="/img/g-pitch.webp" alt="" loading="lazy" width="440" height="977" />
+              <figcaption>Высоко — низко</figcaption>
+            </figure>
+            <figure>
+              <img src="/img/g-sorting.webp" alt="" loading="lazy" width="440" height="977" />
+              <figcaption>Разложи</figcaption>
+            </figure>
+            <figure>
+              <img src="/img/g-drawing.webp" alt="" loading="lazy" width="440" height="977" />
+              <figcaption>Рисовалка</figcaption>
+            </figure>
+            <figure>
+              <img src="/img/g-odd.webp" alt="" loading="lazy" width="440" height="977" />
+              <figcaption>Что лишнее?</figcaption>
+            </figure>
+            <figure>
+              <img src="/img/g-flashlight.webp" alt="" loading="lazy" width="440" height="977" />
+              <figcaption>Фонарик</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════ Кабинет родителя ═══════════ -->
+      <section id="parents" class="parents">
+        <div class="wrap par">
+          <div class="par-copy">
+            <div class="eyebrow reveal">Кабинет родителя</div>
+            <h2 class="reveal">Всё под контролем. <em>С вашего телефона.</em></h2>
+            <p class="reveal">
+              Настоящий кабинет на iPhone — в светлой и тёмной теме. Нажимайте на разделы.
+            </p>
+            <div class="ptabs reveal" id="ptabs" role="tablist">
+              <button class="on" data-shot="home" data-dark="1">
+                <b>Главная</b
+                ><small
+                  >Что ребёнок делает прямо сейчас. Пауза, «+10 минут», радионяня, звонок.</small
+                ><i class="bar"></i>
+              </button>
+              <button data-shot="content">
+                <b>Контент</b
+                ><small>Библиотека: видео, карточки, игры, аудио. Отметьте, кому показывать.</small
+                ><i class="bar"></i>
+              </button>
+              <button data-shot="plan">
+                <b>План</b><small>Расписание дня и темы недели. Предметы раскладываются сами.</small
+                ><i class="bar"></i>
+              </button>
+              <button data-shot="progress" data-dark="1">
+                <b>Прогресс</b><small>Минуты по предметам, верные ответы, что пора повторить.</small
+                ><i class="bar"></i>
+              </button>
+              <button data-shot="now">
+                <b>Сейчас</b><small>Сколько осталось, «Завершить на сегодня» и радионяня.</small
+                ><i class="bar"></i>
+              </button>
+            </div>
+            <label class="theme-sw reveal">
+              <input type="checkbox" id="darkShots" />
+              <span class="sw"><i></i></span>
+              Тёмная тема
+            </label>
+          </div>
+          <div class="par-stage reveal">
+            <div class="glow" aria-hidden="true"></div>
+            <div class="device iphone big" id="pshot">
+              <img
+                class="on"
+                src="/img/p-home.webp"
+                data-shot="home"
+                alt="Главная кабинета"
+                width="590"
+                height="1278"
+              />
+              <img
+                src="/img/p-home-dark.webp"
+                data-shot="home-dark"
+                alt=""
+                width="590"
+                height="1278"
+                loading="lazy"
+              />
+              <img
+                src="/img/p-content.webp"
+                data-shot="content"
+                alt=""
+                width="590"
+                height="1278"
+                loading="lazy"
+              />
+              <img
+                src="/img/p-plan.webp"
+                data-shot="plan"
+                alt=""
+                width="590"
+                height="1278"
+                loading="lazy"
+              />
+              <img
+                src="/img/p-progress.webp"
+                data-shot="progress"
+                alt=""
+                width="590"
+                height="1278"
+                loading="lazy"
+              />
+              <img
+                src="/img/p-progress-dark.webp"
+                data-shot="progress-dark"
+                alt=""
+                width="590"
+                height="1278"
+                loading="lazy"
+              />
+              <img
+                src="/img/p-now.webp"
+                data-shot="now"
+                alt=""
+                width="590"
+                height="1278"
+                loading="lazy"
+              />
+            </div>
+            <div class="ntf n-a">
+              <i>🎉</i
+              ><span
+                ><b>Зайка закончила занятия</b><small>сегодня 32 минуты · 92 % верно</small></span
+              >
+            </div>
+            <div class="ntf n-b">
+              <i>📊</i
+              ><span><b>Отчёт за неделю готов</b><small>7 из 7 дней с занятиями</small></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════ Один день ═══════════ -->
+      <section class="day" id="day">
+        <div class="wrap">
+          <div class="head reveal">
+            <div class="eyebrow">Один день</div>
+            <h2>Как это выглядит <em>в жизни</em></h2>
+          </div>
+          <ol class="timeline">
+            <li class="reveal" style="--sky: linear-gradient(135deg, #ffe6c7, #ffd0b5)">
+              <time>09:30</time><span class="tl-ic">☀️</span>
+              <div>
+                <b>Утренний урок</b>Видео про цвета на английском, три вопроса — и мамин голос:
+                «Умница!»
+              </div>
+            </li>
+            <li class="reveal" style="--sky: linear-gradient(135deg, #fff1c2, #ffe39b)">
+              <time>09:45</time><span class="tl-ic">🃏</span>
+              <div>
+                <b>Карточки</b>Шесть новых слов. Те, что не запомнились, вернутся завтра сами.
+              </div>
+            </li>
+            <li class="reveal" style="--sky: linear-gradient(135deg, #d8f3e6, #bfe9d6)">
+              <time>12:40</time><span class="tl-ic">📞</span>
+              <div>
+                <b>«Позвонить маме»</b>Одна кнопка — и вы на видеосвязи, даже если вы на работе.
+              </div>
+            </li>
+            <li class="reveal" style="--sky: linear-gradient(135deg, #e3e6ff, #cfd4ff)">
+              <time>17:00</time><span class="tl-ic">🎨</span>
+              <div>
+                <b>Свободное время</b>Игры и камера. Через 15 минут экран скажет: «На сегодня всё!»
+              </div>
+            </li>
+            <li class="reveal" style="--sky: linear-gradient(135deg, #2b2f5a, #171a36)">
+              <time>20:30</time><span class="tl-ic">🌙</span>
+              <div><b>Перед сном</b>Колыбельная вашим голосом. Вам приходит итог дня.</div>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- ═══════════ Безопасность ═══════════ -->
+      <section id="safe" class="safe">
+        <div class="wrap safe-in">
+          <div class="shield reveal" aria-hidden="true">
+            <svg viewBox="0 0 200 220">
+              <defs>
+                <linearGradient id="shg" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#f3dcaa" />
+                  <stop offset="1" stop-color="#b98a43" />
+                </linearGradient>
+              </defs>
+              <path
+                d="M100 12l78 28v58c0 52-34 90-78 108-44-18-78-56-78-108V40z"
+                fill="url(#shg)"
+              />
+              <path d="M100 34l58 21v44c0 39-25 68-58 82-33-14-58-43-58-82V55z" class="sh-in" />
+              <path d="M72 108l20 20 38-42" class="sh-k" />
+            </svg>
+          </div>
+          <div>
+            <div class="eyebrow reveal">Безопасность и приватность</div>
+            <h2 class="reveal">Сделано родителями — <em>для своих детей</em></h2>
+            <ul class="checks">
+              <li class="reveal">
+                <b>Только одобренное.</b> Ничего не попадает к ребёнку, пока вы не отметили.
+              </li>
+              <li class="reveal">
+                <b>Никаких выходов наружу.</b> В детском приложении нет ссылок, поиска, рекомендаций
+                и магазинов.
+              </li>
+              <li class="reveal">
+                <b>Прозвище вместо имени.</b> Настоящее имя ребёнка системе не нужно и никуда не
+                передаётся.
+              </li>
+              <li class="reveal">
+                <b>Закрытый кабинет семьи.</b> Ваших детей, фото и звонки видите только вы и второй
+                родитель.
+              </li>
+              <li class="reveal">
+                <b>Видео не скачиваются.</b> Встроенный плеер, только нужный фрагмент.
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════ Приглашение ═══════════ -->
+      <section class="invite" id="invite">
+        <div class="wrap">
+          <div class="envelope reveal" id="envelope">
+            <div class="env-card">
+              <div class="seal" aria-hidden="true">
+                <svg><use href="#logo" /></svg>
+              </div>
+              <div class="eyebrow gold-t">Приглашение</div>
+              <h2>Это подарок <em>вашему малышу</em></h2>
+              <p>
+                KidsPlus не продаётся в магазинах приложений. Доступ — только по личной ссылке от
+                близких. Для вас всё бесплатно: без подписок и без платежей.
+              </p>
+              <ul class="env-list">
+                <li>Закрытый кабинет вашей семьи</li>
+                <li>Вся библиотека: видео, карточки, 35 видов игр</li>
+                <li>Помощь с настройкой — просто напишите</li>
+              </ul>
+              <div class="cta center">
+                <a class="btn gold lg" href="/guide">Открыть приглашение →</a>
+                <a class="btn ghost-l lg" href="/login">Уже есть доступ — войти</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════ Вопросы ═══════════ -->
+      <section class="faq" id="faq">
+        <div class="wrap narrow">
+          <div class="head center reveal">
+            <div class="eyebrow">Вопросы</div>
+            <h2>Коротко о главном</h2>
+          </div>
+          <details class="reveal">
+            <summary>Сколько это стоит?</summary>
+            <p>Для вас — бесплатно. Это подарок: без подписок и платежей.</p>
+          </details>
+          <details class="reveal">
+            <summary>Нужен ли VPN?</summary>
+            <p>Нет. Кабинет, детское приложение и видео открываются напрямую.</p>
+          </details>
+          <details class="reveal">
+            <summary>Работает на iPhone?</summary>
+            <p>
+              Кабинет родителя — да, на iPhone и Android: открывается в Safari и ставится на экран
+              «Домой» как приложение. Детское приложение — для Android-телефона или планшета
+              ребёнка.
+            </p>
+          </details>
+          <details class="reveal">
+            <summary>Какой телефон нужен ребёнку?</summary>
+            <p>
+              Любой Android-телефон или планшет с Chrome, можно старый. Нужен Wi-Fi. Лучше выйти на
+              нём из личных аккаунтов.
+            </p>
+          </details>
+          <details class="reveal">
+            <summary>С какого возраста?</summary>
+            <p>
+              С двух лет. Вопросы и число вариантов ответа подстраиваются под возраст, а план можно
+              вести до школы.
+            </p>
+          </details>
+          <details class="reveal">
+            <summary>Видят ли другие семьи моего ребёнка?</summary>
+            <p>Нет. У каждой семьи свой закрытый кабинет. Общая только библиотека материалов.</p>
+          </details>
+          <details class="reveal">
+            <summary>Можно ли добавить своё видео?</summary>
+            <p>
+              Новые видео сначала проверяются, чтобы в библиотеку не попало ничего лишнего. Пришлите
+              ссылку — проверим и добавим для всех.
+            </p>
+          </details>
+        </div>
+      </section>
+
+      <section class="final">
+        <div class="wrap center">
+          <svg class="final-owl" aria-hidden="true"><use href="#owl" /></svg>
+          <h2 class="reveal">Дайте экрану <em>правильную работу</em></h2>
+          <p class="reveal">Подключение — 15 минут. Инструкция с точными названиями кнопок.</p>
+          <div class="cta center reveal">
+            <a class="btn gold lg" href="/guide">Подключить →</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap foot">
+        <span class="brand"
+          ><svg><use href="#logo" /></svg>KidsPlus</span
+        >
+        <span>Сделано с любовью для наших детей</span>
+      </div>
+    </footer>
+  </body>
+</html>

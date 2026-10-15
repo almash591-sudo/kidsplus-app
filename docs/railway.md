@@ -12,6 +12,7 @@
 | worker         | `deploy/node.Dockerfile` (`APP=worker`), фоновые задачи                     |
 | kid-web        | `deploy/web/Dockerfile` (`APP=kid`): Caddy + детское PWA, `/healthz`        |
 | parent-web     | `deploy/web/Dockerfile` (`APP=parent`): Caddy + родительское PWA            |
+| landing        | `deploy/landing/Dockerfile`: Caddy + лендинг `apps/landing`, короткий домен |
 
 Медиа (картинки) хранятся в PostgreSQL (`STORAGE_DRIVER=db`): на бесплатном тарифе bucket недоступен.
 Ночной бэкап — в `docs/backup.md` (включается на тарифе Hobby).
