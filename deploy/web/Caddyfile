@@ -40,10 +40,17 @@
 		respond "ok" 200
 	}
 
-	# Лендинг для родственников (этап 23): статическая страница с инструкцией.
+	# Лендинг (/start) и инструкция подключения (/guide) для родственников — статические страницы.
 	handle /start {
 		root * /srv
 		rewrite * /start.html
+		header Cache-Control "no-cache"
+		file_server
+	}
+
+	handle /guide {
+		root * /srv
+		rewrite * /guide.html
 		header Cache-Control "no-cache"
 		file_server
 	}

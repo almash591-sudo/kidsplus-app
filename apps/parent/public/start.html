@@ -3,777 +3,622 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>KidsPlus — для семьи</title>
+    <title>KidsPlus — экран, который учит</title>
     <meta
       name="description"
-      content="Как подключить KidsPlus: кабинет родителя и приложение для ребёнка"
+      content="Короткие видео, карточки, игры и план занятий для детей 2–6 лет. Только то, что одобрили родители."
     />
     <meta name="robots" content="noindex" />
     <meta name="theme-color" content="#f6f1e7" />
+    <meta property="og:title" content="KidsPlus — экран, который учит, а не затягивает" />
+    <meta
+      property="og:description"
+      content="Занятия для малышей на их собственном телефоне. Только то, что одобрили вы."
+    />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <style>
-      :root {
-        --bg: #f6f1e7;
-        --paper: #fffdf8;
-        --ink: #1f2a24;
-        --soft: #5d6a62;
-        --line: #e4dccb;
-        --accent: #2f5d4a;
-        --gold: #b88a3b;
-        --blush: #f3e2d6;
-        --shadow: 0 1px 2px rgba(31, 42, 36, 0.05), 0 12px 40px -12px rgba(31, 42, 36, 0.18);
-        --serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
-        --sans:
-          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      }
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --bg: #141a17;
-          --paper: #1b2320;
-          --ink: #efe9dc;
-          --soft: #a9b3ac;
-          --line: #2c3631;
-          --accent: #8cc2a8;
-          --gold: #d7b06a;
-          --blush: #2a2420;
-          --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 40px -12px rgba(0, 0, 0, 0.6);
-        }
-      }
-      * {
-        box-sizing: border-box;
-      }
-      html {
-        -webkit-text-size-adjust: 100%;
-        scroll-behavior: smooth;
-      }
-      body {
-        margin: 0;
-        background: var(--bg);
-        color: var(--ink);
-        font: 17px/1.6 var(--sans);
-        -webkit-font-smoothing: antialiased;
-      }
-      .wrap {
-        max-width: 1040px;
-        margin: 0 auto;
-        padding: 0 20px;
-      }
-      a {
-        color: var(--accent);
-      }
-      h1,
-      h2,
-      h3 {
-        font-family: var(--serif);
-        font-weight: 500;
-        letter-spacing: -0.01em;
-        margin: 0;
-      }
-      .eyebrow {
-        font: 600 12px/1 var(--sans);
-        letter-spacing: 0.18em;
-        text-transform: uppercase;
-        color: var(--gold);
-      }
-
-      /* ── Шапка ── */
-      header {
-        padding: 22px 0;
-      }
-      .brand {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        font: 600 18px/1 var(--serif);
-        letter-spacing: 0.02em;
-      }
-      .brand svg {
-        width: 30px;
-        height: 30px;
-      }
-
-      /* ── Первый экран ── */
-      .hero {
-        display: grid;
-        grid-template-columns: 1.15fr 0.85fr;
-        gap: 48px;
-        align-items: center;
-        padding: 40px 0 72px;
-      }
-      .hero h1 {
-        font-size: clamp(38px, 6vw, 64px);
-        line-height: 1.04;
-        margin: 18px 0 20px;
-      }
-      .hero h1 em {
-        font-style: italic;
-        color: var(--accent);
-      }
-      .lead {
-        font-size: 19px;
-        color: var(--soft);
-        max-width: 34em;
-        margin: 0 0 30px;
-      }
-      .cta {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-      }
-      .btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 15px 24px;
-        border-radius: 999px;
-        font-weight: 600;
-        font-size: 16px;
-        text-decoration: none;
-        transition: transform 0.15s ease;
-      }
-      .btn:active {
-        transform: scale(0.98);
-      }
-      .btn.primary {
-        background: var(--accent);
-        color: var(--paper);
-      }
-      .btn.ghost {
-        border: 1px solid var(--line);
-        color: var(--ink);
-        background: var(--paper);
-      }
-      .badges {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 18px;
-        margin-top: 30px;
-        color: var(--soft);
-        font-size: 14px;
-      }
-      .badges span::before {
-        content: '✦ ';
-        color: var(--gold);
-      }
-
-      /* Телефон */
-      .phone {
-        justify-self: center;
-        width: min(300px, 78vw);
-        aspect-ratio: 9 / 18.5;
-        border-radius: 44px;
-        background: var(--ink);
-        padding: 12px;
-        box-shadow:
-          var(--shadow),
-          0 40px 80px -30px rgba(47, 93, 74, 0.45);
-        transform: rotate(2.5deg);
-      }
-      .screen {
-        height: 100%;
-        border-radius: 34px;
-        background: linear-gradient(170deg, #fff8ec, #fde9d7 60%, #f6dccb);
-        padding: 34px 18px 18px;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        color: #2a2a2a;
-        overflow: hidden;
-      }
-      .screen .hi {
-        font: 600 22px/1.2 var(--serif);
-      }
-      .screen .sub {
-        font-size: 13px;
-        color: #7a6f63;
-        margin-top: -6px;
-      }
-      .tile {
-        border-radius: 20px;
-        padding: 14px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        font-weight: 600;
-        font-size: 15px;
-        background: #fff;
-        box-shadow: 0 6px 18px -8px rgba(120, 80, 40, 0.35);
-      }
-      .tile i {
-        width: 42px;
-        height: 42px;
-        border-radius: 14px;
-        display: grid;
-        place-items: center;
-        font-style: normal;
-        font-size: 22px;
-      }
-      .tile small {
-        display: block;
-        font-weight: 400;
-        color: #8a7f73;
-        font-size: 12px;
-      }
-
-      /* ── Секции ── */
-      section {
-        padding: 72px 0;
-      }
-      section.alt {
-        background: var(--paper);
-        border-top: 1px solid var(--line);
-        border-bottom: 1px solid var(--line);
-      }
-      .head {
-        max-width: 640px;
-        margin-bottom: 40px;
-      }
-      .head h2 {
-        font-size: clamp(30px, 4.4vw, 44px);
-        line-height: 1.1;
-        margin: 14px 0 12px;
-      }
-      .head p {
-        color: var(--soft);
-        margin: 0;
-      }
-      .grid3 {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 18px;
-      }
-      .card {
-        background: var(--paper);
-        border: 1px solid var(--line);
-        border-radius: 22px;
-        padding: 24px;
-      }
-      section.alt .card {
-        background: var(--bg);
-      }
-      .card .ic {
-        font-size: 26px;
-        margin-bottom: 12px;
-      }
-      .card h3 {
-        font-size: 21px;
-        margin-bottom: 6px;
-      }
-      .card p {
-        margin: 0;
-        color: var(--soft);
-        font-size: 15.5px;
-      }
-
-      /* Две версии */
-      .duo {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 18px;
-      }
-      .duo .card {
-        padding: 30px;
-      }
-      .tag {
-        display: inline-block;
-        font-size: 12px;
-        font-weight: 600;
-        padding: 5px 11px;
-        border-radius: 999px;
-        background: var(--blush);
-        color: var(--ink);
-        margin-bottom: 14px;
-      }
-      .duo ul {
-        margin: 14px 0 0;
-        padding-left: 18px;
-        color: var(--soft);
-      }
-
-      /* Шаги */
-      .steps {
-        counter-reset: s;
-        display: grid;
-        gap: 16px;
-      }
-      .step {
-        display: grid;
-        grid-template-columns: 64px minmax(0, 1fr);
-        gap: 20px;
-        background: var(--paper);
-        border: 1px solid var(--line);
-        border-radius: 22px;
-        padding: 26px;
-      }
-      .step::before {
-        counter-increment: s;
-        content: counter(s);
-        font: italic 500 40px/1 var(--serif);
-        color: var(--gold);
-      }
-      .step h3 {
-        font-size: 23px;
-        margin-bottom: 8px;
-      }
-      .step p,
-      .step li {
-        color: var(--soft);
-      }
-      .step p {
-        margin: 0 0 10px;
-      }
-      .step ol,
-      .step ul {
-        margin: 6px 0 0;
-        padding-left: 20px;
-      }
-      .step li {
-        margin: 4px 0;
-      }
-      .path {
-        display: inline;
-        font-weight: 600;
-        color: var(--ink);
-        white-space: nowrap;
-      }
-      .note {
-        margin-top: 12px;
-        padding: 12px 16px;
-        border-radius: 14px;
-        background: var(--blush);
-        color: var(--ink);
-        font-size: 15px;
-      }
-      .split {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 14px;
-        margin-top: 10px;
-      }
-      .split > div {
-        border: 1px dashed var(--line);
-        border-radius: 16px;
-        padding: 14px 16px;
-      }
-      .split b {
-        display: block;
-        color: var(--ink);
-        margin-bottom: 4px;
-      }
-
-      /* Вопросы */
-      details {
-        background: var(--paper);
-        border: 1px solid var(--line);
-        border-radius: 18px;
-        padding: 18px 22px;
-        margin-bottom: 12px;
-      }
-      section.alt details {
-        background: var(--bg);
-      }
-      summary {
-        cursor: pointer;
-        font: 500 19px/1.35 var(--serif);
-        list-style: none;
-        display: flex;
-        justify-content: space-between;
-        gap: 16px;
-      }
-      summary::-webkit-details-marker {
-        display: none;
-      }
-      summary::after {
-        content: '+';
-        color: var(--gold);
-        font-size: 24px;
-        line-height: 1;
-      }
-      details[open] summary::after {
-        content: '–';
-      }
-      details p {
-        color: var(--soft);
-        margin: 12px 0 0;
-      }
-
-      footer {
-        padding: 48px 0 60px;
-        color: var(--soft);
-        font-size: 14px;
-        text-align: center;
-      }
-      footer .brand {
-        justify-content: center;
-        margin-bottom: 10px;
-        color: var(--ink);
-      }
-
-      @media (max-width: 820px) {
-        .hero,
-        .duo,
-        .split {
-          grid-template-columns: 1fr;
-        }
-        .hero {
-          padding-top: 16px;
-          gap: 40px;
-        }
-        .grid3 {
-          grid-template-columns: 1fr;
-        }
-        .path {
-          white-space: normal;
-        }
-        .step {
-          grid-template-columns: minmax(0, 1fr);
-          gap: 6px;
-          padding: 22px;
-        }
-        section {
-          padding: 56px 0;
-        }
-      }
-    </style>
+    <link rel="stylesheet" href="/start.css" />
+    <script src="/start.js" defer></script>
   </head>
   <body>
-    <header class="wrap">
-      <div class="brand">
-        <svg viewBox="0 0 32 32" aria-hidden="true">
-          <circle cx="16" cy="16" r="15" fill="#2f5d4a" />
-          <path d="M16 8v16M8 16h16" stroke="#f6f1e7" stroke-width="3" stroke-linecap="round" />
-        </svg>
-        KidsPlus
+    <!-- ── Навигация ── -->
+    <nav class="nav" id="nav">
+      <div class="wrap nav-in">
+        <a class="brand" href="#top" aria-label="KidsPlus">
+          <svg viewBox="0 0 32 32" aria-hidden="true">
+            <circle cx="16" cy="16" r="15" fill="var(--accent)" />
+            <path
+              d="M16 9v14M9 16h14"
+              stroke="var(--bg)"
+              stroke-width="3.2"
+              stroke-linecap="round"
+            />
+          </svg>
+          KidsPlus
+        </a>
+        <div class="nav-links">
+          <a href="#how">Как это работает</a>
+          <a href="#try">Попробовать</a>
+          <a href="#parents">Для родителей</a>
+          <a href="#safe">Безопасность</a>
+        </div>
+        <a class="btn primary sm" href="/guide">Подключить</a>
       </div>
-    </header>
+    </nav>
 
-    <main>
-      <div class="wrap hero">
-        <div>
-          <div class="eyebrow">Для нашей семьи</div>
-          <h1>Тихие, умные занятия <em>для малышей</em> — на их собственном телефоне</h1>
-          <p class="lead">
-            Короткие видео, карточки со словами, игры и план занятий на неделю. Ребёнок видит только
-            то, что одобрили вы: без рекламы, без YouTube-ленты и без случайных роликов.
-          </p>
-          <div class="cta">
-            <a class="btn primary" href="#start">Как подключить →</a>
-            <a class="btn ghost" href="/login">Войти в кабинет</a>
+    <main id="top">
+      <!-- ── Первый экран ── -->
+      <header class="hero">
+        <div class="blob b1" aria-hidden="true"></div>
+        <div class="blob b2" aria-hidden="true"></div>
+        <div class="wrap hero-in">
+          <div class="hero-copy">
+            <div class="eyebrow reveal">Для детей 2–6 лет</div>
+            <h1 class="reveal">
+              Экран, который <em>учит</em>,<br />
+              а&nbsp;не&nbsp;затягивает
+            </h1>
+            <p class="lead reveal">
+              Свой телефон для ребёнка, на котором нет ленты рекомендаций и случайных роликов.
+              Короткие видео-уроки, карточки, игры и план на неделю, и всё это только из того, что
+              одобрили вы.
+            </p>
+            <div class="cta reveal">
+              <a class="btn primary" href="/guide">Подключить за 15 минут →</a>
+              <a class="btn ghost" href="#try">Попробовать прямо здесь</a>
+            </div>
+            <ul class="ticks reveal">
+              <li>Бесплатно</li>
+              <li>Без VPN</li>
+              <li>Ничего не скачивать из магазина</li>
+            </ul>
           </div>
-          <div class="badges">
-            <span>Без VPN</span>
-            <span>Бесплатно</span>
-            <span>Ничего не нужно скачивать из магазина</span>
+
+          <div class="hero-stage" aria-hidden="true">
+            <div class="chip c1"><b>✓</b> Одобрено мамой</div>
+            <div class="chip c2"><b>⏱</b> 20 минут в день</div>
+            <div class="chip c3"><b>🎙</b> «Молодец!» маминым голосом</div>
+            <div class="phone tilt">
+              <div class="notch"></div>
+              <div class="screen kid" id="heroScreen">
+                <!-- 1. Сегодня -->
+                <div class="hs active">
+                  <div class="k-hi">Привет! ☀️</div>
+                  <div class="k-sub">Сегодня 3 занятия</div>
+                  <div class="k-tile">
+                    <i class="t1">🦊</i><span>Кто живёт в лесу<small>видео · 3 мин</small></span>
+                  </div>
+                  <div class="k-tile">
+                    <i class="t2">🍎</i><span>Фрукты<small>карточки · 6 слов</small></span>
+                  </div>
+                  <div class="k-tile">
+                    <i class="t3">🎈</i><span>Лопни шарик<small>игра</small></span>
+                  </div>
+                  <div class="k-bar"><span style="width: 35%"></span></div>
+                </div>
+                <!-- 2. Видео -->
+                <div class="hs">
+                  <div class="k-video">
+                    <div class="k-scene">
+                      <span class="sun">☀️</span><span class="tree">🌲</span
+                      ><span class="fox">🦊</span><span class="tree t2">🌳</span>
+                    </div>
+                    <div class="k-prog"><span></span></div>
+                  </div>
+                  <div class="k-cap">Кто живёт в лесу</div>
+                  <div class="k-sub center">Фрагмент 3 минуты — дальше вопросы</div>
+                </div>
+                <!-- 3. Вопрос -->
+                <div class="hs">
+                  <div class="k-q">Кто живёт в норе?</div>
+                  <div class="k-opts"><span>🐟</span><span class="ok">🦊</span><span>🐦</span></div>
+                  <div class="k-praise">Молодец! 🎉</div>
+                </div>
+                <!-- 4. Карточка -->
+                <div class="hs">
+                  <div class="k-card">
+                    <div class="k-emoji">🍎</div>
+                    <div class="k-word">apple</div>
+                    <div class="k-tr">яблоко</div>
+                  </div>
+                  <div class="k-sub center">Нажми — и карточка скажет слово</div>
+                </div>
+                <!-- 5. Конец дня -->
+                <div class="hs">
+                  <div class="k-done">
+                    <div class="k-star">⭐</div>
+                    <div class="k-hi center">На сегодня всё!</div>
+                    <div class="k-sub center">Завтра будут новые занятия</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="dots" id="heroDots"></div>
           </div>
         </div>
-        <div class="phone" aria-hidden="true">
-          <div class="screen">
-            <div class="hi">Привет! ☀️</div>
-            <div class="sub">Сегодня 3 занятия</div>
-            <div class="tile">
-              <i style="background: #ffe1c2">🦊</i>
-              <div>Животные<small>видео · 3 мин</small></div>
-            </div>
-            <div class="tile">
-              <i style="background: #d9efe3">🍎</i>
-              <div>Фрукты<small>карточки · 8 слов</small></div>
-            </div>
-            <div class="tile">
-              <i style="background: #e3e2fb">🔢</i>
-              <div>Считаем до 5<small>игра</small></div>
-            </div>
-            <div class="tile">
-              <i style="background: #fbe0e6">📞</i>
-              <div>Позвонить маме<small>видеозвонок</small></div>
-            </div>
-          </div>
-        </div>
-      </div>
+      </header>
 
-      <section class="alt">
+      <!-- ── Было / стало ── -->
+      <section class="compare">
         <div class="wrap">
-          <div class="head">
-            <div class="eyebrow">Что внутри</div>
-            <h2>Всё, чем мы пользуемся каждый день</h2>
+          <div class="head center reveal">
+            <div class="eyebrow">Почему не просто YouTube</div>
+            <h2>Одна и та же минута у экрана — с разным результатом</h2>
+          </div>
+          <div class="switch reveal" role="tablist">
+            <button role="tab" class="on" data-cmp="old">Обычный планшет</button>
+            <button role="tab" data-cmp="new">С KidsPlus</button>
+            <span class="pill"></span>
+          </div>
+          <div class="cmp reveal" id="cmp" data-mode="old">
+            <div class="cmp-row">
+              <span class="o">Автовоспроизведение: одно видео сменяет другое</span>
+              <span class="n">Фрагмент на 1–5 минут, потом вопросы</span>
+            </div>
+            <div class="cmp-row">
+              <span class="o">Ролик выбирает алгоритм</span>
+              <span class="n">Ролик выбрали вы: всё проверено заранее</span>
+            </div>
+            <div class="cmp-row">
+              <span class="o">Бесконечная лента и кнопки «ещё»</span>
+              <span class="n">Никаких ссылок наружу, поиска и рекомендаций</span>
+            </div>
+            <div class="cmp-row">
+              <span class="o">Ребёнок смотрит молча</span>
+              <span class="n">Отвечает, повторяет слова, играет</span>
+            </div>
+            <div class="cmp-row">
+              <span class="o">Планшет приходится отбирать, со слезами</span>
+              <span class="n">Время вышло — «На сегодня всё!», без споров</span>
+            </div>
+            <div class="cmp-row">
+              <span class="o">Вы не знаете, что он смотрел</span>
+              <span class="n">Вы видите каждое занятие и прогресс</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Как работает ── -->
+      <section id="how" class="alt">
+        <div class="wrap">
+          <div class="head reveal">
+            <div class="eyebrow">Как это работает</div>
+            <h2>Три шага, и у ребёнка свой обучающий мир</h2>
             <p>
-              Материалы уже собраны и проверены — вам остаётся выбрать, что показать своему ребёнку.
+              Всё, что попадает к ребёнку, проходит через вас. Система только помогает собрать и
+              разложить по дням.
             </p>
           </div>
-          <div class="grid3">
-            <div class="card">
-              <div class="ic">🎬</div>
-              <h3>Видео-уроки</h3>
-              <p>Короткие фрагменты по 1–5 минут, после каждого — простые вопросы с картинками.</p>
-            </div>
-            <div class="card">
-              <div class="ic">🃏</div>
-              <h3>Карточки</h3>
+          <div class="flow">
+            <div class="fstep reveal">
+              <div class="art">
+                <svg viewBox="0 0 160 120" aria-hidden="true">
+                  <rect x="44" y="8" width="72" height="104" rx="14" class="s-dev" />
+                  <rect x="54" y="26" width="52" height="14" rx="5" class="s-a" />
+                  <rect x="54" y="46" width="52" height="14" rx="5" class="s-b" />
+                  <rect x="54" y="66" width="52" height="14" rx="5" class="s-a" />
+                  <circle cx="98" cy="33" r="5" class="s-ok" />
+                  <circle cx="98" cy="73" r="5" class="s-ok" />
+                  <path d="M95.5 33l2 2 3.5-4M95.5 73l2 2 3.5-4" class="s-tick" />
+                </svg>
+              </div>
+              <div class="num">01</div>
+              <h3>Вы выбираете</h3>
               <p>
-                Слова на русском, английском и китайском с озвучкой. Повторяются сами, когда нужно.
+                В кабинете уже есть проверенные видео, карточки и игры. Отметьте, что показать
+                ребёнку, или попросите систему составить план на неделю по темам.
               </p>
             </div>
-            <div class="card">
-              <div class="ic">🧩</div>
-              <h3>Игры</h3>
-              <p>Найди пару, посчитай, собери — короткие игры на внимание и логику.</p>
+            <div class="fstep reveal">
+              <div class="art">
+                <svg viewBox="0 0 160 120" aria-hidden="true">
+                  <rect x="44" y="8" width="72" height="104" rx="14" class="s-dev" />
+                  <circle cx="80" cy="44" r="18" class="s-sun" />
+                  <rect x="56" y="72" width="22" height="22" rx="7" class="s-a" />
+                  <rect x="82" y="72" width="22" height="22" rx="7" class="s-b" />
+                  <path d="M74 38l12 6-12 6z" class="s-play" />
+                </svg>
+              </div>
+              <div class="num">02</div>
+              <h3>Ребёнок занимается</h3>
+              <p>
+                На своём телефоне он видит только «сегодня»: короткий урок, вопросы с картинками,
+                карточки со словами и игру. Хвалит его ваш голос.
+              </p>
             </div>
-            <div class="card">
-              <div class="ic">📅</div>
-              <h3>План на неделю</h3>
-              <p>Темы по предметам на каждую неделю и расписание: когда заниматься и сколько.</p>
-            </div>
-            <div class="card">
-              <div class="ic">📞</div>
-              <h3>Звонки маме</h3>
-              <p>Ребёнок звонит вам одной кнопкой, вы — ему. Только внутри семьи.</p>
-            </div>
-            <div class="card">
-              <div class="ic">🎙️</div>
-              <h3>Мамин голос</h3>
-              <p>Запишите «Молодец!» и колыбельную своим голосом — телефон будет говорить вашим.</p>
+            <div class="fstep reveal">
+              <div class="art">
+                <svg viewBox="0 0 160 120" aria-hidden="true">
+                  <rect x="20" y="18" width="120" height="84" rx="12" class="s-dev" />
+                  <rect x="36" y="70" width="12" height="20" rx="3" class="s-a" />
+                  <rect x="56" y="56" width="12" height="34" rx="3" class="s-b" />
+                  <rect x="76" y="46" width="12" height="44" rx="3" class="s-a" />
+                  <rect x="96" y="36" width="12" height="54" rx="3" class="s-ok" />
+                  <path d="M36 50l20-10 20 4 32-16" class="s-line" />
+                </svg>
+              </div>
+              <div class="num">03</div>
+              <h3>Вы видите результат</h3>
+              <p>
+                Сколько занимался, какие слова выучил, что получилось с первого раза. Раз в неделю
+                приходит отчёт, а когда занятия закончены, придёт уведомление.
+              </p>
             </div>
           </div>
         </div>
       </section>
 
-      <section>
-        <div class="wrap">
-          <div class="head">
-            <div class="eyebrow">Две версии</div>
-            <h2>Кабинет для вас и приложение для ребёнка</h2>
-            <p>Оба открываются в браузере и ставятся на главный экран как обычное приложение.</p>
-          </div>
-          <div class="duo">
-            <div class="card">
-              <span class="tag">Для мамы и папы</span>
-              <h3>Кабинет родителя</h3>
-              <ul>
-                <li>выбираете видео, карточки и игры для ребёнка;</li>
-                <li>составляете план и расписание;</li>
-                <li>видите прогресс, фото и звонки;</li>
-                <li>работает на любом телефоне — Android и iPhone.</li>
-              </ul>
-            </div>
-            <div class="card">
-              <span class="tag">Для ребёнка</span>
-              <h3>Детское приложение</h3>
-              <ul>
-                <li>большие кнопки, озвучка, никаких ссылок наружу;</li>
-                <li>только то, что вы одобрили;</li>
-                <li>остановится, когда время на сегодня закончилось;</li>
-                <li>лучше всего — отдельный Android-телефон или планшет с Chrome.</li>
-              </ul>
+      <!-- ── Попробуйте ── -->
+      <section id="try">
+        <div class="wrap try">
+          <div class="try-copy">
+            <div class="eyebrow reveal">Попробуйте сами</div>
+            <h2 class="reveal">Вот что увидит ваш ребёнок</h2>
+            <p class="reveal">
+              Нажимайте: это живые превью детского приложения. Большие кнопки, озвучка и ни одной
+              лишней ссылки.
+            </p>
+            <div class="tabs reveal" id="demoTabs" role="tablist">
+              <button class="on" data-demo="cards">
+                <i>🃏</i>Карточки<small>3 языка с озвучкой</small>
+              </button>
+              <button data-demo="quiz">
+                <i>❓</i>Вопрос после видео<small>проверяем, что понял</small>
+              </button>
+              <button data-demo="count">
+                <i>🔢</i>Игра «Посчитай»<small>и ещё 11 видов игр</small>
+              </button>
+              <button data-demo="call"><i>📞</i>Звонок маме<small>одной кнопкой</small></button>
             </div>
           </div>
-        </div>
-      </section>
 
-      <section class="alt" id="start">
-        <div class="wrap">
-          <div class="head">
-            <div class="eyebrow">Подключение · 15 минут</div>
-            <h2>Пошаговая инструкция</h2>
-            <p>Делайте по порядку. Если что-то не получается — напишите мне, разберёмся.</p>
-          </div>
-
-          <div class="steps">
-            <div class="step">
-              <div>
-                <h3>Откройте свою личную ссылку</h3>
-                <p>
-                  Я пришлю каждой из вас отдельную ссылку-приглашение. Она одноразовая и действует
-                  14 дней — не пересылайте её другим.
-                </p>
-                <ol>
-                  <li>Откройте ссылку на своём телефоне.</li>
-                  <li>Введите свою почту и придумайте пароль — минимум 10 символов.</li>
-                  <li>Нажмите кнопку — откроется ваш кабинет.</li>
-                </ol>
-                <div class="note">
-                  Ваш кабинет закрытый: ваших детей, фото и звонки видите только вы. В других
-                  кабинетах, и в моём тоже, их не видно.
-                </div>
-              </div>
-            </div>
-
-            <div class="step">
-              <div>
-                <h3>Поставьте кабинет на главный экран</h3>
-                <p>
-                  Так он будет открываться одним касанием, как приложение, и присылать уведомления.
-                </p>
-                <div class="split">
-                  <div>
-                    <b>Android (Chrome)</b>Меню <span class="path">⋮</span> →
-                    <span class="path">Добавить на главный экран</span> →
-                    <span class="path">Установить</span>.
-                  </div>
-                  <div>
-                    <b>iPhone (Safari)</b>Кнопка <span class="path">Поделиться</span> →
-                    <span class="path">На экран «Домой»</span> → <span class="path">Добавить</span>.
-                  </div>
-                </div>
-                <p style="margin-top: 12px">
-                  Затем в кабинете: <span class="path">Ещё → Аккаунт и оформление</span> → включите
-                  уведомления и укажите, как вас зовут дети («Мама»).
-                </p>
-              </div>
-            </div>
-
-            <div class="step">
-              <div>
-                <h3>Добавьте ребёнка</h3>
-                <ol>
-                  <li><span class="path">Ещё → Профили детей → Добавить ребёнка</span>.</li>
-                  <li>
-                    Напишите <b>прозвище</b>, а не настоящее имя: «Зайка», «Солнышко», «Богатырь».
-                  </li>
-                  <li>Укажите месяц и год рождения, пол и языки (русский, английский…).</li>
-                </ol>
-                <div class="note">
-                  Прозвище — для приватности: настоящее имя системе не нужно, ребёнок увидит то, что
-                  вы напишете.
-                </div>
-              </div>
-            </div>
-
-            <div class="step">
-              <div>
-                <h3>Настройте расписание и часовой пояс</h3>
-                <p>
-                  Вкладка <span class="path">План → Расписание</span>: когда можно заниматься,
-                  сколько минут на предмет и сколько свободного времени.
-                </p>
-                <div class="note">
-                  Обязательно выберите свой <b>часовой пояс</b>: Бишкек — «Asia/Bishkek», для США —
-                  ваш город (например, «America/New_York»). Иначе день у ребёнка начнётся по
-                  московскому времени.
-                </div>
-                <p style="margin-top: 12px">
-                  Нажмите <span class="path">Сохранить расписание</span>.
-                </p>
-              </div>
-            </div>
-
-            <div class="step">
-              <div>
-                <h3>Выберите материалы для ребёнка</h3>
-                <p>
-                  Вкладка <span class="path">Контент</span> — там уже лежат проверенные видео,
-                  карточки и игры. Ребёнок получает только то, что вы отметили.
-                </p>
-                <ol>
-                  <li>Откройте раздел: <b>Видео</b>, <b>Карточки</b> или <b>Игры</b>.</li>
-                  <li>
-                    Нажмите на материал → в поле <span class="path">Кому показывать</span> отметьте
-                    ребёнка.
-                  </li>
-                  <li>Сохраните.</li>
-                </ol>
-                <p>
-                  Быстрее — через план: <span class="path">План → Новый план</span> →
-                  <span class="path">Предложить темы (ИИ)</span> →
-                  <span class="path">Заполнить материалами</span> →
-                  <span class="path">Сохранить план</span>. Система сама подберёт видео, карточки и
-                  игры по темам недели.
-                </p>
-              </div>
-            </div>
-
-            <div class="step">
-              <div>
-                <h3>Подключите телефон ребёнка</h3>
-                <ol>
-                  <li>
-                    В кабинете: <span class="path">Ещё → Устройства → Привязать телефон</span> →
-                    выберите ребёнка → <span class="path">Получить QR-код</span>.
-                  </li>
-                  <li>
-                    На телефоне ребёнка откройте камеру и наведите на QR-код. Откроется детское
-                    приложение.
-                  </li>
-                  <li>
-                    Поставьте его на главный экран: в Chrome
-                    <span class="path">⋮ → Добавить на главный экран</span>.
-                  </li>
-                  <li>Готово — открывайте с иконки KidsPlus и давайте ребёнку.</li>
-                </ol>
-                <div class="note">
-                  Код живёт несколько минут. Не успели — нажмите <b>Новый код</b>. Если камера не
-                  читает QR, под кодом есть короткий код для ручного ввода.
-                </div>
-              </div>
-            </div>
-
-            <div class="step">
-              <div>
-                <h3>По желанию: мамин голос и второй родитель</h3>
-                <ul>
-                  <li>
-                    <span class="path">Ещё → Мамин голос</span> — запишите похвалу, «попробуй ещё» и
-                    колыбельную.
-                  </li>
-                  <li>
-                    <span class="path"
-                      >Ещё → Аккаунт и оформление → Второй родитель → Создать приглашение</span
+          <div class="try-stage reveal">
+            <div class="phone big">
+              <div class="notch"></div>
+              <div class="screen kid demo" id="demo">
+                <!-- Карточки -->
+                <div class="dm active" data-demo="cards">
+                  <div class="dm-top"><span>Фрукты</span><span id="cardNo">1 / 4</span></div>
+                  <button class="flip" id="flip" aria-label="Перевернуть карточку">
+                    <span class="face front"
+                      ><span class="big-emoji" id="cardEmoji">🍎</span
+                      ><span class="hint">нажми</span></span
                     >
-                    — отправьте ссылку папе, и у него будет свой вход в ваш кабинет.
-                  </li>
-                </ul>
+                    <span class="face back"
+                      ><span class="w" id="cardWord">apple</span
+                      ><span class="tr" id="cardTr">яблоко</span
+                      ><span class="hint">🔊 слушай</span></span
+                    >
+                  </button>
+                  <div class="langs" id="langs">
+                    <button class="on" data-lang="en">English</button>
+                    <button data-lang="ru">Русский</button>
+                    <button data-lang="zh">中文</button>
+                  </div>
+                  <button class="kbtn" id="nextCard">Дальше →</button>
+                </div>
+                <!-- Вопрос -->
+                <div class="dm" data-demo="quiz">
+                  <div class="dm-top"><span>После видео</span><span id="qNo">1 / 3</span></div>
+                  <div class="q-text" id="qText">Кто говорит «му-у»?</div>
+                  <div class="q-opts" id="qOpts"></div>
+                  <div class="q-msg" id="qMsg">&nbsp;</div>
+                </div>
+                <!-- Посчитай -->
+                <div class="dm" data-demo="count">
+                  <div class="dm-top"><span>Посчитай</span><span id="cScore">⭐ 0</span></div>
+                  <div class="c-field" id="cField"></div>
+                  <div class="c-q">Сколько здесь?</div>
+                  <div class="c-nums" id="cNums"></div>
+                </div>
+                <!-- Звонок -->
+                <div class="dm" data-demo="call">
+                  <div class="call" id="call">
+                    <div class="avatar"><span>👩</span><i></i><i></i></div>
+                    <div class="call-name">Мама</div>
+                    <div class="call-st" id="callSt">Нажми, чтобы позвонить</div>
+                    <button class="call-btn" id="callBtn" aria-label="Позвонить">📞</button>
+                  </div>
+                </div>
               </div>
+            </div>
+            <canvas id="confetti" aria-hidden="true"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Кабинет родителя ── -->
+      <section id="parents" class="dark">
+        <div class="wrap">
+          <div class="head reveal">
+            <div class="eyebrow">Кабинет родителя</div>
+            <h2>Всё под контролем — с вашего телефона</h2>
+            <p>Подвигайте ползунки и переключатели: так выглядит настройка в кабинете.</p>
+          </div>
+
+          <div class="dash reveal">
+            <!-- Сегодня -->
+            <div class="panel today">
+              <div class="p-h">Сегодня <span class="live">● занимается</span></div>
+              <div class="ring-wrap">
+                <svg viewBox="0 0 120 120" class="ring">
+                  <circle cx="60" cy="60" r="50" class="r-bg" />
+                  <circle cx="60" cy="60" r="50" class="r-fg" id="ring" />
+                </svg>
+                <div class="ring-txt"><b id="ringMin">14</b><span id="ringOf">из 20 мин</span></div>
+              </div>
+              <div class="subj">
+                <div><span>Английский</span><i style="--w: 80%"></i></div>
+                <div><span>Математика</span><i style="--w: 55%"></i></div>
+                <div><span>Природа</span><i style="--w: 30%"></i></div>
+              </div>
+            </div>
+
+            <!-- Расписание -->
+            <div class="panel sched">
+              <div class="p-h">Расписание</div>
+              <label class="sl">
+                <span>Минут на занятия в день <b id="minV">20</b></span>
+                <input type="range" min="10" max="60" step="5" value="20" id="minR" />
+              </label>
+              <label class="sl">
+                <span>Свободное время (игры, камера) <b id="freeV">15</b></span>
+                <input type="range" min="0" max="60" step="5" value="15" id="freeR" />
+              </label>
+              <div class="tl" id="tl">
+                <span class="tl-l" style="--f: 0.4"></span
+                ><span class="tl-f" style="--f: 0.3"></span
+                ><span class="tl-x" style="--f: 0.3"></span>
+              </div>
+              <div class="tl-leg">
+                <span><i class="lg-l"></i>уроки</span><span><i class="lg-f"></i>свободно</span
+                ><span><i class="lg-x"></i>отдых от экрана</span>
+              </div>
+            </div>
+
+            <!-- Кому показывать -->
+            <div class="panel assign">
+              <div class="p-h">Кому показывать</div>
+              <div class="vid">
+                <div class="thumb">🐘</div>
+                <div><b>Животные Африки</b><small>видео · 4 мин · природа</small></div>
+              </div>
+              <div class="kids">
+                <button class="kchip on" data-kid="a">🐰 Зайка</button>
+                <button class="kchip" data-kid="b">🐻 Мишутка</button>
+              </div>
+              <div class="assign-msg" id="assignMsg">
+                Зайка увидит это видео завтра в уроке «Природа».
+              </div>
+            </div>
+
+            <!-- Уведомления -->
+            <div class="panel feed">
+              <div class="p-h">Уведомления</div>
+              <ul id="feed">
+                <li><i>🎉</i><span>Зайка закончила занятия на сегодня</span><time>сейчас</time></li>
+                <li><i>📞</i><span>Пропущенный звонок от Зайки</span><time>12:40</time></li>
+                <li><i>🔋</i><span>Телефон Зайки садится: 15%</span><time>11:05</time></li>
+                <li><i>📊</i><span>Отчёт за неделю готов</span><time>вс</time></li>
+              </ul>
             </div>
           </div>
         </div>
       </section>
 
-      <section>
+      <!-- ── Возможности ── -->
+      <section id="features">
         <div class="wrap">
-          <div class="head">
-            <div class="eyebrow">Вопросы</div>
-            <h2>Коротко о важном</h2>
+          <div class="head reveal">
+            <div class="eyebrow">Возможности</div>
+            <h2>Больше, чем видео</h2>
           </div>
-          <details>
-            <summary>Нужен ли VPN?</summary>
-            <p>Нет. Кабинет, детское приложение и видео открываются напрямую, без VPN.</p>
+          <div class="feat">
+            <div class="f reveal">
+              <i>🎬</i>
+              <h3>Видео-уроки</h3>
+              <p>Только нужный кусочек ролика, 1–5 минут, и вопросы после него.</p>
+            </div>
+            <div class="f reveal">
+              <i>🃏</i>
+              <h3>Карточки</h3>
+              <p>
+                Русский, английский, китайский, с озвучкой и повтором, когда слово начинает
+                забываться.
+              </p>
+            </div>
+            <div class="f reveal">
+              <i>🧩</i>
+              <h3>12 видов игр</h3>
+              <p>Пары, пазлы, лабиринт, тени, раскраска, обведи букву, шарики, счёт.</p>
+            </div>
+            <div class="f reveal">
+              <i>📅</i>
+              <h3>План на неделю</h3>
+              <p>Темы по предметам, и система сама подбирает материалы на каждый день.</p>
+            </div>
+            <div class="f reveal">
+              <i>⏱</i>
+              <h3>Лимиты и расписание</h3>
+              <p>Когда можно заниматься и сколько. Время вышло — экран мягко прощается.</p>
+            </div>
+            <div class="f reveal">
+              <i>🎙</i>
+              <h3>Мамин голос</h3>
+              <p>Похвала, «попробуй ещё» и колыбельная, записанные вашим голосом.</p>
+            </div>
+            <div class="f reveal">
+              <i>📞</i>
+              <h3>Видеозвонки</h3>
+              <p>Ребёнок звонит маме и папе одной кнопкой, только своей семье.</p>
+            </div>
+            <div class="f reveal">
+              <i>📷</i>
+              <h3>Фото и видео</h3>
+              <p>Что ребёнок снял на камеру, копируется к вам в кабинет.</p>
+            </div>
+            <div class="f reveal">
+              <i>👂</i>
+              <h3>Радионяня</h3>
+              <p>Уведомление, если в комнате стало шумно, и можно послушать.</p>
+            </div>
+            <div class="f reveal">
+              <i>📊</i>
+              <h3>Прогресс</h3>
+              <p>По предметам и словам, плюс еженедельный отчёт.</p>
+            </div>
+            <div class="f reveal">
+              <i>👀</i>
+              <h3>Глазами ребёнка</h3>
+              <p>Откройте его экран у себя и проверьте, что он увидит.</p>
+            </div>
+            <div class="f reveal">
+              <i>🎵</i>
+              <h3>Аудиотека</h3>
+              <p>Свои сказки и песни: загрузили, отметили «детям», и они в телефоне.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── День ── -->
+      <section class="alt">
+        <div class="wrap">
+          <div class="head reveal">
+            <div class="eyebrow">Один день</div>
+            <h2>Как это выглядит в жизни</h2>
+          </div>
+          <ol class="day">
+            <li class="reveal">
+              <time>09:30</time>
+              <div>
+                <b>Утренний урок</b>Видео про цвета на английском, три вопроса, и мамин голос
+                говорит: «Умница!»
+              </div>
+            </li>
+            <li class="reveal">
+              <time>09:45</time>
+              <div>
+                <b>Карточки</b>Шесть новых слов. Те, что получились, вернутся через пару дней, чтобы
+                закрепить.
+              </div>
+            </li>
+            <li class="reveal">
+              <time>12:40</time>
+              <div>
+                <b>«Позвонить маме»</b>Одна кнопка, и вы на видеосвязи, даже если вы на работе.
+              </div>
+            </li>
+            <li class="reveal">
+              <time>17:00</time>
+              <div>
+                <b>Свободное время</b>Игры и камера. Через 15 минут экран скажет: «На сегодня всё!»
+              </div>
+            </li>
+            <li class="reveal">
+              <time>20:30</time>
+              <div><b>Перед сном</b>Колыбельная вашим голосом. Вам приходит итог дня.</div>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- ── Безопасность ── -->
+      <section id="safe">
+        <div class="wrap safe">
+          <div class="safe-art reveal" aria-hidden="true">
+            <svg viewBox="0 0 200 220">
+              <path d="M100 12l78 28v58c0 52-34 90-78 108-44-18-78-56-78-108V40z" class="sh" />
+              <path d="M100 34l58 21v44c0 39-25 68-58 82-33-14-58-43-58-82V55z" class="sh2" />
+              <path d="M72 108l20 20 38-42" class="shk" />
+            </svg>
+          </div>
+          <div>
+            <div class="eyebrow reveal">Безопасность и приватность</div>
+            <h2 class="reveal">Сделано родителями — для своих детей</h2>
+            <ul class="checks">
+              <li class="reveal">
+                <b>Только одобренное.</b> Ничего не попадает к ребёнку, пока вы не отметили.
+              </li>
+              <li class="reveal">
+                <b>Никаких выходов наружу.</b> В детском приложении нет ссылок, поиска и
+                рекомендаций.
+              </li>
+              <li class="reveal">
+                <b>Прозвище вместо имени.</b> Настоящее имя ребёнка системе не нужно и никуда не
+                передаётся.
+              </li>
+              <li class="reveal">
+                <b>Закрытый кабинет семьи.</b> Ваших детей, фото и звонки видите только вы.
+              </li>
+              <li class="reveal">
+                <b>Видео не скачиваются.</b> Встроенный плеер, без аккаунтов и подписок.
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Вопросы ── -->
+      <section class="alt" id="faq">
+        <div class="wrap narrow">
+          <div class="head center reveal">
+            <div class="eyebrow">Вопросы</div>
+            <h2>Коротко о главном</h2>
+          </div>
+          <details class="reveal">
+            <summary>Сколько стоит?</summary>
+            <p>Для вас — бесплатно. Подписок и платежей нет.</p>
           </details>
-          <details>
-            <summary>Видят ли другие семьи моего ребёнка?</summary>
+          <details class="reveal">
+            <summary>Какой телефон нужен ребёнку?</summary>
             <p>
-              Нет. У каждой семьи свой закрытый кабинет: дети, телефоны, фото, звонки и записи
-              голоса видны только вам и второму родителю, которого вы пригласите. Общая — только
-              библиотека видео, карточек и игр.
+              Любой Android-телефон или планшет с Chrome, можно старый. Нужен Wi-Fi. Для себя —
+              любой телефон, iPhone тоже.
             </p>
           </details>
-          <details>
-            <summary>Можно ли добавить своё видео?</summary>
+          <details class="reveal">
+            <summary>Нужно ли что-то устанавливать?</summary>
             <p>
-              Новые видео сначала проверяю я — так в библиотеку не попадает ничего лишнего. Пришлите
-              мне ссылку, я проверю и добавлю, и оно появится у всех в «Контенте».
+              Нет. И кабинет, и детское приложение открываются по ссылке и ставятся на главный экран
+              как обычные приложения.
             </p>
           </details>
-          <details>
-            <summary>Какой телефон подойдёт ребёнку?</summary>
+          <details class="reveal">
+            <summary>С какого возраста?</summary>
             <p>
-              Любой Android-телефон или планшет с Chrome — можно старый. Нужен интернет (Wi-Fi).
-              Лучше выйти из личных аккаунтов на этом устройстве, чтобы ребёнок не попал в YouTube
-              или магазин приложений.
+              С двух лет. Вопросы и количество вариантов ответа подстраиваются под возраст, а план
+              можно вести до школы.
             </p>
           </details>
-          <details>
-            <summary>Сколько это стоит?</summary>
-            <p>Для вас — бесплатно. Рекламы и подписок нет.</p>
+          <details class="reveal">
+            <summary>Сколько времени это займёт у меня?</summary>
+            <p>
+              Подключение — около 15 минут. Дальше хватает пяти минут в неделю: проверить план и
+              посмотреть прогресс.
+            </p>
           </details>
-          <details>
-            <summary>Забыла пароль или ссылка истекла</summary>
-            <p>Напишите мне — пришлю новую ссылку.</p>
-          </details>
+        </div>
+      </section>
+
+      <!-- ── Финал ── -->
+      <section class="final">
+        <div class="wrap center">
+          <h2 class="reveal">Дайте экрану <em>правильную</em> работу</h2>
+          <p class="reveal">
+            Пошаговая инструкция с точными названиями кнопок — подключите сегодня вечером.
+          </p>
+          <div class="cta center reveal">
+            <a class="btn primary lg" href="/guide">Как подключить →</a>
+            <a class="btn ghost lg" href="/login">Войти в кабинет</a>
+          </div>
         </div>
       </section>
     </main>
 
     <footer class="wrap">
-      <div class="brand">KidsPlus</div>
-      Сделано с любовью для наших детей.
+      <span>KidsPlus</span>
+      <span>Сделано с любовью для наших детей</span>
     </footer>
   </body>
 </html>
