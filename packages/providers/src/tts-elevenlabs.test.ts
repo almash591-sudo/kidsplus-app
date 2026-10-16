@@ -37,8 +37,11 @@ describe('ElevenLabs TTS', () => {
     const err = (status: number) =>
       make(status)
         .synthesize({ text: 'a', lang: 'ru', speed: 1 })
-        .catch((e: unknown) => e as TtsError);
-    expect((await err(429)).retryable).toBe(true);
-    expect((await err(401)).retryable).toBe(false);
+        .then(
+          () => null,
+          (e: unknown) => e as TtsError,
+        );
+    expect((await err(429))?.retryable).toBe(true);
+    expect((await err(401))?.retryable).toBe(false);
   });
 });
