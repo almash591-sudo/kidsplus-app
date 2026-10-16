@@ -28,6 +28,30 @@ function phraseKey(lang, text) {
 
 const LANG_CODES = { ru: 'ru-RU', en: 'en-US', zh: 'cmn-CN' };
 
+/** ElevenLabs (этап 26): живее Google, ударения ставит сам. Голос — id. */
+async function synthesizeEleven(apiKey, voice, text, rate) {
+  const res = await fetch(
+    `https://api.elevenlabs.io/v1/text-to-speech/${voice}?output_format=mp3_44100_128`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'xi-api-key': apiKey },
+      body: JSON.stringify({
+        text,
+        model_id: process.env.ELEVENLABS_MODEL ?? 'eleven_multilingual_v2',
+        voice_settings: {
+          stability: 0.4,
+          similarity_boost: 0.8,
+          style: 0.45,
+          use_speaker_boost: true,
+          speed: Math.min(1.2, Math.max(0.7, rate ?? 0.95)),
+        },
+      }),
+    },
+  );
+  if (!res.ok) throw new Error(`ElevenLabs ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  return Buffer.from(await res.arrayBuffer()).toString('base64');
+}
+
 async function synthesize(apiKey, voice, lang, text, rate) {
   const res = await fetch('https://texttospeech.googleapis.com/v1/text:synthesize', {
     method: 'POST',
@@ -73,15 +97,20 @@ async function synthesize(apiKey, voice, lang, text, rate) {
     }
     console.log(`сохранено: ${n}`);
   } else {
-    const apiKey = process.env.GOOGLE_TTS_API_KEY;
-    if (!apiKey) throw new Error('нужен GOOGLE_TTS_API_KEY');
+    // provider в phrases.json: google (по умолчанию) или elevenlabs — голоса берутся из voices.<provider>.
+    const eleven = config.provider === 'elevenlabs';
+    const apiKey = eleven ? process.env.ELEVENLABS_API_KEY : process.env.GOOGLE_TTS_API_KEY;
+    if (!apiKey) throw new Error(eleven ? 'нужен ELEVENLABS_API_KEY' : 'нужен GOOGLE_TTS_API_KEY');
+    const voices = eleven ? config.elevenlabs : config.voices;
     const jsonl = Boolean(process.env.STDOUT_JSONL);
     const force = args.includes('--force');
     for (const [file, p] of wanted) {
       if (!jsonl && !force && existsSync(join(dir, file))) continue;
-      const voice = config.voices[p.voice ?? 'owl'][p.lang];
+      const voice = voices[p.voice ?? 'owl'][p.lang];
       try {
-        const b64 = await synthesize(apiKey, voice, p.lang, p.text, p.rate);
+        const b64 = eleven
+          ? await synthesizeEleven(apiKey, voice, p.text, p.rate)
+          : await synthesize(apiKey, voice, p.lang, p.text, p.rate);
         if (jsonl) console.log(JSON.stringify({ file, b64 }));
         else writeFileSync(join(dir, file), Buffer.from(b64, 'base64'));
       } catch (e) {

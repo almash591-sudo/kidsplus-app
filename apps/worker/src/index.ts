@@ -1,7 +1,13 @@
 import { createDb } from '@kidsplus/db';
 import { DbStorage } from '@kidsplus/db/blob-storage';
 import { notifyParents } from '@kidsplus/db/notify';
-import { GoogleTtsProvider, WebPushSender, YouTubeDataApi } from '@kidsplus/providers';
+import {
+  ElevenLabsTtsProvider,
+  GoogleTtsProvider,
+  WebPushSender,
+  YouTubeDataApi,
+  type TtsProvider,
+} from '@kidsplus/providers';
 import type { PushMessage } from '@kidsplus/shared/push';
 import { GeminiLlmProvider } from '@kidsplus/providers/gemini';
 import { createStorage } from '@kidsplus/providers/storage-factory';
@@ -74,19 +80,31 @@ await registerJobs(
 );
 if (!youtube) log.warn('YOUTUBE_API_KEY не задан — ежедневная проверка видео отключена');
 let stopTts: (() => void) | undefined;
+/** Провайдер серверной озвучки по TTS_PROVIDER; без ключа — null. */
+function ttsProvider(): TtsProvider | null {
+  if (env.TTS_PROVIDER === 'elevenlabs')
+    return env.ELEVENLABS_API_KEY
+      ? new ElevenLabsTtsProvider({
+          apiKey: env.ELEVENLABS_API_KEY,
+          voices: ttsVoices(env),
+          ...(env.ELEVENLABS_MODEL ? { model: env.ELEVENLABS_MODEL } : {}),
+        })
+      : null;
+  return env.GOOGLE_TTS_API_KEY
+    ? new GoogleTtsProvider({ apiKey: env.GOOGLE_TTS_API_KEY, voices: ttsVoices(env) })
+    : null;
+}
 if (env.TTS_PROVIDER === 'browser') {
   log.info('озвучка — на устройстве ребёнка (Web Speech API), сервер аудио не генерирует');
-} else if (env.GOOGLE_TTS_API_KEY) {
-  const provider = new GoogleTtsProvider({
-    apiKey: env.GOOGLE_TTS_API_KEY,
-    voices: ttsVoices(env),
-  });
-  stopTts = startTtsLoop({ db, storage: createStorage(env, new DbStorage(db)), provider, log });
-  log.info({ storage: env.STORAGE_DRIVER }, 'озвучка запущена');
 } else {
-  log.warn(
-    'GOOGLE_TTS_API_KEY не задан — серверная озвучка не генерируется, звучит голос телефона',
-  );
+  const provider = ttsProvider();
+  if (provider) {
+    stopTts = startTtsLoop({ db, storage: createStorage(env, new DbStorage(db)), provider, log });
+    log.info({ storage: env.STORAGE_DRIVER, provider: provider.id }, 'озвучка запущена');
+  } else {
+    const key = env.TTS_PROVIDER === 'elevenlabs' ? 'ELEVENLABS_API_KEY' : 'GOOGLE_TTS_API_KEY';
+    log.warn(`${key} не задан — серверная озвучка не генерируется, звучит голос телефона`);
+  }
 }
 
 const stopModeration = startModerationLoop({

@@ -411,7 +411,8 @@
     };
     let seq = 0;
     const browser = browserVoice();
-    return {
+    const api = {
+      onSpeak: null,
       preload(texts, lang = 'ru-RU') {
         texts.forEach((t) => load(file(t, lang)));
       },
@@ -424,8 +425,11 @@
         if (my !== seq || !Sound.on) return;
         if (buffer) Sound.voice(buffer);
         else browser.say(text, lang, opts);
+        // Совёнок шевелит клювом, пока звучит фраза.
+        api.onSpeak?.(buffer ? buffer.duration * 1000 : text.length * 75);
       },
     };
+    return api;
   })();
 
   function browserVoice() {
@@ -650,23 +654,166 @@
     loopTimer = setInterval(tick, 1500);
   });
 
+  // ════════════════ Совёнок (этап 26) ════════════════
+  // Кадры clay (img/owl): стоит, моргает, говорит, радуется, удивляется, машет, показывает,
+  // спит, два кадра взмаха крыльями. Живость — смена кадров + CSS (дыхание, прыжок).
+  const OWL_FRAMES = [
+    'master',
+    'blink',
+    'talk',
+    'happy',
+    'oops',
+    'wave',
+    'point',
+    'sleep',
+    'flyup',
+    'flydown',
+  ];
+  const owlSrc = (f) => `/img/owl/${f}.webp`;
+  addEventListener('load', () => OWL_FRAMES.forEach((f) => (new Image().src = owlSrc(f))), {
+    once: true,
+  });
+
+  class OwlView {
+    constructor(el) {
+      this.el = el;
+      this.img = el.querySelector('img');
+      this.base = 'master';
+      this.frame = 'master';
+      this.busy = false;
+      this.blinkLoop();
+    }
+    show(f) {
+      if (this.frame === f) return;
+      this.frame = f;
+      this.img.src = owlSrc(f);
+    }
+    /** Поза надолго (sleep) или на время (ms), потом — обычная. */
+    pose(p, ms = 0) {
+      clearTimeout(this.poseT);
+      this.base = p;
+      this.show(p);
+      if (ms) this.poseT = setTimeout(() => this.pose('master'), ms);
+    }
+    blinkLoop() {
+      const next = () => {
+        this.blinkT = setTimeout(
+          () => {
+            if (this.frame === 'master' && !this.talking) {
+              this.show('blink');
+              setTimeout(() => this.frame === 'blink' && this.show(this.base), 130);
+            }
+            next();
+          },
+          1800 + Math.random() * 4200,
+        );
+      };
+      next();
+    }
+    /** Клюв открывается «по слогам», пока звучит фраза. */
+    talk(ms) {
+      if (this.base !== 'master' || this.busy) return;
+      clearTimeout(this.talkT);
+      this.talking = true;
+      const end = performance.now() + ms;
+      const step = () => {
+        if (performance.now() >= end || this.base !== 'master' || this.busy) {
+          this.talking = false;
+          if (!this.busy) this.show(this.base);
+          return;
+        }
+        this.show(this.frame === 'talk' ? 'master' : 'talk');
+        this.talkT = setTimeout(step, 90 + Math.random() * 110);
+      };
+      step();
+    }
+    react(kind) {
+      const cls = kind === 'oops' ? 'shake' : 'hop';
+      this.pose(kind, kind === 'oops' ? 1200 : 1500);
+      if (calm) return;
+      this.el.classList.remove('hop', 'shake');
+      void this.el.offsetWidth;
+      this.el.classList.add(cls);
+    }
+    /**
+     * Перелёт к элементу и обратно: взмахи крыльями, дуга, «посадка» с позой.
+     * onArrive — что сделать на месте (лопнуть шарик и т.п.).
+     */
+    flyTo(target, { land = 'point', stay = 900, onArrive, scale = 1.6 } = {}) {
+      if (calm || this.busy || !target || !this.el.isConnected) return false;
+      const a = this.el.getBoundingClientRect();
+      const b = target.getBoundingClientRect();
+      if (!a.width || !b.width) return false;
+      this.busy = true;
+      clearTimeout(this.talkT);
+      this.talking = false;
+      const dx = b.left + b.width / 2 - (a.left + a.width / 2);
+      const dy = b.top + b.height * 0.25 - (a.top + a.height / 2);
+      const dist = Math.hypot(dx, dy);
+      const dur = Math.min(1500, 500 + dist * 1.6);
+      const flip = dx < 0 ? -1 : 1;
+      let up = true;
+      const flap = setInterval(() => {
+        up = !up;
+        this.show(up ? 'flyup' : 'flydown');
+      }, 110);
+      this.show('flyup');
+      this.el.classList.add('flying');
+      const lift = -Math.min(80, 30 + dist * 0.25);
+      const path = (t, back) => {
+        const k = back ? 1 - t : t;
+        const x = dx * k;
+        const y = dy * k + lift * Math.sin(Math.PI * t);
+        const s = 1 + (scale - 1) * Math.sin(Math.PI * Math.min(1, t * 1.6) * 0.5);
+        return `translate(${x}px, ${y}px) scale(${(back ? -flip : flip) * s}, ${s})`;
+      };
+      const frames = (back) =>
+        Array.from({ length: 13 }, (_, i) => ({ transform: path(i / 12, back) }));
+      const go = this.el.animate(frames(false), { duration: dur, easing: 'ease-in-out' });
+      go.onfinish = () => {
+        clearInterval(flap);
+        this.el.style.transform = path(1, false).replace(/scale\([^)]*\)/, `scale(${scale})`);
+        this.show(land);
+        onArrive?.();
+        setTimeout(() => {
+          const flap2 = setInterval(() => {
+            up = !up;
+            this.show(up ? 'flyup' : 'flydown');
+          }, 110);
+          this.el.style.transform = '';
+          const back = this.el.animate(frames(true), {
+            duration: dur * 0.9,
+            easing: 'ease-in-out',
+          });
+          back.onfinish = () => {
+            clearInterval(flap2);
+            this.el.classList.remove('flying');
+            this.busy = false;
+            this.show(this.base);
+          };
+        }, stay);
+      };
+      return true;
+    }
+  }
+  const owls = new Map($$('.cowl').map((el) => [el, new OwlView(el)]));
+  const owlOf = (el) => owls.get(el);
+
   // ════════════════ Мир малыша ════════════════
   const bubble = $('#owlBubble');
-  const bigOwl = $('#bigOwl');
-  let owlTimer = 0;
+  const bigOwl = owlOf($('#bigOwl'));
+  /** Совёнок на открытом экране «телефона». */
+  const screenOwl = () => owlOf($(`#kapp .ks[data-screen="${current}"] .k-owl`));
+  Voice.onSpeak = (ms) => {
+    bigOwl.talk(ms);
+    screenOwl()?.talk(ms);
+  };
   function owlSay(text, speak = true, happy = false) {
     bubble.textContent = text;
     bubble.classList.remove('pop');
     void bubble.offsetWidth;
     bubble.classList.add('pop');
-    if (happy) {
-      bigOwl.classList.add('happy');
-      bigOwl.classList.remove('jump');
-      void bigOwl.getBoundingClientRect();
-      bigOwl.classList.add('jump');
-      clearTimeout(owlTimer);
-      owlTimer = setTimeout(() => bigOwl.classList.remove('happy'), 1600);
-    }
+    if (happy) bigOwl.react('happy');
     if (speak) Voice.say(text.replace(/[^\p{L}\p{N}\s,.!?—-]/gu, ''), 'ru-RU', { pitch: 1.35 });
   }
 
@@ -689,6 +836,8 @@
     Sound.play('tap');
     Sound.mode(name === 'night' ? 'night' : 'day');
     owlSay(HELLO[name]);
+    bigOwl.pose(name === 'night' ? 'sleep' : 'master');
+    if (name !== 'night') screenOwl()?.pose('wave', 1300);
     stopBalloons();
     endCall(true);
     if (name === 'quiz') renderQuiz();
@@ -708,9 +857,32 @@
       }
       if (!v) Sound.mode('day');
       else if (current === 'night') Sound.mode('night');
+      kidsOn = v;
+      if (v && !wavedKids) {
+        wavedKids = true;
+        bigOwl.pose('wave', 1600);
+      }
     },
     0.35,
   );
+  let kidsOn = false;
+  let wavedKids = false;
+
+  // Пока на совёнка смотрят, он не стоит столбиком: машет, подпрыгивает, а маленький — летает.
+  const heroOwl = owlOf($('.hero-owl'));
+  const finalOwl = owlOf($('.final-owl'));
+  setInterval(() => {
+    if (document.hidden) return;
+    if (kidsOn && current !== 'night' && !bigOwl.talking && Math.random() < 0.5)
+      bigOwl.pose(Math.random() < 0.6 ? 'wave' : 'happy', 1400);
+    if (heroOn) {
+      // Перелетает к уведомлению на «экране» и обратно.
+      const toast = $$('.hero .toast')[Math.floor(Math.random() * 2)];
+      if (Math.random() < 0.55) heroOwl.flyTo(toast, { land: 'point', stay: 1100, scale: 1.15 });
+      else heroOwl.pose('wave', 1400);
+    }
+  }, 7000);
+  whenVisible($('.final-owl'), (v) => v && finalOwl.pose('wave', 1800), 0.5);
 
   // Конфетти внутри телефона.
   const cv = $('#confetti');
@@ -760,11 +932,6 @@
     }
     raf = bits.length ? requestAnimationFrame(tick) : 0;
   }
-  const jumpOwl = (el) => {
-    el.classList.remove('jump');
-    void el.getBoundingClientRect();
-    el.classList.add('jump');
-  };
 
   // ── Объёмные картинки (как в приложении, этап 25): /img/kid/<код эмодзи>.webp ──
   const ART = new Set(
@@ -826,6 +993,9 @@
     Sound.play('whoosh');
     renderCard();
     setTimeout(sayCard, 250);
+    // Иногда совёнок подлетает и показывает на картинку.
+    if (Math.random() < 0.4)
+      setTimeout(() => screenOwl()?.flyTo($('#kcEmoji'), { land: 'point', stay: 1000 }), 450);
   };
   $('#kcNext').addEventListener('click', () => stepCard(1));
   $('#kcPrev').addEventListener('click', () => stepCard(-1));
@@ -873,7 +1043,9 @@
       $('#kStars').textContent = '★'.repeat(qStars) + '☆'.repeat(3 - qStars);
       Sound.play('yay');
       confetti();
-      jumpOwl($('#quizOwl'));
+      // Совёнок перелетает на верный ответ и радуется.
+      const qo = owlOf($('#quizOwl'));
+      if (!qo.flyTo(b, { land: 'happy', stay: 700 })) qo.react('happy');
       owlSay(PRAISE[qi % PRAISE.length] + ' 🎉', true, true);
       setTimeout(() => {
         qi++;
@@ -886,6 +1058,8 @@
       b.classList.add('bad');
       Sound.play('oops');
       owlSay('Ой! Попробуй ещё разок.', true);
+      bigOwl.react('oops');
+      screenOwl()?.react('oops');
     }
   }
 
@@ -935,14 +1109,43 @@
     });
     field.append(b);
   }
+  // Совёнок тоже лопает шарики: подлетает к шарику и клюёт его.
+  let owlPopTimer = 0;
+  function owlPops() {
+    owlPopTimer = setTimeout(
+      () => {
+        const fieldBox = field.getBoundingClientRect();
+        const targets = [...field.children].filter((b) => {
+          const r = b.getBoundingClientRect();
+          return (
+            !b.classList.contains('popped') &&
+            r.top > fieldBox.top + 40 &&
+            r.bottom < fieldBox.bottom - 20
+          );
+        });
+        const t = targets[Math.floor(Math.random() * targets.length)];
+        screenOwl()?.flyTo(t, {
+          land: 'happy',
+          stay: 500,
+          scale: 1.4,
+          onArrive: () => t?.isConnected && t.dispatchEvent(new PointerEvent('pointerdown')),
+        });
+        if (current === 'balloons') owlPops();
+      },
+      3500 + Math.random() * 3500,
+    );
+  }
   function startBalloons() {
     popped = 0;
     $('#popCount').textContent = '0';
     spawn();
     spawnTimer = setInterval(spawn, 750);
+    clearTimeout(owlPopTimer);
+    owlPops();
   }
   function stopBalloons() {
     clearInterval(spawnTimer);
+    clearTimeout(owlPopTimer);
     field.textContent = '';
   }
 

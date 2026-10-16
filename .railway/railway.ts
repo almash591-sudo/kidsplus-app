@@ -98,6 +98,8 @@ export default defineRailway(() => {
       DATABASE_URL: Postgres.env.DATABASE_URL,
       // Нужен только при TTS_PROVIDER=google. Секрет задаётся вне репозитория.
       GOOGLE_TTS_API_KEY: preserve(),
+      // TTS_PROVIDER=elevenlabs (этап 26): ключ ElevenLabs задаёт владелец в панели Railway.
+      ELEVENLABS_API_KEY: preserve(),
       TTS_PROVIDER: preserve(),
       LLM_DAILY_TOKEN_LIMIT: LLM_DAILY_TOKEN_LIMIT,
       // Модерация: Gemini (анализ видео) и YouTube Data API (ежедневная проверка видео).

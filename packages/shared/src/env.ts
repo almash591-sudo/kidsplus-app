@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ELEVEN_VOICES } from './voice';
 
 const nodeEnv = z.enum(['development', 'test', 'production']).default('development');
 const logLevel = z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info');
@@ -27,8 +28,11 @@ const storageEnv = {
 
 /** Озвучка: от этих значений зависит ключ кэша, поэтому они общие для api и worker. */
 const ttsEnv = {
-  /** browser — озвучивает телефон (Web Speech API), сервер аудио не создаёт; google — Google Cloud TTS. */
-  TTS_PROVIDER: z.enum(['browser', 'google']).default('browser'),
+  /**
+   * browser — озвучивает телефон (Web Speech API), сервер аудио не создаёт; google — Google Cloud TTS;
+   * elevenlabs — ElevenLabs (этап 26).
+   */
+  TTS_PROVIDER: z.enum(['browser', 'google', 'elevenlabs']).default('browser'),
   /** Скорость речи: медленнее обычной — для малышей. */
   TTS_SPEED: z.coerce.number().min(0.5).max(1.5).default(0.85),
   TTS_VOICE_RU: optional(z.string()),
@@ -104,6 +108,10 @@ export const workerEnvSchema = z
     DATABASE_URL: databaseUrl,
     /** Ключ Google Cloud TTS (ограничен Text-to-Speech API). Без него озвучка не генерируется. */
     GOOGLE_TTS_API_KEY: optional(z.string().min(10)),
+    /** Нужен при TTS_PROVIDER=elevenlabs. */
+    ELEVENLABS_API_KEY: optional(z.string().min(10)),
+    /** Модель ElevenLabs; по умолчанию eleven_multilingual_v2. */
+    ELEVENLABS_MODEL: optional(z.string()),
     /** Ключ Gemini API — анализ видео для модерации. Без него очередь модерации ждёт. */
     GEMINI_API_KEY: optional(z.string().min(10)),
     /** Резервные копии на Google Диск владельца (OAuth, право drive.file): scripts/google-drive-auth.mjs. */
@@ -135,6 +143,10 @@ export const DEFAULT_GOOGLE_VOICES = {
 /** Голоса по языкам: заданные в окружении, иначе — по умолчанию для провайдера. */
 export function ttsVoices(env: TtsEnv): Partial<Record<'ru' | 'en' | 'zh', string>> {
   if (env.TTS_PROVIDER === 'browser') return {};
+  if (env.TTS_PROVIDER === 'elevenlabs') {
+    const id = ELEVEN_VOICES.Matilda;
+    return { ru: env.TTS_VOICE_RU ?? id, en: env.TTS_VOICE_EN ?? id, zh: env.TTS_VOICE_ZH ?? id };
+  }
   return {
     ru: env.TTS_VOICE_RU ?? DEFAULT_GOOGLE_VOICES.ru,
     en: env.TTS_VOICE_EN ?? DEFAULT_GOOGLE_VOICES.en,

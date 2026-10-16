@@ -43,6 +43,8 @@ export function toSpeech(
 
 import type { ItemRef } from '@kidsplus/db/day';
 
+const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g;
+
 export type { ItemRef };
 
 /**
@@ -132,11 +134,16 @@ export async function buildKidItems(
     for (const [id, a] of extra) assets.set(id, a);
   }
   const ready = (id: string | null) => Boolean(id && assets.get(id)?.status === 'ready');
-  /** Ссылка на картинку: авторская, если она есть и готова, иначе исходная. */
-  const imageUrl = (id: string) => {
+  /** Картинка для показа: авторская, если она есть и готова, иначе исходная. */
+  const shownImage = (id: string) => {
     const alt = illustrated ? assets.get(id)?.illustrationId : null;
-    return mediaUrl(alt && ready(alt) ? alt : id);
+    return alt && ready(alt) ? alt : id;
   };
+  /** В параметрах игры картинки — id (uuid); подменяем их на авторские. */
+  const illustrateSpec = (spec: GameSpec): GameSpec =>
+    JSON.parse(JSON.stringify(spec).replace(UUID, (id) => shownImage(id))) as GameSpec;
+  /** Ссылка на картинку: авторская, если она есть и готова, иначе исходная. */
+  const imageUrl = (id: string) => mediaUrl(shownImage(id));
 
   const speech = (text: string, lang: string, audioId: string | null) =>
     toSpeech(tts, text, lang, audioId, ready);
@@ -234,7 +241,12 @@ export async function buildKidItems(
     } else if (item.interactiveId) {
       const game = games.get(item.interactiveId);
       if (game && gameImageIds(game.spec).every(ready))
-        result.push({ kind: 'interactive', id: item.interactiveId, ...game });
+        result.push({
+          kind: 'interactive',
+          id: item.interactiveId,
+          category: game.category,
+          spec: illustrated ? illustrateSpec(game.spec) : game.spec,
+        });
     } else if (item.deckId) {
       const deckCards = kidCards(item.deckId);
       if (deckCards.length)

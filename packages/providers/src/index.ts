@@ -7,6 +7,7 @@ export * from './svg-sanitize';
 export type * from './image';
 export * from './tts';
 export * from './tts-google';
+export * from './tts-elevenlabs';
 export * from './storage';
 export * from './storage-fs';
 export * from './push';
