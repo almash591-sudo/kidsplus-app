@@ -32,7 +32,7 @@
 
 	handle {
 		root * /srv
-		@static path /fonts/* /img/*
+		@static path /fonts/* /img/* /landing-voice/*
 		header @static Cache-Control "public, max-age=2592000"
 		@woff2 path *.woff2
 		header @woff2 Content-Type font/woff2

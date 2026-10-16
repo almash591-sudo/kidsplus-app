@@ -113,6 +113,7 @@ function ChildForm({ child, onDone }: { child: Child | null; onDone: () => void 
           quizOptions: child.quizOptions,
           quizQuestions: child.quizQuestions,
           foreignImmersion: child.foreignImmersion,
+          illustrations: child.illustrations,
         }
       : {
           nickname: '',
@@ -123,6 +124,7 @@ function ChildForm({ child, onDone }: { child: Child | null; onDone: () => void 
           quizOptions: null,
           quizQuestions: null,
           foreignImmersion: false,
+          illustrations: true,
         },
     validate: {
       nickname: (v) => (v.trim() ? null : 'укажите прозвище'),
@@ -192,6 +194,13 @@ function ChildForm({ child, onDone }: { child: Child | null; onDone: () => void 
           checked={form.values.foreignImmersion ?? false}
           onChange={(e) => form.setFieldValue('foreignImmersion', e.currentTarget.checked)}
         />
+        <Checkbox
+          label="Объёмные картинки вместо эмодзи"
+          description="Авторские иллюстрации KidsPlus в карточках и вопросах — там, где они готовы"
+          checked={form.values.illustrations ?? false}
+          onChange={(e) => form.setFieldValue('illustrations', e.currentTarget.checked)}
+        />
+        <IllustrationSample />
         <QuizSettingsFields
           birthYear={form.values.birthYear}
           birthMonth={form.values.birthMonth}
@@ -260,5 +269,23 @@ function QuizSettingsFields(p: {
         </Group>
       </div>
     </Stack>
+  );
+}
+
+/** Как выглядят авторские картинки (файлы — public/illustrations). */
+function IllustrationSample() {
+  return (
+    <Group gap={6} wrap="nowrap" aria-hidden="true">
+      {[1, 2, 3, 4].map((n) => (
+        <img
+          key={n}
+          src={`/illustrations/sample-${n}.webp`}
+          alt=""
+          width={56}
+          height={56}
+          style={{ borderRadius: 12, background: 'var(--mantine-color-default-hover)' }}
+        />
+      ))}
+    </Group>
   );
 }

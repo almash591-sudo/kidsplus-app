@@ -323,6 +323,7 @@ async function main() {
     '.json': 'application/json',
     '.webmanifest': 'application/manifest+json',
     '.webp': 'image/webp',
+    '.mp3': 'audio/mpeg',
     '.jpg': 'image/jpeg',
   };
   const serve = (dist: string) => async (q: IncomingMessage, r: ServerResponse) => {
@@ -355,7 +356,10 @@ async function main() {
     // Лендинг (как Caddy в deploy/web): /start, /guide и их файлы — из apps/landing.
     const landingDir = join(root, 'apps/landing');
     const pages: Record<string, string> = { '/start': '/index.html', '/guide': '/guide.html' };
-    if (pages[path] || /^\/(landing\.css|landing\.js|guide\.js|img\/|fonts\/)/.test(path)) {
+    if (
+      pages[path] ||
+      /^\/(landing\.css|landing\.js|guide\.js|img\/|fonts\/|landing-voice\/)/.test(path)
+    ) {
       const f = join(landingDir, pages[path] ?? path);
       if (existsSync(f)) {
         const type =

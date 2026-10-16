@@ -1,5 +1,7 @@
 // Лендинг (apps/landing, этап 24; /start и /guide на домене кабинета) на телефонах: без ошибок и горизонтальной прокрутки,
 // карточки переворачиваются (в Safari — без «зеркальной» обратной стороны), детское демо отвечает.
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 
 test('лендинг помещается в экран и работает без ошибок', async ({ page }) => {
@@ -31,12 +33,34 @@ test('лендинг помещается в экран и работает бе
 
   // Детское демо: верный ответ — звёздочка.
   await page.locator('#kidPicks [data-go=quiz]').click();
-  const right = page.locator('#kqOpts button', { hasText: '🦊' });
+  const right = page.locator('#kqOpts button[data-e="🦊"]');
   await right.click();
   await expect(right).toHaveClass(/good/);
   await expect(page.locator('#kStars')).toContainText('★');
 
   expect(errors).toEqual([]);
+});
+
+test('совёнок говорит готовой озвучкой, у каждой фразы есть файл', async ({ page }) => {
+  // phrases.json ↔ файлы MP3: нет пропущенных и лишних.
+  execFileSync(process.execPath, [
+    fileURLToPath(new URL('../../../scripts/landing-voice.mjs', import.meta.url)),
+    '--check',
+  ]);
+
+  const voice: [string, number][] = [];
+  page.on(
+    'response',
+    (r) => r.url().includes('/landing-voice/') && voice.push([r.url(), r.status()]),
+  );
+  await page.goto('/start');
+  await page.locator('#kidsSound').click();
+  await page.locator('#kidPicks [data-go=quiz]').click();
+  await page.locator('#kidPicks [data-go=cards]').click();
+  await page.locator('#kcard').click();
+  // Фразы экрана грузятся всегда; в WebKit для Windows (CI) нет Web Audio — там дальше голос браузера.
+  await expect.poll(() => voice.length).toBeGreaterThan(2);
+  expect(voice.filter(([, s]) => s !== 200)).toEqual([]);
 });
 
 test('инструкция: переключатель iPhone / Android', async ({ page }) => {

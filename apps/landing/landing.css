@@ -3177,3 +3177,19 @@ body[data-os='android'] .os-ios {
 .guide .nav-in .btn {
   margin-left: auto;
 }
+
+/* Объёмные картинки в детском демо (этап 25) */
+.kc-emoji img {
+  width: 150px;
+  height: 150px;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 10px 12px rgb(90 60 140 / 0.18));
+}
+.kq-opts button img {
+  width: 78%;
+  height: 78%;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 6px 8px rgb(90 60 140 / 0.16));
+}
