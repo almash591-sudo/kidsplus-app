@@ -16,6 +16,7 @@ import { loadAssets, type TtsSettings } from './media';
 import { cardStates, orderCards, type CardState } from './srs';
 
 const {
+  children,
   flashcardDecks,
   flashcards,
   interactives,
@@ -114,7 +115,28 @@ export async function buildKidItems(
     ]),
     ...[...games.values()].flatMap((g) => gameImageIds(g.spec)),
   ]);
+  // Авторские картинки вместо эмодзи (этап 25) — если родитель включил их ребёнку.
+  const illustrated = srs
+    ? (
+        await db
+          .select({ on: children.illustrations })
+          .from(children)
+          .where(eq(children.id, srs.childId))
+      )[0]?.on === true
+    : false;
+  if (illustrated) {
+    const extra = await loadAssets(
+      db,
+      [...assets.values()].map((a) => a.illustrationId),
+    );
+    for (const [id, a] of extra) assets.set(id, a);
+  }
   const ready = (id: string | null) => Boolean(id && assets.get(id)?.status === 'ready');
+  /** Ссылка на картинку: авторская, если она есть и готова, иначе исходная. */
+  const imageUrl = (id: string) => {
+    const alt = illustrated ? assets.get(id)?.illustrationId : null;
+    return mediaUrl(alt && ready(alt) ? alt : id);
+  };
 
   const speech = (text: string, lang: string, audioId: string | null) =>
     toSpeech(tts, text, lang, audioId, ready);
@@ -135,7 +157,7 @@ export async function buildKidItems(
         prompt: prompt!,
         options: opts.map((o) => ({
           id: o.id,
-          imageUrl: mediaUrl(o.imageId),
+          imageUrl: imageUrl(o.imageId),
           isCorrect: o.isCorrect,
         })),
       }));
@@ -187,7 +209,7 @@ export async function buildKidItems(
       )
       .map(({ c, word, translation, question }) => ({
         id: c.id,
-        imageUrl: mediaUrl(c.imageId),
+        imageUrl: imageUrl(c.imageId),
         word: word!,
         translation,
         question,

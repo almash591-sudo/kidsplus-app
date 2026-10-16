@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  type AnyPgColumn,
   bigserial,
   boolean,
   check,
@@ -114,6 +115,8 @@ export const children = pgTable(
     quizQuestions: integer(),
     /** Карточки на иностранном языке — только на этом языке, без перевода (погружение). */
     foreignImmersion: boolean().notNull().default(false),
+    /** Объёмные авторские картинки (этап 25) вместо эмодзи, где они есть; включает родитель. */
+    illustrations: boolean().notNull().default(false),
     createdAt: createdAt(),
   },
   (t) => [
@@ -323,6 +326,8 @@ export const mediaAssets = pgTable(
     ttsLang: text(),
     ttsVoice: text(),
     ttsSpeed: real(),
+    /** Авторская картинка (этап 25) для эмодзи — показывается детям с включёнными illustrations. */
+    illustrationId: uuid().references((): AnyPgColumn => mediaAssets.id, { onDelete: 'set null' }),
     attempts: integer().notNull().default(0),
     error: text(),
     createdAt: createdAt(),

@@ -52,7 +52,7 @@
 		file_server
 	}
 
-	@landingAsset path /landing.css /landing.js /guide.js /img/* /fonts/*
+	@landingAsset path /landing.css /landing.js /guide.js /img/* /fonts/* /landing-voice/*
 	handle @landingAsset {
 		root * /srv-landing
 		@woff2 path *.woff2

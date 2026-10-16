@@ -26,7 +26,8 @@
   // ════════════════ Звук ════════════════
   const Sound = (() => {
     let ctx = null;
-    let master, musicBus, sfxBus, verb, verbIn;
+    let master, musicBus, sfxBus, voiceBus, verb, verbIn;
+    let voiceSrc = null;
     let on = false;
     let mode = 'day';
     let timer = 0;
@@ -67,6 +68,10 @@
       sfxBus.gain.value = 0.55;
       sfxBus.connect(master);
       sfxBus.connect(verbIn);
+      // Голос — без реверберации, поверх музыки.
+      voiceBus = ctx.createGain();
+      voiceBus.gain.value = 1;
+      voiceBus.connect(master);
     }
 
     // Колокольчик музыкальной шкатулки: основной тон и тихие обертоны, быстрый удар, долгое затухание.
@@ -295,6 +300,15 @@
       },
     };
 
+    function stopVoice() {
+      try {
+        voiceSrc?.stop();
+      } catch {
+        /* уже закончился */
+      }
+      voiceSrc = null;
+    }
+
     function setOn(v) {
       on = v;
       if (v) {
@@ -305,6 +319,7 @@
       } else {
         stopMusic();
         sfx.ringOff();
+        stopVoice();
         try {
           speechSynthesis.cancel();
         } catch {
@@ -333,6 +348,29 @@
           startMusic();
         }
       },
+      // Готовая озвучка: декодирование (в Safari — только с колбэками) и воспроизведение.
+      decode(bytes) {
+        if (!ctx) init();
+        if (!ctx) return Promise.reject(new Error('нет Web Audio'));
+        return new Promise((ok, fail) => ctx.decodeAudioData(bytes, ok, fail));
+      },
+      voice(buffer) {
+        if (!on || !ctx) return;
+        stopVoice();
+        const s = ctx.createBufferSource();
+        s.buffer = buffer;
+        s.connect(voiceBus);
+        s.onended = () => {
+          if (voiceSrc === s) {
+            voiceSrc = null;
+            this.duck(false);
+          }
+        };
+        voiceSrc = s;
+        this.duck(true);
+        s.start();
+      },
+      stopVoice,
       duck(down) {
         if (!ctx) return;
         const t = ctx.currentTime;
@@ -342,8 +380,55 @@
     };
   })();
 
-  // ── Голос (синтез речи браузера) ──
+  // ── Голос: готовая озвучка нейроголосом (landing-voice, scripts/landing-voice.mjs),
+  // для фразы без файла — синтез речи браузера ──
   const Voice = (() => {
+    // Имя файла — как phraseKey в scripts/landing-voice.mjs: язык и FNV-1a текста без эмодзи.
+    const file = (text, lang) => {
+      const code = lang.slice(0, 2);
+      const norm = text
+        .replace(/[^\p{L}\p{N}\s,.!?—-]/gu, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      let h = 0x811c9dc5;
+      for (const ch of `${code}:${norm}`) {
+        h ^= ch.codePointAt(0);
+        h = Math.imul(h, 0x01000193) >>> 0;
+      }
+      return `/landing-voice/${code}-${h.toString(16).padStart(8, '0')}.mp3`;
+    };
+    const cache = new Map();
+    const load = (url) => {
+      if (!cache.has(url))
+        cache.set(
+          url,
+          fetch(url)
+            .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(String(r.status)))))
+            .then((b) => Sound.decode(b))
+            .catch(() => null),
+        );
+      return cache.get(url);
+    };
+    let seq = 0;
+    const browser = browserVoice();
+    return {
+      preload(texts, lang = 'ru-RU') {
+        texts.forEach((t) => load(file(t, lang)));
+      },
+      async say(text, lang = 'ru-RU', opts) {
+        if (!Sound.on) return;
+        const my = ++seq;
+        Sound.stopVoice();
+        browser.cancel();
+        const buffer = await load(file(text, lang));
+        if (my !== seq || !Sound.on) return;
+        if (buffer) Sound.voice(buffer);
+        else browser.say(text, lang, opts);
+      },
+    };
+  })();
+
+  function browserVoice() {
     let voices = [];
     const load = () => {
       try {
@@ -368,6 +453,13 @@
       );
     };
     return {
+      cancel() {
+        try {
+          speechSynthesis.cancel();
+        } catch {
+          /* нет синтеза речи */
+        }
+      },
       say(text, lang = 'ru-RU', { pitch = 1.25, rate = 0.95 } = {}) {
         if (!Sound.on || !('speechSynthesis' in window)) return;
         try {
@@ -386,7 +478,7 @@
         }
       },
     };
-  })();
+  }
 
   // Кнопки звука: в шапке, на первом экране, в «Мире малыша».
   const soundBtn = $('#sound');
@@ -395,6 +487,8 @@
     soundBtn.setAttribute('aria-pressed', String(v));
     kidsBtn.classList.toggle('on', v);
     kidsBtn.textContent = v ? '🎵 Музыка играет' : '🔊 Включить музыку';
+    // Частые фразы совёнка — заранее, чтобы голос звучал сразу после касания.
+    if (v) Voice.preload([...Object.values(HELLO), ...PRAISE, 'Ой! Попробуй ещё разок.']);
   });
   soundBtn.addEventListener('click', () => Sound.toggle());
   kidsBtn.addEventListener('click', () => {
@@ -672,6 +766,31 @@
     el.classList.add('jump');
   };
 
+  // ── Объёмные картинки (как в приложении, этап 25): /img/kid/<код эмодзи>.webp ──
+  const ART = new Set(
+    '1f34e 1f431 2600 1f41f 1f697 1f338 1f98a 1f43b 1f430 1f989 1f34c 1f347 1f350 1f436 1f42e 1f438 26f5 2708 1f680 1f319 2b50 2601'.split(' '),
+  );
+  const emojiCode = (e) =>
+    [...e]
+      .map((ch) => ch.codePointAt(0).toString(16))
+      .filter((x) => x !== 'fe0f')
+      .join('-');
+  function setArt(el, e) {
+    el.textContent = '';
+    el.dataset.e = e;
+    const code = emojiCode(e);
+    if (!ART.has(code)) {
+      el.textContent = e;
+      return;
+    }
+    const img = new Image();
+    img.src = `/img/kid/${code}.webp`;
+    img.alt = '';
+    img.draggable = false;
+    img.decoding = 'async';
+    el.append(img);
+  }
+
   // ── Карточки ──
   const CARDS = [
     { e: '🍎', en: 'apple', ru: 'яблоко', zh: '苹果', py: 'píngguǒ' },
@@ -686,7 +805,7 @@
   let lang = 'en';
   function renderCard() {
     const c = CARDS[ci];
-    $('#kcEmoji').textContent = c.e;
+    setArt($('#kcEmoji'), c.e);
     $('#kcWord').textContent = c[lang];
     $('#kcTr').textContent = lang === 'zh' ? `${c.py} · ${c.ru}` : lang === 'en' ? c.ru : ' ';
     $('#cardDots').textContent = `${ci + 1}/${CARDS.length}`;
@@ -738,7 +857,7 @@
     for (const o of opts) {
       const b = document.createElement('button');
       b.type = 'button';
-      b.textContent = o;
+      setArt(b, o);
       b.addEventListener('click', () => answer(b, o === item.a));
       box.append(b);
     }

@@ -19,6 +19,7 @@ export const toChild = (c: typeof children.$inferSelect): Child => ({
   quizOptions: c.quizOptions,
   quizQuestions: c.quizQuestions,
   foreignImmersion: c.foreignImmersion,
+  illustrations: c.illustrations,
   createdAt: c.createdAt.toISOString(),
 });
 

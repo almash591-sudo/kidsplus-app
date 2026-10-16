@@ -93,6 +93,8 @@ export const childInput = z.object({
   quizQuestions: z.number().int().min(1).max(10).nullable().default(null),
   /** Иностранные карточки и проверки по ним — только на языке набора, без русского перевода. */
   foreignImmersion: z.boolean().default(false),
+  /** Объёмные авторские картинки вместо эмодзи (где они есть). */
+  illustrations: z.boolean().default(false),
 });
 export type ChildInput = z.input<typeof childInput>;
 
