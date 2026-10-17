@@ -40,8 +40,16 @@ function MazeRound(props: {
   const { n } = props;
   const maze = useMemo(() => makeMaze(n), [n]);
   const goal = n * n - 1;
-  const [path, setPath] = useState<number[]>([0]);
+  const [path, setPathState] = useState<number[]>([0]);
   const [done, setDone] = useState(false);
+  // Движения пальца могут прийти чаще перерисовок (Safari на iPhone): путь — сразу в ref,
+  // иначе следующий шаг сверяется со старой клеткой героя и не засчитывается.
+  const pathRef = useRef(path);
+  const doneRef = useRef(false);
+  const setPath = (p: number[]) => {
+    pathRef.current = p;
+    setPathState(p);
+  };
   const svg = useRef<SVGSVGElement>(null);
   const bumped = useRef(0);
   const hero = path.at(-1)!;
@@ -64,7 +72,9 @@ function MazeRound(props: {
 
   const move = (e: React.PointerEvent<SVGSVGElement>) => {
     trail(e.clientX, e.clientY);
-    if (done) return;
+    if (doneRef.current) return;
+    const path = pathRef.current;
+    const hero = path.at(-1)!;
     const p = svgPoint(svg.current!, e);
     const cx = Math.floor(p.x / CELL);
     const cy = Math.floor(p.y / CELL);
@@ -89,6 +99,7 @@ function MazeRound(props: {
     const next = path.includes(cell) ? path.slice(0, path.indexOf(cell) + 1) : [...path, cell];
     setPath(next);
     if (cell === goal) {
+      doneRef.current = true;
       setDone(true);
       props.onSolved({ x: e.clientX, y: e.clientY });
       burst({ x: e.clientX, y: e.clientY }, 20);

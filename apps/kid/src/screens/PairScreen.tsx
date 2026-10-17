@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { kidApi } from '../api';
+import { iosBrowserTab } from '../ios';
 
 type Status = 'idle' | 'checking' | 'invalid' | 'error';
 
@@ -15,7 +16,9 @@ export function PairScreen({
   onPaired: () => void;
 }) {
   const [code, setCode] = useState(initialCode ?? '');
-  const [status, setStatus] = useState<Status>(initialCode ? 'checking' : 'idle');
+  // iPhone, вкладка Safari: сначала — на экран «Домой», код вводится уже там (он одноразовый).
+  const [install, setInstall] = useState(iosBrowserTab);
+  const [status, setStatus] = useState<Status>(initialCode && !install ? 'checking' : 'idle');
   const tried = useRef(false);
 
   const submit = async (value: string) => {
@@ -30,13 +33,43 @@ export function PairScreen({
 
   // По QR-ссылке привязываем сразу, без нажатий.
   useEffect(() => {
-    if (initialCode && !tried.current) {
+    if (initialCode && !install && !tried.current) {
       tried.current = true;
       void submit(initialCode);
     }
     // submit не меняет поведение между рендерами
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialCode]);
+  }, [initialCode, install]);
+
+  if (install) {
+    return (
+      <div className="screen center pair" data-testid="pair-install">
+        <div className="pair-card">
+          <h1>Сначала — на экран «Домой»</h1>
+          <ol className="pair-steps">
+            <li>
+              Нажмите кнопку <b>«Поделиться»</b> внизу Safari.
+            </li>
+            <li>
+              Выберите <b>«На экран „Домой“»</b> → <b>«Добавить»</b>.
+            </li>
+            <li>Откройте KidsPlus с иконки и введите код:</li>
+          </ol>
+          {initialCode && (
+            <p className="pair-big-code" data-testid="pair-install-code">
+              {initialCode}
+            </p>
+          )}
+          <p className="pair-note">
+            Код действует 10 минут. Не успели — получите новый в кабинете.
+          </p>
+          <button type="button" className="pair-link" onClick={() => setInstall(false)}>
+            Продолжить в Safari
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="screen center pair" data-testid="pair">

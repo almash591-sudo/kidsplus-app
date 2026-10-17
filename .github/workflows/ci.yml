@@ -103,7 +103,7 @@ jobs:
       - if: steps.changed.outputs.run == 'true'
         run: pnpm install --frozen-lockfile
       - if: steps.changed.outputs.run == 'true'
-        run: pnpm --filter @kidsplus/kid exec playwright install --with-deps chromium
+        run: pnpm --filter @kidsplus/kid exec playwright install --with-deps chromium webkit
       - if: steps.changed.outputs.run == 'true'
         run: pnpm --filter @kidsplus/kid e2e
       - uses: actions/upload-artifact@v4

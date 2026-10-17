@@ -5,6 +5,7 @@ import { App } from './App';
 import { Sky } from './ui/Sky';
 import { ErrorBoundary } from './ErrorBoundary';
 import { installTapFeedback } from './fx';
+import { unlockAudio } from './audio';
 import { startOutbox } from './offline';
 import { dropServiceWorker, inAndroidWebView } from './kiosk';
 import './styles.css';
@@ -17,6 +18,8 @@ import './theme.css';
 import './wow.css';
 
 installTapFeedback();
+// iPhone: звук и голос разрешены только после касания — первое касание их «будит».
+addEventListener('pointerdown', unlockAudio, { capture: true, once: true });
 // События прогресса, накопленные без сети, — на сервер, когда связь появится.
 startOutbox();
 

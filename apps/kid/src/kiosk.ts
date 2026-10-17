@@ -115,8 +115,34 @@ export async function dropServiceWorker() {
 
 /** Экран не гаснет, пока малыш смотрит видео (этап 16б). */
 export function setKeepAwake(on: boolean) {
-  void call(() => plugin()?.setKeepAwake?.({ on }));
+  const kiosk = plugin();
+  if (kiosk) {
+    void call(() => kiosk.setKeepAwake?.({ on }));
+    return;
+  }
+  // Вне киоска (iPhone, Chrome) — Screen Wake Lock; телефон снимает его, когда страница скрыта.
+  wantAwake = on;
+  if (!on) {
+    void wakeLock?.release().catch(() => {});
+    wakeLock = null;
+  } else void requestWakeLock();
 }
+
+let wantAwake = false;
+let wakeLock: WakeLockSentinel | null = null;
+async function requestWakeLock() {
+  if (wakeLock || !('wakeLock' in navigator)) return;
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release', () => (wakeLock = null));
+  } catch {
+    // нет разрешения (энергосбережение) — экран погаснет как обычно
+  }
+}
+if (typeof document !== 'undefined')
+  document.addEventListener('visibilitychange', () => {
+    if (wantAwake && document.visibilityState === 'visible') void requestWakeLock();
+  });
 
 /**
  * Голосовое управление экраном малыша (этап 16в): киоск слушает «Малыш, …» офлайн и присылает
