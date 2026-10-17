@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ELEVEN_VOICES } from './voice';
+import { ELEVEN_VOICES, PROXY_VOICE_DEFAULT } from './voice';
 
 const nodeEnv = z.enum(['development', 'test', 'production']).default('development');
 const logLevel = z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info');
@@ -30,9 +30,9 @@ const storageEnv = {
 const ttsEnv = {
   /**
    * browser — озвучивает телефон (Web Speech API), сервер аудио не создаёт; google — Google Cloud TTS;
-   * elevenlabs — ElevenLabs (этап 26).
+   * elevenlabs — ElevenLabs (этап 26); proxyapi — ElevenLabs через ProxyAPI, оплата в рублях (этап 28).
    */
-  TTS_PROVIDER: z.enum(['browser', 'google', 'elevenlabs']).default('browser'),
+  TTS_PROVIDER: z.enum(['browser', 'google', 'elevenlabs', 'proxyapi']).default('browser'),
   /** Скорость речи: медленнее обычной — для малышей. */
   TTS_SPEED: z.coerce.number().min(0.5).max(1.5).default(0.85),
   TTS_VOICE_RU: optional(z.string()),
@@ -112,6 +112,8 @@ export const workerEnvSchema = z
     ELEVENLABS_API_KEY: optional(z.string().min(10)),
     /** Модель ElevenLabs; по умолчанию eleven_multilingual_v2. */
     ELEVENLABS_MODEL: optional(z.string()),
+    /** Нужен при TTS_PROVIDER=proxyapi. */
+    PROXYAPI_KEY: optional(z.string().min(10)),
     /** Ключ Gemini API — анализ видео для модерации. Без него очередь модерации ждёт. */
     GEMINI_API_KEY: optional(z.string().min(10)),
     /** Резервные копии на Google Диск владельца (OAuth, право drive.file): scripts/google-drive-auth.mjs. */
@@ -143,6 +145,10 @@ export const DEFAULT_GOOGLE_VOICES = {
 /** Голоса по языкам: заданные в окружении, иначе — по умолчанию для провайдера. */
 export function ttsVoices(env: TtsEnv): Partial<Record<'ru' | 'en' | 'zh', string>> {
   if (env.TTS_PROVIDER === 'browser') return {};
+  if (env.TTS_PROVIDER === 'proxyapi') {
+    const v = PROXY_VOICE_DEFAULT;
+    return { ru: env.TTS_VOICE_RU ?? v, en: env.TTS_VOICE_EN ?? v, zh: env.TTS_VOICE_ZH ?? v };
+  }
   if (env.TTS_PROVIDER === 'elevenlabs') {
     const id = ELEVEN_VOICES.Matilda;
     return { ru: env.TTS_VOICE_RU ?? id, en: env.TTS_VOICE_EN ?? id, zh: env.TTS_VOICE_ZH ?? id };

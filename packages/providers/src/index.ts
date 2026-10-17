@@ -8,6 +8,7 @@ export type * from './image';
 export * from './tts';
 export * from './tts-google';
 export * from './tts-elevenlabs';
+export * from './tts-openai-compatible';
 export * from './storage';
 export * from './storage-fs';
 export * from './push';

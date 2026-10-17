@@ -4,6 +4,7 @@ import { notifyParents } from '@kidsplus/db/notify';
 import {
   ElevenLabsTtsProvider,
   GoogleTtsProvider,
+  OpenAiCompatibleTtsProvider,
   WebPushSender,
   YouTubeDataApi,
   type TtsProvider,
@@ -12,6 +13,7 @@ import type { PushMessage } from '@kidsplus/shared/push';
 import { GeminiLlmProvider } from '@kidsplus/providers/gemini';
 import { createStorage } from '@kidsplus/providers/storage-factory';
 import { parseEnv, ttsVoices, workerEnvSchema } from '@kidsplus/shared/env';
+import { PROXY_TTS_MODEL } from '@kidsplus/shared/voice';
 import { PgBoss } from 'pg-boss';
 import { pino } from 'pino';
 import { GoogleDrive } from '@kidsplus/providers/google-drive';
@@ -82,6 +84,16 @@ if (!youtube) log.warn('YOUTUBE_API_KEY не задан — ежедневная
 let stopTts: (() => void) | undefined;
 /** Провайдер серверной озвучки по TTS_PROVIDER; без ключа — null. */
 function ttsProvider(): TtsProvider | null {
+  // ElevenLabs через ProxyAPI (этап 28): модель — в имени голоса (@kidsplus/shared/voice).
+  if (env.TTS_PROVIDER === 'proxyapi')
+    return env.PROXYAPI_KEY
+      ? new OpenAiCompatibleTtsProvider({
+          apiKey: env.PROXYAPI_KEY,
+          baseUrl: 'https://api.proxyapi.ru/v1',
+          model: PROXY_TTS_MODEL,
+          voices: ttsVoices(env),
+        })
+      : null;
   if (env.TTS_PROVIDER === 'elevenlabs')
     return env.ELEVENLABS_API_KEY
       ? new ElevenLabsTtsProvider({
@@ -102,7 +114,11 @@ if (env.TTS_PROVIDER === 'browser') {
     stopTts = startTtsLoop({ db, storage: createStorage(env, new DbStorage(db)), provider, log });
     log.info({ storage: env.STORAGE_DRIVER, provider: provider.id }, 'озвучка запущена');
   } else {
-    const key = env.TTS_PROVIDER === 'elevenlabs' ? 'ELEVENLABS_API_KEY' : 'GOOGLE_TTS_API_KEY';
+    const key = {
+      elevenlabs: 'ELEVENLABS_API_KEY',
+      proxyapi: 'PROXYAPI_KEY',
+      google: 'GOOGLE_TTS_API_KEY',
+    }[env.TTS_PROVIDER];
     log.warn(`${key} не задан — серверная озвучка не генерируется, звучит голос телефона`);
   }
 }
