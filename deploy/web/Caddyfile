@@ -57,11 +57,12 @@
 		root * /srv-landing
 		@woff2 path *.woff2
 		header @woff2 Content-Type font/woff2
-		header Cache-Control "public, max-age=86400"
 		# Скрипт и стили меняются с лендингом — браузер сверяет их при каждом заходе (ETag),
-		# иначе сутки показывается старая версия.
+		# иначе сутки показывается старая версия; картинки, шрифты и озвучка — на сутки.
 		@code path /landing.css /landing.js /guide.js
 		header @code Cache-Control "no-cache"
+		@media not path /landing.css /landing.js /guide.js
+		header @media Cache-Control "public, max-age=86400"
 		file_server
 	}
 
