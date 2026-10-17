@@ -13,7 +13,11 @@ import { Icon } from '../ui/icons';
 
 export type ExitReason = 'complete' | 'exit' | 'error';
 
-type View = 'loading' | 'playing' | 'paused' | 'needs-tap' | 'buffering' | 'finished';
+/**
+ * tap-video — наша кнопка не смогла запустить видео (Safari на iPhone: первое нажатие должно
+ * прийти в сам плеер YouTube): защита от касаний на миг убрана, палец показывает, куда нажать.
+ */
+type View = 'loading' | 'playing' | 'paused' | 'needs-tap' | 'tap-video' | 'buffering' | 'finished';
 
 /** Если за это время видео не заиграло само — показываем большую кнопку «играть». */
 const AUTOPLAY_WAIT_MS = 1500;
@@ -157,7 +161,16 @@ export function KidPlayer({
     };
   }, [segment, finish]);
 
-  const play = () => player.current?.playVideo();
+  const play = () => {
+    const p = player.current;
+    if (!p) return;
+    p.playVideo();
+    setTimeout(() => {
+      const state = player.current?.getPlayerState();
+      if (!done.current && state !== YT_STATE.PLAYING && state !== YT_STATE.BUFFERING)
+        setView('tap-video');
+    }, AUTOPLAY_WAIT_MS);
+  };
   const pause = () => player.current?.pauseVideo();
 
   if (view === 'finished') {
@@ -170,13 +183,13 @@ export function KidPlayer({
     );
   }
 
-  const covered = view !== 'playing';
+  const covered = view !== 'playing' && view !== 'tap-video';
   return (
     <div className="player-screen" data-testid="player">
       <div ref={container} className="player-frame" data-testid="player-frame" />
-      {/* Перехватывает все касания: до iframe YouTube ничего не доходит. */}
+      {/* Перехватывает все касания: до iframe YouTube ничего не доходит (кроме tap-video). */}
       <div
-        className="touch-shield"
+        className={view === 'tap-video' ? 'touch-shield open' : 'touch-shield'}
         data-testid="touch-shield"
         onPointerDown={(e) => e.preventDefault()}
         onContextMenu={(e) => e.preventDefault()}
@@ -201,6 +214,11 @@ export function KidPlayer({
               ▶
             </button>
           )}
+        </div>
+      )}
+      {view === 'tap-video' && (
+        <div className="tap-video-hint" aria-hidden="true" data-testid="tap-video">
+          👆
         </div>
       )}
       {view === 'playing' && (

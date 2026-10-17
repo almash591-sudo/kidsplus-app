@@ -22,6 +22,8 @@
       if (doc) {
         doc.addEventListener('pointerdown', count);
         doc.addEventListener('click', count);
+        // iPhone: видео запускается только касанием самого плеера.
+        doc.addEventListener('pointerdown', () => window.__ytNeedsFrameTap && this.set(1));
       }
 
       window.__yt = this;
@@ -30,6 +32,8 @@
 
     playVideo() {
       this.calls.push('play');
+      // Имитация Safari на iPhone: playVideo() снаружи не запускает видео вообще.
+      if (window.__ytNeedsFrameTap) return;
       // Имитация запрета автовоспроизведения: первый вызов без касания игнорируется.
       if (window.__ytBlockAutoplay && !this.triedAutoplay) {
         this.triedAutoplay = true;

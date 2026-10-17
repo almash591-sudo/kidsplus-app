@@ -5,12 +5,56 @@ import type { Language, Speech } from '@kidsplus/shared/api';
 import { cachedSpeechUrl, wantSpeech } from './speechCache';
 import { withoutStress } from '@kidsplus/shared/voice';
 import { cachedObjectUrl } from './offline';
+import { isIos } from './ios';
 
 const SPEECH_LANG: Record<Language, string> = { ru: 'ru-RU', en: 'en-US', zh: 'zh-CN' };
 /** Медленнее обычного — для малышей. */
 const SPEECH_RATE = 0.85;
 
 let current: HTMLAudioElement | null = null;
+/**
+ * Один плеер на все фразы: Safari на iPhone разрешает звук только элементу, который уже играл
+ * после касания экрана, — новый Audio на каждую фразу молчал бы до следующего касания.
+ */
+let player: HTMLAudioElement | null = null;
+const audioElement = () => (player ??= new Audio());
+/** Касание уже было: звук разрешён. */
+let unlocked = false;
+/** Фраза, которую телефон не дал сказать до первого касания (приветствие на iPhone). */
+let blocked: Speech | null = null;
+/** Короткая тишина — «разбудить» плеер касанием. */
+const SILENCE =
+  'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+
+/**
+ * Первое касание экрана: плеер и голос телефона получают разрешение играть (iPhone), а фраза,
+ * которой не дали прозвучать, — звучит.
+ */
+export function unlockAudio() {
+  if (unlocked) return;
+  unlocked = true;
+  const speech = synth();
+  const missed = blocked;
+  blocked = null;
+  // Касание обычно само что-то озвучивает — тогда пропущенная фраза уже не к месту.
+  if (missed) setTimeout(() => !current && !speech?.speaking && void playSpeech(missed), 350);
+  // Беззвучный «прогрев» нужен только Safari на iPhone; Android разрешает звук и так.
+  if (!isIos()) return;
+  const a = audioElement();
+  if (!current) {
+    a.src = SILENCE;
+    void a.play().catch(() => {});
+  }
+  if (speech && !speech.speaking) {
+    try {
+      const u = new SpeechSynthesisUtterance(' ');
+      u.volume = 0;
+      speech.speak(u);
+    } catch {
+      // без голоса телефона — только файлы
+    }
+  }
+}
 let finishCurrent: (() => void) | null = null;
 /** Увеличивается при каждой остановке — прерывает начатые последовательности. */
 let generation = 0;
@@ -66,14 +110,19 @@ function interrupt() {
   finishCurrent?.();
 }
 
-/** 'error' — файл не загрузился (например, нет сети): тогда фразу скажет голос телефона. */
-function playFile(url: string, original = url): Promise<'done' | 'error'> {
+/**
+ * 'error' — файл не загрузился (например, нет сети): тогда фразу скажет голос телефона;
+ * 'blocked' — телефон не разрешил звук до касания экрана.
+ */
+function playFile(url: string, original = url): Promise<'done' | 'error' | 'blocked'> {
   return new Promise((resolve) => {
-    const audio = new Audio(url);
+    const audio = audioElement();
+    audio.pause();
+    audio.src = url;
     // Исходный адрес (из кэша src становится blob:) — для отладки и тестов.
     audio.dataset.src = original;
     current = audio;
-    const done = (result: 'done' | 'error' = 'done') => {
+    const done = (result: 'done' | 'error' | 'blocked' = 'done') => {
       audio.onended = audio.onerror = null;
       if (current === audio) current = null;
       finishCurrent = null;
@@ -83,7 +132,11 @@ function playFile(url: string, original = url): Promise<'done' | 'error'> {
     audio.onended = () => done();
     audio.onerror = () => done('error');
     // Запрет автовоспроизведения считаем окончанием — экран не должен зависнуть.
-    audio.play().catch(() => done());
+    audio
+      .play()
+      .catch((e: unknown) =>
+        done((e as Error | null)?.name === 'NotAllowedError' ? 'blocked' : 'done'),
+      );
   });
 }
 
@@ -144,7 +197,9 @@ function say(s: Speech): Promise<void> {
   return cachedObjectUrl(url)
     .then(async (local) => {
       try {
-        if ((await playFile(local ?? url, url)) === 'error' && !local) await speakText(s);
+        const result = await playFile(local ?? url, url);
+        if (result === 'blocked' && !unlocked) blocked = s;
+        else if (result === 'error' && !local) await speakText(s);
       } finally {
         if (local) URL.revokeObjectURL(local);
       }

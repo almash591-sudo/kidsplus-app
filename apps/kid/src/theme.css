@@ -723,6 +723,44 @@ body {
   }
 }
 
+/*
+ * Невысокий экран и много разделов (iPhone в Safari, iPhone SE): в два столбца пять рядов не
+ * помещаются над доком — раскладываем в три, значок над подписью.
+ */
+@media (orientation: portrait) and (max-height: 760px) {
+  .tiles.categories.many:not(.today) {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  .tiles.categories.many:not(.today) .tile.category {
+    height: min(
+      calc((100vw - 56px) / 3 * 1.1),
+      calc((100dvh - 290px - (var(--rows3, 3) - 1) * 12px) / var(--rows3, 3))
+    );
+    min-height: 82px;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 4px;
+    padding: 10px;
+    border-radius: 22px;
+  }
+
+  .tiles.categories.many:not(.today) .tile-badge {
+    width: auto;
+    height: 52%;
+  }
+
+  .tiles.categories.many:not(.today) .tile-label {
+    font-size: clamp(11px, 3.4vw, 16px);
+    letter-spacing: -0.3px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
 /* Кнопка яркости в доке. */
 .dock .brightness-open {
   width: 66px;
@@ -905,4 +943,39 @@ html[data-preview]::after {
     sans-serif;
   pointer-events: none;
   white-space: nowrap;
+}
+
+/* iPhone: сначала — на экран «Домой» (этап 27). */
+.pair-steps {
+  margin: 0 0 12px;
+  padding-left: 22px;
+  text-align: left;
+  line-height: 1.45;
+}
+
+.pair-steps li + li {
+  margin-top: 6px;
+}
+
+.pair-big-code {
+  margin: 8px 0;
+  font-size: 34px;
+  font-weight: 900;
+  letter-spacing: 3px;
+  text-align: center;
+  user-select: all;
+}
+
+.pair-note {
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+.pair-card .pair-link {
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+  text-decoration: underline;
+  font-weight: 700;
+  opacity: 0.6;
 }

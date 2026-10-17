@@ -128,8 +128,11 @@ const FAKE_SPEECH = `
 `;
 
 type Spoken = { text: string; lang: string; rate: number; voice: string | null };
+/** Произнесённые фразы; беззвучный «прогрев» голоса на iPhone (пробел) — не фраза. */
 const spoken = (page: Page) =>
-  page.evaluate(() => (window as unknown as { __spoken: Spoken[] }).__spoken);
+  page.evaluate(() =>
+    (window as unknown as { __spoken: Spoken[] }).__spoken.filter((s) => s.text.trim()),
+  );
 
 const OFF_TODAY = {
   mode: 'off',
@@ -416,8 +419,14 @@ async function mockBackend(page: Page, backend: Backend) {
   });
 }
 
-const test = base.extend<{ backend: Backend }>({
-  backend: async ({ page }, use) => {
+const test = base.extend<{ backend: Backend; iosTab: boolean }>({
+  /** iPhone: по умолчанию — приложение с экрана «Домой»; true — вкладка Safari. */
+  iosTab: [false, { option: true }],
+  backend: async ({ page, iosTab }, use) => {
+    if (!iosTab)
+      await page.addInitScript(() =>
+        Object.defineProperty(navigator, 'standalone', { value: true, configurable: true }),
+      );
     const backend: Backend = {
       paired: true,
       events: [],
@@ -447,6 +456,22 @@ test.describe('привязка устройства', () => {
     await expect(page.getByTestId('home')).toBeVisible();
     expect(new URL(page.url()).pathname).toBe('/');
     expect(new URL(page.url()).search).toBe('');
+  });
+
+  test.describe('iPhone, вкладка Safari', () => {
+    test.use({ iosTab: true });
+    test('по QR — сначала «на экран Домой» с кодом; в Safari — по кнопке', async ({
+      page,
+      backend,
+    }) => {
+      test.skip(!/iphone/.test(test.info().project.name), 'только iPhone');
+      backend.paired = false;
+      await page.goto('/pair?code=ABCD2345');
+      await expect(page.getByTestId('pair-install')).toBeVisible();
+      await expect(page.getByTestId('pair-install-code')).toHaveText('ABCD2345');
+      await page.getByRole('button', { name: 'Продолжить в Safari' }).click();
+      await expect(page.getByTestId('home')).toBeVisible();
+    });
   });
 
   test('без привязки — экран привязки; неверный код — сообщение', async ({ page, backend }) => {
@@ -587,6 +612,28 @@ test.describe('плеер', () => {
     await expect(page.getByTestId('play')).toBeVisible({ timeout: 3000 });
     await page.getByTestId('play').click();
     await expect(page.getByTestId('pause')).toBeVisible();
+  });
+
+  test('iPhone: кнопка не запустила видео — открывается центр плеера, касание запускает', async ({
+    page,
+    backend: _,
+  }) => {
+    await page.addInitScript(() => {
+      (window as unknown as { __ytNeedsFrameTap: boolean }).__ytNeedsFrameTap = true;
+    });
+    await page.goto('/');
+    await page.getByTestId('tile').first().click();
+    await page.getByTestId('play').click({ timeout: 4000 });
+    await expect(page.getByTestId('tap-video')).toBeVisible({ timeout: 4000 });
+    // Края закрыты: касание у верхнего края до YouTube не доходит, в центре — доходит.
+    const box = (await page.getByTestId('player').boundingBox())!;
+    await page.mouse.click(box.x + box.width / 2, box.y + 30);
+    expect(
+      await page.evaluate(() => (window as unknown as { __iframeHits: number }).__iframeHits),
+    ).toBe(0);
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(page.getByTestId('pause')).toBeVisible();
+    await expect(page.getByTestId('tap-video')).toHaveCount(0);
   });
 
   test('видео недоступно: событие с кодом ошибки и переход к следующему', async ({

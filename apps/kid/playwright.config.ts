@@ -1,7 +1,16 @@
-import { defineConfig } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
 
 // Galaxy S20+: 1440×3200 физических пикселей, DPR 3.5 → 412×915 CSS-пикселей.
 const s20 = { deviceScaleFactor: 3.5, isMobile: true, hasTouch: true };
+
+/**
+ * iPhone (этап 27): Safari-движок WebKit. Без наборов, которым нужны поддельные камера/микрофон
+ * (флаги Chromium) и Web Audio — их нет в тестовом WebKit для Linux/Windows; на iPhone они есть.
+ */
+const iphone = {
+  grepInvert: /камера|звонки|радионяня|отклик интерфейса|аудиотека/,
+  use: { launchOptions: {}, permissions: [] as string[] },
+};
 
 export default defineConfig({
   testDir: 'e2e',
@@ -23,6 +32,16 @@ export default defineConfig({
   projects: [
     { name: 's20-portrait', use: { ...s20, viewport: { width: 412, height: 915 } } },
     { name: 's20-landscape', use: { ...s20, viewport: { width: 915, height: 412 } } },
+    {
+      name: 'iphone-15',
+      grepInvert: iphone.grepInvert,
+      use: { ...devices['iPhone 15'], ...iphone.use },
+    },
+    {
+      name: 'iphone-se',
+      grepInvert: iphone.grepInvert,
+      use: { ...devices['iPhone SE'], ...iphone.use },
+    },
   ],
   webServer: {
     command: 'pnpm build && pnpm preview --host 127.0.0.1 --port 4173 --strictPort',

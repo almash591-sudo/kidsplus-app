@@ -61,9 +61,21 @@ export function CategoryScreen({
   }, []);
   return (
     <div
-      className={onBack ? 'screen tiles categories with-back' : 'screen tiles categories'}
+      className={[
+        'screen tiles categories',
+        onBack ? 'with-back' : '',
+        // Много разделов: на невысоком экране (iPhone в Safari, iPhone SE) — в три колонки.
+        categoriesOf(items).length > 6 ? 'many' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
       data-testid="categories"
-      style={{ '--rows': Math.ceil(categoriesOf(items).length / 2) } as React.CSSProperties}
+      style={
+        {
+          '--rows': Math.ceil(categoriesOf(items).length / 2),
+          '--rows3': Math.ceil(categoriesOf(items).length / 3),
+        } as React.CSSProperties
+      }
     >
       {onBack ? (
         <button

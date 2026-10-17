@@ -116,6 +116,43 @@ button {
   touch-action: none;
 }
 
+/*
+ * iPhone: первое нажатие должно прийти в плеер YouTube — открываем только центр (его кнопку
+ * «играть»), края с названием и ссылками по-прежнему закрыты.
+ */
+.touch-shield.open {
+  clip-path: polygon(
+    evenodd,
+    0 0,
+    100% 0,
+    100% 100%,
+    0 100%,
+    0 0,
+    32% 32%,
+    32% 68%,
+    68% 68%,
+    68% 32%,
+    32% 32%
+  );
+}
+
+.tap-video-hint {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 62%;
+  font-size: 64px;
+  pointer-events: none;
+  transform: translateX(-50%);
+  animation: tap-hint 1.1s ease-in-out infinite;
+}
+
+@keyframes tap-hint {
+  50% {
+    transform: translate(-50%, -14px);
+  }
+}
+
 /* Заглушка, пока видео не играет: прячет заставки и «другие видео» YouTube. */
 .player-cover {
   position: absolute;
