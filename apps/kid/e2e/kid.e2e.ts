@@ -488,6 +488,32 @@ test.describe('привязка устройства', () => {
   });
 });
 
+test.describe('пульт родителя (этап 29)', () => {
+  test('экран выключен с поводом: совёнок и фраза, разделов не видно', async ({
+    page,
+    backend,
+  }) => {
+    backend.today = { ...OFF_TODAY, rest: 'walk' };
+    await page.goto('/');
+    await expect(page.getByTestId('rest')).toHaveAttribute('data-reason', 'walk');
+    await expect(page.getByTestId('tile')).toHaveCount(0);
+    await expect
+      .poll(async () => (await spoken(page)).map((s) => s.text))
+      .toContain('Ура, гулять! Совёнок полетел на улицу, догоняй!');
+  });
+
+  test('«Тебя зовут!» — один раз, касание убирает', async ({ page, backend }) => {
+    backend.today = { ...OFF_TODAY, calledAt: new Date().toISOString() };
+    await page.goto('/');
+    await expect(page.getByTestId('called')).toBeVisible();
+    await page.getByTestId('called').click();
+    await expect(page.getByTestId('called')).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByTestId('tile').first()).toBeVisible();
+    await expect(page.getByTestId('called')).toHaveCount(0);
+  });
+});
+
 test.describe('главный экран', () => {
   test('показывает ровно фрагменты из API, без текста и ссылок', async ({ page, backend: _ }) => {
     await page.goto('/');

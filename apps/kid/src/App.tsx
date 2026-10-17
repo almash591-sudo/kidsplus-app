@@ -30,6 +30,8 @@ import { DeckScreen } from './screens/DeckScreen';
 import { CategoryScreen, HomeScreen } from './screens/HomeScreen';
 import { isLessonPath } from './screens/LessonPath';
 import { PairScreen } from './screens/PairScreen';
+import { calledStore, RestScreen } from './screens/RestScreen';
+import { setVolume } from './kiosk';
 import {
   DayOverScreen,
   ParentCorner,
@@ -241,6 +243,14 @@ export function App() {
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [paired]);
   const isPlan = plan(today);
+  // «Тебя зовут!» (этап 29): свежий вызов (до 3 минут) — слою поверх приложения (main.tsx).
+  const calledAt = today?.calledAt ?? null;
+  useEffect(() => calledStore.set(calledAt), [calledAt]);
+  // Громкость телефона, заданная родителем (киоск).
+  const volume = today?.volume ?? null;
+  useEffect(() => {
+    if (volume !== null) setVolume(volume);
+  }, [volume]);
   /** Сигнал серверу; возвращает, вышло ли время текущего занятия. */
   const beat = useCallback(async () => {
     const s = current.current;
@@ -394,6 +404,14 @@ export function App() {
       />
     );
   if (parentMenu) return <ParentMenu onClose={() => setParentMenu(false)} />;
+  // Родитель «выключил экран» с поводом — поверх всего, кроме звонка и меню родителя.
+  if (paired && today?.rest)
+    return (
+      <>
+        <RestScreen reason={today.rest} />
+        <ParentCorner onUnlock={() => setParentMenu(true)} />
+      </>
+    );
   if (camera === 'album')
     return (
       <AlbumScreen

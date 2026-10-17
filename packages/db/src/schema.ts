@@ -117,6 +117,13 @@ export const children = pgTable(
     foreignImmersion: boolean().notNull().default(false),
     /** Объёмные авторские картинки (этап 25) вместо эмодзи, где они есть; включает родитель. */
     illustrations: boolean().notNull().default(false),
+    /** Громкость телефона 0–100, заданная родителем (этап 29, киоск); null — не трогаем. */
+    volume: integer(),
+    /**
+     * «Выключить экран с поводом» (этап 29): sleep | eat | walk | bath | book | rest. У ребёнка,
+     * а не у дня: «спать» в 21:00 не должно сняться само в полночь.
+     */
+    rest: text(),
     createdAt: createdAt(),
   },
   (t) => [
@@ -560,6 +567,8 @@ export const dayControls = pgTable(
     openUntil: timestamp({ withTimezone: true }),
     /** Родителю уже сообщили, что занятия на сегодня закончены. */
     doneNotified: boolean().notNull().default(false),
+    /** Родитель позвал ребёнка. */
+    calledAt: timestamp({ withTimezone: true }),
     /** Последний сигнал телефона: чем занят и что на экране. */
     lastBeatAt: timestamp({ withTimezone: true }),
     activity: text(),
