@@ -12,7 +12,7 @@ import {
 import { PHRASES, PHRASES_EN, type PhraseKind } from '@kidsplus/shared/phrases';
 import { pushMessages } from '@kidsplus/shared/push';
 import { notifyParents } from '@kidsplus/db/notify';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, countDistinct, eq, gte } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { requireDevice } from '../auth';
 import type { Ctx } from '../context';
@@ -24,6 +24,13 @@ const { childItems, children, events, videoSegments, videoSources } = schema;
 
 /** Коды ошибок IFrame API, означающие, что видео больше нельзя показать. */
 const UNAVAILABLE_PLAYER_ERRORS = new Set([100, 101, 150]);
+/**
+ * Если телефон за полчаса не смог открыть столько разных видео, дело в телефоне (нет сети,
+ * YouTube не пускает с этого адреса), а не в видео: не помечаем их недоступными (2026-10-15
+ * так за час «выключилась» вся библиотека).
+ */
+const DEVICE_FAILURE_VIDEOS = 3;
+const DEVICE_FAILURE_WINDOW_MS = 30 * 60_000;
 
 /** Фразы похвалы для рода ребёнка (при серверной озвучке — ставит её в очередь, отдаёт готовые). */
 export async function kidPhrases(
@@ -188,7 +195,12 @@ export function kidRoutes(app: FastifyInstance, ctx: Ctx) {
       });
 
       const code = Number(body.payload?.code);
-      if (body.type === 'segment_error' && sourceId && UNAVAILABLE_PLAYER_ERRORS.has(code)) {
+      if (
+        body.type === 'segment_error' &&
+        sourceId &&
+        UNAVAILABLE_PLAYER_ERRORS.has(code) &&
+        !(await deviceFailing(deviceId))
+      ) {
         const [changed] = await db
           .update(videoSources)
           .set({
@@ -205,4 +217,20 @@ export function kidRoutes(app: FastifyInstance, ctx: Ctx) {
       return reply.code(204).send();
     },
   );
+
+  /** Телефон подряд не открывает разные видео — сбой у него, а не у видео. */
+  async function deviceFailing(deviceId: string): Promise<boolean> {
+    const since = new Date(ctx.now().getTime() - DEVICE_FAILURE_WINDOW_MS);
+    const [row] = await db
+      .select({ n: countDistinct(events.segmentId) })
+      .from(events)
+      .where(
+        and(
+          eq(events.deviceId, deviceId),
+          eq(events.type, 'segment_error'),
+          gte(events.createdAt, since),
+        ),
+      );
+    return (row?.n ?? 0) >= DEVICE_FAILURE_VIDEOS;
+  }
 }
