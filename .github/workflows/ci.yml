@@ -103,13 +103,58 @@ jobs:
       - if: steps.changed.outputs.run == 'true'
         run: pnpm install --frozen-lockfile
       - if: steps.changed.outputs.run == 'true'
-        run: pnpm --filter @kidsplus/kid exec playwright install --with-deps chromium webkit
+        run: pnpm --filter @kidsplus/kid exec playwright install --with-deps chromium
       - if: steps.changed.outputs.run == 'true'
-        run: pnpm --filter @kidsplus/kid e2e
+        run: pnpm --filter @kidsplus/kid e2e --project s20-portrait --project s20-landscape
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: playwright-report
+          path: apps/kid/playwright-report
+          retention-days: 7
+
+  # Детское приложение на iPhone (этап 27): Safari-движок WebKit, iPhone 15 и iPhone SE.
+  e2e-iphone:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      # Детское приложение и общие пакеты не менялись — сквозные тесты не нужны.
+      - id: changed
+        run: bash .github/changed.sh '^(apps/kid/|packages/|pnpm-lock\.yaml|package\.json|\.github/)'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+      - uses: actions/setup-node@v5
+        if: steps.changed.outputs.run == 'true'
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - if: steps.changed.outputs.run == 'true'
+        run: corepack enable
+      - id: pnpm-store
+        if: steps.changed.outputs.run == 'true'
+        run: echo "dir=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        if: steps.changed.outputs.run == 'true'
+        with:
+          path: ${{ steps.pnpm-store.outputs.dir }}
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+      - if: steps.changed.outputs.run == 'true'
+        run: pnpm install --frozen-lockfile
+      - if: steps.changed.outputs.run == 'true'
+        run: pnpm --filter @kidsplus/kid exec playwright install --with-deps webkit
+      - if: steps.changed.outputs.run == 'true'
+        run: pnpm --filter @kidsplus/kid e2e --project iphone-15 --project iphone-se
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-iphone
           path: apps/kid/playwright-report
           retention-days: 7
 
