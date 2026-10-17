@@ -155,6 +155,8 @@ export function App() {
   const stop = useRef(false);
 
   const current = useRef(state);
+  /** Видео подряд не открылись — дальше не перебираем: скорее всего, нет связи с YouTube. */
+  const videoErrors = useRef(0);
   const currentToday = useRef(today);
   useEffect(() => {
     current.current = state;
@@ -319,6 +321,11 @@ export function App() {
   const onVideoExit = useCallback(
     (reason: ExitReason) => {
       if (reason === 'exit') return goHome();
+      videoErrors.current = reason === 'error' ? videoErrors.current + 1 : 0;
+      if (videoErrors.current >= 2) {
+        videoErrors.current = 0;
+        return goHome();
+      }
       const s = current.current;
       if (s.screen !== 'run') return;
       const item = itemsOf(s.playlist.items, s.category)[s.step.index];

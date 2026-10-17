@@ -274,6 +274,33 @@ describe('события детского приложения', () => {
     expect(await kidSegments(device)).toHaveLength(1);
   });
 
+  it('телефон подряд не открывает разные видео — сбой у телефона, видео остаются доступными', async () => {
+    const device = await pairDevice(t, parent, younger);
+    const ids = ['cascade0001', 'cascade0002', 'cascade0003', 'cascade0004'];
+    for (const videoId of ids) {
+      const id = await createSegment(t, parent, { videoId, childIds: [younger] });
+      await t.app.inject({
+        method: 'POST',
+        url: '/api/kid/events',
+        cookies: device,
+        payload: { type: 'segment_error', segmentId: id, payload: { code: 150 } },
+      });
+    }
+    const status = async (externalId: string) =>
+      (
+        await t.db
+          .select({ status: schema.videoSources.status })
+          .from(schema.videoSources)
+          .where(eq(schema.videoSources.externalId, externalId))
+      )[0]!.status;
+    expect(await Promise.all(ids.map(status))).toEqual([
+      'unavailable',
+      'unavailable',
+      'available',
+      'available',
+    ]);
+  });
+
   it('неизвестный тип события — 400', async () => {
     const device = await pairDevice(t, parent, younger);
     const res = await t.app.inject({
