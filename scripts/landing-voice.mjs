@@ -52,6 +52,24 @@ async function synthesizeEleven(apiKey, voice, text, rate) {
   return Buffer.from(await res.arrayBuffer()).toString('base64');
 }
 
+/** ElevenLabs через ProxyAPI (этап 28): голос «имя@модель», оплата в рублях. */
+async function synthesizeProxy(apiKey, full, text, rate) {
+  const [voice, model] = full.split('@');
+  const res = await fetch('https://api.proxyapi.ru/v1/audio/speech', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model,
+      voice,
+      input: text,
+      response_format: 'mp3',
+      speed: Math.min(1.2, Math.max(0.7, rate ?? 0.95)),
+    }),
+  });
+  if (!res.ok) throw new Error(`ProxyAPI ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  return Buffer.from(await res.arrayBuffer()).toString('base64');
+}
+
 async function synthesize(apiKey, voice, lang, text, rate) {
   const res = await fetch('https://texttospeech.googleapis.com/v1/text:synthesize', {
     method: 'POST',
@@ -98,19 +116,27 @@ async function synthesize(apiKey, voice, lang, text, rate) {
     console.log(`сохранено: ${n}`);
   } else {
     // provider в phrases.json: google (по умолчанию) или elevenlabs — голоса берутся из voices.<provider>.
-    const eleven = config.provider === 'elevenlabs';
-    const apiKey = eleven ? process.env.ELEVENLABS_API_KEY : process.env.GOOGLE_TTS_API_KEY;
-    if (!apiKey) throw new Error(eleven ? 'нужен ELEVENLABS_API_KEY' : 'нужен GOOGLE_TTS_API_KEY');
-    const voices = eleven ? config.elevenlabs : config.voices;
+    const provider = config.provider ?? 'google';
+    const keyName = {
+      google: 'GOOGLE_TTS_API_KEY',
+      elevenlabs: 'ELEVENLABS_API_KEY',
+      proxyapi: 'PROXYAPI_KEY',
+    }[provider];
+    const apiKey = process.env[keyName];
+    if (!apiKey) throw new Error(`нужен ${keyName}`);
+    const voices = provider === 'google' ? config.voices : config[provider];
     const jsonl = Boolean(process.env.STDOUT_JSONL);
     const force = args.includes('--force');
     for (const [file, p] of wanted) {
       if (!jsonl && !force && existsSync(join(dir, file))) continue;
       const voice = voices[p.voice ?? 'owl'][p.lang];
       try {
-        const b64 = eleven
-          ? await synthesizeEleven(apiKey, voice, p.text, p.rate)
-          : await synthesize(apiKey, voice, p.lang, p.text, p.rate);
+        const b64 =
+          provider === 'proxyapi'
+            ? await synthesizeProxy(apiKey, voice, p.text, p.rate)
+            : provider === 'elevenlabs'
+              ? await synthesizeEleven(apiKey, voice, p.text, p.rate)
+              : await synthesize(apiKey, voice, p.lang, p.text, p.rate);
         if (jsonl) console.log(JSON.stringify({ file, b64 }));
         else writeFileSync(join(dir, file), Buffer.from(b64, 'base64'));
       } catch (e) {

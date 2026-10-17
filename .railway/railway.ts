@@ -100,6 +100,8 @@ export default defineRailway(() => {
       GOOGLE_TTS_API_KEY: preserve(),
       // TTS_PROVIDER=elevenlabs (этап 26): ключ ElevenLabs задаёт владелец в панели Railway.
       ELEVENLABS_API_KEY: preserve(),
+      // TTS_PROVIDER=proxyapi (этап 28): ElevenLabs через ProxyAPI, оплата в рублях; ключ — владелец.
+      PROXYAPI_KEY: preserve(),
       TTS_PROVIDER: preserve(),
       LLM_DAILY_TOKEN_LIMIT: LLM_DAILY_TOKEN_LIMIT,
       // Модерация: Gemini (анализ видео) и YouTube Data API (ежедневная проверка видео).

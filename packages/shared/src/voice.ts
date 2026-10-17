@@ -38,11 +38,25 @@ export const ELEVEN_VOICES = {
 export const ELEVEN_VOICE_NAMES = Object.keys(ELEVEN_VOICES) as (keyof typeof ELEVEN_VOICES)[];
 
 export type VoiceName = (typeof VOICE_NAMES)[number] | keyof typeof ELEVEN_VOICES;
-export type VoiceProvider = 'google' | 'elevenlabs';
+export type VoiceProvider = 'google' | 'elevenlabs' | 'proxyapi';
+
+/** Голоса ElevenLabs, которые ProxyAPI знает по имени (этап 28; charlotte, aria — нет). */
+export const PROXY_VOICE_NAMES = ['Lily', 'Matilda', 'Jessica', 'Alice', 'Laura', 'Sarah'] as const;
+/**
+ * Модель озвучки ProxyAPI. Пишется в голос («matilda@elevenlabs/eleven-v3»): так она входит
+ * в ключ кэша, и смена модели переозвучивает всё.
+ */
+export const PROXY_TTS_MODEL = 'elevenlabs/eleven-v3';
+export const proxyVoice = (name: string) => `${name.toLowerCase()}@${PROXY_TTS_MODEL}`;
+export const PROXY_VOICE_DEFAULT = proxyVoice('lily');
 
 /** Голоса, из которых выбирает родитель, — у каждого провайдера свои. */
 export const voiceNames = (provider: string): readonly VoiceName[] =>
-  provider === 'elevenlabs' ? ELEVEN_VOICE_NAMES : VOICE_NAMES;
+  provider === 'elevenlabs'
+    ? ELEVEN_VOICE_NAMES
+    : provider === 'proxyapi'
+      ? PROXY_VOICE_NAMES
+      : VOICE_NAMES;
 
 /** Скорость речи: медленнее (для малышей), обычно, как в жизни. */
 export const VOICE_SPEEDS = [0.85, 0.95, 1] as const;
@@ -90,12 +104,16 @@ export const googleVoice = (lang: keyof typeof GOOGLE_LANG, name: string) =>
 export const providerVoice = (provider: string, lang: keyof typeof GOOGLE_LANG, name: VoiceName) =>
   provider === 'elevenlabs'
     ? (ELEVEN_VOICES[name as keyof typeof ELEVEN_VOICES] ?? name)
-    : googleVoice(lang, name);
+    : provider === 'proxyapi'
+      ? proxyVoice(name)
+      : googleVoice(lang, name);
 
 /** Короткое имя из полного (ru-RU-Chirp3-HD-Kore → Kore, id ElevenLabs → Matilda); чужое — null. */
 export const voiceShortName = (full: string | undefined): VoiceName | null => {
   const eleven = Object.entries(ELEVEN_VOICES).find(([, id]) => id === full)?.[0];
   if (eleven) return eleven as VoiceName;
+  const proxy = PROXY_VOICE_NAMES.find((n) => proxyVoice(n) === full);
+  if (proxy) return proxy;
   const name = full?.split('-').at(-1);
   return (VOICE_NAMES as readonly string[]).includes(name ?? '') ? (name as VoiceName) : null;
 };
