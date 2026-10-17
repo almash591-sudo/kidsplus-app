@@ -751,56 +751,6 @@ section {
   bottom: 40px;
   filter: drop-shadow(0 18px 24px rgb(0 0 0 / 0.45));
 }
-.hero-owl,
-.big-owl,
-.final-owl {
-  overflow: visible;
-}
-.owl-happy,
-.owl-cheeks {
-  opacity: 0;
-}
-.happy .owl-happy,
-.happy .owl-cheeks {
-  opacity: 1;
-}
-.happy .owl-eyes {
-  opacity: 0;
-}
-.owl-wing-r {
-  transform-origin: 82px 48px;
-  animation: wave 2.4s ease-in-out infinite;
-}
-@keyframes wave {
-  0%,
-  60%,
-  100% {
-    transform: rotate(0);
-  }
-  70% {
-    transform: rotate(-28deg);
-  }
-  80% {
-    transform: rotate(-10deg);
-  }
-  90% {
-    transform: rotate(-26deg);
-  }
-}
-.owl-eyes {
-  animation: blink 4.6s infinite;
-  transform-origin: 50px 43px;
-}
-@keyframes blink {
-  0%,
-  94%,
-  100% {
-    transform: scaleY(1);
-  }
-  96% {
-    transform: scaleY(0.1);
-  }
-}
 .scroll-cue {
   position: absolute;
   left: 50%;
@@ -3192,4 +3142,109 @@ body[data-os='android'] .os-ios {
   object-fit: contain;
   pointer-events: none;
   filter: drop-shadow(0 6px 8px rgb(90 60 140 / 0.16));
+}
+
+/* ── Совёнок clay (этап 26): кадры меняет landing.js, здесь — дыхание, прыжки, полёт ── */
+.cowl {
+  display: block;
+  position: relative;
+  pointer-events: none;
+}
+.cowl img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  transform-origin: 50% 96%;
+  animation: owl-breathe 2.8s ease-in-out infinite;
+  user-select: none;
+}
+.k-owl.cowl {
+  width: 50px;
+  height: 50px;
+  margin-top: -6px;
+}
+.cowl.flying {
+  z-index: 30;
+}
+.cowl.flying img {
+  animation: none;
+}
+@keyframes owl-breathe {
+  50% {
+    transform: scale(1.015, 0.985);
+  }
+}
+.cowl.hop img {
+  animation: owl-hop 0.9s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+@keyframes owl-hop {
+  0% {
+    transform: scale(1);
+  }
+  18% {
+    transform: scale(1.12, 0.84);
+  }
+  45% {
+    transform: translateY(-22%) scale(0.92, 1.1);
+  }
+  70% {
+    transform: translateY(0) scale(1.08, 0.9);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.cowl.shake img {
+  animation: owl-shake 0.6s ease-in-out;
+}
+@keyframes owl-shake {
+  25% {
+    transform: rotate(-7deg);
+  }
+  50% {
+    transform: rotate(6deg);
+  }
+  75% {
+    transform: rotate(-3deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cowl img,
+  .cowl.hop img,
+  .cowl.shake img {
+    animation: none;
+  }
+}
+
+/* Объёмные иконки (этап 26) вместо эмодзи на плитках и в списке игр */
+.kt i img,
+.kid-picks i img,
+.k-dock button img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 3px 4px rgb(0 0 0 / 0.18));
+}
+.kt i {
+  width: 52px;
+  height: 52px;
+  padding: 4px;
+  background: rgb(255 255 255 / 0.35);
+}
+.kt:hover i img {
+  animation: icon-wiggle 0.6s ease-in-out;
+}
+.k-dock button img {
+  width: 62%;
+  height: 62%;
+}
+@keyframes icon-wiggle {
+  30% {
+    transform: rotate(-8deg) scale(1.08);
+  }
+  65% {
+    transform: rotate(6deg) scale(1.04);
+  }
 }

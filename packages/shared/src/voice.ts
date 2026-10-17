@@ -21,7 +21,28 @@ export const VOICE_NAMES = [
   'Sulafat',
   'Vindemiatrix',
 ] as const;
-export type VoiceName = (typeof VOICE_NAMES)[number];
+/**
+ * Голоса ElevenLabs (этап 26): живые, с хорошими русскими ударениями. Голос многоязычный —
+ * один id на все языки. Имя для кабинета → id голоса.
+ */
+export const ELEVEN_VOICES = {
+  Matilda: 'XrExE9yKIg1WjnnlVkGX',
+  Jessica: 'cgSgspJ2msm6clMCkdW9',
+  Lily: 'pFZP5JQG7iQjIQuC4Bku',
+  Alice: 'Xb7hH8MSUJpSbSDYk0k2',
+  Laura: 'FGY2WhTYpPnrIDTdsKH5',
+  Sarah: 'EXAVITQu4vr4xnSDxMaL',
+  Charlotte: 'XB0fDUnXU5powFXDhCwa',
+  Aria: '9BWtsMINqrJLrRacOk9x',
+} as const;
+export const ELEVEN_VOICE_NAMES = Object.keys(ELEVEN_VOICES) as (keyof typeof ELEVEN_VOICES)[];
+
+export type VoiceName = (typeof VOICE_NAMES)[number] | keyof typeof ELEVEN_VOICES;
+export type VoiceProvider = 'google' | 'elevenlabs';
+
+/** Голоса, из которых выбирает родитель, — у каждого провайдера свои. */
+export const voiceNames = (provider: string): readonly VoiceName[] =>
+  provider === 'elevenlabs' ? ELEVEN_VOICE_NAMES : VOICE_NAMES;
 
 /** Скорость речи: медленнее (для малышей), обычно, как в жизни. */
 export const VOICE_SPEEDS = [0.85, 0.95, 1] as const;
@@ -33,7 +54,10 @@ export const VOICE_SPEED_LABELS: Record<(typeof VOICE_SPEEDS)[number], string> =
 
 const speed = z.union([z.literal(0.85), z.literal(0.95), z.literal(1)]);
 
-export const voiceSettings = z.object({ voice: z.enum(VOICE_NAMES), speed });
+export const voiceSettings = z.object({
+  voice: z.enum([...VOICE_NAMES, ...ELEVEN_VOICE_NAMES] as [VoiceName, ...VoiceName[]]),
+  speed,
+});
 export type VoiceSettings = z.infer<typeof voiceSettings>;
 
 export const voicePreviewRequest = voiceSettings.extend({
@@ -62,8 +86,16 @@ const GOOGLE_LANG = { ru: 'ru-RU', en: 'en-US', zh: 'cmn-CN' } as const;
 /** Полное имя голоса Google для языка. */
 export const googleVoice = (lang: keyof typeof GOOGLE_LANG, name: string) =>
   `${GOOGLE_LANG[lang]}-Chirp3-HD-${name}`;
-/** Короткое имя из полного (ru-RU-Chirp3-HD-Kore → Kore); чужое имя — null. */
+/** Голос провайдера для языка: у Google — полное имя, у ElevenLabs — id (одинаковый для языков). */
+export const providerVoice = (provider: string, lang: keyof typeof GOOGLE_LANG, name: VoiceName) =>
+  provider === 'elevenlabs'
+    ? (ELEVEN_VOICES[name as keyof typeof ELEVEN_VOICES] ?? name)
+    : googleVoice(lang, name);
+
+/** Короткое имя из полного (ru-RU-Chirp3-HD-Kore → Kore, id ElevenLabs → Matilda); чужое — null. */
 export const voiceShortName = (full: string | undefined): VoiceName | null => {
+  const eleven = Object.entries(ELEVEN_VOICES).find(([, id]) => id === full)?.[0];
+  if (eleven) return eleven as VoiceName;
   const name = full?.split('-').at(-1);
   return (VOICE_NAMES as readonly string[]).includes(name ?? '') ? (name as VoiceName) : null;
 };

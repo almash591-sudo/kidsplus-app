@@ -1,5 +1,5 @@
 import { schema, type Db } from '@kidsplus/db';
-import { googleVoice, voiceSettings, type VoiceSettings } from '@kidsplus/shared/voice';
+import { providerVoice, voiceSettings, type VoiceSettings } from '@kidsplus/shared/voice';
 import { eq, sql } from 'drizzle-orm';
 import type { TtsSettings } from './media';
 
@@ -25,8 +25,8 @@ export function applyVoice(tts: TtsSettings, v: VoiceSettings) {
   if (tts.providerId === 'browser') return;
   tts.speed = v.speed;
   tts.voices = {
-    ru: googleVoice('ru', v.voice),
-    en: googleVoice('en', v.voice),
-    zh: googleVoice('zh', v.voice),
+    ru: providerVoice(tts.providerId, 'ru', v.voice),
+    en: providerVoice(tts.providerId, 'en', v.voice),
+    zh: providerVoice(tts.providerId, 'zh', v.voice),
   };
 }

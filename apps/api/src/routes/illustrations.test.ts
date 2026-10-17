@@ -79,6 +79,32 @@ describe('авторские картинки', () => {
     expect(await cardUrl(fan)).toBe(mediaUrl(emoji));
   });
 
+  it('в играх картинки тоже подменяются на авторские', async () => {
+    const child = await createChild(t, parent, girl({ illustrations: true }));
+    const [cat, dog, clay] = [await image(), await image(), await image()];
+    await t.db
+      .update(schema.mediaAssets)
+      .set({ illustrationId: clay })
+      .where(eq(schema.mediaAssets.id, cat));
+    const [game] = await t.db
+      .insert(schema.interactives)
+      .values({ title: 'Пары', kind: 'memory', params: { imageIds: [cat, dog] } })
+      .returning();
+    await t.db
+      .insert(schema.childItems)
+      .values({ childId: child, kind: 'interactive', interactiveId: game!.id, position: 0 });
+
+    const device = await pairDevice(t, parent, child);
+    const pl = (
+      await t.app.inject({ url: '/api/kid/playlist', cookies: device })
+    ).json<KidPlaylist>();
+    const item = pl.items[0]!;
+    expect(item.kind === 'interactive' && item.spec).toEqual({
+      kind: 'memory',
+      imageIds: [clay, dog],
+    });
+  });
+
   it('родитель включает и выключает картинки в профиле ребёнка', async () => {
     const id = await createChild(t, parent, girl());
     const res = await t.app.inject({

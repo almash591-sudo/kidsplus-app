@@ -9,7 +9,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       // Регистрация — в коде приложения (@kidsplus/shared/sw-register), с автообновлением.
       injectRegister: false,
-      includeAssets: ['favicon.svg'],
+      // owl — кадры совёнка (этап 26): нужны и без интернета.
+      includeAssets: ['favicon.svg', 'owl/*.webp'],
       manifest: {
         name: 'KidsPlus',
         short_name: 'KidsPlus',

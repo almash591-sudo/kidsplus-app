@@ -58,6 +58,10 @@
 		@woff2 path *.woff2
 		header @woff2 Content-Type font/woff2
 		header Cache-Control "public, max-age=86400"
+		# Скрипт и стили меняются с лендингом — браузер сверяет их при каждом заходе (ETag),
+		# иначе сутки показывается старая версия.
+		@code path /landing.css /landing.js /guide.js
+		header @code Cache-Control "no-cache"
 		file_server
 	}
 

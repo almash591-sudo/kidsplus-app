@@ -39,50 +39,9 @@
     <script src="/landing.js" defer></script>
   </head>
   <body>
-    <!-- Совёнок — тот же, что в детском приложении. -->
+    <!-- Логотип. Совёнок — картинки img/owl (clay), оживляет landing.js. -->
     <svg width="0" height="0" style="position: absolute" aria-hidden="true">
       <defs>
-        <symbol id="owl" viewBox="0 0 100 104">
-          <path d="M24,30 L18,8 L38,22 Z" fill="#B45309" />
-          <path d="M76,30 L82,8 L62,22 Z" fill="#B45309" />
-          <ellipse cx="50" cy="58" rx="34" ry="38" fill="#D97706" />
-          <ellipse cx="50" cy="70" rx="22" ry="22" fill="#FDE7C2" />
-          <path
-            d="M42,66 q4,4 8,0 M50,74 q4,4 8,0 M38,76 q4,4 8,0"
-            stroke="#E9C48F"
-            stroke-width="2"
-            fill="none"
-          />
-          <g class="owl-wing owl-wing-l">
-            <ellipse cx="18" cy="62" rx="9" ry="20" fill="#B45309" />
-          </g>
-          <g class="owl-wing owl-wing-r">
-            <ellipse cx="82" cy="62" rx="9" ry="20" fill="#B45309" />
-          </g>
-          <circle cx="36" cy="42" r="14" fill="#fff" />
-          <circle cx="64" cy="42" r="14" fill="#fff" />
-          <g class="owl-eyes" fill="#3a2a14">
-            <circle cx="38" cy="43" r="6" />
-            <circle cx="66" cy="43" r="6" />
-            <circle cx="40" cy="41" r="2" fill="#fff" />
-            <circle cx="68" cy="41" r="2" fill="#fff" />
-          </g>
-          <g class="owl-happy" stroke="#3a2a14" stroke-width="4" fill="none" stroke-linecap="round">
-            <path d="M28,45 q8,-10 16,0" />
-            <path d="M56,45 q8,-10 16,0" />
-          </g>
-          <path d="M45,54 L55,54 L50,62 Z" fill="#F59E0B" />
-          <g class="owl-cheeks">
-            <circle cx="24" cy="56" r="5" fill="#F472B6" opacity="0.6" />
-            <circle cx="76" cy="56" r="5" fill="#F472B6" opacity="0.6" />
-          </g>
-          <path
-            d="M38,95 l-4,4 M38,95 l0,5 M38,95 l4,4 M62,95 l-4,4 M62,95 l0,5 M62,95 l4,4"
-            stroke="#B45309"
-            stroke-width="3"
-            stroke-linecap="round"
-          />
-        </symbol>
         <symbol id="logo" viewBox="0 0 40 40">
           <rect width="40" height="40" rx="12" fill="url(#lg)" />
           <path d="M20 11v18M11 20h18" stroke="#fff" stroke-width="4.2" stroke-linecap="round" />
@@ -158,7 +117,9 @@
               <span class="toast-ic">📞</span>
               <span><b>Мишутка звонит маме</b><small>видеозвонок</small></span>
             </div>
-            <svg class="hero-owl" data-depth="2.6"><use href="#owl" /></svg>
+            <span class="hero-owl cowl" data-depth="2.6"
+              ><img src="/img/owl/master.webp" alt="" draggable="false"
+            /></span>
           </div>
         </div>
         <a class="scroll-cue" href="#pain" aria-label="Листать дальше"><span></span></a>
@@ -404,7 +365,9 @@
           <div class="kid-stage">
             <div class="owl-side reveal">
               <div class="bubble" id="owlBubble">Привет! Я совёнок. Давай поиграем? 🎈</div>
-              <svg class="big-owl" id="bigOwl"><use href="#owl" /></svg>
+              <span class="big-owl cowl" id="bigOwl"
+                ><img src="/img/owl/master.webp" alt="" draggable="false"
+              /></span>
             </div>
 
             <div class="device android kidphone reveal">
@@ -415,22 +378,34 @@
                   <h3 class="k-hello">Привет!</h3>
                   <p class="k-sub">Что будем делать?</p>
                   <div class="k-grid">
-                    <button data-go="cards" class="kt kt1"><i>ABC</i>Карточки</button>
-                    <button data-go="quiz" class="kt kt2"><i>?</i>Вопросы</button>
-                    <button data-go="balloons" class="kt kt3"><i>🎈</i>Шарики</button>
-                    <button data-go="piano" class="kt kt4"><i>🎹</i>Пианино</button>
-                    <button data-go="call" class="kt kt5"><i>📞</i>Мама</button>
-                    <button data-go="night" class="kt kt6"><i>🌙</i>Баиньки</button>
+                    <button data-go="cards" class="kt kt1">
+                      <i><img src="/img/icons/cards.webp" alt="" draggable="false" /></i>Карточки
+                    </button>
+                    <button data-go="quiz" class="kt kt2">
+                      <i><img src="/img/icons/question.webp" alt="" draggable="false" /></i>Вопросы
+                    </button>
+                    <button data-go="balloons" class="kt kt3">
+                      <i><img src="/img/icons/balloon.webp" alt="" draggable="false" /></i>Шарики
+                    </button>
+                    <button data-go="piano" class="kt kt4">
+                      <i><img src="/img/icons/piano.webp" alt="" draggable="false" /></i>Пианино
+                    </button>
+                    <button data-go="call" class="kt kt5">
+                      <i><img src="/img/icons/phone.webp" alt="" draggable="false" /></i>Мама
+                    </button>
+                    <button data-go="night" class="kt kt6">
+                      <i><img src="/img/icons/moon.webp" alt="" draggable="false" /></i>Баиньки
+                    </button>
                   </div>
                   <div class="k-dock">
                     <button class="d-cam" type="button" aria-label="Камера" data-go="cards">
-                      📷
+                      <img src="/img/icons/camera.webp" alt="" draggable="false" />
                     </button>
                     <button class="d-call" type="button" aria-label="Позвонить маме" data-go="call">
-                      📞
+                      <img src="/img/icons/phone.webp" alt="" draggable="false" />
                     </button>
                     <button class="d-star" type="button" aria-label="Наклейки" data-go="quiz">
-                      ⭐
+                      <img src="/img/icons/star.webp" alt="" draggable="false" />
                     </button>
                   </div>
                 </section>
@@ -439,7 +414,8 @@
                 <section class="ks" data-screen="cards">
                   <div class="k-bar">
                     <button class="k-home" data-go="home" aria-label="Домой">⌂</button
-                    ><svg class="k-owl"><use href="#owl" /></svg
+                    ><span class="k-owl cowl"
+                      ><img src="/img/owl/master.webp" alt="" draggable="false" /></span
                     ><span class="k-dots" id="cardDots"></span>
                   </div>
                   <button class="kcard" id="kcard" type="button">
@@ -462,7 +438,8 @@
                 <section class="ks" data-screen="quiz">
                   <div class="k-bar">
                     <button class="k-home" data-go="home" aria-label="Домой">⌂</button
-                    ><svg class="k-owl" id="quizOwl"><use href="#owl" /></svg
+                    ><span class="k-owl cowl" id="quizOwl"
+                      ><img src="/img/owl/master.webp" alt="" draggable="false" /></span
                     ><span class="k-stars" id="kStars">☆☆☆</span>
                   </div>
                   <div class="kq" id="kq">Где лисичка?</div>
@@ -473,7 +450,8 @@
                 <section class="ks balloons" data-screen="balloons">
                   <div class="k-bar">
                     <button class="k-home" data-go="home" aria-label="Домой">⌂</button
-                    ><svg class="k-owl"><use href="#owl" /></svg
+                    ><span class="k-owl cowl"
+                      ><img src="/img/owl/master.webp" alt="" draggable="false" /></span
                     ><span class="k-count" id="popCount">0</span>
                   </div>
                   <div class="bfield" id="bfield"></div>
@@ -484,7 +462,9 @@
                 <section class="ks" data-screen="piano">
                   <div class="k-bar">
                     <button class="k-home" data-go="home" aria-label="Домой">⌂</button
-                    ><svg class="k-owl"><use href="#owl" /></svg><span></span>
+                    ><span class="k-owl cowl"
+                      ><img src="/img/owl/master.webp" alt="" draggable="false" /></span
+                    ><span></span>
                   </div>
                   <div class="note-name" id="noteName">♪</div>
                   <div class="keys" id="keys">
@@ -528,22 +508,28 @@
 
             <div class="kid-picks reveal" id="kidPicks">
               <button data-go="cards">
-                <i>🃏</i><b>Карточки</b><small>Слова на 3 языках говорят сами</small>
+                <i><img src="/img/icons/cards.webp" alt="" draggable="false" /></i><b>Карточки</b
+                ><small>Слова на 3 языках говорят сами</small>
               </button>
               <button data-go="quiz">
-                <i>❓</i><b>Вопросы</b><small>Проверяем, что понял</small>
+                <i><img src="/img/icons/question.webp" alt="" draggable="false" /></i><b>Вопросы</b
+                ><small>Проверяем, что понял</small>
               </button>
               <button data-go="balloons">
-                <i>🎈</i><b>Шарики</b><small>Лопай и считай вслух</small>
+                <i><img src="/img/icons/balloon.webp" alt="" draggable="false" /></i><b>Шарики</b
+                ><small>Лопай и считай вслух</small>
               </button>
               <button data-go="piano">
-                <i>🎹</i><b>Пианино</b><small>До-ре-ми с первого касания</small>
+                <i><img src="/img/icons/piano.webp" alt="" draggable="false" /></i><b>Пианино</b
+                ><small>До-ре-ми с первого касания</small>
               </button>
               <button data-go="call">
-                <i>📞</i><b>Позвонить маме</b><small>Одна большая кнопка</small>
+                <i><img src="/img/icons/phone.webp" alt="" draggable="false" /></i
+                ><b>Позвонить маме</b><small>Одна большая кнопка</small>
               </button>
               <button data-go="night">
-                <i>🌙</i><b>Баиньки</b><small>Конец дня и колыбельная</small>
+                <i><img src="/img/icons/moon.webp" alt="" draggable="false" /></i><b>Баиньки</b
+                ><small>Конец дня и колыбельная</small>
               </button>
             </div>
           </div>
@@ -940,7 +926,9 @@
 
       <section class="final">
         <div class="wrap center">
-          <svg class="final-owl" aria-hidden="true"><use href="#owl" /></svg>
+          <span class="final-owl cowl" aria-hidden="true"
+            ><img src="/img/owl/master.webp" alt="" draggable="false"
+          /></span>
           <h2 class="reveal">Дайте экрану <em>правильную работу</em></h2>
           <p class="reveal">Подключение — 15 минут. Инструкция с точными названиями кнопок.</p>
           <div class="cta center reveal">

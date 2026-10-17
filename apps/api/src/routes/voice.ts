@@ -1,8 +1,8 @@
 import { schema } from '@kidsplus/db';
 import { mediaUrl } from '@kidsplus/shared/api';
 import {
-  googleVoice,
-  VOICE_NAMES,
+  providerVoice,
+  voiceNames,
   voicePreviewRequest,
   voiceSettings,
   voiceShortName,
@@ -34,15 +34,17 @@ export function voiceRoutes(app: FastifyInstance, ctx: Ctx) {
     const { tts } = ctx.config;
     return {
       serverVoice: serverVoice(),
-      voice: voiceShortName(tts.voices.ru) ?? 'Aoede',
+      voice: voiceShortName(tts.voices.ru) ?? voiceNames(tts.providerId)[0]!,
       speed: tts.speed,
-      voices: VOICE_NAMES,
+      voices: voiceNames(tts.providerId),
     };
   });
 
   app.put('/api/parent/voice', { preHandler }, async (request): Promise<VoiceInfo> => {
     needServer();
     const v = parse(voiceSettings, request.body);
+    if (!voiceNames(ctx.config.tts.providerId).includes(v.voice))
+      throw new HttpError(400, 'validation', 'такого голоса нет у текущей озвучки');
     await saveVoice(db, v);
     applyVoice(ctx.config.tts, v);
     // Слова карточек и вопросы — в очередь новым голосом (в фоне); фразы приложения
@@ -50,7 +52,12 @@ export function voiceRoutes(app: FastifyInstance, ctx: Ctx) {
     void backfillTts(db, ctx.config.tts)
       .then((n) => request.log.info({ updated: n, voice: v.voice }, 'голос: переозвучка'))
       .catch((err: unknown) => request.log.error({ err }, 'голос: ошибка переозвучки'));
-    return { serverVoice: true, voice: v.voice, speed: v.speed, voices: VOICE_NAMES };
+    return {
+      serverVoice: true,
+      voice: v.voice,
+      speed: v.speed,
+      voices: voiceNames(ctx.config.tts.providerId),
+    };
   });
 
   /** Озвучить фразу выбранным для прослушивания голосом (не меняя текущий). */
@@ -62,7 +69,7 @@ export function voiceRoutes(app: FastifyInstance, ctx: Ctx) {
       {
         providerId: ctx.config.tts.providerId,
         speed: r.speed,
-        voices: { ru: googleVoice('ru', r.voice) },
+        voices: { ru: providerVoice(ctx.config.tts.providerId, 'ru', r.voice) },
       },
       r.text,
       'ru',
