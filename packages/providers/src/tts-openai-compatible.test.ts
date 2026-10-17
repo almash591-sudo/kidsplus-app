@@ -29,6 +29,27 @@ describe('озвучка через ProxyAPI (OpenAI-совместимый вх
     });
   });
 
+  it('модель без скорости (eleven_v4) — повтор без неё', async () => {
+    const bodies: Record<string, unknown>[] = [];
+    const p = new OpenAiCompatibleTtsProvider({
+      apiKey: 'test-key-123456',
+      baseUrl: 'https://x/v1',
+      model: 'elevenlabs/eleven-v4',
+      voices: { ru: 'lily' },
+      fetch: (async (_: string, init: RequestInit) => {
+        const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+        bodies.push(body);
+        return 'speed' in body
+          ? new Response(JSON.stringify({ error: { message: 'speed is not supported' } }), {
+              status: 400,
+            })
+          : new Response(new Uint8Array([1]), { status: 200 });
+      }) as typeof fetch,
+    });
+    await p.synthesize({ text: 'а', lang: 'ru', speed: 0.85 });
+    expect(bodies.map((b) => 'speed' in b)).toEqual([true, false]);
+  });
+
   it('нет денег на балансе (402) и 429 — подождать; неверный голос (400) — нет', async () => {
     const err = (status: number) =>
       new OpenAiCompatibleTtsProvider({
