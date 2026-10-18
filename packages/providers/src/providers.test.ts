@@ -8,7 +8,12 @@ import { ttsCacheKey, TtsError } from './tts';
 import { GoogleTtsProvider } from './tts-google';
 
 describe('ключи хранилища', () => {
-  it.each(['tts/ab/abcdef.mp3', 'images/x_1-2.png', 'a'])('принимает %s', (k) => {
+  it.each([
+    'tts/ab/abcdef.mp3',
+    'images/x_1-2.png',
+    'a',
+    'generated/math/g-color-circle-красный.svg',
+  ])('принимает %s', (k) => {
     expect(() => assertStorageKey(k)).not.toThrow();
   });
   it.each(['../etc/passwd', 'a/../b', '/abs', 'a//b', 'a/./b', 'пробел ключ', ''])(
