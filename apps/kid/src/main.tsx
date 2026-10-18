@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { registerServiceWorker } from '@kidsplus/shared/sw-register';
 import { App } from './App';
+import { CalledLayer } from './screens/RestScreen';
 import { Sky } from './ui/Sky';
 import { ErrorBoundary } from './ErrorBoundary';
 import { installTapFeedback } from './fx';
@@ -28,6 +29,7 @@ createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       <Sky />
       <App />
+      <CalledLayer />
     </ErrorBoundary>
   </StrictMode>,
 );

@@ -83,6 +83,20 @@ public class KioskPlugin extends Plugin {
         call.resolve();
     }
 
+    /** Громкость медиа 0–100, заданная родителем в кабинете (этап 29). */
+    @PluginMethod
+    public void setVolume(PluginCall call) {
+        int level = Math.max(0, Math.min(100, call.getInt("level", 50)));
+        android.media.AudioManager audio =
+            (android.media.AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE);
+        if (audio != null) {
+            int max = audio.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC);
+            audio.setStreamVolume(
+                android.media.AudioManager.STREAM_MUSIC, Math.round(max * level / 100f), 0);
+        }
+        call.resolve();
+    }
+
     @PluginMethod
     public void battery(PluginCall call) {
         call.resolve(battery(getContext().registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED))));

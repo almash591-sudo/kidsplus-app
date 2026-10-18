@@ -169,6 +169,13 @@
       "when": 1792181920421,
       "tag": "0023_bent_taskmaster",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1792278711216,
+      "tag": "0024_sleepy_mongu",
+      "breakpoints": true
     }
   ]
 }

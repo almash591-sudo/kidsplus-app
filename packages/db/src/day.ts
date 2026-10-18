@@ -15,6 +15,7 @@ import {
   scheduleInput,
   SUBJECTS,
   type Activity,
+  type ControlRequest,
   type KidToday,
   type LocalClock,
   type Schedule,
@@ -31,6 +32,7 @@ export interface ItemRef {
 }
 
 const {
+  children,
   childItems,
   childSchedules,
   curricula,
@@ -193,17 +195,32 @@ export async function loadDay(db: Db, childId: string, now: Date): Promise<Day> 
   const extend = control?.openUntil
     ? Math.max(0, Math.floor((control.openUntil.getTime() - now.getTime()) / 1000))
     : 0;
-  const today = computeToday({
-    schedule,
-    clock,
-    subjects: daySubjects(pool, schedule.subjectsPerDay, clock.date),
-    used,
-    extraSeconds: control?.extraSeconds ?? 0,
-    extendSeconds: extend,
-    paused: control?.paused ?? false,
-    ended: control?.ended ?? false,
-    lessons,
-  });
+  const [child] = await db
+    .select({ volume: children.volume, rest: children.rest })
+    .from(children)
+    .where(eq(children.id, childId));
+  const rest = (child?.rest ?? null) as KidToday['rest'];
+  const today: KidToday = {
+    ...computeToday({
+      schedule,
+      clock,
+      subjects: daySubjects(pool, schedule.subjectsPerDay, clock.date),
+      used,
+      extraSeconds: control?.extraSeconds ?? 0,
+      extendSeconds: extend,
+      // «Экран выключен с поводом» — время занятий стоит, как на паузе.
+      paused: (control?.paused ?? false) || rest !== null,
+      ended: control?.ended ?? false,
+      lessons,
+    }),
+    rest,
+    // «Позвать» живёт 3 минуты: позже телефон, включившись, уже не зовёт.
+    calledAt:
+      control?.calledAt && now.getTime() - control.calledAt.getTime() < 3 * 60_000
+        ? control.calledAt.toISOString()
+        : null,
+    volume: child?.volume ?? null,
+  };
   return { schedule, clock, today, pool, curriculum, control, used };
 }
 
@@ -252,12 +269,7 @@ export async function recordBeat(
 }
 
 /** Действие родителя над сегодняшним днём ребёнка. */
-export async function applyControl(
-  db: Db,
-  childId: string,
-  now: Date,
-  action: { action: 'pause' | 'resume' | 'end' | 'reopen' } | { action: 'add'; minutes: number },
-) {
+export async function applyControl(db: Db, childId: string, now: Date, action: ControlRequest) {
   const day = await loadDay(db, childId, now);
   const key = { childId, date: day.clock.date };
   const set: Partial<typeof dayControls.$inferInsert> = {};
@@ -274,6 +286,20 @@ export async function applyControl(
     case 'reopen':
       set.ended = false;
       break;
+    case 'rest':
+    case 'wake':
+      await db
+        .update(children)
+        .set({ rest: action.action === 'rest' ? action.reason : null })
+        .where(eq(children.id, childId));
+      return;
+    case 'call':
+      set.calledAt = now;
+      break;
+    case 'volume':
+      // Громкость — свойство телефона, а не дня.
+      await db.update(children).set({ volume: action.level }).where(eq(children.id, childId));
+      return;
     case 'add': {
       const add = action.minutes * 60;
       set.extraSeconds = (day.control?.extraSeconds ?? 0) + add;

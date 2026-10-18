@@ -1,6 +1,7 @@
 import type { Child } from '@kidsplus/shared/api';
 import type { ChildNow, ControlRequest } from '@kidsplus/shared/schedule';
 import { Alert, Badge, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@mantine/core';
+import { ActivityLog, ScreenControls, TimeSummary } from '../components/ParentRemote';
 import { useMutation } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { api } from '../api';
@@ -95,6 +96,8 @@ function ChildCard({ child }: { child: Child }) {
 
         <MonitorCard childId={child.id} />
 
+        <ScreenControls now={d} act={act} busy={control.isPending} />
+
         {d.mode === 'off' ? (
           <Alert color="gray">Расписание выключено — ребёнок занимается без лимитов.</Alert>
         ) : (
@@ -121,6 +124,7 @@ function ChildCard({ child }: { child: Child }) {
                 </Text>
               </Group>
             ))}
+            <TimeSummary now={d} />
             <Text size="sm" c="dimmed">
               Свободное время:{' '}
               {d.free.open
@@ -160,6 +164,7 @@ function ChildCard({ child }: { child: Child }) {
             </Group>
           </>
         )}
+        <ActivityLog childId={child.id} />
       </Stack>
     </Card>
   );
@@ -172,8 +177,8 @@ export function NowPage() {
     <Stack>
       <Title order={2}>Сейчас</Title>
       <Text size="sm" c="dimmed">
-        Что дети делают прямо сейчас. Пауза и «Завершить» срабатывают на телефоне сразу; добавленные
-        минуты продлевают и занятия, и разрешённое время.
+        Что дети делают прямо сейчас. Пауза, «Завершить», «Выключить экран» и «Позвать» срабатывают
+        на телефоне сразу; добавленные минуты продлевают и занятия, и разрешённое время.
       </Text>
       <SimpleGrid cols={{ base: 1, md: 2 }}>
         {children.data?.map((c) => (

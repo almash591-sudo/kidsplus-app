@@ -27,6 +27,8 @@ interface KioskPlugin {
   setVoiceControl?(options: { on: boolean }): Promise<{ available: boolean }>;
   /** Экран не гаснет (видео у малыша). */
   setKeepAwake?(options: { on: boolean }): Promise<void>;
+  /** Громкость медиа 0–100 (этап 29) — задаёт родитель в кабинете. */
+  setVolume?(options: { level: number }): Promise<void>;
 }
 
 type ListenerHandle = { remove(): Promise<void> | void };
@@ -163,4 +165,9 @@ export function voiceControl(onCommand: (command: string) => void): () => void {
     void call(() => kiosk.setVoiceControl!({ on: false }));
     void call(() => handle?.remove());
   };
+}
+
+/** Громкость медиа, заданная родителем (этап 29). Только в киоске: браузер громкостью не управляет. */
+export function setVolume(level: number) {
+  void call(() => plugin()?.setVolume?.({ level }));
 }

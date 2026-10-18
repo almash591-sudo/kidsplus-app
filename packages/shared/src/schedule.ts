@@ -142,6 +142,21 @@ export interface Curriculum {
 /** Почему на сегодня всё. */
 export type DayClosed = 'window' | 'day_off' | 'limit' | 'ended';
 
+/**
+ * «Выключить экран с поводом» (этап 29): совёнок уводит ребёнка от экрана — спать, кушать,
+ * гулять… Снимает только родитель.
+ */
+export const REST_REASONS = ['sleep', 'eat', 'walk', 'bath', 'book', 'rest'] as const;
+export type RestReason = (typeof REST_REASONS)[number];
+export const REST_LABELS: Record<RestReason, string> = {
+  sleep: 'Совёнок спит',
+  eat: 'Пора кушать',
+  walk: 'Гулять!',
+  bath: 'Купаться',
+  book: 'Читаем книжку',
+  rest: 'Глазкам отдых',
+};
+
 export interface KidToday {
   /** off — расписание выключено (разделы на выбор, как раньше). */
   mode: 'off' | 'plan';
@@ -152,6 +167,12 @@ export interface KidToday {
   free: { open: boolean; secondsLeft: number };
   /** До конца разрешённого окна, секунд (null — расписание выключено). */
   windowSecondsLeft: number | null;
+  /** Родитель «выключил экран» с поводом (этап 29); null — нет. */
+  rest: RestReason | null;
+  /** Родитель позвал ребёнка (ISO-время); телефон показывает «Мама зовёт!» один раз. */
+  calledAt: string | null;
+  /** Громкость телефона, 0–100, заданная родителем (киоск); null — не трогаем. */
+  volume: number | null;
 }
 
 /** Чем занят ребёнок: предмет урока, свободное время или экран «Сегодня». */
@@ -181,6 +202,10 @@ export const controlRequest = z.discriminatedUnion('action', [
   z.object({ action: z.literal('end') }),
   z.object({ action: z.literal('reopen') }),
   z.object({ action: z.literal('add'), minutes: z.number().int().min(1).max(120) }),
+  z.object({ action: z.literal('rest'), reason: z.enum(REST_REASONS) }),
+  z.object({ action: z.literal('wake') }),
+  z.object({ action: z.literal('call') }),
+  z.object({ action: z.literal('volume'), level: z.number().int().min(0).max(100) }),
 ]);
 export type ControlRequest = z.infer<typeof controlRequest>;
 
@@ -292,6 +317,9 @@ export function computeToday(s: DayState): KidToday {
       subjects: [],
       free,
       windowSecondsLeft: null,
+      rest: null,
+      calledAt: null,
+      volume: null,
     };
 
   const w = s.schedule.windows[s.clock.weekday];
@@ -307,7 +335,17 @@ export function computeToday(s: DayState): KidToday {
       : lessonsDone && freeLeft === 0
         ? 'limit'
         : null;
-  return { mode: 'plan', closed, paused: s.paused, subjects, free, windowSecondsLeft: windowLeft };
+  return {
+    mode: 'plan',
+    closed,
+    paused: s.paused,
+    subjects,
+    free,
+    windowSecondsLeft: windowLeft,
+    rest: null,
+    calledAt: null,
+    volume: null,
+  };
 }
 
 /** Сколько ещё можно заниматься тем, чем ребёнок занят сейчас (0 — время вышло). */
@@ -346,3 +384,22 @@ export interface CurriculumDraft {
   topics: CurriculumDraftResult['topics'];
   error: string | null;
 }
+
+// ─── Журнал действий (этап 29) ───────────────────────────────────────────────
+
+export type ActivityKind = 'video' | 'quiz' | 'deck' | 'game' | 'app' | 'call' | 'capture';
+
+/** Строка журнала «что делал ребёнок»: время и понятная родителю подпись. */
+export interface ActivityEntry {
+  at: string;
+  kind: ActivityKind;
+  text: string;
+}
+
+export const activityQuery = z.object({
+  /** ГГГГ-ММ-ДД в часовом поясе расписания; по умолчанию — сегодня. */
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+});

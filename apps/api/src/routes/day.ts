@@ -2,6 +2,7 @@ import { schema } from '@kidsplus/db';
 import type { ChildAnalytics, WeeklyReport } from '@kidsplus/shared/analytics';
 import type { KidItem } from '@kidsplus/shared/api';
 import {
+  activityQuery,
   controlRequest,
   curriculumDraftRequest,
   curriculumInput,
@@ -9,6 +10,7 @@ import {
   scheduleInput,
   SUBJECTS,
   activityLeft,
+  type ActivityEntry,
   type ChildNow,
   type Curriculum,
   type CurriculumDraft,
@@ -38,6 +40,7 @@ import { fillTopics, type CurriculumFillResult } from '@kidsplus/shared/plan-fil
 import { notifyParents } from '@kidsplus/db/notify';
 import { pushMessages } from '@kidsplus/shared/push';
 import { BATTERY_PUSH_LEVEL, BATTERY_RESET_LEVEL, batteryReport } from '@kidsplus/shared/battery';
+import { childActivity } from '../services/activity';
 import { buildKidItems } from '../services/kid-items';
 import { notify, sse, subscribe } from '../services/live';
 
@@ -496,6 +499,17 @@ export function dayRoutes(app: FastifyInstance, ctx: Ctx) {
       await applyControl(db, childId, ctx.now(), parse(controlRequest, request.body));
       notify(childId);
       return childNow(childId);
+    },
+  );
+
+  /** Журнал действий ребёнка за день (этап 29). */
+  app.get(
+    '/api/parent/children/:id/activity',
+    { preHandler: parentOnly },
+    async (request): Promise<{ date: string; entries: ActivityEntry[] }> => {
+      const childId = await ownChild(request.params);
+      const { date } = parse(activityQuery, request.query);
+      return childActivity(db, childId, ctx.now(), date);
     },
   );
 

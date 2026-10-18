@@ -484,3 +484,66 @@ describe('PIN детского режима', () => {
     expect(bad.statusCode).toBe(400);
   });
 });
+
+describe('пульт родителя (этап 29)', () => {
+  it('«выключить экран» с поводом держится и через полночь, пока родитель не включит', async () => {
+    await enable();
+    const now = await control({ action: 'rest', reason: 'sleep' });
+    expect(now.rest).toBe('sleep');
+    expect((await get<KidToday>('/api/kid/today')).rest).toBe('sleep');
+    // Время занятий стоит, как на паузе.
+    expect((await beat('music')).paused).toBe(true);
+
+    t.advance(14 * 3600_000); // ночь прошла — наступил новый день
+    expect((await get<KidToday>('/api/kid/today')).rest).toBe('sleep');
+
+    await control({ action: 'wake' });
+    expect((await get<KidToday>('/api/kid/today')).rest).toBeNull();
+  });
+
+  it('работает и без расписания', async () => {
+    await control({ action: 'rest', reason: 'eat' });
+    expect((await get<KidToday>('/api/kid/today')).rest).toBe('eat');
+  });
+
+  it('«позвать» видно телефону 3 минуты; громкость запоминается', async () => {
+    await control({ action: 'call' });
+    expect((await get<KidToday>('/api/kid/today')).calledAt).toBe(t.clock.now.toISOString());
+    t.advance(4 * 60_000);
+    expect((await get<KidToday>('/api/kid/today')).calledAt).toBeNull();
+
+    await control({ action: 'volume', level: 30 });
+    expect((await get<KidToday>('/api/kid/today')).volume).toBe(30);
+    const bad = await t.app.inject({
+      method: 'POST',
+      url: `/api/parent/children/${child}/control`,
+      cookies: parent,
+      payload: { action: 'volume', level: 150 },
+    });
+    expect(bad.statusCode).toBe(400);
+  });
+
+  it('журнал: что делал ребёнок за день — с подписями и по времени', async () => {
+    const game = await addGame('Обводка цифр', 'math');
+    const event = (payload: object) =>
+      t.app.inject({ method: 'POST', url: '/api/kid/events', cookies: device, payload });
+    await event({ type: 'app_visible' });
+    t.advance(60_000);
+    await event({ type: 'interactive_complete', interactiveId: game });
+    const log = await get<{ date: string; entries: { kind: string; text: string }[] }>(
+      `/api/parent/children/${child}/activity`,
+      parent,
+    );
+    expect(log.date).toBe('2026-10-14');
+    expect(log.entries.map((e) => e.text)).toEqual([
+      'Прошёл игру «Обводка цифр»',
+      'Вернулся в приложение',
+    ]);
+    // Чужой ребёнок — 404 (семьи, этап 23); телефон ребёнка журнал не видит.
+    const kid = await t.app.inject({
+      url: `/api/parent/children/${child}/activity`,
+      cookies: device,
+    });
+    expect(kid.statusCode).not.toBe(200);
+  });
+});

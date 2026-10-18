@@ -303,6 +303,18 @@ function gameForeign(spec: GameSpec): Phrase[] {
   ]);
 }
 
+/** «Выключить экран с поводом» (этап 29): что говорит совёнок. */
+export const REST_PHRASES = {
+  sleep: 'Совёнок уже спит. Пора и тебе в кроватку. Спокойной ночи!',
+  eat: 'Совёнок пошёл кушать — и тебе пора! Приятного аппетита!',
+  walk: 'Ура, гулять! Совёнок полетел на улицу, догоняй!',
+  bath: 'Пора купаться! Совёнок уже взял мыло и уточку.',
+  book: 'Давай почитаем книжку вместе с мамой!',
+  rest: 'Глазки устали. Давай отдохнём и подвигаемся!',
+} as const;
+/** Родитель позвал ребёнка (этап 29). */
+export const CALLED = 'Тебя зовут! Беги скорей!';
+
 export type Phrase = { text: string; lang: 'ru' | 'en' | 'zh' };
 
 /** Фразы приложения для этого списка ребёнка — чтобы озвучить их заранее. */
@@ -315,6 +327,8 @@ export function appPhrases(playlist: KidPlaylist): Phrase[] {
     FREE_TIME,
     DAY_OVER,
     PAUSED,
+    CALLED,
+    ...Object.values(REST_PHRASES),
     CAMERA_ENOUGH,
     HINT_TODAY,
     HINT_PICK,
