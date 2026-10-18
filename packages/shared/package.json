@@ -14,6 +14,7 @@
     "./family-voice": "./src/family-voice.ts",
     "./kiosk-update": "./src/kiosk-update.ts",
     "./backup": "./src/backup.ts",
+    "./app-update": "./src/app-update.ts",
     "./voice": "./src/voice.ts",
     "./music-lessons": "./src/music-lessons.ts",
     "./songs": "./src/songs.ts",

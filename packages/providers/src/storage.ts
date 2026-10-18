@@ -11,8 +11,11 @@ export interface MediaStorage {
   getRange?(key: string, start: number, end: number): Promise<Uint8Array | null>;
 }
 
-/** Ключ: латиница, цифры, `-`, `_`, `.` и `/` между сегментами; без `..` и ведущего `/`. */
-const KEY = /^(?!\/)(?!.*\/\/)(?!.*(^|\/)\.\.?(\/|$))[A-Za-z0-9._\-/]{1,200}$/;
+/**
+ * Ключ: буквы (в том числе кириллица — у картинок карточек есть `…-красный.svg`), цифры, `-`, `_`,
+ * `.` и `/` между сегментами; без `..` и ведущего `/`.
+ */
+const KEY = /^(?!\/)(?!.*\/\/)(?!.*(^|\/)\.\.?(\/|$))[\p{L}\p{N}._\-/]{1,200}$/u;
 
 export function assertStorageKey(key: string): void {
   if (!KEY.test(key)) throw new Error(`недопустимый ключ хранилища: ${key}`);
