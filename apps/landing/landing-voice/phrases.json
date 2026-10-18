@@ -12,12 +12,12 @@
   },
   "proxyapi": {
     "owl": {
-      "ru": "lily@elevenlabs/eleven-v3",
-      "en": "lily@elevenlabs/eleven-v3",
-      "zh": "lily@elevenlabs/eleven-v3"
+      "ru": "lily@elevenlabs/eleven-v4",
+      "en": "lily@elevenlabs/eleven-v4",
+      "zh": "lily@elevenlabs/eleven-v4"
     },
     "mom": {
-      "ru": "matilda@elevenlabs/eleven-v3"
+      "ru": "matilda@elevenlabs/eleven-v4"
     }
   },
   "phrases": [

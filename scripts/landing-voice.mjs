@@ -63,7 +63,8 @@ async function synthesizeProxy(apiKey, full, text, rate) {
       voice,
       input: text,
       response_format: 'mp3',
-      speed: Math.min(1.2, Math.max(0.7, rate ?? 0.95)),
+      // eleven_v4 скорость не принимает.
+      ...(/eleven-v4/.test(model) ? {} : { speed: Math.min(1.2, Math.max(0.7, rate ?? 0.95)) }),
     }),
   });
   if (!res.ok) throw new Error(`ProxyAPI ${res.status}: ${(await res.text()).slice(0, 200)}`);

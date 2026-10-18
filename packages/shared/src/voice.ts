@@ -46,7 +46,7 @@ export const PROXY_VOICE_NAMES = ['Lily', 'Matilda', 'Jessica', 'Alice', 'Laura'
  * Модель озвучки ProxyAPI. Пишется в голос («matilda@elevenlabs/eleven-v3»): так она входит
  * в ключ кэша, и смена модели переозвучивает всё.
  */
-export const PROXY_TTS_MODEL = 'elevenlabs/eleven-v3';
+export const PROXY_TTS_MODEL = 'elevenlabs/eleven-v4';
 export const proxyVoice = (name: string) => `${name.toLowerCase()}@${PROXY_TTS_MODEL}`;
 export const PROXY_VOICE_DEFAULT = proxyVoice('lily');
 
