@@ -15,11 +15,11 @@ const ROOT_FILES = ['/package.json', '/pnpm-lock.yaml', '/pnpm-workspace.yaml'];
 const source = github(REPO, { branch: BRANCH, checkSuites: true });
 
 /**
- * Медиа (картинки, серверная озвучка) хранятся в PostgreSQL: на бесплатном тарифе Railway
- * нельзя создать bucket. При переходе на Hobby — bucket('media', { region: 'ams' }),
- * STORAGE_DRIVER=s3 с переменными bucket и сервис backup (deploy/backup), см. docs/backup.md.
+ * Медиа (картинки, серверная озвучка, APK киоска) — в bucket Cloudflare R2 владельца (префикс
+ * `media/`; 2026-10-18 — база переполнилась файлами). Оставшиеся в базе файлы worker переносит
+ * сам, до тех пор они читаются из базы. Ключи R2 задаёт владелец у api, worker ссылается на них.
  */
-const STORAGE_ENV = { STORAGE_DRIVER: 'db' };
+const STORAGE_ENV = { STORAGE_DRIVER: 's3' };
 
 export default defineRailway(() => {
   const Postgres = postgres('Postgres', { region: REGION });
@@ -72,7 +72,7 @@ export default defineRailway(() => {
       // Push-уведомления родителям (этап 5): ключи VAPID задаются вне репозитория.
       VAPID_PUBLIC_KEY: preserve(),
       VAPID_PRIVATE_KEY: preserve(),
-      // Аудиотека (этап 20): bucket Cloudflare R2; картинки остаются в базе (STORAGE_DRIVER=db).
+      // Bucket Cloudflare R2: аудиотека (этап 20), медиа, резервные копии.
       S3_ENDPOINT: preserve(),
       S3_BUCKET: preserve(),
       S3_ACCESS_KEY_ID: preserve(),
@@ -112,6 +112,11 @@ export default defineRailway(() => {
       YOUTUBE_API_KEY: preserve(),
       VAPID_PUBLIC_KEY: preserve(),
       VAPID_PRIVATE_KEY: preserve(),
+      // Тот же bucket, что у api: медиа и ночные резервные копии базы (префикс `backups/`).
+      S3_ENDPOINT: '${{api.S3_ENDPOINT}}',
+      S3_BUCKET: '${{api.S3_BUCKET}}',
+      S3_ACCESS_KEY_ID: '${{api.S3_ACCESS_KEY_ID}}',
+      S3_SECRET_ACCESS_KEY: '${{api.S3_SECRET_ACCESS_KEY}}',
       ...STORAGE_ENV,
     },
   });

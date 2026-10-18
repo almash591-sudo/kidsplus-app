@@ -17,6 +17,8 @@ import { PROXY_TTS_MODEL } from '@kidsplus/shared/voice';
 import { PgBoss } from 'pg-boss';
 import { pino } from 'pino';
 import { GoogleDrive } from '@kidsplus/providers/google-drive';
+import { S3Backups } from '@kidsplus/providers/backup-s3';
+import { startBlobMove } from './blob-move';
 import { checkAvailability } from './availability';
 import { checkOffline } from './offline-alerts';
 import { markConfigured, pgDump, runBackup, startBackupRequests } from './backup';
@@ -56,7 +58,20 @@ const llm = env.GEMINI_API_KEY
   : null;
 const limits = { daily: env.LLM_DAILY_TOKEN_LIMIT, total: env.LLM_TOTAL_TOKEN_LIMIT };
 
-// Резервные копии на Google Диск владельца; без ключей — не делаются (кабинет это покажет).
+const s3 =
+  env.S3_ENDPOINT && env.S3_BUCKET && env.S3_ACCESS_KEY_ID && env.S3_SECRET_ACCESS_KEY
+    ? {
+        endpoint: env.S3_ENDPOINT,
+        region: env.S3_REGION,
+        bucket: env.S3_BUCKET,
+        accessKeyId: env.S3_ACCESS_KEY_ID,
+        secretAccessKey: env.S3_SECRET_ACCESS_KEY,
+        forcePathStyle: env.S3_FORCE_PATH_STYLE,
+      }
+    : null;
+
+// Резервные копии: на Google Диск владельца, если он подключён, иначе — в bucket (R2);
+// без ключей — не делаются (кабинет это покажет).
 const drive =
   env.GOOGLE_DRIVE_CLIENT_ID && env.GOOGLE_DRIVE_CLIENT_SECRET && env.GOOGLE_DRIVE_REFRESH_TOKEN
     ? new GoogleDrive({
@@ -64,12 +79,20 @@ const drive =
         clientSecret: env.GOOGLE_DRIVE_CLIENT_SECRET,
         refreshToken: env.GOOGLE_DRIVE_REFRESH_TOKEN,
       })
-    : null;
+    : s3
+      ? new S3Backups(s3)
+      : null;
 const backupDeps = { db, drive, log, dump: pgDump(env.DATABASE_URL) };
-await markConfigured(db, Boolean(drive)).catch((err: unknown) =>
-  log.error({ err }, 'резервная копия: статус'),
+await markConfigured(db, Boolean(drive), drive instanceof S3Backups ? 's3' : 'drive').catch(
+  (err: unknown) => log.error({ err }, 'резервная копия: статус'),
 );
-if (!drive) log.warn('GOOGLE_DRIVE_* не заданы — резервные копии не делаются');
+if (!drive) log.warn('ни Google Диск, ни S3_* не заданы — резервные копии не делаются');
+
+// Медиа переехали в bucket: worker переносит оставшиеся в базе файлы.
+const stopBlobMove =
+  env.STORAGE_DRIVER === 's3'
+    ? startBlobMove({ db, target: createStorage(env), log, batch: 10 })
+    : undefined;
 const stopBackupRequests = drive ? startBackupRequests(backupDeps) : undefined;
 
 await boss.start();
@@ -143,6 +166,7 @@ async function shutdown(signal: string) {
   log.info({ signal }, 'остановка');
   stopTts?.();
   stopBackupRequests?.();
+  stopBlobMove?.();
   stopModeration();
   stopDrafts();
   stopStories();

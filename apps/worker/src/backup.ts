@@ -66,7 +66,11 @@ export async function backupStatus(db: Db): Promise<BackupStatus | null> {
 }
 
 /** Записать, настроены ли копии (кабинет показывает «не настроено», если нет ключей). */
-export async function markConfigured(db: Db, configured: boolean) {
+export async function markConfigured(
+  db: Db,
+  configured: boolean,
+  target: BackupStatus['target'] = 'drive',
+) {
   const prev = await backupStatus(db);
   await writeSetting(db, BACKUP_STATUS_KEY, {
     last: null,
@@ -75,6 +79,7 @@ export async function markConfigured(db: Db, configured: boolean) {
     ...prev,
     keep: BACKUP_KEEP,
     configured,
+    target,
   } satisfies BackupStatus);
 }
 

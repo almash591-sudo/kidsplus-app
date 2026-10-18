@@ -2,6 +2,7 @@ import { resolve } from 'node:path';
 import type { MediaStorage } from './storage';
 import { FsStorage } from './storage-fs';
 import { S3Storage } from './storage-s3';
+import { TieredStorage } from './storage-tiered';
 
 export interface StorageSettings {
   STORAGE_DRIVER: 'fs' | 'db' | 's3';
@@ -17,6 +18,8 @@ export interface StorageSettings {
 /**
  * Хранилище по переменным окружения (проверены схемой в @kidsplus/shared/env).
  * Для STORAGE_DRIVER=db передайте `db` — хранилище в PostgreSQL из @kidsplus/db/blob-storage.
+ * При STORAGE_DRIVER=s3 переданное `db` остаётся запасным для чтения: файлы, ещё не перенесённые
+ * worker'ом из базы в bucket, отдаются оттуда.
  */
 export function createStorage(
   env: StorageSettings,
@@ -28,7 +31,7 @@ export function createStorage(
     return db;
   }
   if (env.STORAGE_DRIVER === 'fs') return new FsStorage(resolve(env.MEDIA_DIR));
-  return new S3Storage({
+  const s3 = new S3Storage({
     endpoint: env.S3_ENDPOINT!,
     region: env.S3_REGION,
     bucket: env.S3_BUCKET!,
@@ -37,6 +40,7 @@ export function createStorage(
     forcePathStyle: env.S3_FORCE_PATH_STYLE,
     prefix,
   });
+  return db ? new TieredStorage(s3, db) : s3;
 }
 
 /**
