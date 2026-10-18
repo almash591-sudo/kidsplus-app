@@ -18,6 +18,8 @@ export interface OpenAiCompatibleTtsConfig {
 export class OpenAiCompatibleTtsProvider implements TtsProvider {
   readonly id: string;
   private readonly fetchFn: typeof fetch;
+  /** Модели, которые не принимают скорость: второй запрос на каждую фразу не нужен. */
+  private readonly noSpeed = new Set<string>();
 
   constructor(private readonly config: OpenAiCompatibleTtsConfig) {
     this.id = config.id ?? 'proxyapi';
@@ -33,19 +35,19 @@ export class OpenAiCompatibleTtsProvider implements TtsProvider {
     if (!full) throw new TtsError('озвучка: не задан голос', false);
     // «lily@elevenlabs/eleven-v4» — голос и модель; без «@» — модель из настроек.
     const [voice, model = this.config.model] = full.split('@') as [string, string?];
-    let res = await this.request(model, voice, r, true);
+    const withSpeed = !this.noSpeed.has(model);
+    let res = await this.request(model, voice, r, withSpeed);
     let error = res.ok ? null : await errorText(res);
-    // Не все модели принимают скорость (eleven_v4) — тогда без неё.
-    if (res.status === 400 && /speed/i.test(error ?? '')) {
+    // Не все модели принимают скорость (eleven_v4) — тогда без неё и дальше для этой модели.
+    if (withSpeed && res.status === 400 && /speed/i.test(error ?? '')) {
+      this.noSpeed.add(model);
       res = await this.request(model, voice, r, false);
       error = res.ok ? null : await errorText(res);
     }
     if (!res.ok) {
       // 429 и 5xx — временные (в том числе нет денег на балансе — 402 — тоже ждём пополнения).
-      throw new TtsError(
-        `озвучка ${res.status}: ${error}`,
-        res.status === 429 || res.status === 402 || res.status >= 500,
-      );
+      const wait = res.status === 429 || res.status === 402;
+      throw new TtsError(`озвучка ${res.status}: ${error}`, wait || res.status >= 500, wait);
     }
     const audio = new Uint8Array(await res.arrayBuffer());
     if (!audio.length) throw new TtsError('озвучка: пустой ответ', true);

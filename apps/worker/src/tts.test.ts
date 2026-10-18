@@ -106,4 +106,41 @@ describe('processPendingTts', () => {
     expect(r.done).toBe(0);
     expect(provider.calls).not.toHaveBeenCalled();
   });
+
+  it('«подождите» (429) — пачка останавливается, попытки не тратятся, потом всё озвучивается', async () => {
+    let limited = true;
+    let n = 0;
+    const provider = fakeProvider(async () => {
+      n++;
+      // Первая фраза проходит, вторая упирается в лимит частоты.
+      if (limited && n === 2) throw new TtsError('озвучка 429: Too Many Requests', true, true);
+      return { audio: new Uint8Array([1]), mimeType: 'audio/mpeg' } as never;
+    });
+    const rows = [];
+    for (let i = 0; i < 4; i++) rows.push(await pending(`Фраза ${i}`));
+    const slept: number[] = [];
+    const sleep = async (ms: number) => void slept.push(ms);
+    const r = await processPendingTts({ db, storage, provider, log }, { gapMs: 1500, sleep });
+    expect(r).toMatchObject({ done: 1, throttled: true, retryLater: true });
+    expect(provider.calls).toHaveBeenCalledTimes(2); // после 429 дальше не шлёт
+    expect(slept).toEqual([1500]);
+    const left = await Promise.all(rows.map((a) => byId(a.id)));
+    expect(left.filter((a) => a.status === 'pending').map((a) => a.attempts)).toEqual([0, 0, 0]);
+
+    limited = false;
+    for (let i = 0; i < MAX_TTS_ATTEMPTS + 2; i++)
+      await processPendingTts({ db, storage, provider, log }, { sleep });
+    const after = await Promise.all(rows.map((a) => byId(a.id)));
+    expect(after.every((a) => a.status === 'ready')).toBe(true);
+  });
+
+  it('много 429 подряд не переводят фразу в failed', async () => {
+    const provider = fakeProvider(async () => {
+      throw new TtsError('озвучка 402: Недостаточно средств', true, true);
+    });
+    const a = await pending('Умница!');
+    for (let i = 0; i < MAX_TTS_ATTEMPTS * 2; i++)
+      await processPendingTts({ db, storage, provider, log });
+    expect(await byId(a.id)).toMatchObject({ status: 'pending', attempts: 0 });
+  });
 });

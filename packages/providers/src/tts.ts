@@ -27,6 +27,8 @@ export class TtsError extends Error {
     message: string,
     /** false — повтор не поможет (неверный ключ, недопустимый текст). */
     readonly retryable: boolean,
+    /** Провайдер просит подождать (429 — слишком часто, 402 — кончились деньги): попытка не в счёт. */
+    readonly wait = false,
   ) {
     super(message);
   }
