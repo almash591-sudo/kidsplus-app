@@ -1,4 +1,5 @@
-// Резервные копии базы (этап 15а): статус для кабинета. Копию делает worker, хранит Google Drive.
+// Резервные копии базы (этап 15а): статус для кабинета. Копию делает worker, хранит Google Drive
+// или (2026-10-18) bucket Cloudflare R2.
 
 export interface BackupStatus {
   /** worker знает ключи Google Drive — копии делаются. */
@@ -11,6 +12,8 @@ export interface BackupStatus {
   requestedAt: string | null;
   /** Сколько копий храним. */
   keep: number;
+  /** Куда кладутся: Google Диск владельца или bucket R2 (префикс backups/). Нет — Google Диск. */
+  target?: 'drive' | 's3';
 }
 
 /** Папка на Google Диске владельца. */

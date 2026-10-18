@@ -60,7 +60,9 @@ export function BackupPage() {
               <div className="attention-row">
                 <Text style={{ flex: 1 }}>Где</Text>
                 <Text c="dimmed" size="sm" ta="right">
-                  Google Диск → «{BACKUP_FOLDER}», последние {s.keep}
+                  {s.target === 's3'
+                    ? `хранилище Cloudflare R2 → backups/, последние ${s.keep}`
+                    : `Google Диск → «${BACKUP_FOLDER}», последние ${s.keep}`}
                 </Text>
               </div>
             </Stack>
@@ -79,8 +81,10 @@ export function BackupPage() {
             {s.requestedAt ? 'Копия делается…' : 'Сделать копию сейчас'}
           </Button>
           <Text size="xs" c="dimmed" px={16}>
-            В копии — вся база: профили, планы, прогресс, одобренный контент, фото и видео с камеры.
-            Приложение видит на Диске только свою папку.
+            В копии — вся база: профили, планы, прогресс, одобренный контент.
+            {s.target === 's3'
+              ? ' Картинки, озвучка и фото с камеры лежат в том же хранилище отдельно от копий.'
+              : ' Приложение видит на Диске только свою папку.'}
           </Text>
         </>
       )}
