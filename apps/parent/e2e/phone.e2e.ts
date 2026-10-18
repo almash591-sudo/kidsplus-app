@@ -22,6 +22,7 @@ const PAGES = [
   '/captures',
   '/calls',
   '/now',
+  '/habits',
   '/families',
 ];
 
@@ -105,4 +106,37 @@ test('все вкладки «Контента» можно нажать', async
     await tab.click();
     await expect(page).toHaveURL(new RegExp(`tab=`));
   }
+});
+
+test('привычки: готовое и своё дело, отметка за ребёнка, награда за звёзды', async ({ page }) => {
+  await login(page);
+  await page.goto('/habits');
+  await page.getByTestId('preset-teeth').click();
+  await expect(page.getByTestId('habit-row')).toHaveCount(1);
+  await page.getByTestId('habit-title').fill('Покормить рыбок');
+  await page.getByTestId('habit-add').click();
+  await expect(page.getByTestId('habit-row')).toHaveCount(2);
+
+  // Ребёнок забыл нажать — родитель ставит отметку: звёздочка в копилке.
+  const today = page.getByTestId('habit-row').first().getByTestId('mark').last();
+  await today.click();
+  await expect(today).toHaveAttribute('data-on', '1');
+  await expect(page.getByTestId('stars')).toContainText('1');
+
+  await page.getByTestId('reward-title').fill('Поход в кафе');
+  await page.getByTestId('reward-add').click();
+  const reward = page.getByTestId('reward').filter({ hasText: 'Поход в кафе' });
+  await expect(reward.getByTestId('grant')).toBeDisabled(); // 5 звёзд, а есть 1
+  expect(await layoutProblems(page)).toEqual([]);
+
+  // Уборка за собой: стенд общий для тестов.
+  await today.click();
+  await expect(page.getByTestId('stars')).toContainText('0');
+  while ((await page.getByTestId('habit-row').count()) > 0) {
+    const n = await page.getByTestId('habit-row').count();
+    await page.getByRole('button', { name: 'Удалить дело' }).first().click();
+    await expect(page.getByTestId('habit-row')).toHaveCount(n - 1);
+  }
+  await reward.getByRole('button', { name: 'Удалить награду' }).click();
+  await expect(reward).toHaveCount(0);
 });

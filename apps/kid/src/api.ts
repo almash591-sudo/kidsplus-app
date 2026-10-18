@@ -1,3 +1,4 @@
+import type { KidHabitDone, KidHabits } from '@kidsplus/shared/habits';
 import { API_PREFIX } from '@kidsplus/shared';
 import type { KidAudioTrack } from '@kidsplus/shared/audio';
 import type { BatteryReport } from '@kidsplus/shared/battery';
@@ -36,6 +37,8 @@ export const kidApi = {
   battery: (b: BatteryReport) => request<void>('POST', '/kid/battery', b),
   captureToday: () => request<CaptureToday>('GET', '/kid/captures/today'),
   audio: () => request<KidAudioTrack[]>('GET', '/kid/audio'),
+  habits: () => request<KidHabits>('GET', '/kid/habits'),
+  habitDone: (id: string) => request<KidHabitDone>('POST', `/kid/habits/${id}/done`),
   /** Копия снимка в кабинет; возвращает код ответа (0 — нет связи). */
   uploadCapture: async (c: {
     kind: CaptureKind;

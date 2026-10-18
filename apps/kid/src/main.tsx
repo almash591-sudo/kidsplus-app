@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { registerServiceWorker } from '@kidsplus/shared/sw-register';
 import { App } from './App';
 import { CalledLayer } from './screens/RestScreen';
+import { HabitLayer } from './screens/HabitsScreen';
 import { Sky } from './ui/Sky';
 import { ErrorBoundary } from './ErrorBoundary';
 import { installTapFeedback } from './fx';
@@ -30,6 +31,7 @@ createRoot(document.getElementById('root')!).render(
       <Sky />
       <App />
       <CalledLayer />
+      <HabitLayer />
     </ErrorBoundary>
   </StrictMode>,
 );

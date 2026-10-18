@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test as base, type Page } from '@playwright/test';
+import type { KidHabit, KidHabits } from '@kidsplus/shared/habits';
 import {
   callStatus,
   type CallEvent,
@@ -40,6 +41,9 @@ interface Backend {
   paired: boolean;
   /** Аудиотека: треки «детям». */
   audio?: { id: string; title: string; url: string }[];
+  /** «Мои дела» (этап 30). */
+  habits?: KidHabits;
+  habitsDone?: string[];
   /** День по расписанию; по умолчанию расписание выключено. */
   today?: Record<string, unknown>;
   /** Уроки по предметам (для режима расписания). */
@@ -82,7 +86,7 @@ interface Backend {
   battery?: { level: number; charging: boolean }[];
 }
 
-const speech = (text: string) => ({ text, lang: 'ru', audioUrl: null });
+const speech = (text: string) => ({ text, lang: 'ru' as const, audioUrl: null });
 const PHRASES = {
   correct: [speech('Молодец!')],
   retry: [speech('Попробуй ещё.')],
@@ -356,6 +360,10 @@ async function mockBackend(page: Page, backend: Backend) {
         return route.fulfill({ json: backend.today ?? OFF_TODAY });
       case '/api/kid/audio':
         return route.fulfill({ json: backend.audio ?? [] });
+      case '/api/kid/habits':
+        return route.fulfill({
+          json: backend.habits ?? { date: '', habits: [], stars: 0, goal: null, lastGrant: null },
+        });
       case '/api/kid/heartbeat':
         (backend.beats ??= []).push(route.request().postDataJSON());
         return route.fulfill({
@@ -411,6 +419,11 @@ async function mockBackend(page: Page, backend: Backend) {
       return r.json === undefined
         ? route.fulfill({ status: r.status })
         : route.fulfill({ status: r.status, json: r.json });
+    }
+    if (url.pathname.startsWith('/api/kid/habits/')) {
+      const id = url.pathname.split('/')[4]!;
+      (backend.habitsDone ??= []).push(id);
+      return route.fulfill({ json: { stars: (backend.habits?.stars ?? 0) + 1 } });
     }
     if (url.pathname.startsWith('/api/kid/lesson/')) {
       const subject = url.pathname.split('/').pop()!;
@@ -512,6 +525,129 @@ test.describe('пульт родителя (этап 29)', () => {
     await page.reload();
     await expect(page.getByTestId('tile').first()).toBeVisible();
     await expect(page.getByTestId('called')).toHaveCount(0);
+  });
+});
+
+test.describe('мои дела (этап 30)', () => {
+  const habit = (id: string, o: Partial<KidHabit> = {}): KidHabit => ({
+    id,
+    preset: 'wash',
+    slot: 'morning',
+    remindAt: null,
+    timerSec: null,
+    title: speech(`дело ${id}`),
+    remind: speech(`Пора! дело ${id}.`),
+    done: false,
+    ...o,
+  });
+  const habits = (list: KidHabit[], o: Partial<KidHabits> = {}): KidHabits => ({
+    date: '2026-10-18',
+    habits: list,
+    stars: 3,
+    goal: { title: speech('Мультик'), price: 5 },
+    lastGrant: null,
+    ...o,
+  });
+
+  test('без дел кнопки нет', async ({ page, backend: _ }) => {
+    await page.goto('/');
+    await expect(page.getByTestId('tile').first()).toBeVisible();
+    await expect(page.getByTestId('habits-open')).toHaveCount(0);
+  });
+
+  test('отметить дело — звёздочка в копилку; всё сделано — похвала', async ({ page, backend }) => {
+    await page.clock.install({ time: new Date('2026-10-18T08:00:00') });
+    backend.habits = habits([habit('a'), habit('b', { preset: 'bed', done: true })]);
+    await page.goto('/');
+    await expect(page.getByTestId('habits-stars')).toHaveText('3');
+    await shot(page, 'habits-dock');
+    await page.getByTestId('habits-open').click();
+    await expect(page.getByTestId('habits')).toBeVisible();
+    await expect(page.getByTestId('habits-goal')).toContainText('Мультик');
+    await expect(page.getByTestId('jar-stars')).toContainText('3');
+
+    const first = page.getByTestId('habit').first();
+    await first.dispatchEvent('pointerdown');
+    await expect(first).toHaveAttribute('data-done', '1');
+    await expect(page.getByTestId('jar-stars')).toContainText('4');
+    await shot(page, 'habits');
+    expect(backend.habitsDone).toEqual(['a']);
+    await expect
+      .poll(async () => (await spoken(page)).map((s) => s.text))
+      .toContain('Все дела сделаны! Совёнок тобой гордится!');
+
+    // Уже сделанное — звёздочку второй раз не даёт.
+    await first.dispatchEvent('pointerdown');
+    expect(backend.habitsDone).toEqual(['a']);
+    await page.getByTestId('go-home').click();
+    await expect(page.getByTestId('habits-stars')).toHaveText('4');
+  });
+
+  test('зубы — таймер с совёнком, в конце отметка', async ({ page, backend }) => {
+    await page.clock.install({ time: new Date('2026-10-18T20:00:00') });
+    backend.habits = habits([
+      habit('t', { preset: 'teeth', slot: 'evening', timerSec: 120 }),
+      habit('m', { slot: 'morning' }),
+    ]);
+    await page.goto('/');
+    await page.getByTestId('habits-open').click();
+    // Вечер — вечерние дела; утро — вкладкой.
+    await expect(page.getByTestId('slot-evening')).toHaveAttribute('aria-selected', 'true');
+    await page.getByTestId('habit').first().dispatchEvent('pointerdown');
+    await expect(page.getByTestId('teeth-timer')).toBeVisible();
+    await shot(page, 'teeth');
+    await expect
+      .poll(async () => (await spoken(page)).map((s) => s.text))
+      .toContain('Чистим зубки вместе с совёнком! Сначала верхние.');
+    await page.clock.runFor(31_000);
+    await expect
+      .poll(async () => (await spoken(page)).map((s) => s.text))
+      .toContain('Теперь нижние зубки!');
+    await page.clock.runFor(85_000);
+    await expect(page.getByTestId('teeth-timer')).toBeVisible();
+    await page.clock.runFor(10_000);
+    await expect(page.getByTestId('habits')).toBeVisible();
+    expect((await spoken(page)).map((s) => s.text)).toContain('Готово! Какие чистые зубки!');
+    expect(backend.habitsDone).toEqual(['t']);
+    await page.getByTestId('slot-morning').click();
+    await expect(page.getByTestId('habit')).toHaveAttribute('data-done', '0');
+  });
+
+  test('напоминание в заданное время — один раз за день', async ({ page, backend }) => {
+    await page.clock.install({ time: new Date('2026-10-18T20:31:00') });
+    backend.habits = habits([
+      habit('t', {
+        preset: 'teeth',
+        slot: 'evening',
+        remindAt: '20:30',
+        remind: speech('Пора чистить зубки!'),
+      }),
+      habit('x', { slot: 'evening', remindAt: '19:00' }), // час уже прошёл
+    ]);
+    await page.goto('/');
+    await expect(page.getByTestId('habit-remind')).toContainText('Пора чистить зубки!');
+    await shot(page, 'habit-remind');
+    await expect
+      .poll(async () => (await spoken(page)).map((s) => s.text))
+      .toContain('Пора чистить зубки!');
+    await page.getByTestId('habit-remind').dispatchEvent('pointerdown');
+    await expect(page.getByTestId('habit-remind')).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByTestId('tile').first()).toBeVisible();
+    await expect(page.getByTestId('habit-remind')).toHaveCount(0);
+  });
+
+  test('выданная награда — праздник один раз', async ({ page, backend }) => {
+    backend.habits = habits([habit('a')], {
+      lastGrant: { id: 'g1', title: speech('Поход в парк') },
+    });
+    await page.goto('/');
+    await expect(page.getByTestId('habit-grant')).toContainText('Поход в парк');
+    await page.getByTestId('habit-grant').dispatchEvent('pointerdown');
+    await expect(page.getByTestId('habit-grant')).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByTestId('tile').first()).toBeVisible();
+    await expect(page.getByTestId('habit-grant')).toHaveCount(0);
   });
 });
 

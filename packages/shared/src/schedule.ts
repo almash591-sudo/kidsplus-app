@@ -387,7 +387,8 @@ export interface CurriculumDraft {
 
 // ─── Журнал действий (этап 29) ───────────────────────────────────────────────
 
-export type ActivityKind = 'video' | 'quiz' | 'deck' | 'game' | 'app' | 'call' | 'capture';
+export type ActivityKind =
+  'video' | 'quiz' | 'deck' | 'game' | 'app' | 'call' | 'capture' | 'habit';
 
 /** Строка журнала «что делал ребёнок»: время и понятная родителю подпись. */
 export interface ActivityEntry {

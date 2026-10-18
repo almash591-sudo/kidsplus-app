@@ -315,6 +315,29 @@ export const REST_PHRASES = {
 /** Родитель позвал ребёнка (этап 29). */
 export const CALLED = 'Тебя зовут! Беги скорей!';
 
+/** «Мои дела» (этап 30). */
+export const HABITS_INTRO = 'Мои дела! Сделал дело — нажми на картинку.';
+export const HABIT_DONE = [
+  'Молодец! Звёздочка в копилку!',
+  'Ура! Ещё одна звёздочка!',
+  'Отлично! Лови звёздочку!',
+  'Так держать! Звёздочка твоя!',
+  'Вот это помощь! Звёздочка в копилку!',
+];
+export const HABITS_ALL_DONE = 'Все дела сделаны! Совёнок тобой гордится!';
+export const HABIT_ALREADY = 'Это дело уже сделано!';
+export const HABIT_GOAL = 'Копим звёздочки на награду:';
+export const HABIT_GRANT = 'Ура! Награда!';
+export const HABIT_SLOT_SAY = { morning: 'Утро!', day: 'День!', evening: 'Вечер!' } as const;
+/** Таймер чистки зубов: что говорит совёнок и на какой секунде. */
+export const TEETH_STEPS = [
+  { at: 0, text: 'Чистим зубки вместе с совёнком! Сначала верхние.' },
+  { at: 30, text: 'Теперь нижние зубки!' },
+  { at: 60, text: 'Теперь с другой стороны — вжик-вжик!' },
+  { at: 90, text: 'Ещё немножко! Почисти передние зубки.' },
+] as const;
+export const TEETH_DONE = 'Готово! Какие чистые зубки!';
+
 export type Phrase = { text: string; lang: 'ru' | 'en' | 'zh' };
 
 /** Фразы приложения для этого списка ребёнка — чтобы озвучить их заранее. */
@@ -329,6 +352,15 @@ export function appPhrases(playlist: KidPlaylist): Phrase[] {
     PAUSED,
     CALLED,
     ...Object.values(REST_PHRASES),
+    HABITS_INTRO,
+    ...HABIT_DONE,
+    HABITS_ALL_DONE,
+    HABIT_ALREADY,
+    HABIT_GOAL,
+    HABIT_GRANT,
+    ...Object.values(HABIT_SLOT_SAY),
+    ...TEETH_STEPS.map((s) => s.text),
+    TEETH_DONE,
     CAMERA_ENOUGH,
     HINT_TODAY,
     HINT_PICK,

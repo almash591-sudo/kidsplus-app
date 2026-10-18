@@ -24,6 +24,7 @@ import { BackupPage } from './pages/BackupPage';
 import { MomVoicePage } from './pages/MomVoicePage';
 import { VoicesPage } from './pages/VoicesPage';
 import { FamiliesPage } from './pages/FamiliesPage';
+import { HabitsPage } from './pages/HabitsPage';
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -44,6 +45,7 @@ export const router = createBrowserRouter([
       { path: 'backup', element: <BackupPage /> },
       { path: 'mom-voice', element: <MomVoicePage /> },
       { path: 'now', element: <NowPage /> },
+      { path: 'habits', element: <HabitsPage /> },
       { path: 'plan', element: <PlanPage /> },
       { path: 'analytics', element: <AnalyticsPage /> },
       { path: 'captures', element: <CapturesPage /> },

@@ -133,6 +133,7 @@ const KIND_ICON: Record<ActivityKind, string> = {
   app: '📱',
   call: '📞',
   capture: '📷',
+  habit: '⭐',
 };
 
 /** Журнал действий за сегодня или вчера. */
