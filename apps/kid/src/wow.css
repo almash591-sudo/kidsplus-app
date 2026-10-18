@@ -1007,3 +1007,122 @@
     animation: none;
   }
 }
+
+/* ─── Живой совёнок (этап 32) ────────────────────────────────────────────── */
+.live-owl {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 30;
+  pointer-events: none;
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+.live-owl-away {
+  visibility: hidden;
+}
+/* Сидит на кнопке или выглядывает — его можно потрогать. */
+.live-owl-perch,
+.live-owl-peek {
+  pointer-events: auto;
+}
+.live-owl-body {
+  width: 100%;
+  height: 100%;
+  animation: live-owl-breathe 2.6s ease-in-out infinite;
+}
+.live-owl-body img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 10px rgb(60 30 0 / 0.25));
+}
+.live-owl-peek .live-owl-body {
+  animation: live-owl-peek 0.7s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+}
+@keyframes live-owl-breathe {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-3px) scale(1.02, 0.99);
+  }
+}
+@keyframes live-owl-peek {
+  from {
+    transform: translateY(70%);
+    clip-path: inset(0 0 70% 0);
+  }
+  to {
+    transform: translateY(0);
+    clip-path: inset(0 0 0 0);
+  }
+}
+.live-owl-bubble {
+  position: fixed;
+  z-index: 31;
+  left: 50%;
+  top: max(64px, calc(env(safe-area-inset-top) + 56px));
+  transform: translateX(-50%);
+  max-width: min(86vw, 520px);
+  margin: 0;
+  padding: 12px 20px;
+  border-radius: 24px;
+  background: rgb(255 255 255 / 0.95);
+  box-shadow: 0 10px 30px rgb(40 30 90 / 0.2);
+  font-size: 22px;
+  font-weight: 800;
+  text-align: center;
+  color: #4a2c12;
+  pointer-events: none;
+  animation: live-owl-bubble 0.35s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+}
+@keyframes live-owl-bubble {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.6);
+  }
+}
+/* Стук по стеклу — экран вздрагивает. */
+.owl-shake body {
+  animation: owl-shake 0.36s ease-in-out;
+}
+@keyframes owl-shake {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-4px, 2px);
+  }
+  50% {
+    transform: translate(3px, -2px);
+  }
+  75% {
+    transform: translate(-2px, 1px);
+  }
+}
+/* Кнопка, на которую сел совёнок, покачивается. */
+.owl-poked {
+  animation: owl-poked 0.9s ease-in-out 2;
+}
+@keyframes owl-poked {
+  0%,
+  100% {
+    rotate: 0deg;
+  }
+  30% {
+    rotate: -3deg;
+  }
+  60% {
+    rotate: 3deg;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .live-owl-body,
+  .live-owl-peek .live-owl-body,
+  .owl-poked {
+    animation: none;
+  }
+}

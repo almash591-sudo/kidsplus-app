@@ -670,6 +670,68 @@ test.describe('мои дела (этап 30)', () => {
   });
 });
 
+test.describe('живой совёнок (этап 32)', () => {
+  /** Часы вперёд шагами: сценка — цепочка таймеров (полёт, фраза, пауза). */
+  const run = async (page: Page, ms: number) => {
+    for (let t = 0; t < ms; t += 1000) await page.clock.runFor(1000);
+  };
+  const said = async (page: Page) => (await spoken(page)).map((s) => s.text);
+
+  test.beforeEach(async ({ page }) => {
+    // Без полётов (мгновенно) и без случайностей: сценки предсказуемы.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.addInitScript(() => (Math.random = () => 0.1));
+    await page.clock.install({ time: new Date('2026-10-18T10:00:00') });
+  });
+
+  test('прячется за плиткой; нашли — «Ку-ку!»', async ({ page, backend: _ }) => {
+    await page.goto('/');
+    await expect(page.getByTestId('tile').first()).toBeVisible();
+    await expect(page.getByTestId('live-owl')).toHaveAttribute('data-mode', 'away');
+    await run(page, 24_000);
+    await expect(page.getByTestId('live-owl')).toHaveAttribute('data-mode', 'peek');
+    await shot(page, 'owl-peek');
+    await page.getByTestId('live-owl').dispatchEvent('pointerdown');
+    await run(page, 2_000);
+    await expect.poll(() => said(page)).toContain('Ку-ку!');
+  });
+
+  test('долго ничего не нажимает — садится на урок и зовёт', async ({ page, backend: _ }) => {
+    await page.goto('/');
+    await expect(page.getByTestId('tile').first()).toBeVisible();
+    // Прятки (никто не нашёл) — потом минута тишины — зовёт к уроку.
+    await run(page, 92_000);
+    await expect.poll(() => said(page)).toContain('Смотри сюда! Давай позанимаемся.');
+  });
+
+  test('все дела сделаны — в меню подлетает похвалить', async ({ page, backend }) => {
+    backend.habits = {
+      date: '2026-10-18',
+      habits: [
+        {
+          id: 'a',
+          preset: 'wash',
+          slot: 'morning',
+          remindAt: null,
+          timerSec: null,
+          title: speech('Умыться'),
+          remind: speech('Пора умываться!'),
+          done: false,
+        },
+      ],
+      stars: 0,
+      goal: null,
+      lastGrant: null,
+    };
+    await page.goto('/');
+    await page.getByTestId('habits-open').click();
+    await page.getByTestId('habit').first().dispatchEvent('pointerdown');
+    await page.getByTestId('go-home').click();
+    await run(page, 3_000);
+    await expect.poll(() => said(page)).toContain('Ты молодец!');
+  });
+});
+
 test.describe('пора спать (этап 31)', () => {
   const NIGHT = { phase: 'night' as const, minutesLeft: 600, night: '2026-10-18' };
   const night = (o: Partial<KidBedtime> = {}): KidBedtime => ({

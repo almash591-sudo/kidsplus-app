@@ -26,6 +26,7 @@ import {
   TEETH_DONE,
   TEETH_STEPS,
 } from '../phrases';
+import { owlBus } from '../owl/bus';
 import { Icon } from '../ui/icons';
 import { vary } from '../variety';
 
@@ -178,6 +179,8 @@ export function HabitsScreen({ onExit }: { onExit: () => void }) {
     if (!left.length) {
       said.push(ru(HABITS_ALL_DONE));
       burst(undefined, 30);
+      // Вернётся в меню — совёнок подлетит похвалить (этап 32).
+      owlBus.praise();
     }
     void playSequence(said);
   };

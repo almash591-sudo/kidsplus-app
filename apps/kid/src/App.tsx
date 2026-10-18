@@ -35,6 +35,8 @@ import { PairScreen } from './screens/PairScreen';
 import { calledStore, RestScreen } from './screens/RestScreen';
 import { bedtimeStore, NightScreen, OPEN_HABITS_EVENT } from './screens/NightScreen';
 import { inAndroidWebView, setVolume } from './kiosk';
+import { owlBus } from './owl/bus';
+import { LiveOwl } from './owl/LiveOwl';
 import {
   DayOverScreen,
   ParentCorner,
@@ -377,6 +379,8 @@ export function App() {
       stop.current = false;
       fx.whoosh();
       void playSequence([ru(s.lesson ? LESSON_DONE : CATEGORY_DONE)]);
+      // Урок пройден — совёнок подлетит похвалить, как только «Сегодня» откроется.
+      if (s.lesson) owlBus.praise();
       setState({ screen: 'today', playlist: s.playlist });
       void load();
       return;
@@ -454,6 +458,8 @@ export function App() {
       )}
     </>
   );
+  // Живой совёнок (этап 32) — только в меню: не на уроке, не на паузе и не ночью.
+  const owl = <LiveOwl evening={bedtime?.phase === 'soon' || new Date().getHours() >= 19} />;
   // Звонок — поверх всего: входящий видно и посреди урока, и ночью.
   if (inCall && callView) return <CallOverlay view={callView} me={callMe()!} />;
   // Радионяня: ночной экран поверх всего, кроме обычного звонка.
@@ -590,6 +596,7 @@ export function App() {
             onFree={() => setState({ screen: 'home', playlist: state.playlist, category: null })}
           />
           {corner}
+          {owl}
         </>
       );
     case 'home': {
@@ -618,6 +625,7 @@ export function App() {
               onBack={toToday}
             />
             {corner}
+            {owl}
           </>
         );
       }
@@ -642,6 +650,7 @@ export function App() {
             }
           />
           {corner}
+          {owl}
         </>
       );
     }
