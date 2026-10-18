@@ -826,3 +826,61 @@ export const rewardGrants = pgTable(
   },
   (t) => [index().on(t.childId, t.at)],
 );
+
+/**
+ * «Пора спать» (этап 31): отбой ребёнка по дням недели. Ночь — от отбоя до подъёма; skipNight —
+ * ночь (дата вечера), которую родитель снял кнопкой «Разбудить».
+ */
+export const bedtimes = pgTable('bedtimes', {
+  childId: uuid()
+    .primaryKey()
+    .references(() => children.id, { onDelete: 'cascade' }),
+  enabled: boolean().notNull().default(false),
+  /** ЧЧ:ММ в часовом поясе расписания. */
+  at: text().notNull(),
+  wakeAt: text().notNull(),
+  /** mon…sun */
+  days: text().array().notNull(),
+  warnMinutes: integer().notNull().default(15),
+  /** story | lullaby | track | none */
+  companion: text().notNull().default('story'),
+  trackId: uuid().references(() => audioTracks.id, { onDelete: 'set null' }),
+  skipNight: text(),
+  updatedAt: createdAt(),
+});
+
+/**
+ * Сказки на ночь: готовые (libraryCode) или придуманные моделью по теме родителя. Ребёнок
+ * слышит только approved. В модель уходят тема и возраст, без имени.
+ */
+export const stories = pgTable(
+  'stories',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    childId: uuid()
+      .notNull()
+      .references(() => children.id, { onDelete: 'cascade' }),
+    libraryCode: text(),
+    theme: text().notNull(),
+    title: text().notNull().default(''),
+    paragraphs: text()
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    /** queued | processing | draft | approved | failed */
+    status: text().notNull(),
+    /** Возраст ребёнка (лет) на момент заказа — для модели. */
+    ageYears: integer().notNull(),
+    attempts: integer().notNull().default(0),
+    error: text(),
+    /** Последний раз звучала на ночь — сказки идут по очереди. */
+    playedAt: timestamp({ withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: createdAt(),
+  },
+  (t) => [
+    index().on(t.childId, t.status),
+    index().on(t.status),
+    uniqueIndex().on(t.childId, t.libraryCode),
+  ],
+);

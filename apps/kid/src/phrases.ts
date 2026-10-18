@@ -338,6 +338,22 @@ export const TEETH_STEPS = [
 ] as const;
 export const TEETH_DONE = 'Готово! Какие чистые зубки!';
 
+/** «Пора спать» (этап 31). */
+export const BEDTIME_SOON = 'Скоро спать! Давай сделаем вечерние дела.';
+export const BEDTIME_SOON_PLAIN = 'Скоро спать! Пора заканчивать игры.';
+export const NIGHT_STORY = 'Пора спать! Ложись поудобнее, сейчас будет сказка.';
+export const NIGHT_LULLABY = 'Пора спать! Ложись поудобнее и слушай колыбельную.';
+export const NIGHT_QUIET = 'Пора спать! Закрывай глазки. Спокойной ночи!';
+export const NIGHT_END = 'Спокойной ночи! Сладких снов.';
+export const NIGHT_HUSH = [
+  'Ш-ш-ш. Ночь, все спят. Закрывай глазки.',
+  'Совёнок охраняет твой сон. Спи, малыш.',
+  'Тихо-тихо. Утром поиграем!',
+  'Звёздочки уже спят. И тебе пора.',
+];
+export const MORNING = 'Доброе утро! Совёнок проснулся. Давай сделаем утренние дела!';
+export const MORNING_PLAIN = 'Доброе утро! Новый день начинается!';
+
 export type Phrase = { text: string; lang: 'ru' | 'en' | 'zh' };
 
 /** Фразы приложения для этого списка ребёнка — чтобы озвучить их заранее. */
@@ -361,6 +377,15 @@ export function appPhrases(playlist: KidPlaylist): Phrase[] {
     ...Object.values(HABIT_SLOT_SAY),
     ...TEETH_STEPS.map((s) => s.text),
     TEETH_DONE,
+    BEDTIME_SOON,
+    BEDTIME_SOON_PLAIN,
+    NIGHT_STORY,
+    NIGHT_LULLABY,
+    NIGHT_QUIET,
+    NIGHT_END,
+    ...NIGHT_HUSH,
+    MORNING,
+    MORNING_PLAIN,
     CAMERA_ENOUGH,
     HINT_TODAY,
     HINT_PICK,

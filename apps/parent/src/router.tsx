@@ -24,6 +24,7 @@ import { BackupPage } from './pages/BackupPage';
 import { MomVoicePage } from './pages/MomVoicePage';
 import { VoicesPage } from './pages/VoicesPage';
 import { FamiliesPage } from './pages/FamiliesPage';
+import { SleepPage } from './pages/SleepPage';
 import { HabitsPage } from './pages/HabitsPage';
 
 export const router = createBrowserRouter([
@@ -46,6 +47,7 @@ export const router = createBrowserRouter([
       { path: 'mom-voice', element: <MomVoicePage /> },
       { path: 'now', element: <NowPage /> },
       { path: 'habits', element: <HabitsPage /> },
+      { path: 'sleep', element: <SleepPage /> },
       { path: 'plan', element: <PlanPage /> },
       { path: 'analytics', element: <AnalyticsPage /> },
       { path: 'captures', element: <CapturesPage /> },

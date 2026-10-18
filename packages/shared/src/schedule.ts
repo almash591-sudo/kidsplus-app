@@ -1,5 +1,6 @@
 // Учебный план и расписание дня (п. 4, 5.2 ТЗ): схемы для API и чистые функции расчёта дня.
 // Время считает сервер; здесь — только арифметика, без БД, чтобы её легко было проверить тестами.
+import type { BedtimeNow } from './bedtime';
 import { z } from 'zod';
 import { GAME_CATEGORIES, type GameCategory } from './api';
 
@@ -173,6 +174,8 @@ export interface KidToday {
   calledAt: string | null;
   /** Громкость телефона, 0–100, заданная родителем (киоск); null — не трогаем. */
   volume: number | null;
+  /** «Пора спать» (этап 31): скоро отбой или ночь; null — день. */
+  bedtime: BedtimeNow | null;
 }
 
 /** Чем занят ребёнок: предмет урока, свободное время или экран «Сегодня». */
@@ -320,6 +323,7 @@ export function computeToday(s: DayState): KidToday {
       rest: null,
       calledAt: null,
       volume: null,
+      bedtime: null,
     };
 
   const w = s.schedule.windows[s.clock.weekday];
@@ -345,6 +349,7 @@ export function computeToday(s: DayState): KidToday {
     rest: null,
     calledAt: null,
     volume: null,
+    bedtime: null,
   };
 }
 

@@ -826,3 +826,184 @@
 .habit-pop {
   color: #1c1b29;
 }
+
+/* ─── «Пора спать» (этап 31) ─────────────────────────────────────────────── */
+.night-screen {
+  position: relative;
+  min-height: 100dvh;
+  overflow: hidden;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 18px;
+  padding: 16px;
+  text-align: center;
+  color: #f2f0ff;
+  background: radial-gradient(circle at 72% 14%, #3b3f8f, #1b1d45 62%, #0d0e26);
+  transition: filter 4s ease;
+}
+
+/* Сказка дослушана — экран почти чёрный; касание — совёнок шепчет «спи». */
+.night-screen.dark {
+  filter: brightness(0.12);
+}
+
+.night-sky {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.night-star {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff8d6;
+  box-shadow: 0 0 6px #fff3b0;
+  animation: night-twinkle 4s ease-in-out infinite;
+}
+
+.night-moon {
+  position: absolute;
+  right: 12%;
+  top: 8%;
+  width: min(22vw, 96px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fffbe8, #ffe9a8 60%, #f5d77a);
+  box-shadow:
+    0 0 40px 10px rgb(255 236 170 / 0.35),
+    inset -14px -8px 0 rgb(220 190 110 / 0.35);
+  animation: rest-float 9s ease-in-out infinite;
+}
+
+.night-scene {
+  position: relative;
+  width: min(64vw, 300px);
+  aspect-ratio: 1;
+}
+
+.night-owl {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  transform-origin: 50% 100%;
+  filter: drop-shadow(0 12px 24px rgb(0 0 0 / 0.45));
+  animation: rest-breathe 3.4s ease-in-out infinite;
+}
+
+.night-scene .rest-z {
+  left: 70%;
+}
+
+.night-story {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+}
+
+.night-title {
+  margin: 0;
+  max-width: 20ch;
+  font-size: clamp(22px, 6vw, 30px);
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+/* Сколько сказки прочитано — огоньки-страницы. */
+.night-pages {
+  display: flex;
+  gap: 8px;
+}
+
+.night-pages span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.2);
+  transition: background 0.6s;
+}
+
+.night-pages span.on {
+  background: #ffe9a8;
+  box-shadow: 0 0 8px #ffe9a8;
+}
+
+.night-notes {
+  display: flex;
+  gap: 18px;
+  font-size: 34px;
+  color: #ffe9a8;
+}
+
+.night-notes span {
+  animation: rest-z 3s ease-in-out infinite;
+}
+
+.night-notes span:nth-child(2) {
+  animation-delay: 1s;
+}
+
+.night-notes span:nth-child(3) {
+  animation-delay: 2s;
+}
+
+.night-hush {
+  position: relative;
+  max-width: 22ch;
+  margin: 0;
+  font-size: clamp(20px, 5.5vw, 28px);
+  font-weight: 800;
+  animation: fade-in 0.6s ease-out both;
+}
+
+@keyframes night-twinkle {
+  50% {
+    opacity: 0.25;
+    transform: scale(0.7);
+  }
+}
+
+/* «Скоро спать!» — вечернее небо; «Доброе утро!» — рассвет. */
+.habit-pop.bedtime-pop.soon {
+  background: radial-gradient(circle at 70% 10%, #6b5fb5, #2a2766 70%);
+  color: #f6f2ff;
+}
+
+.habit-pop.bedtime-pop.morning {
+  background: linear-gradient(180deg, #ffe7b8, #ffd1dc);
+}
+
+.habit-pop .bedtime-owl {
+  width: min(52vw, 240px);
+}
+
+.bedtime-habits {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 64px;
+  padding: 8px 22px 8px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: #fff;
+  color: #1c1b29;
+  font: inherit;
+  font-size: 22px;
+  font-weight: 900;
+  box-shadow: 0 8px 20px rgb(0 0 0 / 0.2);
+}
+
+.habit-pop .bedtime-habits img {
+  width: 48px;
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .night-star,
+  .night-moon,
+  .night-owl,
+  .night-notes span {
+    animation: none;
+  }
+}

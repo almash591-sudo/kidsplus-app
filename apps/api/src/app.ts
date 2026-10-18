@@ -26,6 +26,7 @@ import { voiceRoutes } from './routes/voice';
 import { backupRoutes } from './routes/backup';
 import { kioskUpdateRoutes } from './routes/kiosk-update';
 import { familyVoiceRoutes } from './routes/family-voice';
+import { bedtimeRoutes } from './routes/bedtime';
 import { habitsRoutes } from './routes/habits';
 import { EmojiCatalog } from './services/emoji';
 
@@ -127,6 +128,7 @@ export async function buildApp({
   kioskUpdateRoutes(app, ctx);
   familyVoiceRoutes(app, ctx);
   habitsRoutes(app, ctx);
+  bedtimeRoutes(app, ctx);
 
   return app;
 }
