@@ -1,5 +1,6 @@
 import type { KidCategory, KidItem, KidPlaylist } from '@kidsplus/shared/api';
 import type { Activity, KidToday, Subject } from '@kidsplus/shared/schedule';
+import { startAutoUpdate } from '@kidsplus/shared/app-update';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { kidApi, NotPairedError } from './api';
 import { playSequence, speechLanguages } from './audio';
@@ -33,7 +34,7 @@ import { isLessonPath } from './screens/LessonPath';
 import { PairScreen } from './screens/PairScreen';
 import { calledStore, RestScreen } from './screens/RestScreen';
 import { bedtimeStore, NightScreen, OPEN_HABITS_EVENT } from './screens/NightScreen';
-import { setVolume } from './kiosk';
+import { inAndroidWebView, setVolume } from './kiosk';
 import {
   DayOverScreen,
   ParentCorner,
@@ -66,6 +67,8 @@ type State =
 
 /** Сигнал серверу о занятии — раз в столько миллисекунд. */
 const BEAT_MS = 15_000;
+/** Сколько экран не трогали, прежде чем подхватить новую версию приложения. */
+const UPDATE_IDLE_MS = 2 * 60_000;
 
 /** Код привязки из QR-ссылки вида /pair?code=XXXX. */
 function codeFromLocation(): string | null {
@@ -244,6 +247,38 @@ export function App() {
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [paired]);
+  // Киоск (без service worker, приложение открыто сутками): новая версия на сервере —
+  // перезагрузка, только пока ребёнок ничем не занят: на главном экране, без игры, звонка,
+  // камеры, ночи и меню родителя, и 2 минуты никто не трогал экран. Вне киоска обновляет SW.
+  const parentMenuRef = useRef(false);
+  useEffect(() => {
+    parentMenuRef.current = parentMenu;
+  }, [parentMenu]);
+  useEffect(() => {
+    if (!inAndroidWebView()) return;
+    let touchedAt = Date.now();
+    const touched = () => (touchedAt = Date.now());
+    window.addEventListener('pointerdown', touched, true);
+    const stop = startAutoUpdate({
+      canReload: () => {
+        const s = current.current.screen;
+        return (
+          (s === 'home' || s === 'today' || s === 'offline') &&
+          !cameraOpen.current &&
+          !inCallRef.current &&
+          !monitorRef.current &&
+          !parentMenuRef.current &&
+          currentToday.current?.bedtime?.phase !== 'night' &&
+          Date.now() - touchedAt > UPDATE_IDLE_MS
+        );
+      },
+    });
+    return () => {
+      stop();
+      window.removeEventListener('pointerdown', touched, true);
+    };
+  }, []);
+
   const isPlan = plan(today);
   // «Тебя зовут!» (этап 29): свежий вызов (до 3 минут) — слою поверх приложения (main.tsx).
   const calledAt = today?.calledAt ?? null;
