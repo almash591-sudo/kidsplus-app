@@ -48,6 +48,9 @@ describe('озвучка через ProxyAPI (OpenAI-совместимый вх
     });
     await p.synthesize({ text: 'а', lang: 'ru', speed: 0.85 });
     expect(bodies.map((b) => 'speed' in b)).toEqual([true, false]);
+    // Дальше эта модель сразу без скорости — один запрос на фразу.
+    await p.synthesize({ text: 'б', lang: 'ru', speed: 0.85 });
+    expect(bodies.map((b) => 'speed' in b)).toEqual([true, false, false]);
   });
 
   it('нет денег на балансе (402) и 429 — подождать; неверный голос (400) — нет', async () => {
@@ -68,5 +71,8 @@ describe('озвучка через ProxyAPI (OpenAI-совместимый вх
     expect((await err(402))?.retryable).toBe(true);
     expect((await err(429))?.retryable).toBe(true);
     expect((await err(400))?.retryable).toBe(false);
+    expect((await err(429))?.wait).toBe(true);
+    expect((await err(402))?.wait).toBe(true);
+    expect((await err(503))?.wait).toBe(false);
   });
 });

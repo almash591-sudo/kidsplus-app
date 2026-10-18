@@ -51,7 +51,7 @@ export class GoogleTtsProvider implements TtsProvider {
     if (!res.ok) {
       const message = `Google TTS ${res.status}: ${error}`;
       // 429 и 5xx — временные; 400/401/403 — неверный запрос или ключ.
-      throw new TtsError(message, res.status === 429 || res.status >= 500);
+      throw new TtsError(message, res.status === 429 || res.status >= 500, res.status === 429);
     }
 
     const { audioContent } = (await res.json()) as { audioContent?: string };
