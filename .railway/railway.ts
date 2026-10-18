@@ -28,7 +28,8 @@ export default defineRailway(() => {
     alerts: { usage: { '100': {}, '80': {}, '95': {} } },
     allowOnlineResize: true,
     region: REGION,
-    sizeMB: 500,
+    // 2026-10-18: 500 МБ переполнились (медиа в БД), тариф Hobby — 5 ГБ.
+    sizeMB: 5000,
   });
 
   const api = service('api', {
@@ -60,6 +61,8 @@ export default defineRailway(() => {
       TRUST_PROXY_HOPS: '2',
       // Секрет: значение задаётся вне репозитория (`railway variable set`), здесь только сохраняется.
       SETUP_TOKEN: preserve(),
+      // Выпуск киоска (scripts/publish-kiosk.ps1): токен создаёт скрипт.
+      KIOSK_PUBLISH_TOKEN: preserve(),
       // browser | google — задаётся вне репозитория вместе с ключом worker'а (docs/railway.md).
       TTS_PROVIDER: preserve(),
       // Дневной лимит токенов модели (кабинет показывает остаток); как у worker'а.
