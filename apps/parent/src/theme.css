@@ -679,3 +679,41 @@ a.attention-row:active {
     font-size: 13px;
   }
 }
+
+/* Привычки (этап 30): неделя отметок — 7 кружков под делом, без прокрутки вбок. */
+.habit-row + .habit-row {
+  padding-top: 10px;
+  border-top: 1px solid var(--mantine-color-default-border);
+}
+
+.habit-day {
+  flex: 1;
+  max-width: 52px;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+}
+
+.habit-day-name {
+  font-size: 12px;
+  color: var(--mantine-color-dimmed);
+}
+
+.habit-day.today .habit-day-name {
+  color: var(--mantine-color-blue-6);
+  font-weight: 700;
+}
+
+.habit-day-mark {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 20px;
+  background: var(--mantine-color-default-hover);
+}
+
+.habit-day.today .habit-day-mark {
+  outline: 2px solid var(--mantine-color-blue-4);
+}

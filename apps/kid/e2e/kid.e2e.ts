@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test as base, type Page } from '@playwright/test';
+import type { KidHabit, KidHabits } from '@kidsplus/shared/habits';
 import {
   callStatus,
   type CallEvent,
@@ -40,6 +41,9 @@ interface Backend {
   paired: boolean;
   /** Аудиотека: треки «детям». */
   audio?: { id: string; title: string; url: string }[];
+  /** «Мои дела» (этап 30). */
+  habits?: KidHabits;
+  habitsDone?: string[];
   /** День по расписанию; по умолчанию расписание выключено. */
   today?: Record<string, unknown>;
   /** Уроки по предметам (для режима расписания). */
@@ -82,11 +86,12 @@ interface Backend {
   battery?: { level: number; charging: boolean }[];
 }
 
-const speech = (text: string) => ({ text, lang: 'ru', audioUrl: null });
+const speech = (text: string) => ({ text, lang: 'ru' as const, audioUrl: null });
 const PHRASES = {
   correct: [speech('Молодец!')],
   retry: [speech('Попробуй ещё.')],
   done: [speech('Отлично!')],
+  slow: [speech('Не спеши.')],
 };
 const PHRASES_EN = {
   correct: [{ text: 'Great job!', lang: 'en', audioUrl: null }],
@@ -355,6 +360,10 @@ async function mockBackend(page: Page, backend: Backend) {
         return route.fulfill({ json: backend.today ?? OFF_TODAY });
       case '/api/kid/audio':
         return route.fulfill({ json: backend.audio ?? [] });
+      case '/api/kid/habits':
+        return route.fulfill({
+          json: backend.habits ?? { date: '', habits: [], stars: 0, goal: null, lastGrant: null },
+        });
       case '/api/kid/heartbeat':
         (backend.beats ??= []).push(route.request().postDataJSON());
         return route.fulfill({
@@ -410,6 +419,11 @@ async function mockBackend(page: Page, backend: Backend) {
       return r.json === undefined
         ? route.fulfill({ status: r.status })
         : route.fulfill({ status: r.status, json: r.json });
+    }
+    if (url.pathname.startsWith('/api/kid/habits/')) {
+      const id = url.pathname.split('/')[4]!;
+      (backend.habitsDone ??= []).push(id);
+      return route.fulfill({ json: { stars: (backend.habits?.stars ?? 0) + 1 } });
     }
     if (url.pathname.startsWith('/api/kid/lesson/')) {
       const subject = url.pathname.split('/').pop()!;
@@ -511,6 +525,129 @@ test.describe('пульт родителя (этап 29)', () => {
     await page.reload();
     await expect(page.getByTestId('tile').first()).toBeVisible();
     await expect(page.getByTestId('called')).toHaveCount(0);
+  });
+});
+
+test.describe('мои дела (этап 30)', () => {
+  const habit = (id: string, o: Partial<KidHabit> = {}): KidHabit => ({
+    id,
+    preset: 'wash',
+    slot: 'morning',
+    remindAt: null,
+    timerSec: null,
+    title: speech(`дело ${id}`),
+    remind: speech(`Пора! дело ${id}.`),
+    done: false,
+    ...o,
+  });
+  const habits = (list: KidHabit[], o: Partial<KidHabits> = {}): KidHabits => ({
+    date: '2026-10-18',
+    habits: list,
+    stars: 3,
+    goal: { title: speech('Мультик'), price: 5 },
+    lastGrant: null,
+    ...o,
+  });
+
+  test('без дел кнопки нет', async ({ page, backend: _ }) => {
+    await page.goto('/');
+    await expect(page.getByTestId('tile').first()).toBeVisible();
+    await expect(page.getByTestId('habits-open')).toHaveCount(0);
+  });
+
+  test('отметить дело — звёздочка в копилку; всё сделано — похвала', async ({ page, backend }) => {
+    await page.clock.install({ time: new Date('2026-10-18T08:00:00') });
+    backend.habits = habits([habit('a'), habit('b', { preset: 'bed', done: true })]);
+    await page.goto('/');
+    await expect(page.getByTestId('habits-stars')).toHaveText('3');
+    await shot(page, 'habits-dock');
+    await page.getByTestId('habits-open').click();
+    await expect(page.getByTestId('habits')).toBeVisible();
+    await expect(page.getByTestId('habits-goal')).toContainText('Мультик');
+    await expect(page.getByTestId('jar-stars')).toContainText('3');
+
+    const first = page.getByTestId('habit').first();
+    await first.dispatchEvent('pointerdown');
+    await expect(first).toHaveAttribute('data-done', '1');
+    await expect(page.getByTestId('jar-stars')).toContainText('4');
+    await shot(page, 'habits');
+    expect(backend.habitsDone).toEqual(['a']);
+    await expect
+      .poll(async () => (await spoken(page)).map((s) => s.text))
+      .toContain('Все дела сделаны! Совёнок тобой гордится!');
+
+    // Уже сделанное — звёздочку второй раз не даёт.
+    await first.dispatchEvent('pointerdown');
+    expect(backend.habitsDone).toEqual(['a']);
+    await page.getByTestId('go-home').click();
+    await expect(page.getByTestId('habits-stars')).toHaveText('4');
+  });
+
+  test('зубы — таймер с совёнком, в конце отметка', async ({ page, backend }) => {
+    await page.clock.install({ time: new Date('2026-10-18T20:00:00') });
+    backend.habits = habits([
+      habit('t', { preset: 'teeth', slot: 'evening', timerSec: 120 }),
+      habit('m', { slot: 'morning' }),
+    ]);
+    await page.goto('/');
+    await page.getByTestId('habits-open').click();
+    // Вечер — вечерние дела; утро — вкладкой.
+    await expect(page.getByTestId('slot-evening')).toHaveAttribute('aria-selected', 'true');
+    await page.getByTestId('habit').first().dispatchEvent('pointerdown');
+    await expect(page.getByTestId('teeth-timer')).toBeVisible();
+    await shot(page, 'teeth');
+    await expect
+      .poll(async () => (await spoken(page)).map((s) => s.text))
+      .toContain('Чистим зубки вместе с совёнком! Сначала верхние.');
+    await page.clock.runFor(31_000);
+    await expect
+      .poll(async () => (await spoken(page)).map((s) => s.text))
+      .toContain('Теперь нижние зубки!');
+    await page.clock.runFor(85_000);
+    await expect(page.getByTestId('teeth-timer')).toBeVisible();
+    await page.clock.runFor(10_000);
+    await expect(page.getByTestId('habits')).toBeVisible();
+    expect((await spoken(page)).map((s) => s.text)).toContain('Готово! Какие чистые зубки!');
+    expect(backend.habitsDone).toEqual(['t']);
+    await page.getByTestId('slot-morning').click();
+    await expect(page.getByTestId('habit')).toHaveAttribute('data-done', '0');
+  });
+
+  test('напоминание в заданное время — один раз за день', async ({ page, backend }) => {
+    await page.clock.install({ time: new Date('2026-10-18T20:31:00') });
+    backend.habits = habits([
+      habit('t', {
+        preset: 'teeth',
+        slot: 'evening',
+        remindAt: '20:30',
+        remind: speech('Пора чистить зубки!'),
+      }),
+      habit('x', { slot: 'evening', remindAt: '19:00' }), // час уже прошёл
+    ]);
+    await page.goto('/');
+    await expect(page.getByTestId('habit-remind')).toContainText('Пора чистить зубки!');
+    await shot(page, 'habit-remind');
+    await expect
+      .poll(async () => (await spoken(page)).map((s) => s.text))
+      .toContain('Пора чистить зубки!');
+    await page.getByTestId('habit-remind').dispatchEvent('pointerdown');
+    await expect(page.getByTestId('habit-remind')).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByTestId('tile').first()).toBeVisible();
+    await expect(page.getByTestId('habit-remind')).toHaveCount(0);
+  });
+
+  test('выданная награда — праздник один раз', async ({ page, backend }) => {
+    backend.habits = habits([habit('a')], {
+      lastGrant: { id: 'g1', title: speech('Поход в парк') },
+    });
+    await page.goto('/');
+    await expect(page.getByTestId('habit-grant')).toContainText('Поход в парк');
+    await page.getByTestId('habit-grant').dispatchEvent('pointerdown');
+    await expect(page.getByTestId('habit-grant')).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByTestId('tile').first()).toBeVisible();
+    await expect(page.getByTestId('habit-grant')).toHaveCount(0);
   });
 });
 
@@ -823,6 +960,9 @@ test.describe('цикл видео → квиз → видео', () => {
 
     await wrong(page).first().dispatchEvent('pointerdown');
     await expect(wrong(page).first()).toHaveClass(/faded/);
+    // После ошибки ответы на миг закрыты (этап 30).
+    await expect(page.getByTestId('quiz-round')).toHaveAttribute('data-phase', 'wrong');
+    await expect(page.getByTestId('quiz-round')).toHaveAttribute('data-phase', 'answering');
     await correct(page).dispatchEvent('pointerdown');
 
     await expect
@@ -833,19 +973,25 @@ test.describe('цикл видео → квиз → видео', () => {
       });
   });
 
-  test('три быстрых неверных касания — пауза и повтор вопроса', async ({ page, backend }) => {
+  test('два неверных подряд в спешке — «не спеши», пауза и повтор вопроса', async ({
+    page,
+    backend,
+  }) => {
     withQuiz(backend, 4, 1);
     await page.goto('/');
     await page.getByTestId('tile').first().click();
     await finishVideo(page);
     await answering(page);
 
-    const w = await wrong(page).all();
-    for (const o of w) await o.dispatchEvent('pointerdown');
+    const [w1, w2] = await wrong(page).all();
+    await w1!.dispatchEvent('pointerdown');
+    await expect(page.getByTestId('quiz-round')).toHaveAttribute('data-phase', 'answering');
+    await w2!.dispatchEvent('pointerdown');
     await expect(page.getByTestId('quiz-round')).toHaveAttribute('data-phase', 'paused');
+    await expect(page.getByTestId('quiz-think')).toBeVisible();
     // После паузы вопрос звучит снова и ответы снова принимаются.
     await expect(page.getByTestId('quiz-round')).toHaveAttribute('data-phase', 'answering', {
-      timeout: 6000,
+      timeout: 8000,
     });
   });
 });
@@ -1275,6 +1421,7 @@ test.describe('игры', () => {
     await dragTo(page, await center(carrot), await center(bins.nth(1)));
     await expect(items).toHaveCount(3);
     await page.waitForTimeout(400); // предмет возвращается на место с анимацией
+    await expect(page.getByTestId('game')).toHaveAttribute('data-lock', 'none');
     while ((await items.count()) > 0) {
       const it = items.first();
       const src = (await it.locator('img').getAttribute('data-src'))!;
@@ -1571,6 +1718,7 @@ test.describe('новые игры', () => {
     const slot = (id: string) => page.locator(`[data-testid=shadow-slot][data-image="${id}"]`);
     await dragOnto(page, item(CAT), slot(LION));
     await expect(page.getByTestId('shadow-item')).toHaveCount(3);
+    await expect(page.getByTestId('game')).toHaveAttribute('data-lock', 'none');
     for (const id of [CAT, LION, RABBIT]) {
       await page.waitForTimeout(500);
       await dragOnto(page, item(id), slot(id));
@@ -1704,6 +1852,30 @@ test.describe('новые игры', () => {
     expect((await spoken(page)).map((s) => s.text)).toContain('Морковка — не зверь.');
   });
 
+  test('ошибки в игре: касания на миг закрыты, две подряд в спешке — «не спеши» с совёнком', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [
+      game(1, { kind: 'odd', rounds: [{ imageIds: [CAT, LION, RABBIT, CARROT], odd: 3 }] }),
+    ];
+    await openGame(page);
+    const cell = (i: number) => page.locator(`[data-testid=odd-cell][data-index="${i}"]`);
+    const screen = page.getByTestId('game');
+    await cell(0).click();
+    await expect(screen).toHaveAttribute('data-lock', 'wait');
+    await expect(screen).toHaveAttribute('data-lock', 'none');
+    await cell(1).click();
+    await expect(screen).toHaveAttribute('data-lock', 'think');
+    await expect(page.getByTestId('game-think')).toBeVisible();
+    await expect(screen).toHaveAttribute('data-lock', 'none', { timeout: 6000 });
+    const said = (await spoken(page)).map((s) => s.text);
+    expect(said).toContain('Попробуй ещё.');
+    expect(said).toContain('Не спеши.');
+    await cell(3).click();
+    await expectFinished(page, backend);
+  });
+
   test('бездействие: задание звучит снова, палец показывает верный ответ', async ({
     page,
     backend,
@@ -1813,6 +1985,7 @@ test.describe('новые игры', () => {
     const slots = page.getByTestId('size-slot');
     await dragOnto(page, item(0), slots.nth(2));
     await expect(item(0)).toHaveCount(1);
+    await expect(page.getByTestId('game')).toHaveAttribute('data-lock', 'none');
     for (const k of [0, 1, 2]) {
       await page.waitForTimeout(450);
       await dragOnto(page, item(k), slots.nth(k));

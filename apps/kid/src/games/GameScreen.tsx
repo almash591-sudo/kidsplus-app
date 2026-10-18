@@ -1,13 +1,13 @@
 import type { KidPhrases } from '@kidsplus/shared/api';
 import type { GameKind, GameSpec } from '@kidsplus/shared/games';
-import { useEffect, useState, type ComponentType } from 'react';
+import { useEffect, useState, useSyncExternalStore, type ComponentType } from 'react';
 import { sendEvent } from '../api';
 import { stopAudio } from '../audio';
 import { markDone, markTried } from '../progress';
 import { Celebrate } from '../Celebrate';
 import { Balloons } from './Balloons';
 import { Coloring } from './Coloring';
-import { repeatCurrentTask, say, setTask, type GameProps } from './common';
+import { gameLock, repeatCurrentTask, say, setTask, type GameProps } from './common';
 import { Counting } from './Counting';
 import { Drawing } from './Drawing';
 import { Memory } from './Memory';
@@ -100,7 +100,15 @@ export function GameScreen(props: {
   const [finished, setFinished] = useState(false);
   const Game = GAMES[spec.kind] as ComponentType<GameProps<GameKind>>;
 
-  useEffect(() => () => stopAudio(), []);
+  useEffect(
+    () => () => {
+      stopAudio();
+      gameLock.reset();
+    },
+    [],
+  );
+  // После ошибки касания на миг закрыты, при «тыканье наугад» — пауза с совёнком (этап 30).
+  const lock = useSyncExternalStore(gameLock.subscribe, gameLock.get);
 
   // Как играть — для игр без своего задания (игры с заданием говорят его сами).
   useEffect(() => {
@@ -122,8 +130,9 @@ export function GameScreen(props: {
 
   return (
     <div
-      className="game-screen"
+      className={lock === 'none' ? 'game-screen' : `game-screen kp-${lock}`}
       data-testid="game"
+      data-lock={lock}
       data-kind={spec.kind}
       // След пальца — в любой игре, пока палец на экране.
       onPointerMoveCapture={(e) => e.buttons && trail(e.clientX, e.clientY)}
@@ -144,6 +153,11 @@ export function GameScreen(props: {
             setFinished(true);
           }}
         />
+      )}
+      {lock === 'think' && (
+        <div className="game-think" data-testid="game-think" aria-hidden="true">
+          <img src="/owl/point.webp" alt="" draggable={false} />
+        </div>
       )}
       {!finished && <Mascot />}
       {!finished && <IdleHint onIdle={remind} first={6000} />}

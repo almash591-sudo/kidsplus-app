@@ -746,3 +746,83 @@ export const audioTracks = pgTable(
   },
   (t) => [index().on(t.createdAt)],
 );
+
+/**
+ * Привычки ребёнка (этап 30): дела утра, дня и вечера. Удалённая родителем — archivedAt
+ * (отметки и заработанные за неё звёзды остаются).
+ */
+export const habits = pgTable(
+  'habits',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    childId: uuid()
+      .notNull()
+      .references(() => children.id, { onDelete: 'cascade' }),
+    /** Готовое дело (teeth, wash…) — картинка и напоминание; null — своё дело родителя. */
+    preset: text(),
+    title: text().notNull(),
+    /** morning | day | evening */
+    slot: text().notNull(),
+    /** Напоминание на телефоне, ЧЧ:ММ по часам телефона; null — без напоминания. */
+    remindAt: text(),
+    position: integer().notNull().default(0),
+    archivedAt: timestamp({ withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [index().on(t.childId)],
+);
+
+/** Отметка «сделал» — одна на дело в день (дата — в часовом поясе расписания); одна звёздочка. */
+export const habitMarks = pgTable(
+  'habit_marks',
+  {
+    habitId: uuid()
+      .notNull()
+      .references(() => habits.id, { onDelete: 'cascade' }),
+    childId: uuid()
+      .notNull()
+      .references(() => children.id, { onDelete: 'cascade' }),
+    date: text().notNull(),
+    at: timestamp({ withTimezone: true }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.habitId, t.date] }), index().on(t.childId, t.date)],
+);
+
+/** Награды за звёзды, которые задаёт родитель. */
+export const rewards = pgTable(
+  'rewards',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    childId: uuid()
+      .notNull()
+      .references(() => children.id, { onDelete: 'cascade' }),
+    title: text().notNull(),
+    price: integer().notNull(),
+    /** Бонусные минуты к времени дня при выдаче; null — награда «в жизни». */
+    bonusMinutes: integer(),
+    archivedAt: timestamp({ withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [index().on(t.childId), check('rewards_price', sql`${t.price} > 0`)],
+);
+
+/**
+ * Выданные награды: звёзды списаны. Баланс копилки = отметки − сумма price выдач (без
+ * отдельного счётчика — не разойдётся). Название и цена копируются: награду могут удалить.
+ */
+export const rewardGrants = pgTable(
+  'reward_grants',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    childId: uuid()
+      .notNull()
+      .references(() => children.id, { onDelete: 'cascade' }),
+    rewardId: uuid().references(() => rewards.id, { onDelete: 'set null' }),
+    title: text().notNull(),
+    price: integer().notNull(),
+    bonusMinutes: integer(),
+    grantedBy: uuid().references(() => parentUsers.id, { onDelete: 'set null' }),
+    at: timestamp({ withTimezone: true }).notNull(),
+  },
+  (t) => [index().on(t.childId, t.at)],
+);

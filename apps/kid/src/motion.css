@@ -102,19 +102,68 @@
   transition: transform 0.1s;
 }
 
-/* Не тот ответ — мягкое покачивание, без резкости. */
+/* Не тот ответ (этап 30) — заметная тряска «нет-нет» и красноватая вспышка, потом гаснет. */
 .quiz-option.faded,
-.count-option.off {
-  animation: wobble 0.45s ease-in-out;
+.count-option.off,
+.kp-shake {
+  animation: shake-no 0.55s ease-in-out;
 }
 
-@keyframes wobble {
-  25% {
-    transform: translateX(-6px) rotate(-2deg);
+@keyframes shake-no {
+  0% {
+    filter: none;
+  }
+  15% {
+    transform: translateX(-14px) rotate(-3deg);
+    filter: drop-shadow(0 0 10px rgb(232 69 60 / 0.75));
+  }
+  35% {
+    transform: translateX(12px) rotate(3deg);
+  }
+  55% {
+    transform: translateX(-9px) rotate(-2deg);
   }
   75% {
-    transform: translateX(6px) rotate(2deg);
+    transform: translateX(6px) rotate(1deg);
   }
+  100% {
+    filter: none;
+  }
+}
+
+/* Пауза «не спеши»: совёнок посередине, ответы приглушены. */
+.quiz-think,
+.game-think {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  z-index: 30;
+}
+
+.quiz-think img,
+.game-think img {
+  width: min(42vw, 220px);
+  animation: think-in 0.4s ease-out;
+}
+
+@keyframes think-in {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+}
+
+/* В игре после ошибки касания на миг закрыты (кроме кнопок «домой» и «ушко»). */
+.game-screen.kp-wait > :not(.corner-button) {
+  pointer-events: none;
+}
+
+.game-screen.kp-think > :not(.corner-button, .game-think) {
+  pointer-events: none;
+  opacity: 0.45;
+  transition: opacity 0.2s;
 }
 
 .count-option.right {

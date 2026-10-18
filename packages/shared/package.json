@@ -20,6 +20,7 @@
     "./audio": "./src/audio.ts",
     "./letters-lessons": "./src/letters-lessons.ts",
     "./schedule": "./src/schedule.ts",
+    "./habits": "./src/habits.ts",
     "./plan-fill": "./src/plan-fill.ts",
     "./analytics": "./src/analytics.ts",
     "./push": "./src/push.ts",

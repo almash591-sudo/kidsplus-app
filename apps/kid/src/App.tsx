@@ -7,6 +7,7 @@ import { categoriesOf, itemsOf, needsCategoryPick } from './categories';
 import { useBattery } from './battery';
 import { BabyScreen } from './baby/BabyScreen';
 import { AlbumButton, AlbumScreen } from './screens/AlbumScreen';
+import { habitsStore, HabitsButton, HabitsScreen } from './screens/HabitsScreen';
 import { BatteryBadge } from './BatteryBadge';
 import { BrightnessButton } from './ui/Brightness';
 import { CameraScreen } from './camera/CameraScreen';
@@ -127,9 +128,9 @@ export function App() {
   const [today, setToday] = useState<KidToday | null>(null);
   const [parentMenu, setParentMenu] = useState(false);
   /** Камера или галерея поверх экрана выбора (этап 9); время занятий не тратит. */
-  const [camera, setCamera] = useState<'camera' | 'gallery' | 'calls' | 'album' | 'audio' | null>(
-    null,
-  );
+  const [camera, setCamera] = useState<
+    'camera' | 'gallery' | 'calls' | 'album' | 'audio' | 'habits' | null
+  >(null);
   const callView = useCallView();
   const inCall = Boolean(
     callView?.call &&
@@ -282,11 +283,21 @@ export function App() {
     if (paired && isPlan) void beat();
   }, [paired, isPlan, activityNow, itemNow, beat]);
 
+  // «Мои дела» (этап 30): загружаются, пока телефон привязан (кнопка в доке, напоминания).
+  useEffect(() => {
+    if (!paired) return;
+    habitsStore.start();
+    return () => habitsStore.stop();
+  }, [paired]);
+
   // Живой канал: родитель нажал «пауза», «+10 минут» — сразу перечитываем день.
   useEffect(() => {
     if (!paired || typeof EventSource === 'undefined') return;
     const es = new EventSource('/api/kid/live');
-    es.addEventListener('day', () => void refreshToday());
+    es.addEventListener('day', () => {
+      void refreshToday();
+      void habitsStore.refresh();
+    });
     // Звонки (этап 10): состояние звонка и сигналы соединения.
     const onCall = (e: Event) => onCallEvent((e as MessageEvent<string>).data);
     es.addEventListener('call', onCall);
@@ -386,6 +397,7 @@ export function App() {
           {cameraAllowed && <CameraButton onOpen={() => setCamera('camera')} />}
           {paired && <CallsButton onOpen={() => setCamera('calls')} />}
           <AlbumButton onOpen={() => setCamera('album')} />
+          {paired && <HabitsButton onOpen={() => setCamera('habits')} />}
           {audioAllowed && <AudioButton onOpen={() => setCamera('audio')} />}
           <BrightnessButton />
         </nav>
@@ -411,6 +423,16 @@ export function App() {
         <RestScreen reason={today.rest} />
         <ParentCorner onUnlock={() => setParentMenu(true)} />
       </>
+    );
+  // «Мои дела» — в любое время, и после занятий (зубы чистят вечером), и на паузе.
+  if (camera === 'habits' && paired)
+    return (
+      <HabitsScreen
+        onExit={() => {
+          fx.whoosh();
+          setCamera(null);
+        }}
+      />
     );
   if (camera === 'album')
     return (

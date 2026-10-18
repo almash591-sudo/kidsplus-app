@@ -24,11 +24,13 @@ export type Rng = () => number;
 /** Касания не принимаются, пока звучит вопрос, и минимум столько после показа (п. 5.4 ТЗ). */
 export const MIN_LOCK_MS = 1000;
 /** «Тыканье наугад»: столько неверных касаний подряд… */
-export const RAPID_WRONG_COUNT = 3;
+export const RAPID_WRONG_COUNT = 2;
 /** …каждое быстрее этого интервала после предыдущего. */
-export const RAPID_WRONG_MS = 1000;
+export const RAPID_WRONG_MS = 2500;
 /** Пауза перед повтором вопроса, если ребёнок тыкает наугад. */
-export const RAPID_PAUSE_MS = 2500;
+export const RAPID_PAUSE_MS = 3000;
+/** После неверного ответа варианты закрыты на этот миг — подумать, а не жать дальше. */
+export const WRONG_LOCK_MS = 900;
 
 export function shuffle<T>(items: readonly T[], rng: Rng = Math.random): T[] {
   const a = [...items];

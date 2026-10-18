@@ -26,6 +26,7 @@ import { voiceRoutes } from './routes/voice';
 import { backupRoutes } from './routes/backup';
 import { kioskUpdateRoutes } from './routes/kiosk-update';
 import { familyVoiceRoutes } from './routes/family-voice';
+import { habitsRoutes } from './routes/habits';
 import { EmojiCatalog } from './services/emoji';
 
 /** Настройки модерации по умолчанию (как в env). */
@@ -125,6 +126,7 @@ export async function buildApp({
   backupRoutes(app, ctx);
   kioskUpdateRoutes(app, ctx);
   familyVoiceRoutes(app, ctx);
+  habitsRoutes(app, ctx);
 
   return app;
 }

@@ -9,8 +9,11 @@ const {
   calls,
   events,
   flashcardDecks,
+  habitMarks,
+  habits,
   interactives,
   kidCaptures,
+  rewardGrants,
   videoSegments,
   videoSources,
 } = schema;
@@ -168,6 +171,20 @@ export async function childActivity(
   for (const s of shots)
     if (inDay(s.takenAt))
       add(s.takenAt, 'capture', s.kind === 'video' ? 'Снял видео' : 'Сделал фото');
+
+  // Привычки (этап 30): отметки дня и выданные награды.
+  const done = await db
+    .select({ at: habitMarks.at, title: habits.title })
+    .from(habitMarks)
+    .innerJoin(habits, eq(habits.id, habitMarks.habitId))
+    .where(and(eq(habitMarks.childId, childId), eq(habitMarks.date, day)));
+  for (const m of done) add(m.at, 'habit', `Сделал: ${m.title.toLowerCase()} ⭐`);
+  const grants = await db
+    .select({ at: rewardGrants.at, title: rewardGrants.title, price: rewardGrants.price })
+    .from(rewardGrants)
+    .where(and(eq(rewardGrants.childId, childId), gte(rewardGrants.at, from)));
+  for (const g of grants)
+    if (inDay(g.at)) add(g.at, 'habit', `Награда: ${g.title} (−${g.price} ⭐)`);
 
   entries.sort((a, b) => b.at.localeCompare(a.at));
   return { date: day, entries };
