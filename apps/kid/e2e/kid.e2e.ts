@@ -87,6 +87,7 @@ const PHRASES = {
   correct: [speech('Молодец!')],
   retry: [speech('Попробуй ещё.')],
   done: [speech('Отлично!')],
+  slow: [speech('Не спеши.')],
 };
 const PHRASES_EN = {
   correct: [{ text: 'Great job!', lang: 'en', audioUrl: null }],
@@ -823,6 +824,9 @@ test.describe('цикл видео → квиз → видео', () => {
 
     await wrong(page).first().dispatchEvent('pointerdown');
     await expect(wrong(page).first()).toHaveClass(/faded/);
+    // После ошибки ответы на миг закрыты (этап 30).
+    await expect(page.getByTestId('quiz-round')).toHaveAttribute('data-phase', 'wrong');
+    await expect(page.getByTestId('quiz-round')).toHaveAttribute('data-phase', 'answering');
     await correct(page).dispatchEvent('pointerdown');
 
     await expect
@@ -833,19 +837,25 @@ test.describe('цикл видео → квиз → видео', () => {
       });
   });
 
-  test('три быстрых неверных касания — пауза и повтор вопроса', async ({ page, backend }) => {
+  test('два неверных подряд в спешке — «не спеши», пауза и повтор вопроса', async ({
+    page,
+    backend,
+  }) => {
     withQuiz(backend, 4, 1);
     await page.goto('/');
     await page.getByTestId('tile').first().click();
     await finishVideo(page);
     await answering(page);
 
-    const w = await wrong(page).all();
-    for (const o of w) await o.dispatchEvent('pointerdown');
+    const [w1, w2] = await wrong(page).all();
+    await w1!.dispatchEvent('pointerdown');
+    await expect(page.getByTestId('quiz-round')).toHaveAttribute('data-phase', 'answering');
+    await w2!.dispatchEvent('pointerdown');
     await expect(page.getByTestId('quiz-round')).toHaveAttribute('data-phase', 'paused');
+    await expect(page.getByTestId('quiz-think')).toBeVisible();
     // После паузы вопрос звучит снова и ответы снова принимаются.
     await expect(page.getByTestId('quiz-round')).toHaveAttribute('data-phase', 'answering', {
-      timeout: 6000,
+      timeout: 8000,
     });
   });
 });
@@ -1275,6 +1285,7 @@ test.describe('игры', () => {
     await dragTo(page, await center(carrot), await center(bins.nth(1)));
     await expect(items).toHaveCount(3);
     await page.waitForTimeout(400); // предмет возвращается на место с анимацией
+    await expect(page.getByTestId('game')).toHaveAttribute('data-lock', 'none');
     while ((await items.count()) > 0) {
       const it = items.first();
       const src = (await it.locator('img').getAttribute('data-src'))!;
@@ -1571,6 +1582,7 @@ test.describe('новые игры', () => {
     const slot = (id: string) => page.locator(`[data-testid=shadow-slot][data-image="${id}"]`);
     await dragOnto(page, item(CAT), slot(LION));
     await expect(page.getByTestId('shadow-item')).toHaveCount(3);
+    await expect(page.getByTestId('game')).toHaveAttribute('data-lock', 'none');
     for (const id of [CAT, LION, RABBIT]) {
       await page.waitForTimeout(500);
       await dragOnto(page, item(id), slot(id));
@@ -1704,6 +1716,30 @@ test.describe('новые игры', () => {
     expect((await spoken(page)).map((s) => s.text)).toContain('Морковка — не зверь.');
   });
 
+  test('ошибки в игре: касания на миг закрыты, две подряд в спешке — «не спеши» с совёнком', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [
+      game(1, { kind: 'odd', rounds: [{ imageIds: [CAT, LION, RABBIT, CARROT], odd: 3 }] }),
+    ];
+    await openGame(page);
+    const cell = (i: number) => page.locator(`[data-testid=odd-cell][data-index="${i}"]`);
+    const screen = page.getByTestId('game');
+    await cell(0).click();
+    await expect(screen).toHaveAttribute('data-lock', 'wait');
+    await expect(screen).toHaveAttribute('data-lock', 'none');
+    await cell(1).click();
+    await expect(screen).toHaveAttribute('data-lock', 'think');
+    await expect(page.getByTestId('game-think')).toBeVisible();
+    await expect(screen).toHaveAttribute('data-lock', 'none', { timeout: 6000 });
+    const said = (await spoken(page)).map((s) => s.text);
+    expect(said).toContain('Попробуй ещё.');
+    expect(said).toContain('Не спеши.');
+    await cell(3).click();
+    await expectFinished(page, backend);
+  });
+
   test('бездействие: задание звучит снова, палец показывает верный ответ', async ({
     page,
     backend,
@@ -1813,6 +1849,7 @@ test.describe('новые игры', () => {
     const slots = page.getByTestId('size-slot');
     await dragOnto(page, item(0), slots.nth(2));
     await expect(item(0)).toHaveCount(1);
+    await expect(page.getByTestId('game')).toHaveAttribute('data-lock', 'none');
     for (const k of [0, 1, 2]) {
       await page.waitForTimeout(450);
       await dragOnto(page, item(k), slots.nth(k));

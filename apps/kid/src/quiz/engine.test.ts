@@ -78,14 +78,14 @@ describe('optionsFor', () => {
 });
 
 describe('isRapidGuessing', () => {
-  it('три быстрых неверных касания подряд — да', () => {
-    expect(isRapidGuessing([1000, 1400, 1900])).toBe(true);
+  it('два неверных касания подряд в спешке — да', () => {
+    expect(isRapidGuessing([1000, 2900])).toBe(true);
   });
-  it('с паузой больше секунды — нет', () => {
-    expect(isRapidGuessing([1000, 1400, 2600])).toBe(false);
+  it('с паузой больше 2,5 с — нет', () => {
+    expect(isRapidGuessing([1000, 4000])).toBe(false);
   });
-  it('меньше трёх — нет', () => {
-    expect(isRapidGuessing([1000, 1100])).toBe(false);
+  it('одно — нет', () => {
+    expect(isRapidGuessing([1000])).toBe(false);
   });
 });
 

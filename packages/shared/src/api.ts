@@ -451,6 +451,10 @@ export interface KidPhrases {
   correct: Speech[];
   retry: Speech[];
   done: Speech[];
+  /** Несколько верных подряд (этап 30); у старых ответов сервера нет. */
+  streak?: Speech[];
+  /** Тыкает наугад — пауза «не спеши» (этап 30). */
+  slow?: Speech[];
 }
 
 export interface KidPlaylist {

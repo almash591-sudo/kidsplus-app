@@ -8,11 +8,13 @@ import {
   isRapidGuessing,
   MIN_LOCK_MS,
   optionsFor,
-  pick,
   pickQuestions,
   RAPID_PAUSE_MS,
+  WRONG_LOCK_MS,
   type QuizItem,
 } from './engine';
+import { burst } from '../games/juice';
+import { praisePhrase, retryPhrase, slowPhrase, streak, STREAK_EVERY, vary } from '../variety';
 import { Icon } from '../ui/icons';
 import { CachedImg } from '../ui/CachedImg';
 
@@ -64,7 +66,7 @@ export function QuizScreen(props: {
     if (index + 1 < queue.length) return setIndex(index + 1);
     setDone(true);
     sendEvent({ type: 'quiz_complete', ...eventRef(source), payload: { questions: queue.length } });
-    const phrase = pick(phrases.done);
+    const phrase = vary('done', phrases.done);
     await Promise.all([phrase ? playSpeech(phrase) : null, sleep(DONE_MS)]);
     if (alive.current) onDone();
   };
@@ -106,12 +108,13 @@ export function QuizScreen(props: {
   );
 }
 
-type Phase = 'asking' | 'answering' | 'correct' | 'paused';
+type Phase = 'asking' | 'answering' | 'wrong' | 'correct' | 'paused';
 
 /**
  * Один вопрос: озвучивается при показе, касания не принимаются, пока он звучит (и минимум 1 с);
- * верный ответ — анимация и похвала; неверный — «попробуй ещё», вариант гаснет;
- * три быстрых неверных касания подряд — пауза и повтор вопроса.
+ * верный ответ — анимация и похвала (разная, за серию — особая); неверный — вариант трясётся
+ * и гаснет, телефон вздрагивает, ответы на миг закрыты; два неверных подряд в спешке —
+ * «не спеши», пауза и повтор вопроса.
  */
 function QuestionRound(props: {
   source: QuizSource;
@@ -170,27 +173,32 @@ function QuestionRound(props: {
           timeMs: now() - shownAt.current,
         },
       });
-      const phrase = pick(phrases.correct);
+      const phrase = praisePhrase(phrases);
+      if (streak.get() % STREAK_EVERY === 0) burst(undefined, 24);
       await Promise.all([phrase ? playSpeech(phrase) : null, sleep(PRAISE_FALLBACK_MS)]);
       if (alive.current) props.onCorrect();
       return;
     }
 
-    // Неверно: мягкая подсказка, вариант гаснет.
-    fx.soft();
+    // Неверно: вариант трясётся и гаснет, телефон вздрагивает, ответы на миг закрыты.
+    fx.wrong();
     setFaded((f) => new Set(f).add(optionId));
+    setPhase('wrong');
     wrongTaps.current.push(now());
     if (isRapidGuessing(wrongTaps.current)) {
-      // Тыкает наугад — пауза и повтор вопроса.
+      // Тыкает наугад — «не спеши», пауза и повтор вопроса.
       setPhase('paused');
       wrongTaps.current = [];
       stopAudio();
-      await sleep(RAPID_PAUSE_MS);
+      const slow = slowPhrase(phrases);
+      await Promise.all([slow ? playSpeech(slow) : null, sleep(RAPID_PAUSE_MS)]);
       if (alive.current) repeat();
       return;
     }
-    const phrase = pick(phrases.retry);
+    const phrase = retryPhrase(phrases);
     if (phrase) void playSpeech(phrase);
+    await sleep(WRONG_LOCK_MS);
+    if (alive.current) setPhase((p) => (p === 'wrong' ? 'answering' : p));
   };
 
   return (
@@ -217,11 +225,16 @@ function QuestionRound(props: {
           </button>
         ))}
       </div>
+      {phase === 'paused' && (
+        <div className="quiz-think" data-testid="quiz-think" aria-hidden="true">
+          <img src="/owl/point.webp" alt="" draggable={false} />
+        </div>
+      )}
       <button
         type="button"
         className="corner-button ear"
         aria-label="Повторить вопрос"
-        disabled={phase !== 'answering'}
+        disabled={phase !== 'answering' && phase !== 'wrong'}
         onClick={repeat}
         data-testid="repeat"
       >

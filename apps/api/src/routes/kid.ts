@@ -41,7 +41,7 @@ export async function kidPhrases(
   /** Чьи записи «маминого голоса» подставлять; без семьи — только нейроголос. */
   familyId?: string,
 ): Promise<KidPhrases> {
-  const result: KidPhrases = { correct: [], retry: [], done: [] };
+  const result: Required<KidPhrases> = { correct: [], retry: [], done: [], streak: [], slow: [] };
   const source = lang === 'en' ? PHRASES_EN : PHRASES[gender];
   const entries: [PhraseKind, string, string | null][] = [];
   for (const kind of Object.keys(source) as PhraseKind[]) {

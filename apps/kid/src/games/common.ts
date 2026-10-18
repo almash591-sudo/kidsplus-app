@@ -2,7 +2,8 @@ import type { KidPhrases, Speech } from '@kidsplus/shared/api';
 import type { GameKind, GameSpec } from '@kidsplus/shared/games';
 import { playSequence } from '../audio';
 import { fx } from '../fx';
-import { pick } from '../quiz/engine';
+import { isRapidGuessing, RAPID_PAUSE_MS, WRONG_LOCK_MS } from '../quiz/engine';
+import { praisePhrase, retryPhrase, slowPhrase, streak, STREAK_EVERY } from '../variety';
 import { burst, burstAt, cheer } from './juice';
 
 /** Параметры игры одного вида. */
@@ -40,18 +41,83 @@ export const repeatCurrentTask = () => {
   return true;
 };
 
-/** Похвала: звук успеха, искры там, где палец, радость маскота и фраза. */
+/** Похвала: звук успеха, искры там, где палец, радость маскота и фраза (за серию — особая). */
 export const praise = (phrases: KidPhrases, at?: { x: number; y: number }) => {
   fx.success();
-  burst(at);
-  cheer('happy');
-  return playSequence([pick(phrases.correct) ?? null]);
+  const phrase = praisePhrase(phrases);
+  const series = streak.get() % STREAK_EVERY === 0;
+  burst(at, series ? 28 : undefined);
+  cheer(series ? 'wow' : 'happy');
+  wrongTimes.length = 0;
+  return playSequence([phrase ?? null]);
 };
-/** Мягкая подсказка: «бульк», маскот «ой» и «попробуй ещё». */
+
+// ─── Реакция на ошибку (этап 30) ───────────────────────────────────────────────
+
+/** Что сейчас с касаниями в игре: открыты, закрыты на миг после ошибки, пауза «не спеши». */
+export type GameLock = 'none' | 'wait' | 'think';
+let lock: GameLock = 'none';
+let unlockTimer: ReturnType<typeof setTimeout> | undefined;
+const lockListeners = new Set<() => void>();
+const setLock = (next: GameLock, ms = 0) => {
+  lock = next;
+  lockListeners.forEach((l) => l());
+  clearTimeout(unlockTimer);
+  if (next !== 'none') unlockTimer = setTimeout(() => setLock('none'), ms);
+};
+export const gameLock = {
+  get: () => lock,
+  subscribe(l: () => void) {
+    lockListeners.add(l);
+    return () => lockListeners.delete(l);
+  },
+  reset: () => setLock('none'),
+};
+
+/** Время неверных ответов подряд — чтобы заметить «тыканье наугад». */
+const wrongTimes: number[] = [];
+
+/** Куда ребёнок нажал последним — это и трясётся при ошибке. */
+let lastTap: Element | null = null;
+if (typeof document !== 'undefined')
+  document.addEventListener('pointerdown', (e) => (lastTap = e.target as Element), true);
+
+/** Потрясти то, что ребёнок нажал (кнопку, картинку, фигуру), — «нет-нет». */
+function shakeLastTap() {
+  const t = lastTap;
+  if (!t?.isConnected) return;
+  const el = t.closest('button, [data-testid]:not([data-testid="game"])') ?? t;
+  const box = el.getBoundingClientRect();
+  if (box.width * box.height > window.innerWidth * window.innerHeight * 0.5) return;
+  el.animate?.(
+    [
+      { transform: 'translateX(0)' },
+      { transform: 'translateX(-12px) rotate(-3deg)' },
+      { transform: 'translateX(10px) rotate(3deg)' },
+      { transform: 'translateX(-7px) rotate(-2deg)' },
+      { transform: 'translateX(4px)' },
+      { transform: 'translateX(0)' },
+    ],
+    { duration: 500, easing: 'ease-in-out', composite: 'add' },
+  );
+}
+
+/**
+ * Неверно: «бом-бом», вибрация, нажатое трясётся, маскот «ой», касания на миг закрыты и
+ * «попробуй ещё»; два неверных подряд в спешке — «не спеши» и пауза.
+ */
 export const retry = (phrases: KidPhrases) => {
-  fx.soft();
+  fx.wrong();
   cheer('oops');
-  return playSequence([pick(phrases.retry) ?? null]);
+  shakeLastTap();
+  wrongTimes.push(Date.now());
+  if (isRapidGuessing(wrongTimes)) {
+    wrongTimes.length = 0;
+    setLock('think', RAPID_PAUSE_MS);
+    return playSequence([slowPhrase(phrases) ?? null]);
+  }
+  setLock('wait', WRONG_LOCK_MS);
+  return playSequence([retryPhrase(phrases) ?? null]);
 };
 /** Маленький успех без фразы (предмет встал на место): щелчок и искры. */
 export const nice = (el?: Element | null) => {
