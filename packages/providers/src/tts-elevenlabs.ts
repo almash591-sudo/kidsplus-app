@@ -69,6 +69,7 @@ export class ElevenLabsTtsProvider implements TtsProvider {
       throw new TtsError(
         `ElevenLabs ${res.status}: ${detail ?? res.statusText}`,
         res.status === 429 || res.status >= 500,
+        res.status === 429,
       );
     }
     const audio = new Uint8Array(await res.arrayBuffer());

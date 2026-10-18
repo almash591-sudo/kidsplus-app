@@ -25,13 +25,27 @@ export interface TtsBatchResult {
   failed: number;
   /** Была временная ошибка провайдера — стоит подождать подольше. */
   retryLater: boolean;
+  /** Провайдер попросил подождать (429/402): пачка остановлена, попытки не потрачены. */
+  throttled: boolean;
 }
+
+export interface TtsBatchOptions {
+  batch?: number;
+  /** Пауза между запросами к провайдеру: у посредников лимит частоты (ProxyAPI — 429). */
+  gapMs?: number;
+  sleep?: (ms: number) => Promise<void>;
+}
+
+const realSleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 /**
  * Генерирует ожидающую озвучку (status = pending). Каждая фраза — одна запись с уникальным
  * ключом кэша, поэтому одинаковый текст провайдеру повторно не отправляется.
  */
-export async function processPendingTts(deps: TtsDeps, batch = 5): Promise<TtsBatchResult> {
+export async function processPendingTts(
+  deps: TtsDeps,
+  { batch = 5, gapMs = 0, sleep = realSleep }: TtsBatchOptions = {},
+): Promise<TtsBatchResult> {
   const { db, storage, provider, log } = deps;
 
   // Забираем пачку и сразу увеличиваем счётчик попыток (SKIP LOCKED — на случай нескольких worker'ов).
@@ -60,8 +74,9 @@ export async function processPendingTts(deps: TtsDeps, batch = 5): Promise<TtsBa
     )
     .returning();
 
-  const result: TtsBatchResult = { done: 0, failed: 0, retryLater: false };
-  for (const asset of claimed) {
+  const result: TtsBatchResult = { done: 0, failed: 0, retryLater: false, throttled: false };
+  for (const [i, asset] of claimed.entries()) {
+    if (i > 0 && gapMs) await sleep(gapMs);
     try {
       const audio = await provider.synthesize({
         text: asset.ttsText!,
@@ -83,6 +98,24 @@ export async function processPendingTts(deps: TtsDeps, batch = 5): Promise<TtsBa
         .where(eq(mediaAssets.id, asset.id));
       result.done++;
     } catch (err) {
+      if (err instanceof TtsError && err.wait) {
+        // Лимит частоты или пустой баланс: эта и оставшиеся фразы пачки ждут без потери попытки.
+        const rest = claimed.slice(i).map((a) => a.id);
+        await db
+          .update(mediaAssets)
+          .set({
+            attempts: sql`greatest(${mediaAssets.attempts} - 1, 0)`,
+            error: err.message.slice(0, 500),
+          })
+          .where(inArray(mediaAssets.id, rest));
+        log.warn(
+          { assetId: asset.id, err: err.message.slice(0, 200) },
+          'tts: провайдер просит подождать',
+        );
+        result.retryLater = true;
+        result.throttled = true;
+        break;
+      }
       const retryable = !(err instanceof TtsError) || err.retryable;
       const final = !retryable || asset.attempts >= MAX_TTS_ATTEMPTS;
       const message = (err as Error).message.slice(0, 500);
@@ -101,17 +134,23 @@ export async function processPendingTts(deps: TtsDeps, batch = 5): Promise<TtsBa
 }
 
 /** Бесконечный цикл озвучки; останавливается через возвращённую функцию. */
-export function startTtsLoop(deps: TtsDeps, intervalMs = 3000) {
+export function startTtsLoop(deps: TtsDeps, intervalMs = 3000, gapMs = 1500) {
   let stopped = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  // Пауза после «подождите» растёт: 20 с, 40 с, … до 5 минут; после удачной пачки — снова 20 с.
+  let throttle = 0;
 
   const tick = async () => {
     let delay = intervalMs;
     try {
-      const r = await processPendingTts(deps);
+      const r = await processPendingTts(deps, { gapMs });
       // Полная пачка — сразу следующая; временная ошибка провайдера — пауза подольше.
-      if (r.done + r.failed >= 5) delay = 0;
+      if (r.done + r.failed >= 5) delay = gapMs;
       if (r.retryLater) delay = 30_000;
+      if (r.throttled) {
+        throttle = r.done ? 0 : throttle + 1;
+        delay = Math.min(300_000, 20_000 * 2 ** throttle);
+      } else if (r.done) throttle = 0;
     } catch (err) {
       deps.log.error({ err }, 'tts: сбой цикла');
       delay = 30_000;
