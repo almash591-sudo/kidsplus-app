@@ -354,6 +354,16 @@ export const NIGHT_HUSH = [
 export const MORNING = 'Доброе утро! Совёнок проснулся. Давай сделаем утренние дела!';
 export const MORNING_PLAIN = 'Доброе утро! Новый день начинается!';
 
+/** Живой совёнок (этап 32): сценки поверх меню. */
+export const OWL_KNOCK = ['Тук-тук! Эй, ты тут?', 'Тук-тук! Я соскучился!', 'Тук-тук! Поиграем?'];
+export const OWL_LESSON = ['Смотри сюда! Давай позанимаемся.', 'Вот что у нас дальше!'];
+export const OWL_HABITS = 'Загляни в мои дела! Звёздочки ждут.';
+export const OWL_PEEK = 'Ку-ку!';
+export const OWL_FOUND = ['Ха-ха, нашёл меня!', 'Ой, ты меня нашёл!'];
+export const OWL_PRAISE = ['Ты молодец!', 'Вот это да! Ты умничка!', 'Ура! Здорово получилось!'];
+export const OWL_TAP = ['Ух-ух!', 'Щекотно!', 'Привет-привет!', 'Хи-хи!'];
+export const OWL_YAWN = 'А-а-ах… Что-то я устал. Скоро спать.';
+
 export type Phrase = { text: string; lang: 'ru' | 'en' | 'zh' };
 
 /** Фразы приложения для этого списка ребёнка — чтобы озвучить их заранее. */
@@ -386,6 +396,14 @@ export function appPhrases(playlist: KidPlaylist): Phrase[] {
     ...NIGHT_HUSH,
     MORNING,
     MORNING_PLAIN,
+    ...OWL_KNOCK,
+    ...OWL_LESSON,
+    OWL_HABITS,
+    OWL_PEEK,
+    ...OWL_FOUND,
+    ...OWL_PRAISE,
+    ...OWL_TAP,
+    OWL_YAWN,
     CAMERA_ENOUGH,
     HINT_TODAY,
     HINT_PICK,
