@@ -21,6 +21,7 @@ import { checkAvailability } from './availability';
 import { checkOffline } from './offline-alerts';
 import { markConfigured, pgDump, runBackup, startBackupRequests } from './backup';
 import { registerJobs } from './jobs';
+import { startStoryLoop } from './stories';
 import { startDraftLoop } from './curriculum-draft';
 import { startModerationLoop } from './moderation';
 import { startTtsLoop } from './tts';
@@ -132,6 +133,7 @@ const stopModeration = startModerationLoop({
   ...(notify ? { notify } : {}),
 });
 const stopDrafts = startDraftLoop({ db, llm, log, limits, ...(notify ? { notify } : {}) });
+const stopStories = startStoryLoop({ db, llm, log, limits, ...(notify ? { notify } : {}) });
 if (!env.GEMINI_API_KEY)
   log.warn('GEMINI_API_KEY не задан — анализ видео для модерации ждёт ключа');
 
@@ -143,6 +145,7 @@ async function shutdown(signal: string) {
   stopBackupRequests?.();
   stopModeration();
   stopDrafts();
+  stopStories();
   await boss.stop({ graceful: true });
   await pool.end();
   process.exit(0);

@@ -3,6 +3,7 @@
 import type { Db } from './index';
 import * as schema from './schema';
 import { gameCategory } from '@kidsplus/shared/api';
+import { bedtimeAt, DEFAULT_BEDTIME, type BedtimeSettings } from '@kidsplus/shared/bedtime';
 import { stems, type FillMaterial } from '@kidsplus/shared/plan-fill';
 import {
   computeToday,
@@ -170,6 +171,27 @@ export interface Day {
   used: Partial<Record<Subject | 'free', number>>;
 }
 
+/** Расписание сна ребёнка (этап 31); нет записи — выключено. */
+export async function loadBedtime(
+  db: Db,
+  childId: string,
+): Promise<{ settings: BedtimeSettings; skipNight: string | null }> {
+  const [row] = await db.select().from(schema.bedtimes).where(eq(schema.bedtimes.childId, childId));
+  if (!row) return { settings: DEFAULT_BEDTIME, skipNight: null };
+  return {
+    settings: {
+      enabled: row.enabled,
+      at: row.at,
+      wakeAt: row.wakeAt,
+      days: row.days as BedtimeSettings['days'],
+      warnMinutes: row.warnMinutes,
+      companion: row.companion as BedtimeSettings['companion'],
+      trackId: row.trackId,
+    },
+    skipNight: row.skipNight,
+  };
+}
+
 /** Состояние дня ребёнка на момент now. */
 export async function loadDay(db: Db, childId: string, now: Date): Promise<Day> {
   const schedule = await loadSchedule(db, childId);
@@ -200,6 +222,9 @@ export async function loadDay(db: Db, childId: string, now: Date): Promise<Day> 
     .from(children)
     .where(eq(children.id, childId));
   const rest = (child?.rest ?? null) as KidToday['rest'];
+  const sleep = await loadBedtime(db, childId);
+  const bedtime = bedtimeAt(clock, sleep.settings, sleep.skipNight);
+  const night = bedtime?.phase === 'night';
   const today: KidToday = {
     ...computeToday({
       schedule,
@@ -208,8 +233,8 @@ export async function loadDay(db: Db, childId: string, now: Date): Promise<Day> 
       used,
       extraSeconds: control?.extraSeconds ?? 0,
       extendSeconds: extend,
-      // «Экран выключен с поводом» — время занятий стоит, как на паузе.
-      paused: (control?.paused ?? false) || rest !== null,
+      // «Экран выключен с поводом» и ночь — время занятий стоит, как на паузе.
+      paused: (control?.paused ?? false) || rest !== null || night,
       ended: control?.ended ?? false,
       lessons,
     }),
@@ -220,6 +245,7 @@ export async function loadDay(db: Db, childId: string, now: Date): Promise<Day> 
         ? control.calledAt.toISOString()
         : null,
     volume: child?.volume ?? null,
+    bedtime,
   };
   return { schedule, clock, today, pool, curriculum, control, used };
 }
@@ -288,6 +314,12 @@ export async function applyControl(db: Db, childId: string, now: Date, action: C
       break;
     case 'rest':
     case 'wake':
+      // «Разбудить» ночью снимает и ночь по расписанию сна (только эту).
+      if (action.action === 'wake' && day.today.bedtime?.phase === 'night')
+        await db
+          .update(schema.bedtimes)
+          .set({ skipNight: day.today.bedtime.night })
+          .where(eq(schema.bedtimes.childId, childId));
       await db
         .update(children)
         .set({ rest: action.action === 'rest' ? action.reason : null })

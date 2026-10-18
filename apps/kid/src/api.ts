@@ -1,3 +1,4 @@
+import type { KidBedtime } from '@kidsplus/shared/bedtime';
 import type { KidHabitDone, KidHabits } from '@kidsplus/shared/habits';
 import { API_PREFIX } from '@kidsplus/shared';
 import type { KidAudioTrack } from '@kidsplus/shared/audio';
@@ -39,6 +40,8 @@ export const kidApi = {
   audio: () => request<KidAudioTrack[]>('GET', '/kid/audio'),
   habits: () => request<KidHabits>('GET', '/kid/habits'),
   habitDone: (id: string) => request<KidHabitDone>('POST', `/kid/habits/${id}/done`),
+  bedtime: () => request<KidBedtime>('GET', '/kid/bedtime'),
+  storyPlayed: (storyId: string) => request<void>('POST', '/kid/bedtime/played', { storyId }),
   /** Копия снимка в кабинет; возвращает код ответа (0 — нет связи). */
   uploadCapture: async (c: {
     kind: CaptureKind;

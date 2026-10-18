@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test as base, type Page } from '@playwright/test';
+import type { KidBedtime } from '@kidsplus/shared/bedtime';
 import type { KidHabit, KidHabits } from '@kidsplus/shared/habits';
 import {
   callStatus,
@@ -44,6 +45,9 @@ interface Backend {
   /** «Мои дела» (этап 30). */
   habits?: KidHabits;
   habitsDone?: string[];
+  /** Ночной экран (этап 31). */
+  bedtime?: KidBedtime;
+  storiesPlayed?: string[];
   /** День по расписанию; по умолчанию расписание выключено. */
   today?: Record<string, unknown>;
   /** Уроки по предметам (для режима расписания). */
@@ -364,6 +368,21 @@ async function mockBackend(page: Page, backend: Backend) {
         return route.fulfill({
           json: backend.habits ?? { date: '', habits: [], stars: 0, goal: null, lastGrant: null },
         });
+      case '/api/kid/bedtime':
+        return route.fulfill({
+          json: backend.bedtime ?? {
+            now: null,
+            wakeAt: '07:00',
+            companion: 'none',
+            story: null,
+            track: null,
+          },
+        });
+      case '/api/kid/bedtime/played':
+        (backend.storiesPlayed ??= []).push(
+          (route.request().postDataJSON() as { storyId: string }).storyId,
+        );
+        return route.fulfill({ status: 204 });
       case '/api/kid/heartbeat':
         (backend.beats ??= []).push(route.request().postDataJSON());
         return route.fulfill({
@@ -648,6 +667,117 @@ test.describe('мои дела (этап 30)', () => {
     await page.reload();
     await expect(page.getByTestId('tile').first()).toBeVisible();
     await expect(page.getByTestId('habit-grant')).toHaveCount(0);
+  });
+});
+
+test.describe('пора спать (этап 31)', () => {
+  const NIGHT = { phase: 'night' as const, minutesLeft: 600, night: '2026-10-18' };
+  const night = (o: Partial<KidBedtime> = {}): KidBedtime => ({
+    now: NIGHT,
+    wakeAt: '07:00',
+    companion: 'story',
+    story: {
+      id: 's1',
+      title: speech('Ёжик и луна'),
+      parts: [speech('Жил-был ёжик.'), speech('Ёжик уснул. Спокойной ночи.')],
+    },
+    track: null,
+    ...o,
+  });
+
+  test('ночь: сказка, колыбельная, потом темно; касание — «спи»', async ({ page, backend }) => {
+    await page.clock.install({ time: new Date('2026-10-18T20:30:00') });
+    backend.today = { ...OFF_TODAY, bedtime: NIGHT };
+    backend.bedtime = night();
+    await page.goto('/');
+    const screen = page.getByTestId('night');
+    await expect(screen).toBeVisible();
+    await expect
+      .poll(async () => (await spoken(page)).map((s) => s.text))
+      .toEqual(
+        expect.arrayContaining([
+          'Пора спать! Ложись поудобнее, сейчас будет сказка.',
+          'Ёжик и луна',
+          'Жил-был ёжик.',
+          'Ёжик уснул. Спокойной ночи.',
+        ]),
+      );
+    await expect(screen).toHaveAttribute('data-stage', 'lullaby');
+    await shot(page, 'night-lullaby');
+    expect(backend.storiesPlayed).toEqual(['s1']);
+    // На ночном экране нет дока и плиток.
+    await expect(page.getByTestId('tile')).toHaveCount(0);
+
+    await page.clock.runFor(152_000);
+    // «Спокойной ночи» после колыбельной — фраза тоже идёт по часам страницы.
+    await page.clock.runFor(5_000);
+    await expect(screen).toHaveAttribute('data-stage', 'asleep');
+    expect(backend.storiesPlayed).toEqual(['s1']);
+    await expect(screen).toHaveClass(/dark/);
+    await screen.dispatchEvent('pointerdown');
+    await expect(screen).not.toHaveClass(/dark/);
+    await expect(page.locator('.night-hush')).toBeVisible();
+    await page.clock.runFor(10_000);
+    await expect(screen).toHaveClass(/dark/);
+  });
+
+  test('ночь без сказки и музыки — сразу темно', async ({ page, backend }) => {
+    backend.today = { ...OFF_TODAY, bedtime: NIGHT };
+    backend.bedtime = night({ companion: 'none', story: null });
+    await page.goto('/');
+    await expect(page.getByTestId('night')).toHaveAttribute('data-stage', 'asleep');
+  });
+
+  test('скоро спать — совёнок зовёт делать вечерние дела, раз за вечер', async ({
+    page,
+    backend,
+  }) => {
+    await page.clock.install({ time: new Date('2026-10-18T20:15:00') });
+    backend.today = {
+      ...OFF_TODAY,
+      bedtime: { phase: 'soon', minutesLeft: 15, night: '2026-10-18' },
+    };
+    backend.habits = {
+      date: '2026-10-18',
+      habits: [
+        {
+          id: 'p',
+          preset: 'pajama',
+          slot: 'evening',
+          remindAt: null,
+          timerSec: null,
+          title: speech('Надеть пижаму'),
+          remind: speech('Пора надевать пижамку!'),
+          done: false,
+        },
+      ],
+      stars: 0,
+      goal: null,
+      lastGrant: null,
+    };
+    await page.goto('/');
+    await expect(page.getByTestId('bedtime-soon')).toBeVisible();
+    await shot(page, 'bedtime-soon');
+    await page.getByTestId('bedtime-habits').dispatchEvent('pointerdown');
+    await expect(page.getByTestId('habits')).toBeVisible();
+    await expect(page.getByTestId('bedtime-soon')).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByTestId('habits-open')).toBeVisible();
+    await expect(page.getByTestId('bedtime-soon')).toHaveCount(0);
+  });
+
+  test('утром после ночи — «Доброе утро!» один раз', async ({ page, backend: _ }) => {
+    await page.clock.install({ time: new Date('2026-10-19T07:30:00') });
+    await page.addInitScript(() => localStorage.setItem('kp-night', '2026-10-18'));
+    await page.goto('/');
+    await expect(page.getByTestId('bedtime-morning')).toBeVisible();
+    await expect
+      .poll(async () => (await spoken(page)).map((s) => s.text))
+      .toContain('Доброе утро! Новый день начинается!');
+    await page.getByTestId('bedtime-morning').dispatchEvent('pointerdown');
+    await page.reload();
+    await expect(page.getByTestId('tile').first()).toBeVisible();
+    await expect(page.getByTestId('bedtime-morning')).toHaveCount(0);
   });
 });
 

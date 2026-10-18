@@ -63,6 +63,16 @@ export function ScreenControls({
   const [volume, setVolume] = useState(now.volume ?? 60);
   return (
     <Stack gap="xs" data-testid="screen-controls">
+      {now.bedtime?.phase === 'night' && !now.rest && (
+        <Alert color="indigo" data-testid="bedtime-night">
+          <Group justify="space-between" wrap="wrap" gap="xs">
+            <Text size="sm">🌙 Ночь по расписанию сна — на телефоне ночной экран</Text>
+            <Button size="xs" onClick={() => act({ action: 'wake' })} loading={busy}>
+              Разбудить
+            </Button>
+          </Group>
+        </Alert>
+      )}
       {now.rest ? (
         <Alert color="indigo" data-testid="rest-on">
           <Group justify="space-between" wrap="wrap" gap="xs">

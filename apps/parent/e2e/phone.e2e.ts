@@ -23,6 +23,7 @@ const PAGES = [
   '/calls',
   '/now',
   '/habits',
+  '/sleep',
   '/families',
 ];
 
@@ -139,4 +140,34 @@ test('привычки: готовое и своё дело, отметка за
   }
   await reward.getByRole('button', { name: 'Удалить награду' }).click();
   await expect(reward).toHaveCount(0);
+});
+
+test('сон: отбой и готовая сказка; придуманная ждёт одобрения', async ({ page }) => {
+  await login(page);
+  await page.goto('/sleep');
+  await page.getByTestId('sleep-enabled').click();
+  await page.getByTestId('sleep-at').fill('20:45');
+  await page.getByTestId('sleep-save').click();
+  await expect(page.getByTestId('sleep-save')).toBeDisabled();
+
+  await page.getByTestId('library-hedgehog-dark').getByRole('button', { name: 'Добавить' }).click();
+  const story = page.getByTestId('story').filter({ hasText: 'Ёжик и тёплая темнота' });
+  await expect(story).toHaveAttribute('data-status', 'approved');
+  await expect(page.getByTestId('library-hedgehog-dark')).toHaveCount(0);
+
+  await page.getByTestId('story-theme').fill('про первый снег');
+  await page.getByTestId('story-order').click();
+  const ordered = page.getByTestId('story').filter({ hasText: 'про первый снег' });
+  // Модели на стенде нет — заявка ждёт; ребёнку она не попадёт.
+  await expect(ordered).toHaveAttribute('data-status', 'queued');
+  expect(await layoutProblems(page)).toEqual([]);
+
+  // Уборка за собой: стенд общий для тестов.
+  for (const s of [ordered, story]) {
+    await s.getByTestId('story-delete').click();
+    await expect(s).toHaveCount(0);
+  }
+  await page.getByTestId('sleep-enabled').click();
+  await page.getByTestId('sleep-save').click();
+  await expect(page.getByTestId('sleep-save')).toBeDisabled();
 });

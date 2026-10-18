@@ -250,3 +250,128 @@ export const music = {
     return audio('music')?.ctx.currentTime ?? 0;
   },
 };
+
+// ─── Колыбельная (этап 31) ───────────────────────────────────────────────────
+
+const N: Record<string, number> = {
+  G3: 196,
+  C4: 261.63,
+  D4: 293.66,
+  E4: 329.63,
+  F4: 349.23,
+  G4: 392,
+  A4: 440,
+  B4: 493.88,
+  C5: 523.25,
+};
+/** Своя мелодия «музыкальной шкатулки», размер 3/4: [нота, долей]; '-' — пауза. */
+const LULLABY: [string, number][] = [
+  ['G4', 1],
+  ['E4', 1],
+  ['G4', 1],
+  ['A4', 1],
+  ['G4', 1],
+  ['E4', 1],
+  ['G4', 1],
+  ['E4', 1],
+  ['D4', 1],
+  ['C4', 3],
+  ['E4', 1],
+  ['G4', 1],
+  ['C5', 1],
+  ['B4', 1],
+  ['A4', 1],
+  ['G4', 1],
+  ['A4', 1],
+  ['G4', 1],
+  ['E4', 1],
+  ['D4', 3],
+  ['G4', 1],
+  ['E4', 1],
+  ['G4', 1],
+  ['A4', 1],
+  ['G4', 1],
+  ['E4', 1],
+  ['F4', 1],
+  ['E4', 1],
+  ['D4', 1],
+  ['E4', 1],
+  ['D4', 1],
+  ['C4', 1],
+  ['E4', 1],
+  ['D4', 1],
+  ['D4', 1],
+  ['C4', 3],
+  ['-', 3],
+];
+const BEAT = 0.75;
+
+/**
+ * Колыбельная-шкатулка на `seconds` секунд: нежный колокольчик и бас на первую долю, к концу —
+ * всё тише и медленнее. Возвращает «стоп». onEnd — когда доиграла сама.
+ */
+export function musicBox(seconds: number, onEnd?: () => void): () => void {
+  const a = audio('music');
+  if (!a) {
+    const t = setTimeout(() => onEnd?.(), seconds * 1000);
+    return () => clearTimeout(t);
+  }
+  const out = a.ctx.createGain();
+  out.gain.value = 0.5;
+  out.connect(a.out);
+  const start = a.ctx.currentTime + 0.1;
+  out.gain.setValueAtTime(0.5, start + seconds * 0.6);
+  out.gain.linearRampToValueAtTime(0.0001, start + seconds);
+  const bell = (freq: number, t: number, dur: number, gain: number) => {
+    for (const [mul, g] of [
+      [1, gain],
+      [2, gain * 0.18],
+      [3, gain * 0.05],
+    ] as const) {
+      const osc = a.ctx.createOscillator();
+      const env = a.ctx.createGain();
+      osc.frequency.value = freq * mul;
+      env.gain.setValueAtTime(0.0001, t);
+      env.gain.exponentialRampToValueAtTime(g, t + 0.01);
+      env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      osc.connect(env).connect(out);
+      osc.start(t);
+      osc.stop(t + dur + 0.05);
+    }
+  };
+  // Ноты планируются порциями на 2 с вперёд — не тысячи узлов сразу.
+  let t = start;
+  let i = 0;
+  let beat = 0;
+  const end = start + seconds;
+  const fill = () => {
+    while (t < a.ctx.currentTime + 2 && t < end) {
+      const [note, beats] = LULLABY[i % LULLABY.length]!;
+      // К концу темп замедляется на треть.
+      const slow = 1 + 0.35 * Math.max(0, (t - start) / seconds - 0.5);
+      const len = beats * BEAT * slow;
+      if (note !== '-') bell(N[note]!, t, Math.max(1.6, len * 1.4), 0.32);
+      if (beat % 3 === 0) bell(beat % 6 === 0 ? N.C4! / 2 : N.G3! / 2, t, 2.2, 0.16);
+      t += len;
+      beat += beats;
+      i++;
+    }
+  };
+  fill();
+  const timer = setInterval(fill, 500);
+  const done = setTimeout(
+    () => {
+      clearInterval(timer);
+      out.disconnect();
+      onEnd?.();
+    },
+    (seconds + 0.3) * 1000,
+  );
+  return () => {
+    clearInterval(timer);
+    clearTimeout(done);
+    out.gain.cancelScheduledValues(a.ctx.currentTime);
+    out.gain.setTargetAtTime(0.0001, a.ctx.currentTime, 0.15);
+    setTimeout(() => out.disconnect(), 600);
+  };
+}

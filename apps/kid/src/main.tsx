@@ -4,6 +4,7 @@ import { registerServiceWorker } from '@kidsplus/shared/sw-register';
 import { App } from './App';
 import { CalledLayer } from './screens/RestScreen';
 import { HabitLayer } from './screens/HabitsScreen';
+import { BedtimeLayer } from './screens/NightScreen';
 import { Sky } from './ui/Sky';
 import { ErrorBoundary } from './ErrorBoundary';
 import { installTapFeedback } from './fx';
@@ -32,6 +33,7 @@ createRoot(document.getElementById('root')!).render(
       <App />
       <CalledLayer />
       <HabitLayer />
+      <BedtimeLayer />
     </ErrorBoundary>
   </StrictMode>,
 );

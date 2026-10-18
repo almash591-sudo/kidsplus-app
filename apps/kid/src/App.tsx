@@ -32,6 +32,7 @@ import { CategoryScreen, HomeScreen } from './screens/HomeScreen';
 import { isLessonPath } from './screens/LessonPath';
 import { PairScreen } from './screens/PairScreen';
 import { calledStore, RestScreen } from './screens/RestScreen';
+import { bedtimeStore, NightScreen, OPEN_HABITS_EVENT } from './screens/NightScreen';
 import { setVolume } from './kiosk';
 import {
   DayOverScreen,
@@ -247,6 +248,14 @@ export function App() {
   // «Тебя зовут!» (этап 29): свежий вызов (до 3 минут) — слою поверх приложения (main.tsx).
   const calledAt = today?.calledAt ?? null;
   useEffect(() => calledStore.set(calledAt), [calledAt]);
+  // «Пора спать» (этап 31): расписание сна — слою «Скоро спать» / «Доброе утро».
+  const bedtime = today?.bedtime ?? null;
+  useEffect(() => bedtimeStore.set(paired ? bedtime : null), [paired, bedtime]);
+  useEffect(() => {
+    const open = () => setCamera('habits');
+    addEventListener(OPEN_HABITS_EVENT, open);
+    return () => removeEventListener(OPEN_HABITS_EVENT, open);
+  }, []);
   // Громкость телефона, заданная родителем (киоск).
   const volume = today?.volume ?? null;
   useEffect(() => {
@@ -276,6 +285,12 @@ export function App() {
     const timer = setInterval(() => void beat(), BEAT_MS);
     return () => clearInterval(timer);
   }, [paired, isPlan, beat]);
+  // Без расписания сигналов нет — день (и время отбоя, этап 31) перечитываем раз в минуту.
+  useEffect(() => {
+    if (!paired || isPlan) return;
+    const timer = setInterval(() => void refreshToday(), 60_000);
+    return () => clearInterval(timer);
+  }, [paired, isPlan, refreshToday]);
   // Сменилось занятие или пункт — сразу сообщаем (время прошлого засчитается по нему).
   const activityNow = activityOf(state, today);
   const itemNow = itemOf(state)?.id ?? null;
@@ -416,6 +431,14 @@ export function App() {
       />
     );
   if (parentMenu) return <ParentMenu onClose={() => setParentMenu(false)} />;
+  // Ночь по расписанию сна — сказка, колыбельная, темнота; снимает утро или родитель.
+  if (paired && bedtime?.phase === 'night')
+    return (
+      <>
+        <NightScreen night={bedtime} />
+        <ParentCorner onUnlock={() => setParentMenu(true)} />
+      </>
+    );
   // Родитель «выключил экран» с поводом — поверх всего, кроме звонка и меню родителя.
   if (paired && today?.rest)
     return (
