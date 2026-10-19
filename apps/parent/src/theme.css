@@ -551,6 +551,17 @@ img.video-thumb.contain {
   background: #fff;
 }
 
+/* «Распорядок»: внутри вкладок ребёнок выбирается сверху — свой переключатель страницы прячем. */
+.embedded-page .child-picker {
+  display: none;
+}
+.day-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
 /* Место под панель, чтобы она не закрывала последние строки. */
 .bulk-space {
   height: 72px;

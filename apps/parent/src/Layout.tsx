@@ -9,7 +9,7 @@ import { CompactTitle, FetchBar, PageTransition } from './components/Chrome';
 const NAV = [
   { to: '/home', label: 'Главная', icon: '🏠' },
   { to: '/content', label: 'Контент', icon: '🎬' },
-  { to: '/plan', label: 'План', icon: '📅' },
+  { to: '/routine', label: 'Распорядок', icon: '📅' },
   { to: '/progress', label: 'Прогресс', icon: '📊' },
   { to: '/now', label: 'Подробно сейчас', icon: '⏱️' },
   { to: '/captures', label: 'Фото и видео', icon: '📷' },
@@ -28,7 +28,13 @@ const TABS = [
     icon: 'M4 5h16v14H4zM9 9.5v5l4.5-2.5z',
     also: ['/moderation', '/videos', '/decks', '/games'],
   },
-  { to: '/plan', label: 'План', icon: 'M4 6h16v14H4zM4 10h16M9 3v4M15 3v4', also: [] },
+  // Этап 33: план, привычки и сон — одна вкладка «Распорядок».
+  {
+    to: '/routine',
+    label: 'Распорядок',
+    icon: 'M4 6h16v14H4zM4 10h16M9 3v4M15 3v4',
+    also: ['/plan', '/habits', '/sleep'],
+  },
   { to: '/progress', label: 'Прогресс', icon: 'M5 19V11M12 19V5M19 19v-6', also: ['/analytics'] },
   {
     to: '/more',

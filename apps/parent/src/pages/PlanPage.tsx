@@ -859,6 +859,7 @@ export function PlanPage() {
       <h1 className="page-title">План</h1>
       {children.data && children.data.length > 1 && (
         <SegmentedControl
+          className="child-picker"
           value={childId ?? ''}
           data={children.data.map((c) => ({ value: c.id, label: c.nickname }))}
           onChange={setPicked}
