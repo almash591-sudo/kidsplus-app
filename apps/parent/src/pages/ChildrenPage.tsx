@@ -1,4 +1,10 @@
-import { LANGUAGES, quizDefaults, type Child, type ChildInput } from '@kidsplus/shared/api';
+import {
+  LANGUAGES,
+  quizDefaults,
+  type Child,
+  type ChildInput,
+  type RepeatMode,
+} from '@kidsplus/shared/api';
 import {
   Badge,
   Button,
@@ -114,6 +120,7 @@ function ChildForm({ child, onDone }: { child: Child | null; onDone: () => void 
           quizQuestions: child.quizQuestions,
           foreignImmersion: child.foreignImmersion,
           illustrations: child.illustrations,
+          repeatMode: child.repeatMode,
         }
       : {
           nickname: '',
@@ -125,6 +132,7 @@ function ChildForm({ child, onDone }: { child: Child | null; onDone: () => void 
           quizQuestions: null,
           foreignImmersion: false,
           illustrations: true,
+          repeatMode: 'weekly',
         },
     validate: {
       nickname: (v) => (v.trim() ? null : 'укажите прозвище'),
@@ -201,6 +209,18 @@ function ChildForm({ child, onDone }: { child: Child | null; onDone: () => void 
           onChange={(e) => form.setFieldValue('illustrations', e.currentTarget.checked)}
         />
         <IllustrationSample />
+        <Select
+          label="Повторять пройденное"
+          description="Пройденное сегодня отдыхает до завтра; пройденное 3 раза — «выучено»"
+          value={form.values.repeatMode ?? 'weekly'}
+          allowDeselect={false}
+          onChange={(v) => form.setFieldValue('repeatMode', (v ?? 'weekly') as RepeatMode)}
+          data={[
+            { value: 'weekly', label: 'Выученное — раз в неделю' },
+            { value: 'never', label: 'Выученное — больше не предлагать' },
+            { value: 'free', label: 'Без ограничений' },
+          ]}
+        />
         <QuizSettingsFields
           birthYear={form.values.birthYear}
           birthMonth={form.values.birthMonth}

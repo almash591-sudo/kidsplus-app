@@ -7,8 +7,11 @@ import {
   quizSettings,
   type KidPhrases,
   type KidPlaylist,
+  type RepeatMode,
   type Speech,
 } from '@kidsplus/shared/api';
+import { loadSchedule } from '@kidsplus/db/day';
+import { restKey, restMap } from '@kidsplus/db/rest';
 import { PHRASES, PHRASES_EN, type PhraseKind } from '@kidsplus/shared/phrases';
 import { pushMessages } from '@kidsplus/shared/push';
 import { notifyParents } from '@kidsplus/db/notify';
@@ -122,9 +125,21 @@ export function kidRoutes(app: FastifyInstance, ctx: Ctx) {
         .from(childItems)
         .where(eq(childItems.childId, childId))
         .orderBy(asc(childItems.position));
-      const result = await buildKidItems(db, ctx.config.tts, rows, {
+      const built = await buildKidItems(db, ctx.config.tts, rows, {
         childId,
         now: ctx.now(),
+      });
+      // Этап 34: пройденное отдыхает — отметка у пункта (порядок решает телефон).
+      const rest = await restMap(
+        db,
+        childId,
+        ctx.now(),
+        (await loadSchedule(db, childId)).timezone,
+        child.repeatMode as RepeatMode,
+      );
+      const result = built.map((it) => {
+        const r = rest.get(restKey(it.kind, it.id));
+        return r ? { ...it, rest: r } : it;
       });
 
       return {

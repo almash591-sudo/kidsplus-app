@@ -1,5 +1,5 @@
 import { schema } from '@kidsplus/db';
-import { childInput, type Child } from '@kidsplus/shared/api';
+import { childInput, type Child, type RepeatMode } from '@kidsplus/shared/api';
 import { asc, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { requireParent } from '../auth';
@@ -20,6 +20,7 @@ export const toChild = (c: typeof children.$inferSelect): Child => ({
   quizQuestions: c.quizQuestions,
   foreignImmersion: c.foreignImmersion,
   illustrations: c.illustrations,
+  repeatMode: c.repeatMode as RepeatMode,
   createdAt: c.createdAt.toISOString(),
 });
 

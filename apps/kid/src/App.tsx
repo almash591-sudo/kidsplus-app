@@ -4,7 +4,7 @@ import { startAutoUpdate } from '@kidsplus/shared/app-update';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { kidApi, NotPairedError } from './api';
 import { playSequence, speechLanguages } from './audio';
-import { categoriesOf, itemsOf, needsCategoryPick } from './categories';
+import { categoriesOf, itemsOf, needsCategoryPick, restingIn } from './categories';
 import { useBattery } from './battery';
 import { BabyScreen } from './baby/BabyScreen';
 import { AlbumButton, AlbumScreen } from './screens/AlbumScreen';
@@ -121,7 +121,9 @@ function nextStep(s: State): State {
   const next = items[i];
   // Дорожка уроков: после урока — назад на дорожку, к новой звёздочке.
   const path = !s.lesson && isLessonPath(items);
-  return next && !path
+  // Этап 34: подряд — только новое; дошли до пройденного — обратно в меню.
+  const resting = next && !s.lesson && restingIn(items, next);
+  return next && !path && !resting
     ? { ...s, step: { index: i, phase: firstPhase(next), seq: s.step.seq + 1 } }
     : { screen: 'home', playlist: s.playlist, category: s.category };
 }

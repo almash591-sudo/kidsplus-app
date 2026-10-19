@@ -29,8 +29,24 @@ export function categoriesOf(items: readonly KidItem[]): KidCategory[] {
  */
 export function itemsOf(items: readonly KidItem[], category: KidCategory | null): KidItem[] {
   const inCategory = category ? items.filter((i) => categoryOf(i) === category) : [];
-  return inCategory.length ? inCategory : [...items];
+  return freshFirst(inCategory.length ? inCategory : [...items]);
 }
+
+/**
+ * Этап 34: сначала новое, пройденное (отдыхает) — в конце, в прежнем порядке. Дорожка уроков
+ * музыки и букв — как есть: там свой порядок и свои звёздочки.
+ */
+function freshFirst(list: KidItem[]): KidItem[] {
+  const path = list.every(
+    (i) => i.kind === 'interactive' && (i.category === 'music' || i.category === 'letters'),
+  );
+  if (path) return list;
+  return [...list.filter((i) => !i.rest), ...list.filter((i) => i.rest)];
+}
+
+/** Пункт отдыхает и открыть его нельзя: в разделе есть что-то новое (иначе — повторяем). */
+export const restingIn = (list: readonly KidItem[], item: KidItem) =>
+  Boolean(item.rest) && list.some((i) => !i.rest);
 
 /** Нужен ли экран выбора раздела: разделов больше одного и раздел ещё не выбран. */
 export const needsCategoryPick = (items: readonly KidItem[], category: KidCategory | null) =>

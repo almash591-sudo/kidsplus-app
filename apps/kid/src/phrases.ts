@@ -366,6 +366,9 @@ export const OWL_YAWN = 'А-а-ах… Что-то я устал. Скоро с�
 
 /** Видео подряд не открываются (этап 34) — на полчаса без видео. */
 export const VIDEOS_REST = 'Видео сейчас отдыхают. Давай поиграем в игры или посмотрим карточки!';
+/** Пройденное отдыхает (этап 34): касание бледной плитки. */
+export const REST_TODAY = 'Это уже пройдено сегодня! Выбери что-нибудь новое.';
+export const REST_LEARNED = 'Это ты уже знаешь! Давай что-нибудь новое.';
 
 export type Phrase = { text: string; lang: 'ru' | 'en' | 'zh' };
 
@@ -408,6 +411,8 @@ export function appPhrases(playlist: KidPlaylist): Phrase[] {
     ...OWL_TAP,
     OWL_YAWN,
     VIDEOS_REST,
+    REST_TODAY,
+    REST_LEARNED,
     CAMERA_ENOUGH,
     HINT_TODAY,
     HINT_PICK,

@@ -9,6 +9,7 @@
     "./media": "./src/media.ts",
     "./llm-usage": "./src/llm-usage.ts",
     "./day": "./src/day.ts",
+    "./rest": "./src/rest.ts",
     "./analytics": "./src/analytics.ts",
     "./notify": "./src/notify.ts"
   },
