@@ -364,6 +364,9 @@ export const OWL_PRAISE = ['Ты молодец!', 'Вот это да! Ты у�
 export const OWL_TAP = ['Ух-ух!', 'Щекотно!', 'Привет-привет!', 'Хи-хи!'];
 export const OWL_YAWN = 'А-а-ах… Что-то я устал. Скоро спать.';
 
+/** Видео подряд не открываются (этап 34) — на полчаса без видео. */
+export const VIDEOS_REST = 'Видео сейчас отдыхают. Давай поиграем в игры или посмотрим карточки!';
+
 export type Phrase = { text: string; lang: 'ru' | 'en' | 'zh' };
 
 /** Фразы приложения для этого списка ребёнка — чтобы озвучить их заранее. */
@@ -404,6 +407,7 @@ export function appPhrases(playlist: KidPlaylist): Phrase[] {
     ...OWL_PRAISE,
     ...OWL_TAP,
     OWL_YAWN,
+    VIDEOS_REST,
     CAMERA_ENOUGH,
     HINT_TODAY,
     HINT_PICK,

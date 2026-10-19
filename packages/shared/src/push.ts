@@ -63,6 +63,14 @@ export const pushMessages = {
     body: `«${title.slice(0, 80)}» больше не открывается — замените его.`,
     url: '/videos',
   }),
+  /** Телефон не открывает видео вообще (этап 34) — обычно нет связи с YouTube или выключен VPN. */
+  videosDown: (childId: string): PushMessage => ({
+    kind: 'video',
+    title: 'Видео не открываются',
+    body: 'На телефоне {child} подряд не открываются видео. Проверьте интернет и VPN.',
+    url: '/home',
+    childId,
+  }),
   tokens: (percent: number): PushMessage => ({
     kind: 'tokens',
     title: 'Лимит токенов ИИ',

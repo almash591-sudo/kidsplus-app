@@ -1005,6 +1005,32 @@ test.describe('плеер', () => {
     await expect.poll(() => yt<string>(page, 'opts.videoId')).toBe('bbbbbbbbbbb');
   });
 
+  test('два видео подряд не открылись — полчаса без видео, совёнок зовёт поиграть (этап 34)', async ({
+    page,
+    backend,
+  }) => {
+    await startFirst(page);
+    const fail = () =>
+      page.evaluate(() =>
+        (window as unknown as { __yt: { fail(c: number): void } }).__yt.fail(150),
+      );
+    await fail();
+    await expect.poll(() => yt<string>(page, 'opts.videoId')).toBe('bbbbbbbbbbb');
+    await fail();
+    // В тестовом списке почти одни видео — без них меню может оказаться пустым.
+    await expect(page.getByTestId('home').or(page.getByTestId('empty'))).toBeVisible();
+    await expect
+      .poll(async () => (await spoken(page)).map((s) => s.text))
+      .toContain('Видео сейчас отдыхают. Давай поиграем в игры или посмотрим карточки!');
+    // Видео пропали из меню; после перезагрузки — тоже (пауза помнится).
+    const tiles = page.locator('[data-testid=tile][data-kind=segment]');
+    await expect(tiles).toHaveCount(0);
+    expect(backend.events.filter((e) => e.type === 'segment_error')).toHaveLength(2);
+    await page.reload();
+    await expect(page.getByTestId('home').or(page.getByTestId('empty'))).toBeVisible();
+    await expect(tiles).toHaveCount(0);
+  });
+
   test('кнопка «домой» уничтожает плеер и пишет событие выхода', async ({ page, backend }) => {
     await startFirst(page);
     await page.getByTestId('go-home').click();
