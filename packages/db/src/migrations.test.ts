@@ -26,6 +26,7 @@ describe('миграция этапа 2 сохраняет данные этап
   afterAll(() => db.close());
 
   it('списки фрагментов детей переносятся в child_items с порядком', async () => {
+    // PGlite стартует и применяет миграции не мгновенно — на CI бывало дольше 5 с.
     await apply(db, 0, 1);
     await db.exec(`
       insert into children (id, nickname, birth_year, birth_month, gender)
@@ -53,5 +54,5 @@ describe('миграция этапа 2 сохраняет данные этап
       `select to_regclass('public.child_segments')::text as t`,
     );
     expect(old.rows[0]?.t).toBeNull();
-  });
+  }, 30_000);
 });
