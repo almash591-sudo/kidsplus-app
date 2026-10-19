@@ -52,7 +52,7 @@ async function layoutProblems(page: Page) {
       const r = el.getBoundingClientRect();
       // Чипы фильтров — строка с прокруткой вбок, так задумано.
       const clipped = el.closest(
-        '.mantine-SegmentedControl-root, .photo-strip, .tabbar, .chip-row',
+        '.mantine-SegmentedControl-root, .photo-strip, .tabbar, .chip-row, .kid-switch',
       );
       if (r.width > 0 && r.right > w + 1 && !clipped)
         problems.push(
@@ -142,6 +142,45 @@ test('массовые действия (этап 33): выбрать все в�
   await expect(pill).toHaveAttribute('aria-pressed', 'false');
   await pill.click();
   await expect(pill).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('кабинет вокруг ребёнка (этап 33): переключатель, «что доступно», страница ребёнка', async ({
+  page,
+}) => {
+  await login(page);
+  const sw = page.getByTestId('kid-switch');
+  await sw.getByRole('tab', { name: /Зайка/ }).click();
+  await expect(page.getByTestId('kid-card')).toHaveCount(1);
+  const lib = page.getByTestId('library');
+  await expect(lib).toContainText('Что доступно: Зайка');
+  await expect(page.getByTestId('library-videos')).toHaveText(/\d+/);
+  expect(await layoutProblems(page)).toEqual([]);
+  if (process.env.SHOTS)
+    await page.screenshot({ path: `${process.env.SHOTS}/home33-${test.info().project.name}.png` });
+
+  // Видео ребёнка — «Контент» уже с фильтром «Есть у Зайка».
+  await lib.getByRole('link', { name: /Видео/ }).click();
+  await expect(page).toHaveURL(/tab=videos&owner=/);
+  await expect(
+    page.getByTestId('owner-chips').getByRole('button', { name: /^Есть у Зайка/ }),
+  ).toHaveClass(/on/);
+
+  // Имя на карточке — страница ребёнка; выбор ребёнка общий для разделов.
+  await page.goto('/home');
+  await page.getByRole('button', { name: 'Открыть: Зайка' }).click();
+  await expect(page.getByTestId('child-page')).toContainText('Зайка');
+  expect(await layoutProblems(page)).toEqual([]);
+  await page.getByRole('button', { name: /Всё, что есть у Мишутка/ }).click();
+  await expect(page.getByText(/Зайка: добавлено|У Зайка уже есть/)).toBeVisible();
+  await page.getByRole('link', { name: /Привычки и награды/ }).click();
+  await expect(page.locator('.mantine-SegmentedControl-root [data-active]').first()).toContainText(
+    'Зайка',
+  );
+
+  // «Все» — снова карточки всех детей.
+  await page.goto('/home');
+  await sw.getByRole('tab', { name: 'Все' }).click();
+  await expect(page.getByTestId('kid-card').nth(1)).toBeVisible();
 });
 
 test('привычки: готовое и своё дело, отметка за ребёнка, награда за звёзды', async ({ page }) => {

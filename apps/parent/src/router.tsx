@@ -16,6 +16,7 @@ import { HomePage } from './pages/HomePage';
 import { MorePage } from './pages/MorePage';
 import { CallsPage } from './pages/CallsPage';
 import { NowPage } from './pages/NowPage';
+import { ChildPage } from './pages/ChildPage';
 import { PlanPage } from './pages/PlanPage';
 import { SegmentEditorPage } from './pages/SegmentEditorPage';
 import { VideosPage } from './pages/VideosPage';
@@ -46,6 +47,7 @@ export const router = createBrowserRouter([
       { path: 'backup', element: <BackupPage /> },
       { path: 'mom-voice', element: <MomVoicePage /> },
       { path: 'now', element: <NowPage /> },
+      { path: 'child/:id', element: <ChildPage /> },
       { path: 'habits', element: <HabitsPage /> },
       { path: 'sleep', element: <SleepPage /> },
       { path: 'plan', element: <PlanPage /> },

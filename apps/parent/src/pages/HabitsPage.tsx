@@ -31,6 +31,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api, errorMessage } from '../api';
 import { queryClient, useChildren } from '../queries';
+import { useCurrentChild } from '../lib/currentChild';
 
 const PRESET_ICON: Record<HabitPreset, string> = {
   teeth: '🦷',
@@ -60,8 +61,8 @@ const weekday = (date: string) =>
 
 export function HabitsPage() {
   const children = useChildren();
-  const [picked, setPicked] = useState<string | null>(null);
-  const childId = picked ?? children.data?.[0]?.id ?? null;
+  // Этап 33: выбранный ребёнок — общий на весь кабинет.
+  const [childId, setPicked] = useCurrentChild();
 
   return (
     <Stack>
