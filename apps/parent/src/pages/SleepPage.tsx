@@ -30,6 +30,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api, errorMessage } from '../api';
 import { queryClient, useChildren } from '../queries';
+import { useCurrentChild } from '../lib/currentChild';
 
 const DAY_LABELS: Record<Weekday, string> = {
   mon: 'Пн',
@@ -61,8 +62,8 @@ const STATUS: Record<Story['status'], { label: string; color: string }> = {
 
 export function SleepPage() {
   const children = useChildren();
-  const [picked, setPicked] = useState<string | null>(null);
-  const childId = picked ?? children.data?.[0]?.id ?? null;
+  // Этап 33: выбранный ребёнок — общий на весь кабинет.
+  const [childId, setPicked] = useCurrentChild();
 
   return (
     <Stack>

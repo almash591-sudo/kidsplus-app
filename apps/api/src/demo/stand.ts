@@ -257,7 +257,8 @@ async function main() {
     for (let back = 13; back >= 0; back--) {
       const at = new Date(now().getTime() - back * 86_400_000 - (back ? 0 : 3_600_000));
       if (back > 7 && rnd() < 0.15) continue; // выходной
-      const date = localDate(at);
+      // День — без сдвига на час: сразу после полуночи «сегодня минус час» — уже вчера.
+      const date = localDate(new Date(now().getTime() - back * 86_400_000));
       // Сегодня: китайский пройден, математика — наполовину.
       if (back === 0) {
         await db.insert(schema.dayUsage).values([

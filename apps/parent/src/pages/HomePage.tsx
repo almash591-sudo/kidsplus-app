@@ -26,6 +26,8 @@ import { parentCalls } from '../calls/CallLayer';
 import { SUBJECT_LABELS } from '../lib/subjects';
 import { keys, queryClient, useChildNow, useChildren, useMe, useSegments } from '../queries';
 import { PreviewButton } from '../components/PreviewButton';
+import { LibraryCard } from '../components/Library';
+import { setCurrentChild, useCurrentChildRaw } from '../lib/currentChild';
 
 /** Цвет ребёнка — по порядку: аватар, кольца. */
 const KID_COLORS = ['#e5533f', '#c27c00', '#5856d6', '#1d8f3a'];
@@ -247,7 +249,8 @@ function KidCard({ child, color }: { child: Child; color: string }) {
       <Stack gap="sm">
         <Group wrap="nowrap" gap="sm">
           <UnstyledButton
-            onClick={() => navigate('/now')}
+            onClick={() => navigate(`/child/${child.id}`)}
+            aria-label={`Открыть: ${child.nickname}`}
             style={{ display: 'flex', gap: 12, alignItems: 'center', flex: 1, minWidth: 0 }}
           >
             <Avatar
@@ -309,6 +312,7 @@ function KidCard({ child, color }: { child: Child; color: string }) {
         <Group gap={8} grow>
           {d.mode === 'plan' && (
             <Button
+              px={6}
               variant="light"
               onClick={() => control.mutate({ action: d.paused ? 'resume' : 'pause' })}
               loading={control.isPending}
@@ -317,11 +321,16 @@ function KidCard({ child, color }: { child: Child; color: string }) {
             </Button>
           )}
           {d.mode === 'plan' && (
-            <Button variant="light" onClick={() => control.mutate({ action: 'add', minutes: 10 })}>
+            <Button
+              px={6}
+              variant="light"
+              onClick={() => control.mutate({ action: 'add', minutes: 10 })}
+            >
               +10 мин
             </Button>
           )}
           <Button
+            px={6}
             variant={monitor.data?.on ? 'filled' : 'light'}
             color="violet"
             onClick={() => toggleMonitor.mutate(!monitor.data?.on)}
@@ -366,9 +375,47 @@ function RecentPhotos() {
   );
 }
 
+/** Переключатель «Все / ребёнок» (этап 33): выбор общий на весь кабинет. */
+function KidSwitch({ kids, value }: { kids: Child[]; value: string | null }) {
+  return (
+    <div className="kid-switch" role="tablist" aria-label="Ребёнок" data-testid="kid-switch">
+      <button
+        type="button"
+        role="tab"
+        aria-selected={!value}
+        className={value ? 'all' : 'all on'}
+        onClick={() => setCurrentChild(null)}
+      >
+        Все
+      </button>
+      {kids.map((k, i) => {
+        const color = KID_COLORS[i % KID_COLORS.length]!;
+        return (
+          <button
+            key={k.id}
+            type="button"
+            role="tab"
+            aria-selected={value === k.id}
+            className={value === k.id ? 'on' : ''}
+            onClick={() => setCurrentChild(k.id)}
+          >
+            <span className="dot" style={{ color }}>
+              {k.nickname.slice(0, 1)}
+            </span>
+            {k.nickname}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function HomePage() {
   const children = useChildren();
   const kids = children.data ?? [];
+  const raw = useCurrentChildRaw();
+  const picked = kids.find((k) => k.id === raw) ?? null;
+  const shown = picked ? [picked] : kids;
   return (
     <Stack gap="md">
       <Stack gap={0}>
@@ -377,11 +424,15 @@ export function HomePage() {
         </Text>
         <h1 className="page-title">Главная</h1>
       </Stack>
+      {kids.length > 1 && <KidSwitch kids={kids} value={picked?.id ?? null} />}
       {children.isPending && <Skeleton height={190} radius="xl" />}
       <Attention kids={kids} />
-      {kids.map((k, i) => (
-        <KidCard key={k.id} child={k} color={KID_COLORS[i % KID_COLORS.length]!} />
+      {shown.map((k) => (
+        <KidCard key={k.id} child={k} color={KID_COLORS[kids.indexOf(k) % KID_COLORS.length]!} />
       ))}
+      {(picked ?? (kids.length === 1 ? kids[0] : null)) && (
+        <LibraryCard child={(picked ?? kids[0])!} kids={kids} />
+      )}
       {children.data && !kids.length && (
         <Card>
           <Stack gap="xs" align="flex-start">

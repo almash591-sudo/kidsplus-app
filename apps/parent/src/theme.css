@@ -493,6 +493,64 @@ img.video-thumb.contain {
   padding-left: 58px;
 }
 
+/* «Мало видео — добавить у …» под «Что доступно». */
+.library-hint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgb(255 149 0 / 0.12);
+  color: #b25e00;
+  font-size: 14px;
+  font-weight: 600;
+}
+[data-mantine-color-scheme='dark'] .library-hint {
+  color: #ffb340;
+}
+
+/* Переключатель детей на «Главной». */
+.kid-switch {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.kid-switch button {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px 0 6px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--app-card);
+  color: inherit;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.kid-switch button.all {
+  padding-left: 14px;
+}
+.kid-switch button.on {
+  background: var(--mantine-primary-color-filled);
+  color: #fff;
+}
+.kid-switch .dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  background: #fff;
+}
+
 /* Место под панель, чтобы она не закрывала последние строки. */
 .bulk-space {
   height: 72px;

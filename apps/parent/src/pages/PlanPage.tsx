@@ -51,6 +51,7 @@ import {
   useSchedule,
   useSegments,
 } from '../queries';
+import { useCurrentChild } from '../lib/currentChild';
 
 const DAY_LABELS: Record<Weekday, string> = {
   mon: 'Понедельник',
@@ -851,8 +852,8 @@ function ScheduleOverview({ childId }: { childId: string }) {
 /** «Учебный план» (п. 6.1 ТЗ): расписание дня и план на период для каждого ребёнка. */
 export function PlanPage() {
   const children = useChildren();
-  const [picked, setPicked] = useState<string | null>(null);
-  const childId = picked ?? children.data?.[0]?.id ?? null;
+  // Этап 33: выбранный ребёнок — общий на весь кабинет.
+  const [childId, setPicked] = useCurrentChild();
   return (
     <Stack maw={820}>
       <h1 className="page-title">План</h1>

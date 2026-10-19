@@ -21,6 +21,7 @@ import { useState } from 'react';
 import { api } from '../api';
 import { AccuracyBars, TimeChart } from '../components/Charts';
 import { queryClient, useAnalytics, useChildren, useReports } from '../queries';
+import { useCurrentChild } from '../lib/currentChild';
 import { CountUp } from '../components/Chrome';
 
 const pct = (s: { answers: number; firstTry: number }) => `${Math.round((rate(s) ?? 0) * 100)} %`;
@@ -277,9 +278,9 @@ function Reports({ reports }: { reports: WeeklyReport[] }) {
 /** «Аналитика» (п. 9 ТЗ): время, точность, что повторить, недельные отчёты. */
 export function AnalyticsPage() {
   const children = useChildren();
-  const [picked, setPicked] = useState<string | null>(null);
+  // Этап 33: выбранный ребёнок — общий на весь кабинет.
+  const [childId, setPicked] = useCurrentChild();
   const [days, setDays] = useState('7');
-  const childId = picked ?? children.data?.[0]?.id ?? null;
   const analytics = useAnalytics(childId, Number(days));
   const reports = useReports(childId);
 

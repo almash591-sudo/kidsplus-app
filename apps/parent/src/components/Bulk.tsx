@@ -89,9 +89,19 @@ export async function assignMany(
   }
 }
 
+/** Фильтр из адреса: `?owner=<id>:has` или `?owner=<id>:lacks` (ссылки с «Главной» и страницы ребёнка). */
+function ownerFromUrl(): Owner {
+  const m = /^([0-9a-f-]{36}):(has|lacks)$/.exec(
+    new URLSearchParams(window.location.search).get('owner') ?? '',
+  );
+  return m ? { childId: m[1]!, has: m[2] === 'has' } : null;
+}
+export const ownerLink = (tab: 'videos' | 'decks' | 'games', childId: string, has: boolean) =>
+  `/content?tab=${tab}&owner=${childId}:${has ? 'has' : 'lacks'}`;
+
 /** Фильтры и выбор для списка. */
 export function useBulk<T extends Assignable>(all: T[] | undefined) {
-  const [owner, setOwner] = useState<Owner>(null);
+  const [owner, setOwner] = useState<Owner>(ownerFromUrl);
   const [subject, setSubject] = useState<string | null>(null);
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
