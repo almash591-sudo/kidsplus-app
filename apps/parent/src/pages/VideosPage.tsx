@@ -15,7 +15,9 @@ import { useMutation } from '@tanstack/react-query';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { api } from '../api';
+import { BulkBar, BulkFilters, KidPills, SelectMark, useBulk } from '../components/Bulk';
 import { modals } from '../lib/modals';
+import { SUBJECT_LABELS } from '../lib/subjects';
 import { keys, queryClient, useChildItems, useChildren, useSegments } from '../queries';
 
 type Row = { item: ChildItem; segment: Segment };
@@ -53,16 +55,18 @@ export function VideosPage() {
       .map((item) => ({ item, segment: seg.get(item.refId)! }));
   }, [childId, items.data, segments.data]);
 
+  // Этап 33: «Нет у …», предмет, выбор многих сразу.
+  const b = useBulk(segments.data);
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return (segments.data ?? []).filter(
+    return b.filtered.filter(
       (s) =>
         FILTERS[quick].test(s) &&
         (!q ||
           s.title.toLowerCase().includes(q) ||
           (s.source.channelTitle ?? '').toLowerCase().includes(q)),
     );
-  }, [segments.data, query, quick]);
+  }, [b.filtered, query, quick]);
 
   const reorder = useMutation({
     mutationFn: (itemIds: string[]) => api.put(`/parent/children/${childId}/items`, { itemIds }),
@@ -163,6 +167,7 @@ export function VideosPage() {
               );
             })}
           </div>
+          <BulkFilters bulk={b} subjects={SUBJECT_LABELS} shown={shown} />
           <Card padding={0}>
             <Stack gap={0} className="grouped thumbs">
               {shown.length === 0 && (
@@ -173,10 +178,21 @@ export function VideosPage() {
                 </div>
               )}
               {shown.map((s) => (
-                <SegmentRow key={s.id} segment={s} names={names} />
+                <SegmentRow
+                  key={s.id}
+                  segment={s}
+                  names={names}
+                  select={
+                    b.selecting
+                      ? { checked: b.selected.has(s.id), toggle: () => b.toggle(s.id) }
+                      : undefined
+                  }
+                />
               ))}
             </Stack>
           </Card>
+          {b.selecting && <div className="bulk-space" />}
+          <BulkBar bulk={b} kind="segment" />
         </>
       )}
     </Stack>
@@ -217,7 +233,16 @@ function Ordered(props: {
   );
 }
 
-function SegmentRow({ segment: s, names }: { segment: Segment; names: Map<string, string> }) {
+function SegmentRow({
+  segment: s,
+  names,
+  select,
+}: {
+  segment: Segment;
+  names: Map<string, string>;
+  /** Режим выбора: касание строки отмечает её, а не открывает. */
+  select?: { checked: boolean; toggle: () => void } | undefined;
+}) {
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: keys.segments });
     void queryClient.invalidateQueries({ queryKey: ['child-items'] });
@@ -235,40 +260,59 @@ function SegmentRow({ segment: s, names }: { segment: Segment; names: Map<string
   const who = s.childIds.length
     ? s.childIds.map((id) => names.get(id) ?? '?').join(', ')
     : 'никому';
+  const rowStyle = { display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 };
 
-  return (
-    <div className="attention-row">
-      <UnstyledButton
-        component={Link}
-        to={`/videos/${s.id}`}
-        style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}
-      >
-        <span className="video-thumb">
-          {s.source.thumbnailUrl && <img src={s.source.thumbnailUrl} alt="" />}
-          <span className="video-len">{formatTime(s.endSec - s.startSec)}</span>
-        </span>
-        <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
-          <Text fw={600} size="sm" lineClamp={2} lh={1.3}>
-            {s.title}
-          </Text>
-          <Text size="xs" c="dimmed" truncate>
-            {s.source.channelTitle ?? '—'}
-          </Text>
-          <Text size="xs" truncate>
-            {broken ? (
-              <Text span c="red" fw={600} inherit>
-                Недоступно ·{' '}
-              </Text>
-            ) : null}
-            <Text span c={s.questionCount ? 'teal' : 'orange'} inherit>
-              {s.questionCount ? `${s.questionCount} вопр.` : 'без вопросов'}
+  const body = (
+    <>
+      {select && <SelectMark checked={select.checked} />}
+      <span className="video-thumb">
+        {s.source.thumbnailUrl && <img src={s.source.thumbnailUrl} alt="" />}
+        <span className="video-len">{formatTime(s.endSec - s.startSec)}</span>
+      </span>
+      <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
+        <Text fw={600} size="sm" lineClamp={2} lh={1.3}>
+          {s.title}
+        </Text>
+        <Text size="xs" c="dimmed" truncate>
+          {s.source.channelTitle ?? '—'}
+        </Text>
+        <Text size="xs" truncate>
+          {broken ? (
+            <Text span c="red" fw={600} inherit>
+              Недоступно ·{' '}
             </Text>
+          ) : null}
+          <Text span c={s.questionCount ? 'teal' : 'orange'} inherit>
+            {s.questionCount ? `${s.questionCount} вопр.` : 'без вопросов'}
+          </Text>
+          {select && (
             <Text span c={s.childIds.length ? 'dimmed' : 'orange'} inherit>
               {' · '}
               {who}
             </Text>
-          </Text>
-        </Stack>
+          )}
+        </Text>
+      </Stack>
+    </>
+  );
+
+  if (select)
+    return (
+      <UnstyledButton
+        className="attention-row"
+        onClick={select.toggle}
+        aria-pressed={select.checked}
+        data-testid="select-row"
+        style={{ width: '100%' }}
+      >
+        <span style={rowStyle}>{body}</span>
+      </UnstyledButton>
+    );
+
+  return (
+    <div className="attention-row" style={{ flexWrap: 'wrap' }}>
+      <UnstyledButton component={Link} to={`/videos/${s.id}`} style={rowStyle}>
+        {body}
       </UnstyledButton>
       <Menu position="bottom-end" withinPortal>
         <Menu.Target>
@@ -301,6 +345,9 @@ function SegmentRow({ segment: s, names }: { segment: Segment; names: Map<string
           </Menu.Item>
         </Menu.Dropdown>
       </Menu>
+      <div className="row-pills">
+        <KidPills kind="segment" item={s} />
+      </div>
     </div>
   );
 }
