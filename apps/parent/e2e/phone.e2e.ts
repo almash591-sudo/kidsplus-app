@@ -13,6 +13,10 @@ const PAGES = [
   '/content?tab=games',
   '/content?tab=audio',
   '/plan',
+  '/routine',
+  '/routine?tab=plan',
+  '/routine?tab=habits',
+  '/routine?tab=sleep',
   '/progress',
   '/more',
   '/children',
@@ -173,9 +177,18 @@ test('кабинет вокруг ребёнка (этап 33): переключ
   await page.getByRole('button', { name: /Всё, что есть у Мишутка/ }).click();
   await expect(page.getByText(/Зайка: добавлено|У Зайка уже есть/)).toBeVisible();
   await page.getByRole('link', { name: /Привычки и награды/ }).click();
-  await expect(page.locator('.mantine-SegmentedControl-root [data-active]').first()).toContainText(
-    'Зайка',
-  );
+  await expect(page).toHaveURL(/\/routine\?tab=habits/);
+  await expect(page.getByRole('tab', { name: 'Зайка' })).toHaveAttribute('aria-selected', 'true');
+
+  // «Распорядок» → «День»: лента по порядку; касание строки урока — вкладка «План».
+  await page.goto('/routine');
+  const day = page.getByTestId('dayline');
+  await expect(day).toBeVisible();
+  expect(await layoutProblems(page)).toEqual([]);
+  if (process.env.SHOTS)
+    await page.screenshot({ path: `${process.env.SHOTS}/routine-${test.info().project.name}.png` });
+  await day.locator('[data-state]').first().click();
+  await expect(page).toHaveURL(/tab=(plan|habits|sleep)/);
 
   // «Все» — снова карточки всех детей.
   await page.goto('/home');
