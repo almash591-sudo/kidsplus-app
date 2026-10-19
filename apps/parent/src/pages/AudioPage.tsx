@@ -8,16 +8,19 @@ import {
   Card,
   FileButton,
   Group,
+  Portal,
   Progress,
   Stack,
   Switch,
   Text,
   TextInput,
+  UnstyledButton,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { api, errorMessage } from '../api';
+import { BulkFilters, SelectMark, useBulk } from '../components/Bulk';
 import { modals } from '../lib/modals';
 import { keys, queryClient } from '../queries';
 
@@ -28,7 +31,18 @@ export function AudioPage() {
     queryKey: keys.audio,
     queryFn: () => api.get<AudioTrack[]>('/parent/audio'),
   });
-  const [forKids, setForKids] = useState(true);
+  const [forKids, setUploadForKids] = useState(true);
+  // Этап 33: поиск, «Детям / Только родителям», выбор многих сразу.
+  const withGroup = useMemo(
+    () =>
+      tracks.data?.map((t) => ({
+        ...t,
+        childIds: [] as string[],
+        subject: t.forKids ? 'kids' : 'parents',
+      })),
+    [tracks.data],
+  );
+  const b = useBulk(withGroup);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
   // Файлы — по одному: каждый до 60 МБ, так загрузка не обрывается на слабой связи.
@@ -82,7 +96,7 @@ export function AudioPage() {
             <Switch
               label="Сразу детям"
               checked={forKids}
-              onChange={(e) => setForKids(e.currentTarget.checked)}
+              onChange={(e) => setUploadForKids(e.currentTarget.checked)}
             />
           </Group>
           {progress && (
@@ -96,6 +110,9 @@ export function AudioPage() {
         </Stack>
       </Card>
       {tracks.error && <Alert color="red">{errorMessage(tracks.error)}</Alert>}
+      {!!tracks.data?.length && (
+        <BulkFilters search owners={false} bulk={b} subjects={AUDIO_GROUPS} shown={b.filtered} />
+      )}
       <Card padding={0}>
         <Stack gap={0} className="grouped">
           {tracks.data?.length === 0 && (
@@ -103,13 +120,105 @@ export function AudioPage() {
               <Text c="dimmed">Пока пусто — добавьте первые mp3.</Text>
             </div>
           )}
-          {tracks.data?.map((t) => (
-            <TrackRow key={t.id} track={t} />
-          ))}
+          {b.filtered.map((t) =>
+            b.selecting ? (
+              <UnstyledButton
+                key={t.id}
+                className="attention-row"
+                onClick={() => b.toggle(t.id)}
+                aria-pressed={b.selected.has(t.id)}
+                data-testid="select-row"
+              >
+                <SelectMark checked={b.selected.has(t.id)} />
+                <Text fw={600} style={{ flex: 1 }} truncate>
+                  {t.title}
+                </Text>
+                <Text size="xs" c={t.forKids ? 'teal' : 'dimmed'}>
+                  {t.forKids ? 'детям' : 'родителям'}
+                </Text>
+              </UnstyledButton>
+            ) : (
+              <TrackRow key={t.id} track={t} />
+            ),
+          )}
         </Stack>
       </Card>
+      {b.selecting && <div className="bulk-space" />}
+      {b.selecting && (
+        <Portal>
+          <div className="bulk-bar" data-testid="bulk-bar">
+            <Text size="sm" fw={600}>
+              {b.selected.size ? `Треков: ${b.selected.size}` : 'Отметьте нужное'}
+            </Text>
+            <Group gap={6} justify="flex-end">
+              <Button
+                size="sm"
+                radius="xl"
+                disabled={!b.selected.size}
+                onClick={() => void setForKids(tracks.data ?? [], [...b.selected], true, b.stop)}
+              >
+                Показать детям
+              </Button>
+              <Button
+                size="sm"
+                radius="xl"
+                variant="light"
+                disabled={!b.selected.size}
+                onClick={() => void setForKids(tracks.data ?? [], [...b.selected], false, b.stop)}
+              >
+                Скрыть от детей
+              </Button>
+            </Group>
+          </div>
+        </Portal>
+      )}
     </Stack>
   );
+}
+
+/** Группы аудио для чипов фильтра. */
+const AUDIO_GROUPS = { kids: 'Детям', parents: 'Только родителям' };
+
+/** Показать/скрыть от детей много треков сразу; уведомление с «Отменить» (этап 33). */
+async function setForKids(all: AudioTrack[], ids: string[], forKids: boolean, done: () => void) {
+  const changed = all.filter((t) => ids.includes(t.id) && t.forKids !== forKids);
+  const patch = (list: AudioTrack[], value: boolean) =>
+    Promise.all(list.map((t) => api.patch(`/parent/audio/${t.id}`, { forKids: value })));
+  try {
+    await patch(changed, forKids);
+    done();
+    void queryClient.invalidateQueries({ queryKey: keys.audio });
+    const id = `audio-${Date.now()}`;
+    notifications.show({
+      id,
+      autoClose: 7000,
+      message: (
+        <Group justify="space-between" wrap="nowrap">
+          <Text size="sm">
+            {changed.length
+              ? `${forKids ? 'Детям' : 'Скрыто от детей'}: ${changed.length}`
+              : 'Ничего не изменилось'}
+          </Text>
+          {changed.length > 0 && (
+            <Button
+              size="compact-sm"
+              variant="subtle"
+              onClick={() => {
+                notifications.hide(id);
+                void patch(changed, !forKids).then(() =>
+                  queryClient.invalidateQueries({ queryKey: keys.audio }),
+                );
+              }}
+            >
+              Отменить
+            </Button>
+          )}
+        </Group>
+      ),
+    });
+  } catch (err) {
+    notifications.show({ color: 'red', message: errorMessage(err) });
+  }
 }
 
 function TrackRow({ track: t }: { track: AudioTrack }) {

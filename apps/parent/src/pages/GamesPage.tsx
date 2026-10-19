@@ -178,7 +178,7 @@ export function GamesPage() {
         </Button>
       </Group>
       {!!games.data?.length && (
-        <BulkFilters bulk={b} subjects={GAME_CATEGORY_LABELS} shown={b.filtered} />
+        <BulkFilters search bulk={b} subjects={GAME_CATEGORY_LABELS} shown={b.filtered} />
       )}
       <Card padding={0}>
         <Stack gap={0} className="grouped decks">

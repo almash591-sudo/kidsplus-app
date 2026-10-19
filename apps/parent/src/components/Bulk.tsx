@@ -1,7 +1,7 @@
 // Массовые действия в «Контенте» (этап 33): фильтры «есть у / нет у», предмет, режим выбора,
 // нижняя панель «Дать / Убрать» с отменой и кнопки-имена у каждого пункта.
 import type { ChildItemsBulkRequest, ChildItemsBulkResult } from '@kidsplus/shared/api';
-import { Button, Group, Menu, Portal, Text } from '@mantine/core';
+import { Button, Group, Menu, Portal, Text, TextInput } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useMemo, useState } from 'react';
 import { api, errorMessage } from '../api';
@@ -14,6 +14,8 @@ export interface Assignable {
   childIds: string[];
   /** Предмет / раздел; null — без предмета. */
   subject: string | null;
+  /** Название — для поиска. */
+  title?: string;
 }
 
 type Owner = { childId: string; has: boolean } | null;
@@ -103,18 +105,19 @@ export const ownerLink = (tab: 'videos' | 'decks' | 'games', childId: string, ha
 export function useBulk<T extends Assignable>(all: T[] | undefined) {
   const [owner, setOwner] = useState<Owner>(ownerFromUrl);
   const [subject, setSubject] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  const filtered = useMemo(
-    () =>
-      (all ?? []).filter(
-        (x) =>
-          (!owner || x.childIds.includes(owner.childId) === owner.has) &&
-          (!subject || x.subject === subject),
-      ),
-    [all, owner, subject],
-  );
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return (all ?? []).filter(
+      (x) =>
+        (!owner || x.childIds.includes(owner.childId) === owner.has) &&
+        (!subject || x.subject === subject) &&
+        (!q || (x.title ?? '').toLowerCase().includes(q)),
+    );
+  }, [all, owner, subject, query]);
   return {
     all: all ?? [],
     filtered,
@@ -122,6 +125,8 @@ export function useBulk<T extends Assignable>(all: T[] | undefined) {
     setOwner,
     subject,
     setSubject,
+    query,
+    setQuery,
     selecting,
     selected,
     start: () => setSelecting(true),
@@ -149,11 +154,17 @@ export function BulkFilters<T extends Assignable>({
   bulk: b,
   subjects,
   shown,
+  search,
+  owners = true,
 }: {
   bulk: Bulk<T>;
   subjects?: Record<string, string>;
   /** Пункты после всех фильтров страницы — для «Выбрать все». */
   shown: T[];
+  /** Поле поиска по названию (у «Видео» — своё, с каналом). */
+  search?: boolean;
+  /** Чипы «Есть у / Нет у» (у аудио детей нет — там «Детям»). */
+  owners?: boolean;
 }) {
   const children = useChildren().data ?? [];
   const present = subjects
@@ -161,7 +172,16 @@ export function BulkFilters<T extends Assignable>({
     : [];
   return (
     <>
-      {children.length > 0 && (
+      {search && (
+        <TextInput
+          placeholder="Поиск по названию"
+          value={b.query}
+          onChange={(e) => b.setQuery(e.currentTarget.value)}
+          radius="xl"
+          aria-label="Поиск"
+        />
+      )}
+      {owners && children.length > 0 && (
         <div className="chip-row" data-testid="owner-chips">
           {children.flatMap((c) =>
             [false, true].map((has) => {
