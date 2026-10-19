@@ -130,19 +130,19 @@ export function ChildPage() {
             icon: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2',
           },
           {
-            to: '/plan',
+            to: '/routine?tab=plan',
             label: 'План дня',
             color: '#5856d6',
             icon: 'M4 6h16v14H4zM4 10h16M9 3v4M15 3v4',
           },
           {
-            to: '/habits',
+            to: '/routine?tab=habits',
             label: 'Привычки и награды',
             color: '#ffcc00',
             icon: 'M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6-4.5-4.2 6.1-.7z',
           },
           {
-            to: '/sleep',
+            to: '/routine?tab=sleep',
             label: 'Сон и сказки',
             color: '#5856d6',
             icon: 'M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z',

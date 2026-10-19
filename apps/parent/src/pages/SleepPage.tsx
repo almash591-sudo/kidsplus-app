@@ -75,6 +75,7 @@ export function SleepPage() {
       </Text>
       {children.data && children.data.length > 1 && (
         <SegmentedControl
+          className="child-picker"
           value={childId ?? ''}
           onChange={setPicked}
           data={children.data.map((c) => ({ value: c.id, label: c.nickname }))}
