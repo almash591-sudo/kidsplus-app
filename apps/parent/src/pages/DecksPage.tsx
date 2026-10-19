@@ -92,7 +92,7 @@ export function DecksPage() {
       </Group>
       {decks.data?.length === 0 && <Text c="dimmed">Наборов пока нет.</Text>}
       {!!decks.data?.length && (
-        <BulkFilters bulk={b} subjects={CATEGORY_LABELS} shown={b.filtered} />
+        <BulkFilters search bulk={b} subjects={CATEGORY_LABELS} shown={b.filtered} />
       )}
       {CATEGORY_ORDER.map((category) => {
         const list = b.filtered.filter((d) => d.category === category);

@@ -196,6 +196,16 @@ test('кабинет вокруг ребёнка (этап 33): переключ
   await expect(page.getByTestId('kid-card').nth(1)).toBeVisible();
 });
 
+test('поиск по названию в играх (этап 33)', async ({ page }) => {
+  await login(page);
+  await page.goto('/content?tab=games');
+  await expect(page.getByText('Найди пару').first()).toBeVisible();
+  await page.getByRole('textbox', { name: 'Поиск' }).fill('ягод');
+  await expect(page.getByText('Посчитай ягодки').first()).toBeVisible();
+  await expect(page.getByText('Найди пару')).toHaveCount(0);
+  await expect(page.getByText('Показано: 1')).toBeVisible();
+});
+
 test('привычки: готовое и своё дело, отметка за ребёнка, награда за звёзды', async ({ page }) => {
   await login(page);
   await page.goto('/habits');
