@@ -27,10 +27,11 @@ import {
   UnstyledButton,
 } from '@mantine/core';
 import { useMutation } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { api } from '../api';
 import { AudioStatus } from '../components/AudioStatus';
+import { BulkBar, BulkFilters, KidPills, SelectMark, useBulk, type Bulk } from '../components/Bulk';
 import { VoiceRecorder } from '../components/VoiceRecorder';
 import { ImageSlot } from '../components/ImagePicker';
 import { LANGUAGE_LABELS } from '../lib/child';
@@ -71,6 +72,12 @@ const refreshDecks = () => {
 export function DecksPage() {
   const decks = useDecks();
   const [creating, setCreating] = useState(false);
+  // Этап 33: фильтры «есть у / нет у», раздел, выбор многих сразу.
+  const withSubject = useMemo(
+    () => decks.data?.map((d) => ({ ...d, subject: d.category as string })),
+    [decks.data],
+  );
+  const b = useBulk(withSubject);
 
   return (
     <Stack>
@@ -84,18 +91,23 @@ export function DecksPage() {
         </Button>
       </Group>
       {decks.data?.length === 0 && <Text c="dimmed">Наборов пока нет.</Text>}
+      {!!decks.data?.length && (
+        <BulkFilters bulk={b} subjects={CATEGORY_LABELS} shown={b.filtered} />
+      )}
       {CATEGORY_ORDER.map((category) => {
-        const list = decks.data?.filter((d) => d.category === category) ?? [];
+        const list = b.filtered.filter((d) => d.category === category);
         if (!list.length) return null;
         return (
           <Stack key={category} gap={6}>
             <Text size="xs" fw={600} c="dimmed" tt="uppercase" px={16}>
               {CATEGORY_LABELS[category]} · {list.length}
             </Text>
-            <DeckGrid decks={list} />
+            <DeckGrid decks={list} bulk={b} />
           </Stack>
         );
       })}
+      {b.selecting && <div className="bulk-space" />}
+      <BulkBar bulk={b} kind="deck" />
       <Modal opened={creating} onClose={() => setCreating(false)} title="Новый набор">
         {creating && <DeckForm deck={null} onDone={() => setCreating(false)} />}
       </Modal>
@@ -103,37 +115,67 @@ export function DecksPage() {
   );
 }
 
-function DeckGrid({ decks }: { decks: Deck[] }) {
+function DeckGrid({
+  decks,
+  bulk: b,
+}: {
+  decks: (Deck & { subject: string })[];
+  bulk: Bulk<Deck & { subject: string }>;
+}) {
   return (
     <Card padding={0}>
       <Stack gap={0} className="grouped decks">
-        {decks.map((d) => (
-          <UnstyledButton
-            key={d.id}
-            component={Link}
-            to={`/decks/${d.id}`}
-            className="attention-row"
-          >
-            {d.cards[0] ? (
-              <img className="deck-thumb" src={d.cards[0].image.url} alt="" />
-            ) : (
-              <span className="deck-thumb" aria-hidden>
-                🃏
-              </span>
-            )}
-            <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
-              <Text fw={600} truncate>
-                {d.title}
-              </Text>
-              <Text size="sm" c="dimmed">
-                {LANGUAGE_LABELS[d.lang]} · {d.cards.length} шт.
-              </Text>
-            </Stack>
-            <span className="chevron" aria-hidden="true">
-              ›
-            </span>
-          </UnstyledButton>
-        ))}
+        {decks.map((d) => {
+          const body = (
+            <>
+              {b.selecting && <SelectMark checked={b.selected.has(d.id)} />}
+              {d.cards[0] ? (
+                <img className="deck-thumb" src={d.cards[0].image.url} alt="" />
+              ) : (
+                <span className="deck-thumb" aria-hidden>
+                  🃏
+                </span>
+              )}
+              <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
+                <Text fw={600} truncate>
+                  {d.title}
+                </Text>
+                <Text size="sm" c="dimmed">
+                  {LANGUAGE_LABELS[d.lang]} · {d.cards.length} шт.
+                </Text>
+              </Stack>
+            </>
+          );
+          if (b.selecting)
+            return (
+              <UnstyledButton
+                key={d.id}
+                className="attention-row"
+                onClick={() => b.toggle(d.id)}
+                aria-pressed={b.selected.has(d.id)}
+                data-testid="select-row"
+              >
+                {body}
+              </UnstyledButton>
+            );
+          return (
+            <div key={d.id} className="attention-row" style={{ flexWrap: 'wrap' }}>
+              <UnstyledButton
+                component={Link}
+                to={`/decks/${d.id}`}
+                style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}
+              >
+                {body}
+                <span className="chevron" aria-hidden="true">
+                  ›
+                </span>
+              </UnstyledButton>
+              <div className="row-pills">
+                <KidPills kind="deck" item={d} />
+              </div>
+            </div>
+          );
+        })}
       </Stack>
     </Card>
   );

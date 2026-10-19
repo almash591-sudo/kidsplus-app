@@ -456,6 +456,65 @@ img.video-thumb.contain {
   color: var(--mantine-primary-color-light-color);
 }
 
+/* ─── Этап 33: массовые действия ─── */
+/* Панель «Дать / Убрать» — над нижними вкладками (на компьютере вкладок нет). */
+.bulk-bar {
+  position: fixed;
+  z-index: 210;
+  left: 12px;
+  right: 12px;
+  bottom: calc(76px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 10px;
+  padding: 10px 12px 10px 16px;
+  border-radius: 20px;
+  background: var(--app-glass);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8);
+  backdrop-filter: blur(20px) saturate(1.8);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.18);
+}
+@media (min-width: 48em) {
+  .bulk-bar {
+    left: auto;
+    right: 24px;
+    bottom: 24px;
+    min-width: 420px;
+  }
+}
+/* Имена детей под строкой видео или набора — на уровне текста, а не картинки. */
+.row-pills {
+  flex-basis: 100%;
+  padding: 2px 0 0 108px;
+}
+.grouped.decks .row-pills {
+  padding-left: 58px;
+}
+
+/* Место под панель, чтобы она не закрывала последние строки. */
+.bulk-space {
+  height: 72px;
+}
+
+.select-mark {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--app-separator);
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+}
+.select-mark.on {
+  border-color: var(--mantine-primary-color-filled);
+  background: var(--mantine-primary-color-filled);
+}
+
 /* ─── Этап 17б: премиальная оболочка ─── */
 
 /* Компактный заголовок при прокрутке — как в iOS: тонкий, по центру, на размытом фоне. */

@@ -50,7 +50,10 @@ async function layoutProblems(page: Page) {
     }
     for (const el of document.querySelectorAll('button, a[href], [role=tab], label')) {
       const r = el.getBoundingClientRect();
-      const clipped = el.closest('.mantine-SegmentedControl-root, .photo-strip, .tabbar');
+      // Чипы фильтров — строка с прокруткой вбок, так задумано.
+      const clipped = el.closest(
+        '.mantine-SegmentedControl-root, .photo-strip, .tabbar, .chip-row',
+      );
       if (r.width > 0 && r.right > w + 1 && !clipped)
         problems.push(
           `за краем: ${(el.textContent ?? '').trim().slice(0, 30)} (${Math.round(r.right)})`,
@@ -107,6 +110,38 @@ test('все вкладки «Контента» можно нажать', async
     await tab.click();
     await expect(page).toHaveURL(new RegExp(`tab=`));
   }
+});
+
+test('массовые действия (этап 33): выбрать все видео, убрать у ребёнка, отменить', async ({
+  page,
+}) => {
+  await login(page);
+  await page.goto('/content?tab=videos');
+  const chips = page.getByTestId('owner-chips');
+  await chips.getByRole('button', { name: /^Есть у Зайка/ }).click();
+  await page.getByTestId('bulk-select').click();
+  await page.getByRole('button', { name: 'Выбрать все' }).click();
+  const bar = page.getByTestId('bulk-bar');
+  await expect(bar).toContainText('видео');
+  expect(await layoutProblems(page)).toEqual([]);
+  if (process.env.SHOTS)
+    await page.screenshot({ path: `${process.env.SHOTS}/bulk-${test.info().project.name}.png` });
+  await bar.getByRole('button', { name: 'Зайка' }).click();
+  await page.getByRole('menuitem', { name: 'Убрать у Зайка' }).click();
+  await expect(page.getByText(/Зайка: убрано \d+ видео/)).toBeVisible();
+  await expect(chips.getByRole('button', { name: /^Нет у Зайка · \d+/ })).toBeVisible();
+  // Передумали — всё вернулось.
+  await page.getByRole('button', { name: 'Отменить' }).click();
+  await expect(chips.getByRole('button', { name: /^Нет у Зайка/ })).toHaveCount(0);
+
+  // Имя у набора карточек: касание — скрыть у ребёнка, ещё раз — вернуть.
+  await page.goto('/content?tab=decks');
+  const pill = page.locator('.row-pills').first().getByRole('button', { name: /Зайка/ });
+  await expect(pill).toHaveAttribute('aria-pressed', 'true');
+  await pill.click();
+  await expect(pill).toHaveAttribute('aria-pressed', 'false');
+  await pill.click();
+  await expect(pill).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('привычки: готовое и своё дело, отметка за ребёнка, награда за звёзды', async ({ page }) => {

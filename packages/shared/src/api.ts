@@ -393,6 +393,18 @@ export type GameInput = z.input<typeof gameInput>;
 
 export const childItemsOrderRequest = z.object({ itemIds: z.array(uuid).max(1000) });
 
+/** Массовое назначение (этап 33): дать ребёнку и убрать у него сразу много видео, наборов, игр. */
+const itemRef = z.object({ kind: z.enum(['segment', 'deck', 'interactive']), refId: uuid });
+export const childItemsBulkRequest = z.object({
+  add: z.array(itemRef).max(2000).default([]),
+  remove: z.array(itemRef).max(2000).default([]),
+});
+export type ChildItemsBulkRequest = z.input<typeof childItemsBulkRequest>;
+export interface ChildItemsBulkResult {
+  added: number;
+  removed: number;
+}
+
 // ─── Детское приложение ──────────────────────────────────────────────────────
 
 export const pairClaimRequest = z.object({

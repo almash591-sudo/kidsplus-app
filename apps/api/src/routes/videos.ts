@@ -1,10 +1,12 @@
 import { schema } from '@kidsplus/db';
 import {
   gameCategory,
+  childItemsBulkRequest,
   childItemsOrderRequest,
   segmentCreateRequest,
   segmentUpdateRequest,
   type ChildItem,
+  type ChildItemsBulkResult,
   type Segment,
   type VideoLookup,
 } from '@kidsplus/shared/api';
@@ -15,7 +17,7 @@ import { z } from 'zod';
 import { requireParent } from '../auth';
 import type { Ctx } from '../context';
 import { HttpError, idFrom, notFound, parse } from '../lib/http';
-import { assignOnly, childIdsByRef, syncChildItems } from '../services/child-items';
+import { assignOnly, bulkChildItems, childIdsByRef, syncChildItems } from '../services/child-items';
 import { fetchYouTubeOEmbed } from '../services/oembed';
 
 const { childItems, quizQuestions, videoSegments, videoSources } = schema;
@@ -204,6 +206,17 @@ export function videosRoutes(app: FastifyInstance, ctx: Ctx) {
     });
     return reply.code(204).send();
   });
+
+  // Массовое назначение (этап 33): «Дать ребёнку» / «Убрать» сразу для многих видео, карточек, игр.
+  app.post(
+    '/api/parent/children/:id/items/bulk',
+    { preHandler: parentOnly },
+    async (request): Promise<ChildItemsBulkResult> => {
+      const childId = idFrom(request.params);
+      const { add, remove } = parse(childItemsBulkRequest, request.body);
+      return db.transaction((tx) => bulkChildItems(tx, childId, add, remove));
+    },
+  );
 
   // Убрать у ребёнка недоступные видео (в уроках они и так заменяются другими по предмету).
   app.delete(

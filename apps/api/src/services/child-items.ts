@@ -93,6 +93,63 @@ export async function assignOnly(
   await db.transaction((tx) => syncChildItems(tx, kind, refId, childIds, familyId));
 }
 
+const KINDS: ItemKind[] = ['segment', 'deck', 'interactive'];
+const tableOf = (kind: ItemKind) =>
+  kind === 'segment' ? videoSegments : kind === 'deck' ? flashcardDecks : interactives;
+
+/**
+ * Массовое назначение одному ребёнку (этап 33): убирает и добавляет сразу много пунктов.
+ * Новые — в конец списка в переданном порядке; несуществующие и уже назначенные пропускаются.
+ */
+export async function bulkChildItems(
+  exec: Exec,
+  childId: string,
+  add: { kind: ItemKind; refId: string }[],
+  remove: { kind: ItemKind; refId: string }[],
+) {
+  let removed = 0;
+  for (const kind of KINDS) {
+    const ids = [...new Set(remove.filter((r) => r.kind === kind).map((r) => r.refId))];
+    if (!ids.length) continue;
+    const gone = await exec
+      .delete(childItems)
+      .where(and(eq(childItems.childId, childId), inArray(refColumn(kind), ids)))
+      .returning({ id: childItems.id });
+    removed += gone.length;
+  }
+
+  const [last] = await exec
+    .select({ pos: max(childItems.position) })
+    .from(childItems)
+    .where(eq(childItems.childId, childId));
+  let position = (last?.pos ?? -1) + 1;
+  let added = 0;
+  const wanted = add.filter((a, i) => add.findIndex((b) => b.refId === a.refId) === i);
+  const valid = new Set<string>();
+  const present = new Set<string>();
+  for (const kind of KINDS) {
+    const ids = wanted.filter((r) => r.kind === kind).map((r) => r.refId);
+    if (!ids.length) continue;
+    const table = tableOf(kind);
+    for (const r of await exec.select({ id: table.id }).from(table).where(inArray(table.id, ids)))
+      valid.add(r.id);
+    const col = refColumn(kind);
+    for (const r of await exec
+      .select({ ref: col })
+      .from(childItems)
+      .where(and(eq(childItems.childId, childId), inArray(col, ids))))
+      if (r.ref) present.add(r.ref);
+  }
+  const rows = wanted
+    .filter((a) => valid.has(a.refId) && !present.has(a.refId))
+    .map((a) => ({ childId, kind: a.kind, ...refValues(a.kind, a.refId), position: position++ }));
+  for (let i = 0; i < rows.length; i += 500) {
+    await exec.insert(childItems).values(rows.slice(i, i + 500));
+    added += rows.slice(i, i + 500).length;
+  }
+  return { added, removed };
+}
+
 /** childIds для фрагментов, наборов карточек или игр. */
 export async function childIdsByRef(exec: Pick<Db, 'select'>, kind: ItemKind, refIds: string[]) {
   const map = new Map<string, string[]>();
