@@ -20,7 +20,7 @@ import {
   type Subject,
   type TopicItem,
 } from '@kidsplus/shared/schedule';
-import { and, asc, desc, eq, isNotNull, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { requireDevice, requireParent } from '../auth';
@@ -53,6 +53,7 @@ const {
   curriculumTopics,
   dayControls,
   devices,
+  events,
   flashcardDecks,
   interactives,
   quizQuestions,
@@ -484,7 +485,32 @@ export function dayRoutes(app: FastifyInstance, ctx: Ctx) {
       usedSeconds: Object.values(day.used).reduce((a, b) => a + (b ?? 0), 0),
       extraMinutes: Math.round((c?.extraSeconds ?? 0) / 60),
       battery: await childBattery(childId),
+      videosDown: await videosDown(childId, now),
     };
+  };
+
+  /**
+   * Телефон ребёнка за полчаса не открыл 3+ разных видео и с тех пор ни одного не досмотрел
+   * (этап 34): скорее всего, нет связи с YouTube — подсказка родителю на «Главной».
+   */
+  const videosDown = async (childId: string, now: Date) => {
+    const since = new Date(now.getTime() - 30 * 60_000);
+    const rows = await db
+      .select({ type: events.type, segmentId: events.segmentId, at: events.createdAt })
+      .from(events)
+      .where(
+        and(
+          eq(events.childId, childId),
+          inArray(events.type, ['segment_error', 'segment_complete']),
+          gte(events.createdAt, since),
+        ),
+      )
+      .orderBy(desc(events.createdAt));
+    const lastOk = rows.findIndex((r) => r.type === 'segment_complete');
+    const errors = (lastOk === -1 ? rows : rows.slice(0, lastOk)).filter(
+      (r) => r.type === 'segment_error',
+    );
+    return new Set(errors.map((r) => r.segmentId)).size >= 3;
   };
 
   app.get('/api/parent/children/:id/now', { preHandler: parentOnly }, async (request) =>

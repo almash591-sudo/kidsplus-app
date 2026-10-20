@@ -183,6 +183,15 @@ function Attention({ kids }: { kids: Child[] }) {
         text: `Телефон ${k.nickname}: ${b.level} %`,
         to: '/now',
       });
+    // Этап 34: телефон подряд не открывает видео — обычно нет связи с YouTube или выключен VPN.
+    if (nows[i]?.videosDown)
+      rows.push({
+        key: `videos-${k.id}`,
+        color: '#ff9500',
+        icon: 'M4 5h16v14H4zM4 4l16 16',
+        text: `Телефон ${k.nickname}: видео не открываются — проверьте интернет и VPN`,
+        to: `/child/${k.id}`,
+      });
     const noise = monitors[i]?.lastNoiseAt;
     if (noise && clock - new Date(noise).getTime() < 30 * 60_000)
       rows.push({

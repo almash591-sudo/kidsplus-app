@@ -20,7 +20,8 @@ import { MonitorScreen } from './monitor/MonitorScreen';
 import { onMonitorEvent, useMonitor } from './monitor/state';
 import { CameraButton, GalleryScreen } from './camera/GalleryScreen';
 import { fx } from './fx';
-import { appPhrases, CATEGORY_DONE, LESSON_DONE } from './phrases';
+import { appPhrases, CATEGORY_DONE, LESSON_DONE, VIDEOS_REST } from './phrases';
+import { pauseVideos, withoutPausedVideos } from './videoPause';
 import { playlistMedia, warmMedia } from './offline';
 import { setServerVoice, wantSpeech } from './speechCache';
 import { ru } from './games/common';
@@ -185,10 +186,12 @@ export function App() {
   const load = useCallback(async () => {
     try {
       // Без ответа о расписании — работаем как без расписания (разделы на выбор).
-      const [playlist, day] = await Promise.all([
+      const [full, day] = await Promise.all([
         kidApi.playlist(),
         kidApi.today().catch(() => currentToday.current),
       ]);
+      // Видео не открывались — полчаса без них (этап 34).
+      const playlist = { ...full, items: withoutPausedVideos(full.items) };
       reportVoicesOnce();
       // Нейроголос: фразы приложения озвучиваются на сервере заранее.
       setServerVoice(playlist.serverVoice);
@@ -399,6 +402,9 @@ export function App() {
       videoErrors.current = reason === 'error' ? videoErrors.current + 1 : 0;
       if (videoErrors.current >= 2) {
         videoErrors.current = 0;
+        // Скорее всего, нет связи с YouTube: полчаса без видео, совёнок зовёт поиграть.
+        pauseVideos();
+        void playSequence([ru(VIDEOS_REST)]);
         return goHome();
       }
       const s = current.current;
@@ -419,7 +425,7 @@ export function App() {
       const s = current.current;
       if (s.screen !== 'today') return;
       try {
-        const { items } = await kidApi.lesson(subject);
+        const items = withoutPausedVideos((await kidApi.lesson(subject)).items);
         if (!items.length) return void refreshToday();
         stop.current = false;
         setState({

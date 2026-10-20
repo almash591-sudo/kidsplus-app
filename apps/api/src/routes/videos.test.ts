@@ -299,6 +299,31 @@ describe('события детского приложения', () => {
       'available',
       'available',
     ]);
+
+    // Этап 34: родителю — «видео не открываются» один раз; на «Главной» — отметка до досмотра.
+    const downs = async () =>
+      (await t.db.select().from(schema.events)).filter((e) => e.type === 'videos_down').length;
+    expect(await downs()).toBe(1);
+    const now = async () =>
+      (await t.app.inject({ url: `/api/parent/children/${younger}/now`, cookies: parent })).json<{
+        videosDown: boolean;
+      }>().videosDown;
+    expect(await now()).toBe(true);
+    const more = await createSegment(t, parent, { videoId: 'cascade0005', childIds: [younger] });
+    await t.app.inject({
+      method: 'POST',
+      url: '/api/kid/events',
+      cookies: device,
+      payload: { type: 'segment_error', segmentId: more, payload: { code: 150 } },
+    });
+    expect(await downs()).toBe(1);
+    await t.app.inject({
+      method: 'POST',
+      url: '/api/kid/events',
+      cookies: device,
+      payload: { type: 'segment_complete', segmentId: more, payload: { watchedSec: 60 } },
+    });
+    expect(await now()).toBe(false);
   });
 
   it('неизвестный тип события — 400', async () => {

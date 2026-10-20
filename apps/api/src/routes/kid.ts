@@ -31,6 +31,8 @@ const UNAVAILABLE_PLAYER_ERRORS = new Set([100, 101, 150]);
  */
 const DEVICE_FAILURE_VIDEOS = 3;
 const DEVICE_FAILURE_WINDOW_MS = 30 * 60_000;
+/** «Видео не открываются» — родителю не чаще раза в столько. */
+const VIDEOS_DOWN_REPEAT_MS = 6 * 3600_000;
 
 /** Фразы похвалы для рода ребёнка (при серверной озвучке — ставит её в очередь, отдаёт готовые). */
 export async function kidPhrases(
@@ -195,11 +197,23 @@ export function kidRoutes(app: FastifyInstance, ctx: Ctx) {
       });
 
       const code = Number(body.payload?.code);
+      const failing = body.type === 'segment_error' && (await deviceFailing(deviceId));
+      // Телефон не открывает видео вообще (этап 34) — родителю, не чаще раза в 6 часов.
+      if (failing && !(await recentlyReported(deviceId))) {
+        await db.insert(events).values({
+          childId,
+          deviceId,
+          type: 'videos_down',
+          payload: {},
+          createdAt: ctx.now(),
+        });
+        void notifyParents(db, ctx.push?.sender ?? null, pushMessages.videosDown(childId));
+      }
       if (
         body.type === 'segment_error' &&
         sourceId &&
         UNAVAILABLE_PLAYER_ERRORS.has(code) &&
-        !(await deviceFailing(deviceId))
+        !failing
       ) {
         const [changed] = await db
           .update(videoSources)
@@ -232,5 +246,22 @@ export function kidRoutes(app: FastifyInstance, ctx: Ctx) {
         ),
       );
     return (row?.n ?? 0) >= DEVICE_FAILURE_VIDEOS;
+  }
+
+  /** Родителю уже сообщали, что этот телефон не открывает видео (за последние 6 часов). */
+  async function recentlyReported(deviceId: string): Promise<boolean> {
+    const since = new Date(ctx.now().getTime() - VIDEOS_DOWN_REPEAT_MS);
+    const [row] = await db
+      .select({ id: events.id })
+      .from(events)
+      .where(
+        and(
+          eq(events.deviceId, deviceId),
+          eq(events.type, 'videos_down'),
+          gte(events.createdAt, since),
+        ),
+      )
+      .limit(1);
+    return Boolean(row);
   }
 }

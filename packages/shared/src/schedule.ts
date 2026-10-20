@@ -222,6 +222,8 @@ export interface ChildNow extends KidToday {
   extraMinutes: number;
   /** Заряд телефона ребёнка (последнее показание); null — телефон ещё не сообщал. */
   battery: { level: number; charging: boolean; at: string } | null;
+  /** Телефон за последние полчаса подряд не открыл несколько разных видео (этап 34). */
+  videosDown: boolean;
 }
 
 // ─── Расчёт ──────────────────────────────────────────────────────────────────
