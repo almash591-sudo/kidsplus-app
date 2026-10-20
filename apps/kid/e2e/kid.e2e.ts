@@ -1899,6 +1899,77 @@ test.describe('игры', () => {
     await expectFinished(page, backend);
   });
 
+  test('космос по порядку (этап 36): не та планета — «ещё», по порядку — облетели', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [
+      game(1, { kind: 'space', order: 'numbers', count: 4, step: 2, reverse: true, rounds: 1 }),
+    ];
+    await openGame(page);
+    const g = page.getByTestId('game-space');
+    await expect(g).toHaveAttribute('data-order', '8,6,4,2');
+    await shot(page, 'space');
+    // Сначала «2» вместо «8» — ошибка, ничего не облетели.
+    await page.locator('[data-testid=space-planet][data-value="2"]').click();
+    await expect(g).toHaveAttribute('data-done', '0');
+    await page.waitForTimeout(1000);
+    for (const v of ['8', '6', '4', '2']) {
+      await page.locator(`[data-testid=space-planet][data-value="${v}"]`).click();
+      await page.waitForTimeout(300);
+    }
+    await expect(g).toHaveAttribute('data-done', '4');
+    await expectFinished(page, backend);
+    expect((await spoken(page)).map((s) => s.text)).toContain('Начни с цифры восемь!');
+  });
+
+  test('рыбалка (этап 36): крючок ведут к нужной рыбке и отпускают', async ({ page, backend }) => {
+    backend.items = [
+      game(1, { kind: 'fishing', mode: 'numbers', max: 5, fish: 3, speed: 'slow', rounds: 2 }),
+    ];
+    await openGame(page);
+    await shot(page, 'fishing');
+    const g = page.getByTestId('game-fishing');
+    const hook = page.getByTestId('fishing-hook');
+    /** Палец держит крючок на рыбке, пока он не доплывёт, и отпускает. */
+    const catchFish = async (value: string) => {
+      const fish = page.locator(`[data-testid=fishing-fish][data-value="${value}"]`);
+      let box = (await fish.boundingBox())!;
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      await page.mouse.down();
+      for (let i = 0; i < 40; i++) {
+        box = (await fish.boundingBox())!;
+        const cx = box.x + box.width / 2;
+        const cy = box.y + box.height / 2;
+        await page.mouse.move(cx, cy);
+        const h = (await hook.boundingBox())!;
+        const hx = h.x + h.width / 2;
+        const hy = h.y + h.height;
+        if (Math.abs(hx - cx) < box.width * 0.25 && Math.abs(hy - cy) < box.height * 0.3) break;
+        await page.waitForTimeout(50);
+      }
+      await page.mouse.up();
+    };
+    for (let round = 0; round < 2; round++) {
+      await expect(g).toHaveAttribute('data-round', String(round));
+      const target = (await g.getAttribute('data-target'))!;
+      if (round === 0) {
+        const values = await page
+          .getByTestId('fishing-fish')
+          .evaluateAll((els) => els.map((e) => e.getAttribute('data-value')!));
+        await catchFish(values.find((v) => v !== target)!);
+        await expect
+          .poll(() => page.getByTestId('game').getAttribute('data-lock'))
+          .not.toBe('none');
+        await page.waitForTimeout(1200);
+      }
+      await catchFish(target);
+      await expect(page.locator('.fishing-fish.caught')).toHaveCount(1);
+      await page.waitForTimeout(2400);
+    }
+    await expectFinished(page, backend);
+  });
+
   test('рисовалка: рисуем пальцем, ставим наклейку, «готово»', async ({ page, backend }) => {
     backend.items = [game(1, { kind: 'drawing', stickerIds: [CAT, LION] })];
     await openGame(page);

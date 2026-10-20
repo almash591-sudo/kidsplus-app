@@ -388,7 +388,50 @@ export const gameSpec = z.discriminatedUnion('kind', [
     rocks: z.boolean().default(false),
     rounds: z.number().int().min(1).max(6),
   }),
+  // ─── Посложнее, с управлением (этап 36) ───
+  /**
+   * Космос по порядку: ракета облетает планеты по порядку — цифры (через step) или буквы
+   * (SPACE_LETTERS); reverse — с конца.
+   */
+  z.object({
+    kind: z.literal('space'),
+    order: z.enum(['numbers', 'letters']).default('numbers'),
+    count: z.number().int().min(3).max(10),
+    step: z.union([z.literal(1), z.literal(2)]).default(1),
+    reverse: z.boolean().default(false),
+    rounds: z.number().int().min(1).max(5),
+  }),
+  /**
+   * Рыбалка: крючок ведут пальцем и отпускают у нужной рыбки — с цифрой (до max), с буквой
+   * (первые max из FISHING_LETTERS) или с ответом примера (сумма до max).
+   */
+  z.object({
+    kind: z.literal('fishing'),
+    mode: z.enum(['numbers', 'letters', 'sums']).default('numbers'),
+    max: z.number().int().min(3).max(10),
+    fish: z.number().int().min(3).max(6),
+    speed: z.enum(['slow', 'normal', 'fast']).default('slow'),
+    rounds: z.number().int().min(2).max(10),
+  }),
 ]);
+
+/** Буквы «Космоса по порядку» — начало алфавита (без Ё и Й: их трудно назвать по порядку). */
+export const SPACE_LETTERS = ['А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ж', 'З', 'И', 'К'] as const;
+/** Буквы «Рыбалки» — те, что учат первыми. */
+export const FISHING_LETTERS = [
+  'А',
+  'О',
+  'У',
+  'И',
+  'М',
+  'П',
+  'Т',
+  'К',
+  'С',
+  'Л',
+  'Н',
+  'Д',
+] as const;
 export type GameSpec = z.infer<typeof gameSpec>;
 export type GameKind = GameSpec['kind'];
 
@@ -433,6 +476,8 @@ export const GAME_KINDS: Record<GameKind, string> = {
   clock: 'Который час?',
   shop: 'Магазин',
   robot: 'Совёнок-робот',
+  space: 'Космос по порядку',
+  fishing: 'Рыбалка',
 };
 
 /** id картинок в параметрах игры — для проверки, что они есть и готовы. */
@@ -464,6 +509,8 @@ export function gameImageIds(g: GameSpec): string[] {
     case 'coloring':
     case 'clock':
     case 'robot':
+    case 'space':
+    case 'fishing':
     case 'tracing':
     case 'balloons':
     case 'melody':

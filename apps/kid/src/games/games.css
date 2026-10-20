@@ -99,6 +99,9 @@
 .game-screen[data-bg='math'] {
   --bg-art: url('/games/bg-math-p.webp');
 }
+.game-screen[data-bg='cosmos'] {
+  --bg-art: url('/games/scene-cosmos-p.webp');
+}
 @media (orientation: landscape) {
   .game-screen[data-bg='games'] {
     --bg-art: url('/games/bg-games-l.webp');
@@ -112,10 +115,17 @@
   .game-screen[data-bg='math'] {
     --bg-art: url('/games/bg-math-l.webp');
   }
+  .game-screen[data-bg='cosmos'] {
+    --bg-art: url('/games/scene-cosmos-l.webp');
+  }
 }
 @media (prefers-color-scheme: dark) {
   .game-screen[data-bg]::before {
     --veil: linear-gradient(rgb(15 14 23 / 0.84), rgb(15 14 23 / 0.84));
+  }
+  /* Космос и так тёмный — только чуть приглушить. */
+  .game-screen[data-bg='cosmos']::before {
+    --veil: linear-gradient(rgb(15 14 23 / 0.3), rgb(15 14 23 / 0.3));
   }
 }
 

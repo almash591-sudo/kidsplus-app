@@ -12,6 +12,8 @@ import { gameLock, gameMistakes, repeatCurrentTask, say, setTask, type GameProps
 import { Clock } from './Clock';
 import { Counting } from './Counting';
 import { Robot } from './Robot';
+import { Space } from './Space';
+import { Fishing } from './Fishing';
 import { Shop } from './Shop';
 import { Drawing } from './Drawing';
 import { Memory } from './Memory';
@@ -44,12 +46,13 @@ import { Freeze } from './music/Freeze';
 import { Orchestra } from './music/Orchestra';
 import './games.css';
 import './games-more.css';
+import './games-older.css';
 import { GAME_INTRO } from '../phrases';
 import { IdleHint } from '../ui/IdleHint';
 import { Icon } from '../ui/icons';
 
 /** Глиняный фон экрана игры (этап 35) — по разделу; у игр со своей сценой фон свой. */
-type Backdrop = 'games' | 'music' | 'letters' | 'math';
+type Backdrop = 'games' | 'music' | 'letters' | 'math' | 'cosmos';
 const BACKDROPS: [Backdrop, GameKind[]][] = [
   [
     'music',
@@ -71,12 +74,16 @@ const BACKDROPS: [Backdrop, GameKind[]][] = [
   ],
   ['letters', ['word', 'letter', 'syllable', 'firstLetter', 'readWord', 'tracing']],
   ['math', ['counting', 'arithmetic', 'compare', 'size', 'clock', 'shop', 'pattern']],
+  ['cosmos', ['space']],
 ];
-const OWN_SCENE: GameKind[] = ['flashlight', 'balloons', 'moles', 'drawing', 'coloring'];
+const OWN_SCENE: GameKind[] = ['flashlight', 'balloons', 'moles', 'drawing', 'coloring', 'fishing'];
 export const backdropOf = (kind: GameKind): Backdrop | undefined =>
   OWN_SCENE.includes(kind)
     ? undefined
     : (BACKDROPS.find(([, kinds]) => kinds.includes(kind))?.[0] ?? 'games');
+
+/** Игры, где совёнок — герой на поле. */
+const OWL_INSIDE: readonly GameKind[] = ['robot', 'space', 'fishing'];
 
 /** Игры без своего задания: как играть — звучит при входе. */
 const SILENT: readonly GameKind[] = ['drawing', 'memory', 'puzzle'];
@@ -123,6 +130,8 @@ const GAMES: { [K in GameKind]: ComponentType<GameProps<K>> } = {
   clock: Clock,
   shop: Shop,
   robot: Robot,
+  space: Space,
+  fishing: Fishing,
 };
 
 /** Экран игры: сама игра, кнопка «домой», в конце — звёздочка и следующий пункт. */
@@ -202,8 +211,8 @@ export function GameScreen(props: {
           <img src="/owl/point.webp" alt="" draggable={false} />
         </div>
       )}
-      {/* В «Совёнке-роботе» совёнок — на поле; второй в углу путал бы. */}
-      {!finished && spec.kind !== 'robot' && <Mascot />}
+      {/* Где совёнок сам в игре (робот, ракета, лодка), второй в углу путал бы. */}
+      {!finished && !OWL_INSIDE.includes(spec.kind) && <Mascot />}
       {!finished && <IdleHint onIdle={remind} first={6000} />}
       {!finished && (
         <button

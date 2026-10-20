@@ -107,6 +107,10 @@ export function gameSummary(spec: GameSpec): string {
       return `цены до ${spec.max} · монетки ${spec.coins.join(', ')} · покупок: ${spec.rounds}`;
     case 'robot':
       return `поле ${spec.size}×${spec.size}, шагов ${spec.steps}${spec.rocks ? ' · с камнями' : ''}`;
+    case 'space':
+      return `${spec.order === 'letters' ? 'буквы' : spec.step === 2 ? 'цифры через одну' : 'цифры'}, планет: ${spec.count}${spec.reverse ? ' · с конца' : ''} · раундов: ${spec.rounds}`;
+    case 'fishing':
+      return `${spec.mode === 'letters' ? `буквы (${spec.max})` : spec.mode === 'sums' ? `примеры до ${spec.max}` : `цифры до ${spec.max}`} · рыбок: ${spec.fish} · раундов: ${spec.rounds}`;
   }
 }
 

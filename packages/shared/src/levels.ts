@@ -124,6 +124,24 @@ export function specAtLevel(spec: GameSpec, level: number): GameSpec {
         steps: clamp(spec.steps + up, 2, 8),
         rocks: up >= 2 || spec.rocks,
       };
+    case 'space':
+      // Больше планет → через одну (цифры) → с конца.
+      return {
+        ...spec,
+        count: clamp(spec.count + 2 * up, 3, 10),
+        step: up >= 2 ? 2 : spec.step,
+        reverse: up >= 3 || spec.reverse,
+      };
+    case 'fishing': {
+      const speeds = ['slow', 'normal', 'fast'] as const;
+      return {
+        ...spec,
+        max: clamp(spec.max + 2 * up, 3, 10),
+        fish: clamp(spec.fish + up, 3, 6),
+        speed: speeds[clamp(speeds.indexOf(spec.speed) + up, 0, 2)]!,
+        rounds: clamp(spec.rounds + up, 2, 10),
+      };
+    }
     default:
       // Раскраска, рисовалка, пары, сортировка, фонарик, «лишнее», «по порядку», песенки — как есть.
       return spec;
