@@ -502,6 +502,12 @@ button {
   opacity: 0.3;
 }
 
+/* Пока звучит слово — стрелка чуть бледнеет: «подожди», а не «нельзя». */
+.deck-arrow[data-wait]:disabled {
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
 .deck-dots {
   display: flex;
   flex-wrap: wrap;

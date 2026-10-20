@@ -107,7 +107,7 @@ const PHRASES_EN = {
 
 /**
  * Подмена синтеза речи: в headless Chromium голосов нет. Записывает, что и на каком языке
- * произнесено, и «договаривает» фразу через 50 мс.
+ * произнесено, и «договаривает» фразу через 50 мс (или window.__speechMs).
  */
 const FAKE_SPEECH = `
   window.__spoken = [];
@@ -123,7 +123,7 @@ const FAKE_SPEECH = `
     speaking: false,
     speak(u) {
       window.__spoken.push({ text: u.text, lang: u.lang, rate: u.rate, voice: u.voice ? u.voice.name : null });
-      setTimeout(() => u.onend && u.onend(), 50);
+      setTimeout(() => u.onend && u.onend(), window.__speechMs || 50);
     },
     cancel() {},
     getVoices() { return loaded ? VOICES : []; },
@@ -773,10 +773,12 @@ test.describe('пора спать (этап 31)', () => {
     // На ночном экране нет дока и плиток.
     await expect(page.getByTestId('tile')).toHaveCount(0);
 
-    await page.clock.runFor(152_000);
-    // «Спокойной ночи» после колыбельной — фраза тоже идёт по часам страницы.
-    await page.clock.runFor(5_000);
+    // Колыбельная — 20 минут; в конце тихо, без «Спокойной ночи» (не будить).
+    await page.clock.runFor(19 * 60_000);
+    await expect(screen).toHaveAttribute('data-stage', 'lullaby');
+    await page.clock.runFor(61_000);
     await expect(screen).toHaveAttribute('data-stage', 'asleep');
+    expect((await spoken(page)).map((s) => s.text)).not.toContain('Спокойной ночи! Сладких снов.');
     expect(backend.storiesPlayed).toEqual(['s1']);
     await expect(screen).toHaveClass(/dark/);
     await screen.dispatchEvent('pointerdown');
@@ -1475,6 +1477,39 @@ test.describe('карточки: проверки и стрелки', () => {
 
     const said = (await spoken(page)).map((s) => `${s.lang}:${s.text}`);
     expect(said).toContain('ru-RU:Покажи');
+  });
+
+  test('частые касания не обрывают слово: пока звучит — карточка и стрелки ждут', async ({
+    page,
+    backend,
+  }) => {
+    await page.addInitScript(
+      () => ((window as unknown as { __speechMs: number }).__speechMs = 700),
+    );
+    backend.items = [deckOf(3)];
+    await page.goto('/');
+    await page.getByTestId('tile').first().click();
+    const deck = page.getByTestId('deck');
+    await expect(deck).toHaveAttribute('data-speaking', 'true');
+    // Ребёнок жмёт «дальше» и картинку без остановки — слово не прерывается, карточка та же.
+    for (let i = 0; i < 4; i++) {
+      await page.getByTestId('deck-next').dispatchEvent('click');
+      await page.getByTestId('deck-card').dispatchEvent('click');
+    }
+    await expect(page.getByTestId('deck-card').locator('img')).toHaveAttribute(
+      'data-src',
+      '/api/media/k0',
+    );
+    const words = async () =>
+      (await spoken(page)).filter((s) => /^word/.test(s.text)).map((s) => s.text);
+    expect(await words()).toEqual(['word0']);
+    // Договорил — стрелка снова работает (click ждёт, пока кнопка оживёт).
+    await page.getByTestId('deck-next').click();
+    await expect(page.getByTestId('deck-card').locator('img')).toHaveAttribute(
+      'data-src',
+      '/api/media/k1',
+    );
+    await expect.poll(words).toEqual(['word0', 'word1']);
   });
 
   test('стрелки не перекрывают картинку (портрет — внизу, альбом — по бокам)', async ({
