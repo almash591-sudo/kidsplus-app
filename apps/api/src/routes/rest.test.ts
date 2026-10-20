@@ -86,3 +86,26 @@ describe('пройденное отдыхает (этап 34)', () => {
     expect((await playlist()).items.every((i) => !i.rest)).toBe(true);
   });
 });
+
+describe('свободный режим (этап 38)', () => {
+  it('у пунктов — сколько раз пройдено; в обычном режиме счёта нет', async () => {
+    const a = await createSegment(t, parent, { videoId: 'freeaaaaaa1', childIds: [child] });
+    const b = await createSegment(t, parent, { videoId: 'freeaaaaaa2', childIds: [child] });
+    await event('segment_complete', a);
+    await event('segment_complete', a);
+    // Открыл и закрыл — не считается.
+    await event('segment_start', b);
+    expect((await playlist()).items.every((i) => i.plays === undefined)).toBe(true);
+
+    await t.app.inject({
+      method: 'PUT',
+      url: `/api/parent/children/${child}`,
+      cookies: parent,
+      payload: { ...girl(), repeatMode: 'free' },
+    });
+    const items = (await playlist()).items;
+    expect(items.find((i) => i.id === a)?.plays).toBe(2);
+    expect(items.find((i) => i.id === b)?.plays).toBe(0);
+    expect(items.every((i) => !i.rest)).toBe(true);
+  });
+});

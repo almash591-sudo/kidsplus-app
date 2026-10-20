@@ -57,4 +57,16 @@ describe('разделы главного экрана', () => {
     expect(needsCategoryPick(items, 'other')).toBe(true);
     expect(needsCategoryPick([deck('a', 'math'), deck('b', 'math')], null)).toBe(false);
   });
+
+  it('свободный режим (этап 38): редко пройденное — вперёд, любимое — в конец', () => {
+    const played = (item: KidItem, plays: number): KidItem => ({ ...item, plays });
+    const list = [
+      played(segment('a'), 5),
+      played(segment('b'), 0),
+      played(segment('c'), 2),
+      played(segment('d'), 0),
+    ];
+    // Поровну пройденные — в порядке родителя (b раньше d).
+    expect(itemsOf(list, 'video').map((i) => i.id)).toEqual(['b', 'd', 'c', 'a']);
+  });
 });

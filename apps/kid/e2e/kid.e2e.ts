@@ -1060,6 +1060,19 @@ test.describe('плеер', () => {
     await expect(page.getByTestId('pause')).toBeVisible();
   });
 
+  test('свободный режим (этап 38): любимое видео — в конце, редкое — вперёд', async ({
+    page,
+    backend,
+  }) => {
+    // Первое видео смотрели чаще всех — уходит в конец; остальные — в прежнем порядке.
+    backend.items = backend.items.map((it, i) => ({ ...it, plays: i === 0 ? 7 : 0 }));
+    await page.goto('/');
+    const videos = page.locator('[data-testid=tile][data-kind=segment] img');
+    await expect(videos.last()).toHaveAttribute('src', SEGMENTS[0]!.thumbnailUrl!);
+    await expect(videos.first()).not.toHaveAttribute('src', SEGMENTS[0]!.thumbnailUrl!);
+    await expect(page.locator('[data-rest]')).toHaveCount(0);
+  });
+
   test('кнопка «домой» уничтожает плеер и пишет событие выхода', async ({ page, backend }) => {
     await startFirst(page);
     await page.getByTestId('go-home').click();

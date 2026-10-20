@@ -87,15 +87,8 @@ export async function loadGameLevels(
   return gameLevels(plays, start);
 }
 
-/** Что сейчас «отдыхает» у ребёнка: ключ `kind:id` → почему. */
-export async function restMap(
-  db: Db,
-  childId: string,
-  now: Date,
-  timezone: string,
-  mode: RepeatMode,
-): Promise<Map<string, RestState>> {
-  if (mode === 'free') return new Map();
+/** Прохождения ребёнка за последние 60 дней: ключ `kind:id` и когда. */
+async function loadDone(db: Db, childId: string, now: Date) {
   const rows = await db
     .select({
       type: events.type,
@@ -111,7 +104,7 @@ export async function restMap(
         gte(events.createdAt, new Date(now.getTime() - HISTORY_MS)),
       ),
     );
-  const done = rows.flatMap((r) => {
+  return rows.flatMap((r) => {
     const kind = DONE[r.type as keyof typeof DONE];
     const id =
       kind === 'segment'
@@ -119,5 +112,26 @@ export async function restMap(
         : (r.payload?.[kind === 'deck' ? 'deckId' : 'interactiveId'] as string | undefined);
     return id ? [{ key: restKey(kind, id), at: r.at }] : [];
   });
-  return restFrom(done, now, timezone, mode);
+}
+
+/** Что сейчас «отдыхает» у ребёнка: ключ `kind:id` → почему. */
+export async function restMap(
+  db: Db,
+  childId: string,
+  now: Date,
+  timezone: string,
+  mode: RepeatMode,
+): Promise<Map<string, RestState>> {
+  if (mode === 'free') return new Map();
+  return restFrom(await loadDone(db, childId, now), now, timezone, mode);
+}
+
+/**
+ * Этап 38: сколько раз пройден каждый пункт за 60 дней — в свободном режиме телефон ставит
+ * редко смотренное вперёд, любимое — в конец.
+ */
+export async function playCounts(db: Db, childId: string, now: Date): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  for (const d of await loadDone(db, childId, now)) out.set(d.key, (out.get(d.key) ?? 0) + 1);
+  return out;
 }
