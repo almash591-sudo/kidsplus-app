@@ -360,6 +360,34 @@ export const gameSpec = z.discriminatedUnion('kind', [
     choices,
     rounds: letterRounds,
   }),
+  // ─── Счёт и логика (этап 34) ───
+  /** Который час: звучит время — найти часы со стрелками; half — и «половина пятого». */
+  z.object({
+    kind: z.literal('clock'),
+    half: z.boolean().default(false),
+    choices: z.number().int().min(2).max(4).default(3),
+    rounds: z.number().int().min(2).max(10),
+  }),
+  /** Магазин: купить товар — положить монетки на нужную сумму (до max); coins — какие монеты есть. */
+  z.object({
+    kind: z.literal('shop'),
+    imageIds: z.array(uuid).min(1).max(10),
+    max: z.number().int().min(2).max(10),
+    coins: z
+      .array(z.union([z.literal(1), z.literal(2), z.literal(5)]))
+      .min(1)
+      .max(3)
+      .default([1]),
+    rounds: z.number().int().min(2).max(8),
+  }),
+  /** Совёнок-робот: стрелками составить путь по клеткам size × size до цели; rocks — с камнями. */
+  z.object({
+    kind: z.literal('robot'),
+    size: z.number().int().min(3).max(6),
+    steps: z.number().int().min(2).max(8),
+    rocks: z.boolean().default(false),
+    rounds: z.number().int().min(1).max(6),
+  }),
 ]);
 export type GameSpec = z.infer<typeof gameSpec>;
 export type GameKind = GameSpec['kind'];
@@ -402,6 +430,9 @@ export const GAME_KINDS: Record<GameKind, string> = {
   syllable: 'Найди слог',
   firstLetter: 'С какой буквы?',
   readWord: 'Прочитай слово',
+  clock: 'Который час?',
+  shop: 'Магазин',
+  robot: 'Совёнок-робот',
 };
 
 /** id картинок в параметрах игры — для проверки, что они есть и готовы. */
@@ -420,6 +451,7 @@ export function gameImageIds(g: GameSpec): string[] {
     case 'compare':
     case 'arithmetic':
     case 'size':
+    case 'shop':
       return g.imageIds;
     case 'maze':
       return [g.heroId, g.goalId];
@@ -430,6 +462,8 @@ export function gameImageIds(g: GameSpec): string[] {
     case 'sequence':
       return g.rounds.flatMap((r) => r.imageIds);
     case 'coloring':
+    case 'clock':
+    case 'robot':
     case 'tracing':
     case 'balloons':
     case 'melody':

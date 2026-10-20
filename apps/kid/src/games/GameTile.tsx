@@ -43,6 +43,9 @@ export const ICON: Record<GameKind, string> = {
   syllable: '🅰️',
   firstLetter: '🐱',
   readWord: '📖',
+  clock: '🕒',
+  shop: '🛒',
+  robot: '🤖',
 };
 
 /** Картинка для плитки игры (если у игры есть картинки). */
@@ -57,6 +60,7 @@ export function tileImage(spec: GameSpec): string | null {
     case 'pattern':
     case 'arithmetic':
     case 'size':
+    case 'shop':
       return spec.imageIds[0]!;
     case 'compare':
       return spec.imageIds[0] ?? null;

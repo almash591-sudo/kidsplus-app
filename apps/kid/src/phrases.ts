@@ -155,6 +155,62 @@ export const firstLetterIs = (word: string) => `${low(word)} — на букву
 export const READ_WORD = 'Прочитай слово и найди картинку.';
 export const sayWord = (word: string) => `${low(word)}!`;
 
+// ─── Счёт и логика (этап 34) ───
+const HOURS = [
+  'двенадцать часов',
+  'час',
+  'два часа',
+  'три часа',
+  'четыре часа',
+  'пять часов',
+  'шесть часов',
+  'семь часов',
+  'восемь часов',
+  'девять часов',
+  'десять часов',
+  'одиннадцать часов',
+];
+const OF_HOUR = [
+  'первого',
+  'второго',
+  'третьего',
+  'четвёртого',
+  'пятого',
+  'шестого',
+  'седьмого',
+  'восьмого',
+  'девятого',
+  'десятого',
+  'одиннадцатого',
+  'двенадцатого',
+];
+/** «Три часа» или «половина четвёртого» (h — 1…12 на циферблате). */
+export const timeName = (h: number, half: boolean) =>
+  half ? `половина ${OF_HOUR[h % 12]!}` : HOURS[h % 12]!;
+export const clockFind = (h: number, half: boolean) => `Где ${timeName(h, half)}?`;
+export const CLOCK_PROMPT = 'Найди часы, которые я называю.';
+
+/** «Это стоит пять монеток». */
+export const coinsWord = (n: number) =>
+  n === 1
+    ? 'одну монетку'
+    : n === 2
+      ? 'две монетки'
+      : n === 3
+        ? 'три монетки'
+        : n === 4
+          ? 'четыре монетки'
+          : `${NUMBERS[n]} монеток`;
+export const shopPrice = (n: number) => `Это стоит ${coinsWord(n)}. Положи монетки.`;
+export const SHOP_PROMPT = 'Купи покупку — положи столько монеток, сколько на ценнике.';
+export const SHOP_TOO_MUCH = 'Ой, многовато! Давай ещё раз.';
+export const SHOP_BUY = 'Покупаем!';
+
+export const ROBOT_PROMPT =
+  'Помоги совёнку дойти до звёздочки! Нажимай стрелки, потом — «Поехали».';
+export const ROBOT_MISS = 'Не дошли. Попробуй другой путь!';
+export const ROBOT_ROCK = 'Ой, камень! Обойди его.';
+
 /** Как играть — для игр без своего задания и для «ушка», если задание ещё не звучало. */
 export const GAME_INTRO: Record<GameKind, string> = {
   drawing: 'Рисуй пальчиком! Краски — внизу.',
@@ -194,6 +250,9 @@ export const GAME_INTRO: Record<GameKind, string> = {
   syllable: 'Найди слог, который я называю.',
   firstLetter: 'С какой буквы начинается слово?',
   readWord: READ_WORD,
+  clock: CLOCK_PROMPT,
+  shop: SHOP_PROMPT,
+  robot: ROBOT_PROMPT,
 };
 
 /** Подсказки на экранах выбора — для тех, кто не читает. */
@@ -287,6 +346,24 @@ function gamePhrases(spec: GameSpec): string[] {
       return spec.words.flatMap((w) => [firstLetterAsk(w.word), firstLetterIs(w.word)]);
     case 'readWord':
       return [READ_WORD, ...spec.words.map((w) => sayWord(w.word))];
+    // Уровни (этап 34) могут включить половины и цены до 10 — озвучиваем всё заранее.
+    case 'clock':
+      return [
+        CLOCK_PROMPT,
+        ...Array.from({ length: 12 }, (_, i) => [
+          clockFind(i + 1, false),
+          clockFind(i + 1, true),
+        ]).flat(),
+      ];
+    case 'shop':
+      return [
+        SHOP_PROMPT,
+        SHOP_TOO_MUCH,
+        SHOP_BUY,
+        ...Array.from({ length: 10 }, (_, i) => shopPrice(i + 1)),
+      ];
+    case 'robot':
+      return [ROBOT_PROMPT, ROBOT_MISS, ROBOT_ROCK];
     case 'drawing':
     case 'puzzle':
     case 'memory':

@@ -1809,6 +1809,96 @@ test.describe('игры', () => {
     expect(answer).toBeLessThanOrEqual(9);
   });
 
+  test('который час (этап 34): найти часы с названным временем', async ({ page, backend }) => {
+    backend.items = [game(1, { kind: 'clock', half: true, choices: 3, rounds: 2 })];
+    await openGame(page);
+    await shot(page, 'clock');
+    for (let round = 0; round < 2; round++) {
+      const g = page.getByTestId('game-clock');
+      const answer = Number(await g.getAttribute('data-answer'));
+      const wrong = (answer + 1) % 3;
+      if (round === 0) {
+        await page.getByTestId('clock-option').nth(wrong).click();
+        await expect(page.getByTestId('clock-option').nth(wrong)).toHaveClass(/off/);
+        await page.waitForTimeout(1000);
+      }
+      await page.getByTestId('clock-option').nth(answer).click();
+      if (round === 0)
+        await expect(g)
+          .not.toHaveAttribute('data-answer', /.*/, { timeout: 100 })
+          .catch(() => {});
+      await page.waitForTimeout(2400);
+    }
+    await expectFinished(page, backend);
+    expect((await spoken(page)).some((s) => /^Где (половина )?\S/.test(s.text))).toBe(true);
+  });
+
+  test('магазин (этап 34): монетки на сумму ценника, перебор — заново', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [
+      game(1, { kind: 'shop', imageIds: [CARROT], max: 4, coins: [1, 5], rounds: 2 }),
+    ];
+    await openGame(page);
+    await shot(page, 'shop');
+    for (let round = 0; round < 2; round++) {
+      const g = page.getByTestId('game-shop');
+      const price = Number(await g.getAttribute('data-price'));
+      if (round === 0) {
+        // Перебор: монетка «5» дороже цены (до 4) — «многовато», прилавок пустеет.
+        await page.locator('[data-testid=shop-coin][data-value="5"]').click();
+        await expect
+          .poll(async () => (await spoken(page)).map((s) => s.text))
+          .toContain('Ой, многовато! Давай ещё раз.');
+        await expect(g).toHaveAttribute('data-sum', '0');
+      }
+      for (let i = 0; i < price; i++) await page.getByTestId('shop-coin').first().click();
+      await expect(g).toHaveAttribute('data-sum', String(price));
+      await page.waitForTimeout(2800);
+    }
+    await expectFinished(page, backend);
+  });
+
+  test('совёнок-робот (этап 34): путь стрелками, «Поехали», камни обходит', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [game(1, { kind: 'robot', size: 4, steps: 3, rocks: true, rounds: 1 })];
+    await openGame(page);
+    await shot(page, 'robot');
+    const g = page.getByTestId('game-robot');
+    const size = Number(await g.getAttribute('data-size'));
+    const start = (await g.getAttribute('data-start'))!.split(',').map(Number) as [number, number];
+    const goal = (await g.getAttribute('data-goal'))!;
+    const rocks = new Set((await g.getAttribute('data-rocks'))!.split(';').filter(Boolean));
+    // Поиск пути в ширину — как ребёнок, только без ошибок.
+    const moves = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] } as const;
+    const queue: { at: [number, number]; path: string[] }[] = [{ at: start, path: [] }];
+    const seen = new Set([start.join(',')]);
+    let path: string[] = [];
+    while (queue.length) {
+      const { at, path: p } = queue.shift()!;
+      if (at.join(',') === goal) {
+        path = p;
+        break;
+      }
+      for (const [d, [dx, dy]] of Object.entries(moves)) {
+        const n: [number, number] = [at[0] + dx, at[1] + dy];
+        const k = n.join(',');
+        if (n[0] < 0 || n[1] < 0 || n[0] >= size || n[1] >= size || rocks.has(k) || seen.has(k))
+          continue;
+        seen.add(k);
+        queue.push({ at: n, path: [...p, d] });
+      }
+    }
+    expect(path.length).toBeGreaterThan(0);
+    for (const d of path) await page.getByTestId(`robot-${d}`).click();
+    await expect(page.getByTestId('robot-program').locator('.robot-step')).toHaveCount(path.length);
+    await page.getByTestId('robot-go').click();
+    await expectFinished(page, backend);
+  });
+
   test('рисовалка: рисуем пальцем, ставим наклейку, «готово»', async ({ page, backend }) => {
     backend.items = [game(1, { kind: 'drawing', stickerIds: [CAT, LION] })];
     await openGame(page);
