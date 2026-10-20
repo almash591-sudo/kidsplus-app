@@ -73,7 +73,7 @@ export function Memory({ spec, phrases, onFinish }: GameProps<'memory'>) {
               aria-label="Карточка"
               onClick={() => flip(i)}
             >
-              {shown ? <CachedImg src={mediaUrl(c.id)} alt="" draggable={false} /> : <span>★</span>}
+              {shown ? <CachedImg src={mediaUrl(c.id)} alt="" draggable={false} /> : null}
             </button>
           );
         })}

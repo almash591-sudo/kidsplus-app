@@ -4,13 +4,8 @@ import { fx } from '../fx';
 import { balloonsPrompt, balloonsWrong } from '../phrases';
 import { ask, NUMBERS, praise, say, type GameProps } from './common';
 
-const COLORS: Record<BalloonColor, { hex: string }> = {
-  red: { hex: '#E8453C' },
-  yellow: { hex: '#FACC15' },
-  blue: { hex: '#3B82F6' },
-  green: { hex: '#22A55B' },
-};
-const ALL = Object.keys(COLORS) as BalloonColor[];
+/** Цвета шариков — у каждого своя глиняная картинка /games/balloon-<цвет>.webp. */
+const ALL: BalloonColor[] = ['red', 'yellow', 'blue', 'green'];
 /** Шариков на экране одновременно. */
 const ON_SCREEN = 5;
 /** Счётчик id шариков (общий — id нужны только для ключей React). */
@@ -89,12 +84,7 @@ export function Balloons({ spec, phrases, onFinish }: GameProps<'balloons'>) {
           onPointerDown={() => pop(b)}
           onAnimationEnd={(e) => e.animationName === 'float-up' && replace(b.id)}
         >
-          <svg viewBox="0 0 60 100" aria-hidden="true">
-            <path d="M30,70 q-4,12 2,30" stroke="#777" strokeWidth="2" fill="none" />
-            <ellipse cx="30" cy="34" rx="26" ry="32" fill={COLORS[b.color].hex} />
-            <path d="M26,66 h8 l-4,6 Z" fill={COLORS[b.color].hex} />
-            <ellipse cx="20" cy="22" rx="6" ry="10" fill="#fff" opacity="0.45" />
-          </svg>
+          <img src={`/games/balloon-${b.color}.webp`} alt="" draggable={false} />
         </button>
       ))}
       <div className="balloon-score" aria-hidden="true">

@@ -48,6 +48,36 @@ import { GAME_INTRO } from '../phrases';
 import { IdleHint } from '../ui/IdleHint';
 import { Icon } from '../ui/icons';
 
+/** Глиняный фон экрана игры (этап 35) — по разделу; у игр со своей сценой фон свой. */
+type Backdrop = 'games' | 'music' | 'letters' | 'math';
+const BACKDROPS: [Backdrop, GameKind[]][] = [
+  [
+    'music',
+    [
+      'melody',
+      'pitch',
+      'loudness',
+      'tempo',
+      'duration',
+      'direction',
+      'beats',
+      'rhythm',
+      'piano',
+      'staff',
+      'song',
+      'freeze',
+      'orchestra',
+    ],
+  ],
+  ['letters', ['word', 'letter', 'syllable', 'firstLetter', 'readWord', 'tracing']],
+  ['math', ['counting', 'arithmetic', 'compare', 'size', 'clock', 'shop', 'pattern']],
+];
+const OWN_SCENE: GameKind[] = ['flashlight', 'balloons', 'moles', 'drawing', 'coloring'];
+export const backdropOf = (kind: GameKind): Backdrop | undefined =>
+  OWN_SCENE.includes(kind)
+    ? undefined
+    : (BACKDROPS.find(([, kinds]) => kinds.includes(kind))?.[0] ?? 'games');
+
 /** Игры без своего задания: как играть — звучит при входе. */
 const SILENT: readonly GameKind[] = ['drawing', 'memory', 'puzzle'];
 
@@ -145,6 +175,7 @@ export function GameScreen(props: {
       data-testid="game"
       data-lock={lock}
       data-kind={spec.kind}
+      data-bg={backdropOf(spec.kind)}
       data-level={level}
       // След пальца — в любой игре, пока палец на экране.
       onPointerMoveCapture={(e) => e.buttons && trail(e.clientX, e.clientY)}

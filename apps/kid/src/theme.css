@@ -1118,3 +1118,15 @@ html[data-preview]::after {
     animation: none;
   }
 }
+
+/* Глиняная картинка вместо эмодзи (этап 35): размер по font-size, как был у эмодзи, —
+   раскладка не меняется; пропорции сохраняются. */
+.clay-em {
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  object-fit: contain;
+  vertical-align: middle;
+  pointer-events: none;
+  filter: drop-shadow(0 0.06em 0.06em rgb(0 0 0 / 0.18));
+}

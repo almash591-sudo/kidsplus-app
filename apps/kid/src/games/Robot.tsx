@@ -138,15 +138,14 @@ export function Robot({ spec, phrases, onFinish }: GameProps<'robot'>) {
   const cell = (x: number, y: number) => {
     const k = key([x, y]);
     if (owl[0] === x && owl[1] === y)
-      return <img src="/owl/master.webp" alt="" draggable={false} className="robot-owl" />;
+      return <img src="/games/robot-owl.webp" alt="" draggable={false} className="robot-owl" />;
     if (field.goal[0] === x && field.goal[1] === y)
+      return <img src="/games/robot-star.webp" alt="" draggable={false} className="robot-star" />;
+    // Камень — глиняная картинка: эмодзи камня есть не на всех телефонах.
+    if (field.rocks.has(k))
       return (
-        <span className="robot-star">
-          <Icon name="star" size={40} fill />
-        </span>
+        <img src="/games/robot-rock.webp" alt="камень" draggable={false} className="robot-rock" />
       );
-    // Камень рисуем сами: эмодзи камня есть не на всех телефонах.
-    if (field.rocks.has(k)) return <span className="robot-rock" aria-label="камень" />;
     return null;
   };
 

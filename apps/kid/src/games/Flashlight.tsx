@@ -98,92 +98,13 @@ export function Flashlight({ spec, phrases, onFinish }: GameProps<'flashlight'>)
   );
 }
 
-/** Фон сцены — нарисован, без картинок с сервера. Поле 400 × 300, растягивается с обрезкой. */
+/** Фон сцены (этап 35) — глиняная картинка своего формата для вертикального и горизонтального
+ * экрана: вписывается с обрезкой краёв, без растяжения. */
 function SceneArt({ scene }: { scene: FlashlightScene }) {
   return (
-    <svg
-      className="flash-scene"
-      viewBox="0 0 400 300"
-      preserveAspectRatio="xMidYMid slice"
-      aria-hidden="true"
-    >
-      {scene === 'room' && (
-        <>
-          <rect width="400" height="300" fill="#FDE7C2" />
-          <rect y="210" width="400" height="90" fill="#C08552" />
-          <path d="M0,210 H400" stroke="#8B5A2B" strokeWidth="4" />
-          <rect
-            x="40"
-            y="40"
-            width="90"
-            height="80"
-            rx="6"
-            fill="#7DD3FC"
-            stroke="#fff"
-            strokeWidth="8"
-          />
-          <path d="M85,40 V120 M40,80 H130" stroke="#fff" strokeWidth="6" />
-          <rect x="250" y="120" width="120" height="100" rx="8" fill="#9B5DE5" />
-          <rect x="262" y="135" width="96" height="30" rx="4" fill="#B794F4" />
-          <rect x="262" y="175" width="96" height="30" rx="4" fill="#B794F4" />
-          <circle cx="200" cy="40" r="18" fill="#FACC15" />
-          <path d="M200,0 V22" stroke="#555" strokeWidth="3" />
-          <ellipse cx="190" cy="255" rx="80" ry="22" fill="#E8453C" opacity="0.7" />
-        </>
-      )}
-      {scene === 'forest' && (
-        <>
-          <rect width="400" height="300" fill="#BFE3FF" />
-          <rect y="220" width="400" height="80" fill="#4ADE80" />
-          {[30, 110, 200, 290, 370].map((x, i) => (
-            <g key={x}>
-              <rect x={x - 8} y="150" width="16" height="80" fill="#92400E" />
-              <circle cx={x} cy={130 - (i % 2) * 20} r={50} fill={i % 2 ? '#15803D' : '#22A55B'} />
-            </g>
-          ))}
-          {[60, 160, 250, 340].map((x) => (
-            <circle key={x} cx={x} cy="262" r="16" fill="#16A34A" />
-          ))}
-        </>
-      )}
-      {scene === 'sea' && (
-        <>
-          <rect width="400" height="300" fill="#38BDF8" />
-          <rect y="0" width="400" height="60" fill="#7DD3FC" />
-          <rect y="255" width="400" height="45" fill="#FDE68A" />
-          {[40, 120, 300, 360].map((x, i) => (
-            <path
-              key={x}
-              d={`M${x},260 q-15,-40 0,-80 q15,-40 0,-80`}
-              stroke={i % 2 ? '#15803D' : '#22A55B'}
-              strokeWidth="9"
-              fill="none"
-              strokeLinecap="round"
-            />
-          ))}
-          {[80, 200, 330].map((x) => (
-            <circle key={x} cx={x} cy={70 + (x % 50)} r="7" fill="#E0F2FE" opacity="0.7" />
-          ))}
-        </>
-      )}
-      {scene === 'space' && (
-        <>
-          <rect width="400" height="300" fill="#1E1B4B" />
-          {Array.from({ length: 40 }, (_, i) => (
-            <circle
-              key={i}
-              cx={(i * 97) % 400}
-              cy={(i * 53) % 300}
-              r={(i % 3) + 1}
-              fill="#fff"
-              opacity={0.5 + (i % 2) * 0.4}
-            />
-          ))}
-          <circle cx="320" cy="70" r="40" fill="#F59E0B" />
-          <ellipse cx="320" cy="70" rx="62" ry="12" fill="none" stroke="#FDE68A" strokeWidth="5" />
-          <circle cx="70" cy="240" r="28" fill="#60A5FA" />
-        </>
-      )}
-    </svg>
+    <picture className="flash-scene" aria-hidden="true">
+      <source media="(orientation: landscape)" srcSet={`/games/scene-${scene}-l.webp`} />
+      <img src={`/games/scene-${scene}-p.webp`} alt="" draggable={false} />
+    </picture>
   );
 }

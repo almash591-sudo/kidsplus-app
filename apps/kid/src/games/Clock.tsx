@@ -14,7 +14,7 @@ export function ClockFace({ h, half }: Time) {
   const minuteAngle = half ? 180 : 0;
   return (
     <svg viewBox="0 0 100 100" className="clock-face" aria-hidden="true">
-      <circle cx="50" cy="50" r="46" fill="#fff" stroke="#3a3a3c" strokeWidth="4" />
+      <circle cx="50" cy="50" r="47" fill="#fff" stroke="#d8d4e8" strokeWidth="2" />
       {Array.from({ length: 12 }, (_, i) => {
         const n = i + 1;
         const a = (n * 30 * Math.PI) / 180;
@@ -126,7 +126,9 @@ export function Clock({ spec, phrases, onFinish }: GameProps<'clock'>) {
           onClick={() => choose(i)}
           aria-label={`Часы ${i + 1}`}
         >
-          <ClockFace h={t.h} half={t.half} />
+          <span className="clock-body" aria-hidden="true">
+            <ClockFace h={t.h} half={t.half} />
+          </span>
         </button>
       ))}
     </div>

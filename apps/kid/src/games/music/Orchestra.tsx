@@ -1,18 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { fx, music, NOTE_FREQ } from '../../fx';
 import { ORCHESTRA_INTRO, orchestraNow, PLAYER_NAMES } from '../../phrases';
-import { praise, say, setTask, type GameProps } from '../common';
+import { clayUrl, praise, say, setTask, type GameProps } from '../common';
 import { burstAt } from '../juice';
 import './music.css';
 
 /** Музыканты: зверёк и его инструмент; как его зовут в задании — PLAYER_NAMES (тот же порядок). */
-const PLAYERS: { emoji: string; play: (note: number) => void }[] = [
-  { emoji: '🐻', play: () => music.drum(0, 0.8) },
-  { emoji: '🐰', play: (n) => fx.bell(n) },
-  { emoji: '🐸', play: (n) => music.flute(NOTE_FREQ[n]!) },
-  { emoji: '🐘', play: (n) => music.tuba(NOTE_FREQ[n]!) },
-  { emoji: '🐱', play: (n) => music.xylo(NOTE_FREQ[n]!) },
-  { emoji: '🐦', play: (n) => music.whistle(NOTE_FREQ[n]!) },
+const PLAYERS: { pic: string; play: (note: number) => void }[] = [
+  { pic: 'band-bear', play: () => music.drum(0, 0.8) },
+  { pic: 'band-rabbit', play: (n) => fx.bell(n) },
+  { pic: 'band-frog', play: (n) => music.flute(NOTE_FREQ[n]!) },
+  { pic: 'band-elephant', play: (n) => music.tuba(NOTE_FREQ[n]!) },
+  { pic: 'band-cat', play: (n) => music.xylo(NOTE_FREQ[n]!) },
+  { pic: 'band-bird', play: (n) => music.whistle(NOTE_FREQ[n]!) },
 ];
 /** Ноты пентатоники — в любом порядке звучит без фальши. */
 const PENTA = [0, 1, 2, 4, 5, 7];
@@ -100,7 +100,7 @@ export function Orchestra({ spec, phrases, onFinish }: GameProps<'orchestra'>) {
       <div className="orchestra-stage" style={{ '--n': spec.players } as React.CSSProperties}>
         {PLAYERS.slice(0, spec.players).map((p, i) => (
           <button
-            key={p.emoji}
+            key={p.pic}
             type="button"
             ref={(el) => {
               els.current[i] = el;
@@ -116,7 +116,9 @@ export function Orchestra({ spec, phrases, onFinish }: GameProps<'orchestra'>) {
             aria-label={PLAYER_NAMES[i]}
             onPointerDown={() => tap(i)}
           >
-            <span>{p.emoji}</span>
+            <span>
+              <img className="clay-em" src={clayUrl(p.pic)} alt="" draggable={false} />
+            </span>
           </button>
         ))}
       </div>

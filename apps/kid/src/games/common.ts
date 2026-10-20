@@ -192,3 +192,6 @@ export function svgPoint(svg: SVGSVGElement, e: { clientX: number; clientY: numb
   const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
   return { x: p.x, y: p.y };
 }
+
+/** Глиняная картинка из /games (этап 35). */
+export const clayUrl = (name: string) => `/games/${name}.webp`;
