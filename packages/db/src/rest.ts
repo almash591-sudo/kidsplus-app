@@ -2,6 +2,8 @@
 // событий — сколько раз и когда пройден каждый пункт; пройденное сегодня отдыхает до завтра,
 // «выученное» (3 раза) — неделю (или навсегда — по настройке родителя).
 import type { RepeatMode } from '@kidsplus/shared/api';
+import type { GameKind } from '@kidsplus/shared/games';
+import { gameLevels } from '@kidsplus/shared/levels';
 import { localClock } from '@kidsplus/shared/schedule';
 import { and, eq, gte, inArray } from 'drizzle-orm';
 import type { Db } from './index';
@@ -50,6 +52,39 @@ export function restFrom(
       out.set(key, 'learned');
   }
   return out;
+}
+
+/** Уровни сложности игр ребёнка (этап 34) — по прохождениям с числом ошибок. */
+export async function loadGameLevels(
+  db: Db,
+  childId: string,
+  now: Date,
+  start: number,
+): Promise<Partial<Record<GameKind, number>>> {
+  const rows = await db
+    .select({ payload: events.payload, at: events.createdAt })
+    .from(events)
+    .where(
+      and(
+        eq(events.childId, childId),
+        eq(events.type, 'interactive_complete'),
+        gte(events.createdAt, new Date(now.getTime() - HISTORY_MS)),
+      ),
+    );
+  const plays = rows.flatMap((r) => {
+    const kind = r.payload?.kind;
+    const mistakes = r.payload?.mistakes;
+    return typeof kind === 'string'
+      ? [
+          {
+            kind: kind as GameKind,
+            mistakes: typeof mistakes === 'number' ? mistakes : null,
+            at: r.at,
+          },
+        ]
+      : [];
+  });
+  return gameLevels(plays, start);
 }
 
 /** Что сейчас «отдыхает» у ребёнка: ключ `kind:id` → почему. */

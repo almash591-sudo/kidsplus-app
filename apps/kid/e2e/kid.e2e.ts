@@ -40,6 +40,8 @@ type Item = Record<string, unknown> & { kind: string; id: string };
 
 interface Backend {
   paired: boolean;
+  /** Уровни сложности игр (этап 34). */
+  levels?: { start: number; byKind: Record<string, number> };
   /** Аудиотека: треки «детям». */
   audio?: { id: string; title: string; url: string }[];
   /** «Мои дела» (этап 30). */
@@ -338,6 +340,7 @@ async function mockBackend(page: Page, backend: Backend) {
                 serverVoice: backend.serverVoice ?? false,
                 baby: backend.baby ?? false,
                 lullabies: backend.lullabies ?? [],
+                ...(backend.levels ? { levels: backend.levels } : {}),
               },
             })
           : unauthorized();
@@ -1784,6 +1787,26 @@ test.describe('игры', () => {
     }
     await expectFinished(page, backend);
     expect((await spoken(page)).map((s) => s.text)).toContain('один');
+    // Этап 34: ошибки уходят на сервер — по ним растёт уровень.
+    expect(backend.events.find((e) => e.type === 'interactive_complete')?.payload).toMatchObject({
+      kind: 'counting',
+      mistakes: 2,
+      level: 1,
+    });
+  });
+
+  test('уровень сложности (этап 34): игра открывается на уровне ребёнка', async ({
+    page,
+    backend,
+  }) => {
+    backend.levels = { start: 1, byKind: { counting: 3 } };
+    backend.items = [game(1, { kind: 'counting', max: 5, rounds: 2, imageIds: [CARROT] })];
+    await openGame(page);
+    await expect(page.getByTestId('game')).toHaveAttribute('data-level', '3');
+    // Уровень 3: до 9 вместо 5.
+    const answer = Number(await page.getByTestId('game-counting').getAttribute('data-answer'));
+    expect(answer).toBeGreaterThanOrEqual(1);
+    expect(answer).toBeLessThanOrEqual(9);
   });
 
   test('рисовалка: рисуем пальцем, ставим наклейку, «готово»', async ({ page, backend }) => {

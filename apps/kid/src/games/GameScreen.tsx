@@ -1,13 +1,14 @@
 import type { KidPhrases } from '@kidsplus/shared/api';
 import type { GameKind, GameSpec } from '@kidsplus/shared/games';
-import { useEffect, useState, useSyncExternalStore, type ComponentType } from 'react';
+import { specAtLevel } from '@kidsplus/shared/levels';
+import { useEffect, useMemo, useState, useSyncExternalStore, type ComponentType } from 'react';
 import { sendEvent } from '../api';
 import { stopAudio } from '../audio';
 import { markDone, markTried } from '../progress';
 import { Celebrate } from '../Celebrate';
 import { Balloons } from './Balloons';
 import { Coloring } from './Coloring';
-import { gameLock, repeatCurrentTask, say, setTask, type GameProps } from './common';
+import { gameLock, gameMistakes, repeatCurrentTask, say, setTask, type GameProps } from './common';
 import { Counting } from './Counting';
 import { Drawing } from './Drawing';
 import { Memory } from './Memory';
@@ -93,20 +94,24 @@ export function GameScreen(props: {
   id: string;
   spec: GameSpec;
   phrases: KidPhrases;
+  /** Уровень сложности ребёнка для этого вида игры (этап 34); нет — как задал родитель. */
+  level?: number | undefined;
   onDone: () => void;
   onExit: () => void;
 }) {
-  const { id, spec, onDone } = props;
+  const { id, onDone } = props;
+  const level = props.level ?? 1;
+  const spec = useMemo(() => specAtLevel(props.spec, level), [props.spec, level]);
   const [finished, setFinished] = useState(false);
   const Game = GAMES[spec.kind] as ComponentType<GameProps<GameKind>>;
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    gameMistakes.reset();
+    return () => {
       stopAudio();
       gameLock.reset();
-    },
-    [],
-  );
+    };
+  }, []);
   // После ошибки касания на миг закрыты, при «тыканье наугад» — пауза с совёнком (этап 30).
   const lock = useSyncExternalStore(gameLock.subscribe, gameLock.get);
 
@@ -134,6 +139,7 @@ export function GameScreen(props: {
       data-testid="game"
       data-lock={lock}
       data-kind={spec.kind}
+      data-level={level}
       // След пальца — в любой игре, пока палец на экране.
       onPointerMoveCapture={(e) => e.buttons && trail(e.clientX, e.clientY)}
     >
@@ -147,7 +153,7 @@ export function GameScreen(props: {
             sendEvent({
               type: 'interactive_complete',
               interactiveId: id,
-              payload: { kind: spec.kind },
+              payload: { kind: spec.kind, mistakes: gameMistakes.get(), level },
             });
             markDone(id);
             setFinished(true);

@@ -35,6 +35,26 @@ beforeEach(async () => {
 });
 afterEach(() => t.close());
 
+describe('уровни сложности игр (этап 34)', () => {
+  it('две игры без ошибок — уровень выше; много ошибок — ниже', async () => {
+    const play = (mistakes: number) =>
+      t.app.inject({
+        method: 'POST',
+        url: '/api/kid/events',
+        cookies: device,
+        payload: { type: 'interactive_complete', payload: { kind: 'counting', mistakes } },
+      });
+    const levels = async () => (await playlist()).levels!;
+    const { start } = await levels();
+    expect((await levels()).byKind.counting).toBeUndefined();
+    await play(0);
+    await play(0);
+    expect((await levels()).byKind.counting).toBe(start + 1);
+    await play(6);
+    expect((await levels()).byKind.counting).toBe(start);
+  });
+});
+
 describe('пройденное отдыхает (этап 34)', () => {
   it('досмотрел сегодня — пункт отдыхает до завтра; «без ограничений» — нет', async () => {
     const a = await createSegment(t, parent, { videoId: 'restaaaaaa1', childIds: [child] });
