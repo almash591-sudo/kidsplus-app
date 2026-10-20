@@ -1,6 +1,7 @@
 import { schema } from '@kidsplus/db';
 import type { ChildAnalytics, WeeklyReport } from '@kidsplus/shared/analytics';
-import type { KidItem } from '@kidsplus/shared/api';
+import type { KidItem, RepeatMode } from '@kidsplus/shared/api';
+import { restKey, restMap } from '@kidsplus/db/rest';
 import {
   activityQuery,
   controlRequest,
@@ -173,9 +174,24 @@ export function dayRoutes(app: FastifyInstance, ctx: Ctx) {
         await lessonRefs(db, childId, subject, day),
         await weakRefs(db, childId, subject, ctx.now()),
       );
-      return {
-        items: await buildKidItems(db, ctx.config.tts, refs, { childId, now: ctx.now() }),
-      };
+      const built = await buildKidItems(db, ctx.config.tts, refs, { childId, now: ctx.now() });
+      // Этап 34: в уроке сначала новое, пройденное сегодня и выученное — после.
+      const [child] = await db
+        .select({ repeatMode: children.repeatMode })
+        .from(children)
+        .where(eq(children.id, childId));
+      const rest = await restMap(
+        db,
+        childId,
+        ctx.now(),
+        day.schedule.timezone,
+        (child?.repeatMode ?? 'weekly') as RepeatMode,
+      );
+      const marked = built.map((it) => {
+        const r = rest.get(restKey(it.kind, it.id));
+        return r ? { ...it, rest: r } : it;
+      });
+      return { items: [...marked.filter((i) => !i.rest), ...marked.filter((i) => i.rest)] };
     },
   );
 

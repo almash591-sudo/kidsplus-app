@@ -1,0 +1,68 @@
+import type { KidPlaylist } from '@kidsplus/shared/api';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+  createChild,
+  createSegment,
+  girl,
+  makeApp,
+  pairDevice,
+  setupParent,
+  SETUP_TOKEN,
+  type TestApp,
+} from '../test/helpers';
+
+let t: TestApp;
+let parent: Record<string, string>;
+let child: string;
+let device: Record<string, string>;
+
+const playlist = async () =>
+  (await t.app.inject({ url: '/api/kid/playlist', cookies: device })).json<KidPlaylist>();
+const event = (type: string, segmentId: string) =>
+  t.app.inject({
+    method: 'POST',
+    url: '/api/kid/events',
+    cookies: device,
+    payload: { type, segmentId, payload: {} },
+  });
+
+beforeEach(async () => {
+  t = await makeApp({ setupToken: SETUP_TOKEN, rateLimit: false });
+  t.clock.now = new Date(Date.UTC(2026, 9, 20, 9));
+  parent = await setupParent(t);
+  child = await createChild(t, parent, girl());
+  device = await pairDevice(t, parent, child);
+});
+afterEach(() => t.close());
+
+describe('пройденное отдыхает (этап 34)', () => {
+  it('досмотрел сегодня — пункт отдыхает до завтра; «без ограничений» — нет', async () => {
+    const a = await createSegment(t, parent, { videoId: 'restaaaaaa1', childIds: [child] });
+    const b = await createSegment(t, parent, { videoId: 'restaaaaaa2', childIds: [child] });
+    await event('segment_complete', a);
+    const items = (await playlist()).items;
+    expect(items.find((i) => i.id === a)?.rest).toBe('today');
+    expect(items.find((i) => i.id === b)?.rest).toBeUndefined();
+
+    // Завтра — снова можно.
+    t.clock.now = new Date(Date.UTC(2026, 9, 21, 9));
+    expect((await playlist()).items.find((i) => i.id === a)?.rest).toBeUndefined();
+
+    // Ещё два раза — «выучено», неделю отдыхает.
+    await event('segment_complete', a);
+    t.clock.now = new Date(Date.UTC(2026, 9, 22, 9));
+    await event('segment_complete', a);
+    t.clock.now = new Date(Date.UTC(2026, 9, 24, 9));
+    expect((await playlist()).items.find((i) => i.id === a)?.rest).toBe('learned');
+
+    // Родитель выбрал «без ограничений».
+    const put = await t.app.inject({
+      method: 'PUT',
+      url: `/api/parent/children/${child}`,
+      cookies: parent,
+      payload: { ...girl(), repeatMode: 'free' },
+    });
+    expect(put.statusCode).toBe(200);
+    expect((await playlist()).items.every((i) => !i.rest)).toBe(true);
+  });
+});

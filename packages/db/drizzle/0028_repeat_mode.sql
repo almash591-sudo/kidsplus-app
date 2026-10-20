@@ -1,0 +1,1 @@
+ALTER TABLE "children" ADD COLUMN "repeat_mode" text DEFAULT 'weekly' NOT NULL;

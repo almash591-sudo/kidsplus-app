@@ -124,6 +124,8 @@ export const children = pgTable(
      * а не у дня: «спать» в 21:00 не должно сняться само в полночь.
      */
     rest: text(),
+    /** Повтор пройденного (этап 34): weekly | never | free. */
+    repeatMode: text().notNull().default('weekly'),
     createdAt: createdAt(),
   },
   (t) => [

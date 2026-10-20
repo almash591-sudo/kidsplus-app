@@ -82,6 +82,9 @@ export interface FamiliesOverview {
 
 // ─── Дети ────────────────────────────────────────────────────────────────────
 
+export const REPEAT_MODES = ['weekly', 'never', 'free'] as const;
+export type RepeatMode = (typeof REPEAT_MODES)[number];
+
 export const childInput = z.object({
   nickname: z.string().trim().min(1, 'укажите прозвище').max(30),
   birthYear: z.number().int().min(2015).max(2100),
@@ -95,6 +98,11 @@ export const childInput = z.object({
   foreignImmersion: z.boolean().default(false),
   /** Объёмные авторские картинки вместо эмодзи (где они есть). */
   illustrations: z.boolean().default(false),
+  /**
+   * Повтор пройденного (этап 34): weekly — пройденное сегодня отдыхает до завтра, «выученное»
+   * (3 раза) — неделю; never — выученное больше не предлагается; free — без ограничений.
+   */
+  repeatMode: z.enum(REPEAT_MODES).default('weekly'),
 });
 export type ChildInput = z.input<typeof childInput>;
 
@@ -453,10 +461,14 @@ export interface KidCard {
   question: Speech | null;
 }
 
-export type KidItem =
+export type KidItem = (
   | ({ kind: 'segment'; questions: KidQuestion[] } & KidSegment)
   | { kind: 'deck'; id: string; category: DeckCategory; coverUrl: string; cards: KidCard[] }
-  | { kind: 'interactive'; id: string; category: GameCategory; spec: GameSpec };
+  | { kind: 'interactive'; id: string; category: GameCategory; spec: GameSpec }
+) & {
+  /** Этап 34: пройдено сегодня (today) или выучено (learned) — отдыхает; нет — можно. */
+  rest?: 'today' | 'learned';
+};
 
 /** Фразы похвалы и подсказки (с учётом рода ребёнка). */
 export interface KidPhrases {

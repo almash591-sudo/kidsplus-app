@@ -1031,6 +1031,30 @@ test.describe('плеер', () => {
     await expect(tiles).toHaveCount(0);
   });
 
+  test('пройденное отдыхает (этап 34): в конце, бледное, не открывается, пока есть новое', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = backend.items.map((it, i) => (i === 0 ? { ...it, rest: 'today' } : it));
+    await page.goto('/');
+    const tiles = page.getByTestId('tile');
+    await expect(tiles.last()).toHaveAttribute('data-rest', 'today');
+    await expect(tiles.first()).not.toHaveAttribute('data-rest', /.+/);
+    await shot(page, 'rest');
+    await tiles.last().click();
+    await expect
+      .poll(async () => (await spoken(page)).map((s) => s.text))
+      .toContain('Это уже пройдено сегодня! Выбери что-нибудь новое.');
+    await expect(page.getByTestId('pause')).toHaveCount(0);
+
+    // Всё пройдено — повторять можно (без тупика).
+    backend.items = backend.items.map((it) => ({ ...it, rest: 'learned' }));
+    await page.reload();
+    await expect(tiles.first()).not.toHaveAttribute('data-rest', /.+/);
+    await tiles.first().click();
+    await expect(page.getByTestId('pause')).toBeVisible();
+  });
+
   test('кнопка «домой» уничтожает плеер и пишет событие выхода', async ({ page, backend }) => {
     await startFirst(page);
     await page.getByTestId('go-home').click();

@@ -1,11 +1,18 @@
 import type { KidCategory, KidItem } from '@kidsplus/shared/api';
 import { useEffect } from 'react';
 import { playSequence } from '../audio';
-import { categoriesOf } from '../categories';
+import { categoriesOf, restingIn } from '../categories';
 import { fx } from '../fx';
 import { GameTile } from '../games/GameTile';
 import { ru } from '../games/common';
-import { CATEGORY_LABELS, categoryPhrase, GREETING, HINT_PICK } from '../phrases';
+import {
+  CATEGORY_LABELS,
+  categoryPhrase,
+  GREETING,
+  HINT_PICK,
+  REST_LEARNED,
+  REST_TODAY,
+} from '../phrases';
 import { CategoryArt } from '../ui/CategoryArt';
 import { IdleHint } from '../ui/IdleHint';
 import { Icon } from '../ui/icons';
@@ -157,44 +164,58 @@ export function HomeScreen({
       {isLessonPath(items) ? (
         <LessonPath items={items} onPick={onPick} />
       ) : (
-        items.map((item, i) => (
-          <button
-            key={`${item.kind}-${item.id}`}
-            type="button"
-            className={
-              item.kind === 'segment' ? 'tile' : `tile ${item.kind === 'deck' ? 'deck' : 'game'}`
-            }
-            style={{ '--i': i } as React.CSSProperties}
-            onClick={() => onPick(i)}
-            data-testid="tile"
-            data-kind={item.kind}
-            data-hint={i === 0 ? '' : undefined}
-            aria-label={
-              item.kind === 'deck'
-                ? 'Карточки'
-                : item.kind === 'interactive'
-                  ? 'Играть'
-                  : 'Смотреть'
-            }
-          >
-            {item.kind === 'interactive' ? (
-              <GameTile spec={item.spec} />
-            ) : item.kind === 'deck' ? (
-              <CachedImg src={item.coverUrl} alt="" draggable={false} />
-            ) : item.thumbnailUrl ? (
-              <img src={item.thumbnailUrl} alt="" draggable={false} />
-            ) : (
-              <span className="tile-play" aria-hidden="true">
-                <Icon name="play" size={56} fill />
-              </span>
-            )}
-            {item.kind === 'segment' && item.thumbnailUrl && (
-              <span className="tile-play small" aria-hidden="true">
-                <Icon name="play" size={26} fill />
-              </span>
-            )}
-          </button>
-        ))
+        items.map((item, i) => {
+          // Этап 34: пройденное отдыхает — бледная плитка со звёздочкой, совёнок зовёт к новому.
+          const resting = restingIn(items, item);
+          return (
+            <button
+              key={`${item.kind}-${item.id}`}
+              type="button"
+              className={`${
+                item.kind === 'segment' ? 'tile' : `tile ${item.kind === 'deck' ? 'deck' : 'game'}`
+              }${resting ? ' rested' : ''}`}
+              style={{ '--i': i } as React.CSSProperties}
+              onClick={() => {
+                if (!resting) return onPick(i);
+                fx.soft();
+                void playSequence([ru(item.rest === 'learned' ? REST_LEARNED : REST_TODAY)]);
+              }}
+              data-testid="tile"
+              data-kind={item.kind}
+              data-rest={resting ? item.rest : undefined}
+              data-hint={i === 0 ? '' : undefined}
+              aria-label={
+                item.kind === 'deck'
+                  ? 'Карточки'
+                  : item.kind === 'interactive'
+                    ? 'Играть'
+                    : 'Смотреть'
+              }
+            >
+              {item.kind === 'interactive' ? (
+                <GameTile spec={item.spec} />
+              ) : item.kind === 'deck' ? (
+                <CachedImg src={item.coverUrl} alt="" draggable={false} />
+              ) : item.thumbnailUrl ? (
+                <img src={item.thumbnailUrl} alt="" draggable={false} />
+              ) : (
+                <span className="tile-play" aria-hidden="true">
+                  <Icon name="play" size={56} fill />
+                </span>
+              )}
+              {item.kind === 'segment' && item.thumbnailUrl && !resting && (
+                <span className="tile-play small" aria-hidden="true">
+                  <Icon name="play" size={26} fill />
+                </span>
+              )}
+              {resting && (
+                <span className="tile-star" aria-hidden="true">
+                  <Icon name="star" size={30} fill />
+                </span>
+              )}
+            </button>
+          );
+        })
       )}
       <IdleHint onIdle={() => void playSequence([ru(HINT_PICK)])} first={8000} />
     </div>
