@@ -23,6 +23,7 @@
     "./schedule": "./src/schedule.ts",
     "./habits": "./src/habits.ts",
     "./bedtime": "./src/bedtime.ts",
+    "./levels": "./src/levels.ts",
     "./stories-library": "./src/stories-library.ts",
     "./plan-fill": "./src/plan-fill.ts",
     "./analytics": "./src/analytics.ts",

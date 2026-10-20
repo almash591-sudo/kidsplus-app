@@ -11,7 +11,8 @@ import {
   type Speech,
 } from '@kidsplus/shared/api';
 import { loadSchedule } from '@kidsplus/db/day';
-import { restKey, restMap } from '@kidsplus/db/rest';
+import { loadGameLevels, restKey, restMap } from '@kidsplus/db/rest';
+import { startLevel } from '@kidsplus/shared/levels';
 import { PHRASES, PHRASES_EN, type PhraseKind } from '@kidsplus/shared/phrases';
 import { pushMessages } from '@kidsplus/shared/push';
 import { notifyParents } from '@kidsplus/db/notify';
@@ -151,6 +152,14 @@ export function kidRoutes(app: FastifyInstance, ctx: Ctx) {
         preview: request.device!.preview,
         baby: isBaby(child, ctx.now()),
         lullabies: await lullabies(child.familyId),
+        // Этап 34: уровни сложности игр — старт по возрасту, дальше по ошибкам.
+        levels: await (async () => {
+          const months =
+            (ctx.now().getFullYear() - child.birthYear) * 12 +
+            (ctx.now().getMonth() + 1 - child.birthMonth);
+          const start = startLevel(Math.floor(months / 12));
+          return { start, byKind: await loadGameLevels(db, childId, ctx.now(), start) };
+        })(),
         phrasesEn: await kidPhrases(db, ctx.config.tts, child.gender, 'en'),
       };
     },

@@ -102,11 +102,19 @@ function shakeLastTap() {
   );
 }
 
+/** Ошибки в текущей игре (этап 34): по ним сервер ведёт уровень сложности. */
+let mistakes = 0;
+export const gameMistakes = {
+  reset: () => (mistakes = 0),
+  get: () => mistakes,
+};
+
 /**
  * Неверно: «бом-бом», вибрация, нажатое трясётся, маскот «ой», касания на миг закрыты и
  * «попробуй ещё»; два неверных подряд в спешке — «не спеши» и пауза.
  */
 export const retry = (phrases: KidPhrases) => {
+  mistakes++;
   fx.wrong();
   cheer('oops');
   shakeLastTap();

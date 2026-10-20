@@ -687,6 +687,11 @@ export function App() {
             id={item.id}
             spec={item.spec}
             phrases={playlist.phrases}
+            level={
+              playlist.levels
+                ? (playlist.levels.byKind[item.spec.kind] ?? playlist.levels.start)
+                : undefined
+            }
             onDone={() => void advance()}
             onExit={goHome}
           />

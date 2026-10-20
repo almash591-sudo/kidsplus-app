@@ -497,6 +497,8 @@ export interface KidPlaylist {
   baby?: boolean;
   /** Колыбельные и сказки голосом мамы (записи родителя). */
   lullabies?: { label: string; url: string }[];
+  /** Этап 34: уровни сложности игр — с какого начинать и где ребёнок уже сейчас. */
+  levels?: { start: number; byKind: Partial<Record<GameSpec['kind'], number>> };
 }
 
 /** Фразы приложения для серверной озвучки (задания игр, разделы, «Где …?»). */
