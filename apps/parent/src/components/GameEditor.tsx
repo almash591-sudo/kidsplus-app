@@ -179,6 +179,8 @@ const DEFAULTS: { [K in GameKind]: Extract<GameSpec, { kind: K }> } = {
   robot: { kind: 'robot', size: 4, steps: 3, rocks: false, rounds: 3 },
   space: { kind: 'space', order: 'numbers', count: 5, step: 1, reverse: false, rounds: 2 },
   fishing: { kind: 'fishing', mode: 'numbers', max: 5, fish: 3, speed: 'slow', rounds: 4 },
+  flight: { kind: 'flight', stars: 8, clouds: 'few', speed: 'slow' },
+  builder: { kind: 'builder', height: 3, blocks: 3, hide: false, rounds: 3 },
 };
 
 /** Число из NumberInput (пустое поле — минимум). */
@@ -1449,6 +1451,78 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
               Буквы по порядку: {FISHING_LETTERS.slice(0, spec.max).join(' ')}
             </Text>
           )}
+        </Stack>
+      );
+    case 'flight':
+      return (
+        <Stack gap="xs">
+          <NumberInput
+            label="Звёздочек собрать"
+            min={5}
+            max={20}
+            value={spec.stars}
+            onChange={(v) => onChange({ ...spec, stars: num(v, 5) })}
+          />
+          <Text size="sm">Тучки</Text>
+          <SegmentedControl
+            data={[
+              { value: 'none', label: 'Нет' },
+              { value: 'few', label: 'Немного' },
+              { value: 'many', label: 'Много' },
+            ]}
+            value={spec.clouds}
+            onChange={(v) => onChange({ ...spec, clouds: v as 'none' | 'few' | 'many' })}
+          />
+          <Text size="sm">Скорость</Text>
+          <SegmentedControl
+            data={[
+              { value: 'slow', label: 'Медленно' },
+              { value: 'normal', label: 'Обычно' },
+              { value: 'fast', label: 'Быстро' },
+            ]}
+            value={spec.speed}
+            onChange={(v) => onChange({ ...spec, speed: v as 'slow' | 'normal' | 'fast' })}
+          />
+          <Text size="xs" c="dimmed">
+            Проиграть нельзя: тучка только мешает. Сложность растёт сама: больше звёзд, тучек,
+            быстрее.
+          </Text>
+        </Stack>
+      );
+    case 'builder':
+      return (
+        <Stack gap="xs">
+          <Group grow>
+            <NumberInput
+              label="Деталей в башне"
+              min={2}
+              max={6}
+              value={spec.height}
+              onChange={(v) => onChange({ ...spec, height: num(v, 2) })}
+            />
+            <NumberInput
+              label="Разных деталей"
+              min={3}
+              max={5}
+              value={spec.blocks}
+              onChange={(v) => onChange({ ...spec, blocks: num(v, 3) })}
+            />
+            <NumberInput
+              label="Башен"
+              min={1}
+              max={5}
+              value={spec.rounds}
+              onChange={(v) => onChange({ ...spec, rounds: num(v, 1) })}
+            />
+          </Group>
+          <Checkbox
+            label="По памяти: образец прячется (подсмотреть можно)"
+            checked={spec.hide}
+            onChange={(e) => onChange({ ...spec, hide: e.currentTarget.checked })}
+          />
+          <Text size="xs" c="dimmed">
+            Детали: кубик, брусок, крыша, арка, цилиндр — по порядку. Сложность растёт сама.
+          </Text>
         </Stack>
       );
   }

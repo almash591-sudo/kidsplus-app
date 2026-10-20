@@ -36,6 +36,8 @@ const SPECS = [
   { kind: 'space', order: 'numbers', count: 5, step: 1, reverse: false, rounds: 2 },
   { kind: 'space', order: 'letters', count: 5, step: 1, reverse: false, rounds: 2 },
   { kind: 'fishing', mode: 'numbers', max: 5, fish: 3, speed: 'slow', rounds: 4 },
+  { kind: 'flight', stars: 5, clouds: 'none', speed: 'slow' },
+  { kind: 'builder', height: 3, blocks: 3, hide: false, rounds: 2 },
 ] as const;
 
 describe('уровни сложности (этап 34)', () => {

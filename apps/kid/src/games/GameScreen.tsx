@@ -14,6 +14,8 @@ import { Counting } from './Counting';
 import { Robot } from './Robot';
 import { Space } from './Space';
 import { Fishing } from './Fishing';
+import { Flight } from './Flight';
+import { Builder } from './Builder';
 import { Shop } from './Shop';
 import { Drawing } from './Drawing';
 import { Memory } from './Memory';
@@ -76,14 +78,23 @@ const BACKDROPS: [Backdrop, GameKind[]][] = [
   ['math', ['counting', 'arithmetic', 'compare', 'size', 'clock', 'shop', 'pattern']],
   ['cosmos', ['space']],
 ];
-const OWN_SCENE: GameKind[] = ['flashlight', 'balloons', 'moles', 'drawing', 'coloring', 'fishing'];
+const OWN_SCENE: GameKind[] = [
+  'flashlight',
+  'balloons',
+  'moles',
+  'drawing',
+  'coloring',
+  'fishing',
+  'flight',
+  'builder',
+];
 export const backdropOf = (kind: GameKind): Backdrop | undefined =>
   OWN_SCENE.includes(kind)
     ? undefined
     : (BACKDROPS.find(([, kinds]) => kinds.includes(kind))?.[0] ?? 'games');
 
 /** Игры, где совёнок — герой на поле. */
-const OWL_INSIDE: readonly GameKind[] = ['robot', 'space', 'fishing'];
+const OWL_INSIDE: readonly GameKind[] = ['robot', 'space', 'fishing', 'flight', 'builder'];
 
 /** Игры без своего задания: как играть — звучит при входе. */
 const SILENT: readonly GameKind[] = ['drawing', 'memory', 'puzzle'];
@@ -132,6 +143,8 @@ const GAMES: { [K in GameKind]: ComponentType<GameProps<K>> } = {
   robot: Robot,
   space: Space,
   fishing: Fishing,
+  flight: Flight,
+  builder: Builder,
 };
 
 /** Экран игры: сама игра, кнопка «домой», в конце — звёздочка и следующий пункт. */

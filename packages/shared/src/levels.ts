@@ -142,6 +142,25 @@ export function specAtLevel(spec: GameSpec, level: number): GameSpec {
         rounds: clamp(spec.rounds + up, 2, 10),
       };
     }
+    case 'flight': {
+      // Больше звёзд → больше тучек → быстрее.
+      const clouds = ['none', 'few', 'many'] as const;
+      const speeds = ['slow', 'normal', 'fast'] as const;
+      return {
+        ...spec,
+        stars: clamp(spec.stars + 3 * up, 5, 20),
+        clouds: clouds[clamp(clouds.indexOf(spec.clouds) + up, 0, 2)]!,
+        speed: speeds[clamp(speeds.indexOf(spec.speed) + Math.max(0, up - 1), 0, 2)]!,
+      };
+    }
+    case 'builder':
+      // Выше башня, больше разных деталей, со второго шага — по памяти.
+      return {
+        ...spec,
+        height: clamp(spec.height + up, 2, 6),
+        blocks: clamp(spec.blocks + up, 3, 5),
+        hide: up >= 2 || spec.hide,
+      };
     default:
       // Раскраска, рисовалка, пары, сортировка, фонарик, «лишнее», «по порядку», песенки — как есть.
       return spec;

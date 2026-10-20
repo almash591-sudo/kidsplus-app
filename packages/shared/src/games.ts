@@ -413,7 +413,32 @@ export const gameSpec = z.discriminatedUnion('kind', [
     speed: z.enum(['slow', 'normal', 'fast']).default('slow'),
     rounds: z.number().int().min(2).max(10),
   }),
+  /**
+   * Совёнок летит: держи палец — совёнок поднимается, отпустил — плавно снижается. Собрать
+   * stars звёздочек (их считают вслух), тучки облетать; проиграть нельзя.
+   */
+  z.object({
+    kind: z.literal('flight'),
+    stars: z.number().int().min(5).max(20),
+    clouds: z.enum(['none', 'few', 'many']).default('few'),
+    speed: z.enum(['slow', 'normal', 'fast']).default('slow'),
+  }),
+  /**
+   * Строитель: построить башню из height деталей как на образце; детали — первые blocks из
+   * BUILDER_BLOCKS; hide — образец прячется, башню строят по памяти (подсмотреть можно).
+   */
+  z.object({
+    kind: z.literal('builder'),
+    height: z.number().int().min(2).max(6),
+    blocks: z.number().int().min(3).max(5),
+    hide: z.boolean().default(false),
+    rounds: z.number().int().min(1).max(5),
+  }),
 ]);
+
+/** Детали «Строителя»: кубик, брусок, крыша, арка, цилиндр. */
+export const BUILDER_BLOCKS = ['cube', 'bar', 'roof', 'arch', 'drum'] as const;
+export type BuilderBlock = (typeof BUILDER_BLOCKS)[number];
 
 /** Буквы «Космоса по порядку» — начало алфавита (без Ё и Й: их трудно назвать по порядку). */
 export const SPACE_LETTERS = ['А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ж', 'З', 'И', 'К'] as const;
@@ -478,6 +503,8 @@ export const GAME_KINDS: Record<GameKind, string> = {
   robot: 'Совёнок-робот',
   space: 'Космос по порядку',
   fishing: 'Рыбалка',
+  flight: 'Совёнок летит',
+  builder: 'Строитель',
 };
 
 /** id картинок в параметрах игры — для проверки, что они есть и готовы. */
@@ -511,6 +538,8 @@ export function gameImageIds(g: GameSpec): string[] {
     case 'robot':
     case 'space':
     case 'fishing':
+    case 'flight':
+    case 'builder':
     case 'tracing':
     case 'balloons':
     case 'melody':
