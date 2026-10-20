@@ -483,7 +483,6 @@ export const BEDTIME_SOON_PLAIN = 'Скоро спать! Пора заканч�
 export const NIGHT_STORY = 'Пора спать! Ложись поудобнее, сейчас будет сказка.';
 export const NIGHT_LULLABY = 'Пора спать! Ложись поудобнее и слушай колыбельную.';
 export const NIGHT_QUIET = 'Пора спать! Закрывай глазки. Спокойной ночи!';
-export const NIGHT_END = 'Спокойной ночи! Сладких снов.';
 export const NIGHT_HUSH = [
   'Ш-ш-ш. Ночь, все спят. Закрывай глазки.',
   'Совёнок охраняет твой сон. Спи, малыш.',
@@ -537,7 +536,6 @@ export function appPhrases(playlist: KidPlaylist): Phrase[] {
     NIGHT_STORY,
     NIGHT_LULLABY,
     NIGHT_QUIET,
-    NIGHT_END,
     ...NIGHT_HUSH,
     MORNING,
     MORNING_PLAIN,

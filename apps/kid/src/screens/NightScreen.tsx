@@ -13,7 +13,6 @@ import {
   BEDTIME_SOON_PLAIN,
   MORNING,
   MORNING_PLAIN,
-  NIGHT_END,
   NIGHT_HUSH,
   NIGHT_LULLABY,
   NIGHT_QUIET,
@@ -21,9 +20,8 @@ import {
 } from '../phrases';
 import { useHabits } from './HabitsScreen';
 
-/** Колыбельная после сказки и одна — сколько секунд. */
-export const LULLABY_AFTER_STORY_S = 150;
-export const LULLABY_ALONE_S = 300;
+/** Колыбельная — сколько секунд (и после сказки, и одна). В конце — тихо, без слов: не будить. */
+export const LULLABY_S = 20 * 60;
 /** Разбуженный касанием экран снова темнеет через столько. */
 const HUSH_MS = 9000;
 
@@ -97,10 +95,7 @@ export function NightScreen({ night }: { night: BedtimeNow }) {
     const lullaby = (seconds: number) => {
       if (stopped) return;
       setStage('lullaby');
-      stopBox = musicBox(seconds, () => {
-        if (stopped) return;
-        void playSequence([ru(NIGHT_END)]).then(sleep);
-      });
+      stopBox = musicBox(seconds, sleep);
     };
     const run = async () => {
       const story = plan.companion === 'story' ? plan.story : null;
@@ -122,20 +117,20 @@ export function NightScreen({ night }: { night: BedtimeNow }) {
         }
         if (stopped) return;
         void kidApi.storyPlayed(story.id).catch(() => {});
-        return lullaby(LULLABY_AFTER_STORY_S);
+        return lullaby(LULLABY_S);
       }
       if (plan.companion === 'track' && plan.track) {
         setStage('track');
         const el = new Audio(plan.track.url);
         el.volume = 0.6;
         audioRef.current = el;
-        el.onended = () => void playSequence([ru(NIGHT_END)]).then(sleep);
-        el.onerror = () => lullaby(LULLABY_ALONE_S);
-        void el.play().catch(() => lullaby(LULLABY_ALONE_S));
+        el.onended = sleep;
+        el.onerror = () => lullaby(LULLABY_S);
+        void el.play().catch(() => lullaby(LULLABY_S));
         return;
       }
       if (plan.companion === 'none') return sleep();
-      lullaby(LULLABY_ALONE_S);
+      lullaby(LULLABY_S);
     };
     void run();
     return () => {

@@ -13,9 +13,8 @@ import { QuizScreen } from '../quiz/QuizScreen';
 import { Icon } from '../ui/icons';
 import { CachedImg } from '../ui/CachedImg';
 
-/** Слово, затем перевод (если есть и не включено погружение). */
-const say = (c: KidCard, immersion: boolean) =>
-  void playSequence(immersion ? [c.word] : [c.word, c.translation]);
+/** Пока звучит слово, касания ждут, но не дольше этого (вдруг голос не сообщил о конце). */
+const SPEAK_WAIT_MS = 6000;
 
 /** Смещение пальца, после которого считаем свайп. */
 const SWIPE_PX = 60;
@@ -24,7 +23,8 @@ const SWIPE_PX = 60;
  * Карточки с озвучкой (п. 5.5 ТЗ): картинка на весь экран, слово озвучивается при показе,
  * повтор — нажатием на картинку, листание — свайпом или стрелками в нижней полосе
  * (стрелки не перекрывают картинку). Каждые несколько карточек — короткая проверка:
- * «Где <слово>?» по только что показанным карточкам.
+ * «Где <слово>?» по только что показанным карточкам. Пока звучит слово, карточка и стрелки
+ * не нажимаются — частые касания не обрывают его на полуслове.
  */
 export function DeckScreen(props: {
   deckId: string;
@@ -49,10 +49,38 @@ export function DeckScreen(props: {
   const [checkpoints] = useState(() => checkpointIndexes(cards.length));
   /** Пройденные проверки: листание назад-вперёд их не повторяет. */
   const passed = useRef(new Set<number>());
+  /** Карточка, слово которой уже договорено; again — звучит повтор по касанию. */
+  const [heard, setHeard] = useState<string | null>(null);
+  const [again, setAgain] = useState(false);
+  /** Звучит слово (и перевод) — касания ждут. */
+  const speaking = heard !== card.id || again;
+  const talk = useRef(0);
+
+  /** Слово, затем перевод (если есть и не включено погружение); договорил — касания снова работают. */
+  const say = (c: KidCard) => {
+    const mine = ++talk.current;
+    const done = () => {
+      clearTimeout(cap);
+      if (talk.current !== mine) return;
+      setHeard(c.id);
+      setAgain(false);
+    };
+    const cap = setTimeout(done, SPEAK_WAIT_MS);
+    void playSequence(immersion ? [c.word] : [c.word, c.translation]).then(done, done);
+  };
+  const repeat = () => {
+    setAgain(true);
+    say(card);
+  };
 
   useEffect(() => {
-    if (!check) say(card, immersion);
-    return () => stopAudio();
+    const t = talk;
+    if (!check) say(card);
+    return () => {
+      t.current++;
+      stopAudio();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [card, check, immersion]);
 
   const finish = () => {
@@ -112,11 +140,13 @@ export function DeckScreen(props: {
     <div
       className="deck-screen"
       data-testid="deck"
+      data-speaking={speaking || undefined}
       onPointerDown={(e) => (startX.current = e.clientX)}
       onPointerUp={(e) => {
         if (startX.current === null) return;
         const dx = e.clientX - startX.current;
         startX.current = null;
+        if (speaking) return;
         if (dx < -SWIPE_PX) next();
         else if (dx > SWIPE_PX) prev();
       }}
@@ -124,7 +154,8 @@ export function DeckScreen(props: {
       <button
         type="button"
         className={`deck-card from-${dir}`}
-        onClick={() => say(card, immersion)}
+        onClick={repeat}
+        disabled={speaking}
         aria-label="Повторить слово"
         data-testid="deck-card"
       >
@@ -137,7 +168,8 @@ export function DeckScreen(props: {
           className="deck-arrow"
           aria-label="Назад"
           onClick={prev}
-          disabled={index === 0}
+          disabled={index === 0 || speaking}
+          data-wait={(speaking && index > 0) || undefined}
           data-testid="deck-prev"
         >
           ◀
@@ -152,6 +184,8 @@ export function DeckScreen(props: {
           className="deck-arrow"
           aria-label="Дальше"
           onClick={next}
+          disabled={speaking}
+          data-wait={speaking || undefined}
           data-testid="deck-next"
         >
           ▶
