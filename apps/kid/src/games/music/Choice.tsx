@@ -1,20 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 import { music, NOTE_FREQ } from '../../fx';
 import { MUSIC_CHOICE, type MusicChoiceKind } from '../../phrases';
-import { praise, retry, say, setTask, type GameProps, type SpecOf } from '../common';
+import { clayUrl, praise, retry, say, setTask, type GameProps, type SpecOf } from '../common';
 import { burstAt } from '../juice';
 import { wait } from './timing';
 import './music.css';
 
 type Side = 'a' | 'b';
 
-/** Картинки сторон: ребёнок не читает — выбирает зверька или стрелку. */
+/** Картинки сторон (глиняные, /games): ребёнок не читает — выбирает зверька или стрелку. */
 const PICS: Record<MusicChoiceKind, Record<Side, string>> = {
-  pitch: { a: '🐦', b: '🐻' },
-  loudness: { a: '🐘', b: '🐭' },
-  tempo: { a: '🐇', b: '🐢' },
-  duration: { a: '🚂', b: '🐤' },
-  direction: { a: '⬆️', b: '⬇️' },
+  pitch: { a: 'animal-bird', b: 'animal-bear' },
+  loudness: { a: 'animal-elephant', b: 'animal-mouse' },
+  tempo: { a: 'animal-rabbit', b: 'animal-turtle' },
+  duration: { a: 'animal-train', b: 'animal-chick' },
+  direction: { a: 'arrow-up', b: 'arrow-down' },
 };
 
 type Spec = SpecOf<MusicChoiceKind>;
@@ -143,7 +143,7 @@ export function MusicChoice({ spec, phrases, onFinish }: GameProps<MusicChoiceKi
       data-phase={phase}
     >
       <div className={sounding === 'q' ? 'music-ear on' : 'music-ear'} aria-hidden="true">
-        🎵
+        <img className="clay-em" src={clayUrl('music-note')} alt="" draggable={false} />
       </div>
       <div className="music-sides">
         {(['a', 'b'] as const).map((side) => (
@@ -167,7 +167,14 @@ export function MusicChoice({ spec, phrases, onFinish }: GameProps<MusicChoiceKi
             aria-label={text[side].name}
             onClick={() => choose(side)}
           >
-            <span className="music-pic">{PICS[spec.kind][side]}</span>
+            <span className="music-pic">
+              <img
+                className="clay-em"
+                src={clayUrl(PICS[spec.kind][side])}
+                alt=""
+                draggable={false}
+              />
+            </span>
             <span className="music-word">{text[side].name.replace('!', '')}</span>
           </button>
         ))}

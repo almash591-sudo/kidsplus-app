@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { music } from '../../fx';
 import { BEATS_PROMPT } from '../../phrases';
 import { countOptions } from '../Counting';
-import { NUMBERS, praise, retry, say, setTask, type GameProps } from '../common';
+import { clayUrl, NUMBERS, praise, retry, say, setTask, type GameProps } from '../common';
 import { burstAt } from '../juice';
 import { wait } from './timing';
 import './music.css';
@@ -78,7 +78,7 @@ export function Beats({ spec, phrases, onFinish }: GameProps<'beats'>) {
   return (
     <div className="game music-beats" data-testid="game-beats" data-answer={answer}>
       <div key={hit} className={hit ? 'music-drum hit' : 'music-drum'} aria-hidden="true">
-        🥁
+        <img className="clay-em" src={clayUrl('drum')} alt="" draggable={false} />
       </div>
       <div className="music-numbers">
         {options.map((n) => (

@@ -110,49 +110,10 @@ export function gameSummary(spec: GameSpec): string {
   }
 }
 
-/** Значок вида игры в списке. */
-const GAME_ICONS: Record<GameKind, string> = {
-  drawing: '🖍️',
-  coloring: '🎨',
-  sorting: '🧺',
-  memory: '🃏',
-  puzzle: '🧩',
-  tracing: '✏️',
-  balloons: '🎈',
-  counting: '🔢',
-  maze: '🌀',
-  shadows: '👤',
-  flashlight: '🔦',
-  moles: '🐹',
-  melody: '🎵',
-  shapes: '🔷',
-  odd: '❓',
-  pattern: '🔁',
-  compare: '⚖️',
-  arithmetic: '➕',
-  size: '📏',
-  sequence: '🔢',
-  word: '🔤',
-  pitch: '🐦',
-  loudness: '🐘',
-  tempo: '🐇',
-  duration: '🚂',
-  direction: '↕️',
-  beats: '🥁',
-  rhythm: '🪘',
-  piano: '🎹',
-  staff: '🎼',
-  song: '🎶',
-  freeze: '💃',
-  orchestra: '🎺',
-  letter: '🔤',
-  syllable: '🅰️',
-  firstLetter: '🐱',
-  readWord: '📖',
-  clock: '🕒',
-  shop: '🛒',
-  robot: '🤖',
-};
+/** Глиняный значок игры — тот же, что у ребёнка на плитке (этап 35). */
+function GameIcon({ kind }: { kind: GameKind }) {
+  return <img className="game-icon" src={`/games/icon-${kind}.webp`} alt="" />;
+}
 
 /** Игры (п. 5.6 ТЗ): кому какую показывать. У ребёнка они — в разделе «Игры». */
 export function GamesPage() {
@@ -207,7 +168,7 @@ export function GamesPage() {
               >
                 <SelectMark checked={b.selected.has(g.id)} />
                 <span className="deck-thumb" aria-hidden>
-                  {GAME_ICONS[g.spec.kind]}
+                  <GameIcon kind={g.spec.kind} />
                 </span>
                 <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
                   <Text fw={600} truncate>
@@ -221,7 +182,7 @@ export function GamesPage() {
             ) : (
               <div key={g.id} className="attention-row">
                 <span className="deck-thumb" aria-hidden>
-                  {GAME_ICONS[g.spec.kind]}
+                  <GameIcon kind={g.spec.kind} />
                 </span>
                 <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
                   <UnstyledButton onClick={() => setEditing(g)} style={{ minWidth: 0 }}>

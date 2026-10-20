@@ -3485,3 +3485,103 @@ test.describe('урок из одних видео', () => {
     await expect(page.getByTestId('player')).toBeVisible();
   });
 });
+
+test.describe('картинки не растягиваются (этап 35)', () => {
+  const ID = (n: number) => `9a000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+  const P = [CARROT, BANANA, RABBIT, MONKEY, CAT, LION];
+  const specs: object[] = [
+    {
+      kind: 'sorting',
+      prompt: 'x',
+      bins: [
+        { imageId: CARROT, name: 'a' },
+        { imageId: BANANA, name: 'b' },
+      ],
+      items: [
+        { imageId: RABBIT, bin: 0 },
+        { imageId: CAT, bin: 1 },
+      ],
+    },
+    { kind: 'memory', imageIds: P.slice(0, 4) },
+    { kind: 'counting', max: 5, rounds: 2, imageIds: [CARROT] },
+    { kind: 'shadows', imageIds: P, perRound: 3 },
+    { kind: 'moles', imageIds: [RABBIT], target: null, prompt: null, count: 5, speed: 'slow' },
+    { kind: 'odd', rounds: [{ imageIds: [CARROT, BANANA, CAT], odd: 2, explain: null }] },
+    { kind: 'pattern', imageIds: [CAT, LION], patterns: ['AB'], rounds: 2 },
+    { kind: 'compare', mode: 'objects', ask: 'more', max: 5, rounds: 2, imageIds: [CARROT] },
+    { kind: 'arithmetic', ops: ['plus'], max: 5, rounds: 2, imageIds: [BANANA] },
+    { kind: 'size', imageIds: [MONKEY], count: 3 },
+    { kind: 'sequence', rounds: [{ prompt: 'x', imageIds: [CARROT, BANANA, CAT] }] },
+    { kind: 'word', lang: 'ru', words: [{ imageId: CAT, word: 'КОТ' }], extra: 0 },
+    { kind: 'flashlight', scene: 'forest', items: [{ imageId: RABBIT, name: null }] },
+    { kind: 'maze', heroId: RABBIT, goalId: CARROT, size: 4, rounds: 1 },
+    { kind: 'shop', imageIds: [CARROT], max: 5, coins: [1], rounds: 2 },
+  ];
+  test('картинки 3:2 нигде не растянуты: игры, плитка и экран карточек', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(300_000);
+    const bad: string[] = [];
+    const check = async (where: string) => {
+      const found = await page.evaluate(() =>
+        [...document.querySelectorAll('img')].flatMap((img) => {
+          const r = img.getBoundingClientRect();
+          if (r.width < 8 || r.height < 8 || !img.naturalWidth) return [];
+          const fit = getComputedStyle(img).objectFit;
+          const box = r.width / r.height;
+          const nat = img.naturalWidth / img.naturalHeight;
+          return fit === 'fill' && Math.abs(box / nat - 1) > 0.06
+            ? [
+                `${img.className || img.parentElement?.className} ${Math.round(r.width)}x${Math.round(r.height)}`,
+              ]
+            : [];
+        }),
+      );
+      for (const f of found) bad.push(`${where}: ${f}`);
+    };
+    await gameMedia(page);
+    // Картинки 3:2 — так видна любая ячейка, которая растягивает картинку под себя.
+    await page.route('**/api/media/**', (r) =>
+      r.fulfill({
+        contentType: 'image/svg+xml',
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="150" height="100" viewBox="0 0 150 100"><rect width="150" height="100" fill="#f90"/><circle cx="75" cy="50" r="40" fill="#09f"/></svg>',
+      }),
+    );
+    for (const [i, spec] of specs.entries()) {
+      backend.items = [game(i + 1, spec)];
+      await page.goto('/');
+      await page.getByTestId('tile').first().click();
+      await page.waitForTimeout(900);
+      await check((spec as { kind: string }).kind);
+    }
+    backend.items = [
+      {
+        kind: 'deck',
+        id: ID(99),
+        category: 'english',
+        coverUrl: `/api/media/${CAT}`,
+        cards: [
+          {
+            id: 'c1',
+            imageUrl: `/api/media/${CAT}`,
+            word: { text: 'cat', lang: 'en', audioUrl: null },
+            translation: null,
+          },
+          {
+            id: 'c2',
+            imageUrl: `/api/media/${LION}`,
+            word: { text: 'lion', lang: 'en', audioUrl: null },
+            translation: null,
+          },
+        ],
+      },
+    ];
+    await page.goto('/');
+    await check('home-deck');
+    await page.getByTestId('tile').first().click();
+    await page.waitForTimeout(900);
+    await check('deck');
+    expect(bad).toEqual([]);
+  });
+});

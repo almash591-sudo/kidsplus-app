@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { music } from '../../fx';
 import { RHYTHM_AGAIN, RHYTHM_EASY, RHYTHM_LISTEN, RHYTHM_YOU } from '../../phrases';
-import { praise, say, setTask, type GameProps } from '../common';
+import { clayUrl, praise, say, setTask, type GameProps } from '../common';
 import { burstAt, cheer } from '../juice';
 import { rhythmMatches, rhythmPattern, wait } from './timing';
 import './music.css';
@@ -144,7 +144,9 @@ export function Rhythm({ spec, phrases, onFinish }: GameProps<'rhythm'>) {
         aria-label="Барабан"
         onPointerDown={tap}
       >
-        <span key={taps.length}>🥁</span>
+        <span key={taps.length}>
+          <img className="clay-em" src={clayUrl('drum')} alt="" draggable={false} />
+        </span>
       </button>
     </div>
   );

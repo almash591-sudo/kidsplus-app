@@ -392,11 +392,17 @@
   overflow: hidden;
 }
 
-.flash-scene {
+.flash-scene,
+.flash-scene img {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
+}
+
+.flash-scene img {
+  display: block;
+  object-fit: cover;
 }
 
 .flash-item {
@@ -540,14 +546,14 @@
   background: none;
 }
 
+/* Глиняная норка (этап 35): холмик с дыркой, вписан без растяжения. */
 .mole-pit {
   position: absolute;
-  left: 8%;
-  right: 8%;
-  bottom: 8%;
-  height: 28%;
-  border-radius: 50%;
-  background: radial-gradient(#2a180c 40%, #5c3a1e);
+  left: 2%;
+  right: 2%;
+  bottom: 4%;
+  height: 42%;
+  background: url('/games/mole-mound.webp') center bottom / contain no-repeat;
 }
 
 .mole-window {
@@ -610,12 +616,11 @@
 
 .mole-grass {
   position: absolute;
-  left: 4%;
-  right: 4%;
+  left: 0;
+  right: 0;
   bottom: 0;
-  height: 20%;
-  border-radius: 0 0 50% 50% / 0 0 100% 100%;
-  background: #22a55b;
+  height: 22%;
+  background: url('/games/mole-grass.webp') center bottom / contain no-repeat;
 }
 
 /* ─── Повтори мелодию ────────────────────────────────────────────────────── */
@@ -1428,9 +1433,25 @@
 .clock-option.picked {
   outline: 6px solid #34c759;
 }
-.clock-face {
+/* Глиняный будильник (этап 35); циферблат со стрелками — поверх его белого круга.
+   --face-* — где этот круг на картинке (в долях её ширины и высоты). */
+.clock-body {
+  --face-x: 50%;
+  --face-y: 54.6%;
+  --face-w: 58%;
+  position: relative;
+  display: block;
   width: 100%;
   height: 100%;
+  background: url('/games/clock-body.webp') center / contain no-repeat;
+}
+.clock-face {
+  position: absolute;
+  left: var(--face-x);
+  top: var(--face-y);
+  width: var(--face-w);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
 }
 
 .shop {
@@ -1442,27 +1463,38 @@
   padding: 16px;
 }
 .shop-item {
+  /* Глиняная лавка с навесом (этап 35), товар — на прилавке. */
   position: relative;
-  width: min(46vw, 30vh, 240px);
-  aspect-ratio: 1;
-  border-radius: 28px;
-  background: #fff;
-  box-shadow: 0 8px 20px rgb(40 30 90 / 0.15);
+  width: min(92vw, 72vh, 420px);
+  aspect-ratio: 3 / 2;
+  background: url('/games/shop-stall.webp') center / contain no-repeat;
+  filter: drop-shadow(0 10px 16px rgb(40 30 90 / 0.18));
   display: grid;
   place-items: center;
 }
 .shop-item.bought {
   animation: mascot-hop 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) 2;
 }
+.shop-pic {
+  position: absolute;
+  left: 50%;
+  bottom: 39%;
+  width: 30%;
+  aspect-ratio: 1;
+  transform: translateX(-50%);
+  display: grid;
+  place-items: center;
+}
 .shop-pic img {
-  width: 80%;
-  height: 80%;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
+  border-radius: 18px;
 }
 .shop-tag {
   position: absolute;
-  top: -12px;
-  right: -12px;
+  top: 34%;
+  right: 12%;
   min-width: 64px;
   height: 64px;
   border-radius: 18px;
@@ -1491,26 +1523,28 @@
   display: flex;
   gap: 18px;
 }
+/* Монетки (этап 35) — глиняные: 1 — золотая, 2 — серебряная, 5 — медная; номинал поверх. */
 .shop-coin {
   width: 84px;
   height: 84px;
   border-radius: 50%;
   border: 0;
-  font-size: 36px;
+  padding: 0;
+  font-size: 34px;
   font-weight: 900;
-  color: #7a4b00;
-  background: radial-gradient(circle at 35% 30%, #ffe680, #ffc400 60%, #d99a00);
-  box-shadow:
-    inset 0 -5px 0 rgb(0 0 0 / 0.15),
-    0 6px 12px rgb(0 0 0 / 0.2);
+  color: #6b4100;
+  text-shadow: 0 1px 0 rgb(255 255 255 / 0.6);
+  background: url('/games/coin-gold.webp') center / contain no-repeat;
+  filter: drop-shadow(0 5px 4px rgb(0 0 0 / 0.18));
 }
 .shop-coin.c2 {
-  background: radial-gradient(circle at 35% 30%, #f0f0f0, #c0c0c8 60%, #8e8e96);
+  background-image: url('/games/coin-silver.webp');
   color: #3a3a3c;
 }
 .shop-coin.c5 {
-  background: radial-gradient(circle at 35% 30%, #ffd2b0, #e8833a 60%, #b85a17);
+  background-image: url('/games/coin-copper.webp');
   color: #fff;
+  text-shadow: 0 1px 2px rgb(90 40 0 / 0.6);
 }
 .shop-coin.small {
   width: 52px;
@@ -1533,11 +1567,16 @@
   aspect-ratio: 1;
   padding: 6px;
   border-radius: 20px;
-  background: #b7e3a0;
+  background: #8cc46a;
+  box-shadow:
+    inset 0 -6px 0 rgb(0 0 0 / 0.12),
+    0 8px 18px rgb(40 70 20 / 0.2);
 }
+/* Клетка поля — глиняная трава (этап 35). */
 .robot-cell {
   border-radius: 10px;
-  background: rgb(255 255 255 / 0.6);
+  background: #b7e3a0 url('/games/robot-grass.webp') center / cover no-repeat;
+  box-shadow: inset 0 -3px 0 rgb(0 0 0 / 0.1);
   display: grid;
   place-items: center;
   font-size: clamp(20px, 6vw, 40px);
@@ -1600,18 +1639,15 @@
 .robot-go:disabled {
   opacity: 0.45;
 }
-.robot-star {
-  color: #ffcc00;
-  display: grid;
-  place-items: center;
-  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.2));
-}
+.robot-star,
 .robot-rock {
-  width: 70%;
-  height: 58%;
-  border-radius: 46% 54% 40% 60% / 60% 55% 45% 40%;
-  background: radial-gradient(circle at 35% 30%, #b8b3ad, #7d756d 70%);
-  box-shadow: inset 0 -4px 0 rgb(0 0 0 / 0.18);
+  width: 82%;
+  height: 82%;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 3px rgb(0 0 0 / 0.22));
+}
+.robot-owl {
+  filter: drop-shadow(0 4px 4px rgb(0 0 0 / 0.25));
 }
 /* Телефон лёжа: поле слева, стрелки справа — всё в экране. */
 @media (orientation: landscape) {

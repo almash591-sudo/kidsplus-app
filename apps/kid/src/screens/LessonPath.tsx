@@ -1,6 +1,6 @@
 import type { KidItem } from '@kidsplus/shared/api';
 import { useEffect, useRef, useState } from 'react';
-import { ICON } from '../games/GameTile';
+import { GameIcon } from '../games/GameTile';
 import { doneIds, STUCK_AFTER, triedCounts } from '../progress';
 import { Icon } from '../ui/icons';
 import '../games/music/music.css';
@@ -54,7 +54,7 @@ export function LessonPath({
             onClick={() => onPick(i)}
           >
             <span className="path-icon" aria-hidden="true">
-              {item.kind === 'interactive' ? ICON[item.spec.kind] : '🎵'}
+              {item.kind === 'interactive' ? <GameIcon kind={item.spec.kind} /> : '🎵'}
             </span>
             <span className="path-num" aria-hidden="true">
               {i + 1}

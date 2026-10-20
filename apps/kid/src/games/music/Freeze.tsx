@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { music, NOTE_FREQ } from '../../fx';
 import { FREEZE_DANCE, FREEZE_GO, FREEZE_MOVED, FREEZE_STOP } from '../../phrases';
-import { praise, say, setTask, type GameProps } from '../common';
+import { clayUrl, praise, say, setTask, type GameProps } from '../common';
 import { burstAt } from '../juice';
 import './music.css';
 
@@ -13,7 +13,7 @@ const danceMs = () => 3500 + Math.random() * 2500;
 /** Сколько стоим замерев, мс. */
 const FREEZE_MS = 3000;
 
-const DANCERS = ['🐻', '🐰', '🐸'];
+const DANCERS = ['animal-bear', 'animal-rabbit', 'animal-frog'];
 
 type Phase = 'dance' | 'freeze' | 'done';
 
@@ -109,13 +109,15 @@ export function Freeze({ spec, phrases, onFinish }: GameProps<'freeze'>) {
             aria-label="Зверёк танцует"
             onPointerDown={() => tap(i)}
           >
-            <span>{d}</span>
+            <span>
+              <img className="clay-em" src={clayUrl(d)} alt="" draggable={false} />
+            </span>
           </button>
         ))}
       </div>
       {phase === 'freeze' && (
         <div className="freeze-ice" aria-hidden="true">
-          ❄️
+          <img className="clay-em" src={clayUrl('snowflake')} alt="" draggable={false} />
         </div>
       )}
     </div>

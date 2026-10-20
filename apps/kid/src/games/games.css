@@ -30,16 +30,38 @@
 }
 
 .game-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 84%;
+  height: 84%;
   font-size: min(12vw, 12vh);
   color: var(--ink);
   font-weight: 900;
 }
 
+/* Глиняный значок игры (этап 35): квадрат с прозрачным фоном, вписывается целиком. */
+.game-icon-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 6px 8px rgb(60 40 20 / 0.18));
+}
+
 .game-badge {
   position: absolute;
-  right: 8px;
-  bottom: 4px;
-  font-size: 34px;
+  right: 4px;
+  bottom: 2px;
+  width: 30%;
+  aspect-ratio: 1;
+  max-width: 64px;
+}
+
+.tile.game .game-tile .game-badge img {
+  width: 100%;
+  height: 100%;
 }
 
 .game-screen {
@@ -48,6 +70,53 @@
   background: var(--bg);
   overflow: hidden;
   touch-action: none;
+}
+
+/* Глиняные фоны разделов (этап 35): свой формат для вертикального и горизонтального экрана,
+   вписываются с обрезкой краёв; в тёмной теме приглушены. Фон — отдельным слоем (свой композитный
+   слой), иначе каждая анимация в игре перерисовывает картинку на весь экран (WebKit тормозил). */
+.game-screen[data-bg]::before {
+  --veil: linear-gradient(transparent, transparent);
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transform: translateZ(0);
+  background:
+    var(--veil),
+    var(--bg-art) center / cover no-repeat,
+    var(--bg);
+}
+.game-screen[data-bg='games'] {
+  --bg-art: url('/games/bg-games-p.webp');
+}
+.game-screen[data-bg='music'] {
+  --bg-art: url('/games/bg-music-p.webp');
+}
+.game-screen[data-bg='letters'] {
+  --bg-art: url('/games/bg-letters-p.webp');
+}
+.game-screen[data-bg='math'] {
+  --bg-art: url('/games/bg-math-p.webp');
+}
+@media (orientation: landscape) {
+  .game-screen[data-bg='games'] {
+    --bg-art: url('/games/bg-games-l.webp');
+  }
+  .game-screen[data-bg='music'] {
+    --bg-art: url('/games/bg-music-l.webp');
+  }
+  .game-screen[data-bg='letters'] {
+    --bg-art: url('/games/bg-letters-l.webp');
+  }
+  .game-screen[data-bg='math'] {
+    --bg-art: url('/games/bg-math-l.webp');
+  }
+}
+@media (prefers-color-scheme: dark) {
+  .game-screen[data-bg]::before {
+    --veil: linear-gradient(rgb(15 14 23 / 0.84), rgb(15 14 23 / 0.84));
+  }
 }
 
 .game {
@@ -196,16 +265,19 @@
   }
 }
 
+/* Корзинка (этап 35): сверху — что в неё кладём, внизу — глиняная корзинка, в неё и падают картинки. */
 .bin {
   flex: 1;
-  min-height: 160px;
-  border: 4px dashed #c9a46a;
-  border-radius: 20px;
-  background: #fff;
+  min-height: 150px;
+  border: 0;
+  border-radius: 24px;
+  background: var(--card, #fff) url('/games/basket.webp') center bottom 8px / min(86%, 200px) auto
+    no-repeat;
+  box-shadow: var(--shadow-soft, 0 8px 20px rgb(0 0 0 / 0.1));
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 8px;
+  padding: 8px 8px min(14%, 64px);
   gap: 4px;
 }
 
@@ -216,6 +288,7 @@
 }
 
 .bin-content {
+  margin-top: auto;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -225,6 +298,20 @@
 .bin-content img {
   width: 34px;
   height: 34px;
+  filter: drop-shadow(0 2px 2px rgb(0 0 0 / 0.2));
+}
+
+/* Лёжа корзинки стоят столбиком — ниже, чтобы обе поместились. */
+@media (orientation: landscape) {
+  .bin {
+    min-height: 0;
+    padding-bottom: 46px;
+    background-size: auto 48%;
+  }
+  .bin-icon {
+    width: 56px;
+    height: 56px;
+  }
 }
 
 .loose {
@@ -274,6 +361,11 @@
   padding: 10%;
 }
 
+/* Рубашка карточки (этап 35) — квадратная глиняная плитка во всю карточку. */
+.memory-card:not(.open) {
+  background: var(--accent) url('/games/memory-back.webp') center / cover no-repeat;
+}
+
 .memory-card.open {
   background: #fff;
   box-shadow: 0 5px 0 #ddd;
@@ -302,6 +394,7 @@
   inset: 0;
   width: 100%;
   height: 100%;
+  object-fit: fill; /* как кусочки: картинка во весь квадрат поля */
   opacity: 0.18;
 }
 
@@ -402,10 +495,13 @@
   touch-action: none;
 }
 
-.balloon svg {
+.balloon img {
   width: 100%;
   height: 100%;
+  object-fit: contain;
+  object-position: bottom;
   pointer-events: none;
+  filter: drop-shadow(0 8px 10px rgb(0 0 0 / 0.15));
 }
 
 .balloon.popped {
@@ -474,6 +570,7 @@
 .count-item img {
   width: 100%;
   height: 100%;
+  object-fit: contain;
   pointer-events: none;
 }
 

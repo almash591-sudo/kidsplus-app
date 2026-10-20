@@ -5,6 +5,7 @@ import { PALETTE } from './common';
 import { PICTURES } from './pictures';
 import { CachedImg } from '../ui/CachedImg';
 
+/** Запасной значок-эмодзи (подпись для озвучки и тестов); на экране — глиняная картинка. */
 export const ICON: Record<GameKind, string> = {
   drawing: '🖍️',
   coloring: '🎨',
@@ -47,6 +48,19 @@ export const ICON: Record<GameKind, string> = {
   shop: '🛒',
   robot: '🤖',
 };
+
+/** Глиняный значок игры (этап 35): квадратная картинка с прозрачным фоном, вписывается без растяжения. */
+export function GameIcon({ kind, className }: { kind: GameKind; className?: string }) {
+  return (
+    <img
+      className={className ?? 'game-icon-img'}
+      src={`/games/icon-${kind}.webp`}
+      alt=""
+      draggable={false}
+      data-icon={ICON[kind]}
+    />
+  );
+}
 
 /** Картинка для плитки игры (если у игры есть картинки). */
 export function tileImage(spec: GameSpec): string | null {
@@ -92,7 +106,9 @@ export function GameTile({ spec }: { spec: GameSpec }) {
     return (
       <span className="game-tile">
         <CachedImg src={mediaUrl(spec.imageIds[0]!)} alt="" draggable={false} />
-        <span className="game-badge">{ICON.puzzle}</span>
+        <span className="game-badge">
+          <GameIcon kind="puzzle" />
+        </span>
       </span>
     );
   }
@@ -103,14 +119,18 @@ export function GameTile({ spec }: { spec: GameSpec }) {
         <CachedImg src={mediaUrl(image)} alt="" draggable={false} />
       ) : (
         <span className="game-icon">
-          {spec.kind === 'tracing'
-            ? /^\d$/.test(spec.shapes[0]!)
-              ? spec.shapes[0]
-              : '✏️'
-            : ICON[spec.kind]}
+          {spec.kind === 'tracing' && /^\d$/.test(spec.shapes[0]!) ? (
+            spec.shapes[0]
+          ) : (
+            <GameIcon kind={spec.kind} />
+          )}
         </span>
       )}
-      {image && <span className="game-badge">{ICON[spec.kind]}</span>}
+      {image && (
+        <span className="game-badge">
+          <GameIcon kind={spec.kind} />
+        </span>
+      )}
     </span>
   );
 }

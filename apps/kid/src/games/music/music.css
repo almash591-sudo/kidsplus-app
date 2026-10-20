@@ -368,6 +368,11 @@
 }
 
 .path-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 62%;
+  height: 62%;
   font-size: 40px;
   line-height: 1;
 }
@@ -578,7 +583,8 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: min(4vw, 24px);
-  width: min(94vw, 720px);
+  /* Лёжа — по высоте экрана: два ряда должны поместиться. */
+  width: min(94vw, 720px, 115vh);
 }
 
 .player {
@@ -587,13 +593,19 @@
   border-radius: 28px;
   background: var(--card, #fff);
   box-shadow: 0 6px 0 rgb(0 0 0 / 0.08);
-  font-size: min(15vw, 11vh);
+  font-size: min(15vw, 18vh);
   touch-action: manipulation;
   transition: box-shadow 0.2s;
 }
 
 .player span {
   display: inline-block;
+}
+
+/* Глиняный зверёк с инструментом (этап 35) — почти во всю плитку. */
+.player .clay-em {
+  width: 1.6em;
+  height: 1.6em;
 }
 
 .player.hit span {
