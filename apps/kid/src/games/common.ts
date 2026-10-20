@@ -127,6 +127,14 @@ export const retry = (phrases: KidPhrases) => {
   setLock('wait', WRONG_LOCK_MS);
   return playSequence([retryPhrase(phrases) ?? null]);
 };
+/**
+ * Промах в игре на ловкость (тучка в «Совёнок летит»): засчитать для уровня и «бом», но без
+ * паузы касаний — палец в это время держит экран.
+ */
+export const bump = () => {
+  mistakes++;
+  fx.wrong();
+};
 /** Маленький успех без фразы (предмет встал на место): щелчок и искры. */
 export const nice = (el?: Element | null) => {
   fx.snap();

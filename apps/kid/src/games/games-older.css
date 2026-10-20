@@ -171,3 +171,251 @@
   stroke-width: 4;
   stroke-linecap: round;
 }
+
+/* ─── «Совёнок летит» (этап 36) ─── */
+.game.flight {
+  padding: 0;
+  inset: 0;
+  /* Небо с холмами по кругу: картинка без шва, крутится вслед за полётом. */
+  background: #5ab8ef url('/games/scene-sky-l.webp') 0 bottom / auto 100% repeat-x;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  cursor: pointer;
+}
+.flight-owl,
+.flight-star,
+.flight-cloud {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  will-change: transform;
+}
+.flight-owl {
+  width: var(--owl, 110px);
+  z-index: 2;
+  filter: drop-shadow(0 6px 6px rgb(0 0 0 / 0.18));
+}
+.flight-owl.blink {
+  animation: flight-blink 0.3s steps(2) infinite;
+}
+@keyframes flight-blink {
+  50% {
+    opacity: 0.35;
+  }
+}
+.flight-star {
+  width: calc(var(--owl, 110px) * 0.62);
+  animation: flight-twinkle 1.2s ease-in-out infinite alternate;
+  transition:
+    opacity 0.35s,
+    scale 0.35s;
+}
+@keyframes flight-twinkle {
+  to {
+    rotate: 12deg;
+  }
+}
+.flight-star.hit {
+  opacity: 0;
+  scale: 1.8;
+}
+.flight-cloud {
+  width: calc(var(--owl, 110px) * 1.05);
+}
+.flight-cloud.hit {
+  animation: flight-grumble 0.5s ease-in-out 2;
+}
+@keyframes flight-grumble {
+  25% {
+    rotate: -8deg;
+  }
+  75% {
+    rotate: 8deg;
+  }
+}
+/* Счёт звёзд вверху: пустые кружки загораются. */
+.flight-count {
+  position: absolute;
+  top: max(14px, env(safe-area-inset-top));
+  left: 50%;
+  translate: -50% 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px;
+  max-width: calc(100% - 150px);
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.8);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.12);
+  pointer-events: none;
+}
+.flight-count img {
+  width: var(--slot);
+  height: var(--slot);
+  opacity: 0.45;
+  filter: grayscale(1);
+  transition:
+    opacity 0.3s,
+    filter 0.3s,
+    scale 0.3s;
+}
+.flight-count img.got {
+  opacity: 1;
+  filter: none;
+  scale: 1.15;
+}
+@media (prefers-reduced-motion: reduce) {
+  .flight-star,
+  .flight-owl.blink {
+    animation: none;
+  }
+}
+
+/* ─── «Строитель» (этап 36) ─── */
+.game.builder {
+  inset: 0;
+  padding: calc(max(12px, env(safe-area-inset-top)) + 64px) 12px
+    max(12px, env(safe-area-inset-bottom));
+  background: #f3c98b url('/games/scene-site-p.webp') center bottom / cover no-repeat;
+  display: grid;
+  grid-template-rows: 28% 1fr auto;
+  gap: 8px;
+  overflow: hidden;
+}
+.builder-head {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 8px;
+  min-height: 0;
+}
+.builder-model {
+  position: relative;
+  flex: 0 1 60%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 8px;
+  border: 3px dashed #4a7bd0;
+  border-radius: 20px;
+  background: rgb(232 242 255 / 0.85);
+  min-height: 0;
+  cursor: pointer;
+}
+.builder-cover {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 17px;
+  background: #4a7bd0;
+  color: #fff;
+  font-weight: 800;
+  font-size: clamp(40px, 12vmin, 90px);
+  animation: builder-cover 0.4s ease-out;
+}
+@keyframes builder-cover {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+}
+.builder-owl {
+  height: 100%;
+  max-width: 35%;
+  object-fit: contain;
+  object-position: bottom;
+}
+.builder-site {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  min-height: 0;
+}
+.builder-tower {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+}
+.builder-tower img {
+  display: block;
+  /* Детали чуть заходят друг на друга — как стоят, а не висят. */
+  margin-top: -2%;
+}
+.builder-site .builder-tower img {
+  filter: drop-shadow(0 4px 4px rgb(0 0 0 / 0.2));
+}
+.builder-site .builder-tower img:last-child {
+  animation: builder-drop 0.35s cubic-bezier(0.3, 1.4, 0.6, 1);
+}
+@keyframes builder-drop {
+  from {
+    translate: 0 -60px;
+    opacity: 0.3;
+  }
+}
+.builder-tray {
+  display: flex;
+  justify-content: center;
+  gap: clamp(6px, 2vw, 14px);
+  padding: 8px;
+  border-radius: 22px;
+  background: rgb(255 255 255 / 0.7);
+}
+.builder-part {
+  width: clamp(56px, min(17vw, 13vh), 104px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  padding: 8px;
+  border: 0;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 4px 0 rgb(0 0 0 / 0.12);
+  cursor: pointer;
+}
+.builder-part:active {
+  translate: 0 3px;
+  box-shadow: 0 1px 0 rgb(0 0 0 / 0.12);
+}
+.builder-part img {
+  width: 100%;
+  height: 100%;
+}
+@media (orientation: landscape) {
+  .game.builder {
+    background-image: url('/games/scene-site-l.webp');
+    padding-top: max(12px, env(safe-area-inset-top));
+    padding-left: max(92px, env(safe-area-inset-left));
+    padding-right: max(92px, env(safe-area-inset-right));
+    grid-template-rows: 1fr auto;
+    grid-template-columns: 1fr 1.3fr;
+  }
+  .builder-head {
+    flex-direction: column-reverse;
+    align-items: center;
+  }
+  .builder-model {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+  .builder-owl {
+    display: none;
+  }
+  .builder-tray {
+    grid-column: 1 / -1;
+  }
+  .builder-part {
+    width: clamp(52px, 17vh, 96px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .builder-site .builder-tower img:last-child,
+  .builder-cover {
+    animation: none;
+  }
+}

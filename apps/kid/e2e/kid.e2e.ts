@@ -1970,6 +1970,98 @@ test.describe('игры', () => {
     await expectFinished(page, backend);
   });
 
+  test('совёнок летит (этап 36): держим палец — вверх, ловим звёзды, считаем вслух', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(90_000);
+    backend.items = [game(1, { kind: 'flight', stars: 5, clouds: 'few', speed: 'slow' })];
+    await openGame(page);
+    const g = page.getByTestId('game-flight');
+    const owl = page.getByTestId('flight-owl');
+    // До первого касания совёнок ждёт на месте.
+    await page.waitForTimeout(800);
+    await expect(page.getByTestId('flight-star')).toHaveCount(0);
+    const view = page.viewportSize()!;
+    await page.mouse.move(view.width / 2, view.height / 2);
+    await page.mouse.down();
+    await page.mouse.up();
+    // Автопилот: держит палец, когда ближайшая звезда выше совёнка.
+    let down = false;
+    for (let i = 0; i < 900; i++) {
+      if ((await g.getAttribute('data-caught')) === '5') break;
+      const o = (await owl.boundingBox())!;
+      const oy = o.y + o.height / 2;
+      const stars = await page
+        .locator('[data-testid=flight-star]:not([data-hit])')
+        .evaluateAll((els) =>
+          els.map((e) => {
+            const b = e.getBoundingClientRect();
+            return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+          }),
+        );
+      const next = stars.filter((s) => s.x > o.x).sort((a, b) => a.x - b.x)[0];
+      const want = next ? next.y < oy - 4 : false;
+      if (want !== down) {
+        if (want) await page.mouse.down();
+        else await page.mouse.up();
+        down = want;
+      }
+      if (i === 60) await shot(page, 'flight');
+      await page.waitForTimeout(30);
+    }
+    if (down) await page.mouse.up();
+    await expect(g).toHaveAttribute('data-caught', '5');
+    await expectFinished(page, backend);
+    const said = (await spoken(page)).map((s) => s.text);
+    expect(said).toContain('два');
+    expect(said).toContain('четыре');
+  });
+
+  test('строитель (этап 36): не та деталь — «ещё», по образцу — башня; по памяти образец прячется', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [game(1, { kind: 'builder', height: 3, blocks: 4, hide: true, rounds: 2 })];
+    await openGame(page);
+    const g = page.getByTestId('game-builder');
+    const model = page.getByTestId('builder-model');
+    await expect(model).not.toHaveAttribute('data-hidden');
+    await shot(page, 'builder');
+    for (let round = 0; round < 2; round++) {
+      await expect(g).toHaveAttribute('data-round', String(round));
+      const tower = (await g.getAttribute('data-model'))!.split(',');
+      expect(tower).toHaveLength(3);
+      if (round === 0) {
+        // Не та деталь: образец прячется (строим по памяти), башня не растёт.
+        const wrong = ['cube', 'bar', 'roof', 'arch'].find((k) => k !== tower[0])!;
+        await page.locator(`[data-testid=builder-part][data-kind=${wrong}]`).click();
+        await expect(g).toHaveAttribute('data-built', '0');
+        await expect(model).toHaveAttribute('data-hidden', 'true');
+        await expect
+          .poll(() => page.getByTestId('game').getAttribute('data-lock'))
+          .not.toBe('none');
+        // Подсмотреть: касание открывает образец на миг.
+        await page.waitForTimeout(1000);
+        await model.click();
+        await expect(model).not.toHaveAttribute('data-hidden');
+        await expect(model).toHaveAttribute('data-hidden', 'true');
+      }
+      for (const [i, b] of tower.entries()) {
+        await page.locator(`[data-testid=builder-part][data-kind=${b}]`).click();
+        await expect(g).toHaveAttribute('data-built', String(i + 1));
+        await page.waitForTimeout(250);
+      }
+      await expect(page.getByTestId('builder-built').locator('img')).toHaveCount(3);
+      if (round === 0) await shot(page, 'builder-done');
+      await page.waitForTimeout(2900);
+    }
+    await expectFinished(page, backend);
+    expect((await spoken(page)).map((s) => s.text)).toContain(
+      'Запомни башню — сейчас она спрячется!',
+    );
+  });
+
   test('рисовалка: рисуем пальцем, ставим наклейку, «готово»', async ({ page, backend }) => {
     backend.items = [game(1, { kind: 'drawing', stickerIds: [CAT, LION] })];
     await openGame(page);

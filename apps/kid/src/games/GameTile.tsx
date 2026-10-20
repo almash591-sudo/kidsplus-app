@@ -49,6 +49,8 @@ export const ICON: Record<GameKind, string> = {
   robot: '🤖',
   space: '🚀',
   fishing: '🎣',
+  flight: '🦉',
+  builder: '🧱',
 };
 
 /** Глиняный значок игры (этап 35): квадратная картинка с прозрачным фоном, вписывается без растяжения. */

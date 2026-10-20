@@ -9,7 +9,13 @@ import type {
   GameSpec,
   TraceShape,
 } from '@kidsplus/shared/games';
-import { FISHING_LETTERS, NOTE_NAMES, SPACE_LETTERS } from '@kidsplus/shared/games';
+import {
+  BUILDER_BLOCKS,
+  FISHING_LETTERS,
+  NOTE_NAMES,
+  SPACE_LETTERS,
+  type BuilderBlock,
+} from '@kidsplus/shared/games';
 import { SONGS } from '@kidsplus/shared/songs';
 import { NUMBERS, paint, PALETTE } from './games/common';
 import { SORTER } from './games/sorterShapes';
@@ -224,6 +230,21 @@ export const fishingFind = (v: string, letter: boolean) =>
   letter ? `Поймай рыбку с буквой ${v}!` : `Поймай рыбку с цифрой ${v}!`;
 export const FISHING_SUM = 'Поймай рыбку с ответом!';
 
+export const FLIGHT_PROMPT =
+  'Держи пальчик — совёнок летит вверх, отпусти — вниз. Собирай звёздочки!';
+export const FLIGHT_CLOUD = 'Ой, тучка! Облетай тучки.';
+
+export const BUILDER_PROMPT = 'Построй такую же башню! Ставь детали снизу вверх.';
+export const BUILDER_REMEMBER = 'Запомни башню — сейчас она спрячется!';
+/** Названия деталей — звучат, когда деталь встала на место. */
+export const BLOCK_NAMES: Record<BuilderBlock, string> = {
+  cube: 'Красный кубик!',
+  bar: 'Синий брусок!',
+  roof: 'Жёлтая крыша!',
+  arch: 'Зелёная арка!',
+  drum: 'Фиолетовый цилиндр!',
+};
+
 /** Как играть — для игр без своего задания и для «ушка», если задание ещё не звучало. */
 export const GAME_INTRO: Record<GameKind, string> = {
   drawing: 'Рисуй пальчиком! Краски — внизу.',
@@ -268,6 +289,8 @@ export const GAME_INTRO: Record<GameKind, string> = {
   robot: ROBOT_PROMPT,
   space: SPACE_PROMPT,
   fishing: FISHING_PROMPT,
+  flight: FLIGHT_PROMPT,
+  builder: BUILDER_PROMPT,
 };
 
 /** Подсказки на экранах выбора — для тех, кто не читает. */
@@ -398,6 +421,11 @@ function gamePhrases(spec: GameSpec): string[] {
             ? [FISHING_SUM, PLUS]
             : NUMBERS.slice(1, 11).map((n) => fishingFind(n, false))),
       ];
+    // Звёздочки считают вслух (числа — общие фразы).
+    case 'flight':
+      return [FLIGHT_PROMPT, FLIGHT_CLOUD];
+    case 'builder':
+      return [BUILDER_PROMPT, BUILDER_REMEMBER, ...BUILDER_BLOCKS.map((b) => BLOCK_NAMES[b])];
     case 'drawing':
     case 'puzzle':
     case 'memory':
