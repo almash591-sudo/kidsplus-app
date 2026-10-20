@@ -9,7 +9,10 @@ import { Celebrate } from '../Celebrate';
 import { Balloons } from './Balloons';
 import { Coloring } from './Coloring';
 import { gameLock, gameMistakes, repeatCurrentTask, say, setTask, type GameProps } from './common';
+import { Clock } from './Clock';
 import { Counting } from './Counting';
+import { Robot } from './Robot';
+import { Shop } from './Shop';
 import { Drawing } from './Drawing';
 import { Memory } from './Memory';
 import { Puzzle } from './Puzzle';
@@ -87,6 +90,9 @@ const GAMES: { [K in GameKind]: ComponentType<GameProps<K>> } = {
   syllable: LetterGame as ComponentType<GameProps<'syllable'>>,
   firstLetter: LetterGame as ComponentType<GameProps<'firstLetter'>>,
   readWord: LetterGame as ComponentType<GameProps<'readWord'>>,
+  clock: Clock,
+  shop: Shop,
+  robot: Robot,
 };
 
 /** Экран игры: сама игра, кнопка «домой», в конце — звёздочка и следующий пункт. */
@@ -165,7 +171,8 @@ export function GameScreen(props: {
           <img src="/owl/point.webp" alt="" draggable={false} />
         </div>
       )}
-      {!finished && <Mascot />}
+      {/* В «Совёнке-роботе» совёнок — на поле; второй в углу путал бы. */}
+      {!finished && spec.kind !== 'robot' && <Mascot />}
       {!finished && <IdleHint onIdle={remind} first={6000} />}
       {!finished && (
         <button

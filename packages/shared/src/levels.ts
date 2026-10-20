@@ -99,6 +99,31 @@ export function specAtLevel(spec: GameSpec, level: number): GameSpec {
         choices: clamp(spec.choices + up, 2, 4),
         rounds: clamp(spec.rounds + 2 * up, 2, 12),
       };
+    case 'clock':
+      return {
+        ...spec,
+        half: true,
+        choices: clamp(spec.choices + up - 1, 2, 4),
+        rounds: clamp(spec.rounds + up, 2, 10),
+      };
+    case 'shop': {
+      const coins = new Set(spec.coins);
+      coins.add(2);
+      if (up >= 2) coins.add(5);
+      return {
+        ...spec,
+        max: clamp(spec.max + 2 * up, 2, 10),
+        coins: [...coins].sort((a, b) => a - b),
+        rounds: clamp(spec.rounds + up, 2, 8),
+      };
+    }
+    case 'robot':
+      return {
+        ...spec,
+        size: clamp(spec.size + up, 3, 6),
+        steps: clamp(spec.steps + up, 2, 8),
+        rocks: up >= 2 || spec.rocks,
+      };
     default:
       // Раскраска, рисовалка, пары, сортировка, фонарик, «лишнее», «по порядку», песенки — как есть.
       return spec;

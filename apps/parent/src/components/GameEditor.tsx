@@ -172,6 +172,9 @@ const DEFAULTS: { [K in GameKind]: Extract<GameSpec, { kind: K }> } = {
     choices: 2,
     rounds: 5,
   },
+  clock: { kind: 'clock', half: false, choices: 3, rounds: 4 },
+  shop: { kind: 'shop', imageIds: [], max: 5, coins: [1], rounds: 4 },
+  robot: { kind: 'robot', size: 4, steps: 3, rocks: false, rounds: 3 },
 };
 
 /** Число из NumberInput (пустое поле — минимум). */
@@ -1244,6 +1247,107 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
             <Choices value={spec.choices} onChange={(choices) => onChange({ ...spec, choices })} />
             <MusicRounds value={spec.rounds} onChange={(rounds) => onChange({ ...spec, rounds })} />
           </Group>
+        </Stack>
+      );
+    // ─── Этап 34 ───
+    case 'clock':
+      return (
+        <Stack gap="xs">
+          <Checkbox
+            label="И половины («половина пятого»)"
+            checked={spec.half}
+            onChange={(e) => onChange({ ...spec, half: e.currentTarget.checked })}
+          />
+          <Group grow>
+            <Choices value={spec.choices} onChange={(choices) => onChange({ ...spec, choices })} />
+            <NumberInput
+              label="Раундов"
+              min={2}
+              max={10}
+              value={spec.rounds}
+              onChange={(v) => onChange({ ...spec, rounds: num(v, 2) })}
+            />
+          </Group>
+        </Stack>
+      );
+    case 'shop':
+      return (
+        <Stack gap="xs">
+          <Group grow>
+            <NumberInput
+              label="Цены до"
+              min={2}
+              max={10}
+              value={spec.max}
+              onChange={(v) => onChange({ ...spec, max: num(v, 2) })}
+            />
+            <NumberInput
+              label="Покупок"
+              min={2}
+              max={8}
+              value={spec.rounds}
+              onChange={(v) => onChange({ ...spec, rounds: num(v, 2) })}
+            />
+          </Group>
+          <Checkbox.Group
+            label="Монетки"
+            value={spec.coins.map(String)}
+            onChange={(v) =>
+              onChange({
+                ...spec,
+                coins: [1, ...v.map(Number).filter((n) => n !== 1)].sort((a, b) => a - b) as (
+                  1 | 2 | 5
+                )[],
+              })
+            }
+          >
+            <Group mt={4}>
+              <Checkbox value="1" label="по 1" disabled />
+              <Checkbox value="2" label="по 2" />
+              <Checkbox value="5" label="по 5" />
+            </Group>
+          </Checkbox.Group>
+          <Text size="sm" fw={500}>
+            Что покупаем (1–10 картинок)
+          </Text>
+          <ImageList
+            ids={spec.imageIds}
+            max={10}
+            onChange={(imageIds) => onChange({ ...spec, imageIds })}
+          />
+        </Stack>
+      );
+    case 'robot':
+      return (
+        <Stack gap="xs">
+          <Group grow>
+            <NumberInput
+              label="Поле, клеток"
+              min={3}
+              max={6}
+              value={spec.size}
+              onChange={(v) => onChange({ ...spec, size: num(v, 3) })}
+            />
+            <NumberInput
+              label="Шагов до цели"
+              min={2}
+              max={8}
+              value={spec.steps}
+              onChange={(v) => onChange({ ...spec, steps: num(v, 2) })}
+            />
+            <NumberInput
+              label="Раундов"
+              min={1}
+              max={6}
+              value={spec.rounds}
+              onChange={(v) => onChange({ ...spec, rounds: num(v, 1) })}
+            />
+          </Group>
+          <Checkbox
+            label="С камнями — их надо обходить"
+            checked={spec.rocks}
+            onChange={(e) => onChange({ ...spec, rocks: e.currentTarget.checked })}
+          />
         </Stack>
       );
   }

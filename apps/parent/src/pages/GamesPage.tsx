@@ -101,6 +101,12 @@ export function gameSummary(spec: GameSpec): string {
     case 'firstLetter':
     case 'readWord':
       return `${spec.words.map((w) => w.word.toLowerCase()).join(', ')} · раундов: ${spec.rounds}`;
+    case 'clock':
+      return `${spec.half ? 'часы и половины' : 'целые часы'} · раундов: ${spec.rounds}`;
+    case 'shop':
+      return `цены до ${spec.max} · монетки ${spec.coins.join(', ')} · покупок: ${spec.rounds}`;
+    case 'robot':
+      return `поле ${spec.size}×${spec.size}, шагов ${spec.steps}${spec.rocks ? ' · с камнями' : ''}`;
   }
 }
 
@@ -143,6 +149,9 @@ const GAME_ICONS: Record<GameKind, string> = {
   syllable: '🅰️',
   firstLetter: '🐱',
   readWord: '📖',
+  clock: '🕒',
+  shop: '🛒',
+  robot: '🤖',
 };
 
 /** Игры (п. 5.6 ТЗ): кому какую показывать. У ребёнка они — в разделе «Игры». */

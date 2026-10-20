@@ -1403,3 +1403,240 @@
   font-size: min(9vw, 6vh);
   font-weight: 900;
 }
+
+/* ─── Этап 34: «Который час?», «Магазин», «Совёнок-робот» ─── */
+.clock-game {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 16px;
+}
+.clock-option {
+  width: min(40vw, 30vh, 220px);
+  aspect-ratio: 1;
+  padding: 8px;
+  border: 0;
+  border-radius: 28px;
+  background: rgb(255 255 255 / 0.8);
+  box-shadow: 0 8px 20px rgb(40 30 90 / 0.15);
+}
+.clock-option.off {
+  opacity: 0.4;
+}
+.clock-option.picked {
+  outline: 6px solid #34c759;
+}
+.clock-face {
+  width: 100%;
+  height: 100%;
+}
+
+.shop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-around;
+  gap: 14px;
+  padding: 16px;
+}
+.shop-item {
+  position: relative;
+  width: min(46vw, 30vh, 240px);
+  aspect-ratio: 1;
+  border-radius: 28px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgb(40 30 90 / 0.15);
+  display: grid;
+  place-items: center;
+}
+.shop-item.bought {
+  animation: mascot-hop 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) 2;
+}
+.shop-pic img {
+  width: 80%;
+  height: 80%;
+  object-fit: contain;
+}
+.shop-tag {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  min-width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: #ff9500;
+  color: #fff;
+  font-size: 40px;
+  font-weight: 900;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 6px 14px rgb(0 0 0 / 0.2);
+  transform: rotate(8deg);
+}
+.shop-tray {
+  min-height: 72px;
+  width: min(92vw, 560px);
+  border-radius: 22px;
+  border: 3px dashed rgb(120 120 128 / 0.4);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+}
+.shop-purse {
+  display: flex;
+  gap: 18px;
+}
+.shop-coin {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  border: 0;
+  font-size: 36px;
+  font-weight: 900;
+  color: #7a4b00;
+  background: radial-gradient(circle at 35% 30%, #ffe680, #ffc400 60%, #d99a00);
+  box-shadow:
+    inset 0 -5px 0 rgb(0 0 0 / 0.15),
+    0 6px 12px rgb(0 0 0 / 0.2);
+}
+.shop-coin.c2 {
+  background: radial-gradient(circle at 35% 30%, #f0f0f0, #c0c0c8 60%, #8e8e96);
+  color: #3a3a3c;
+}
+.shop-coin.c5 {
+  background: radial-gradient(circle at 35% 30%, #ffd2b0, #e8833a 60%, #b85a17);
+  color: #fff;
+}
+.shop-coin.small {
+  width: 52px;
+  height: 52px;
+  font-size: 22px;
+}
+
+.robot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  /* Ниже кнопок «домой» и «ушко». */
+  padding: 104px 12px 12px;
+}
+.robot-grid {
+  display: grid;
+  gap: 4px;
+  width: min(86vw, 46vh, 520px);
+  aspect-ratio: 1;
+  padding: 6px;
+  border-radius: 20px;
+  background: #b7e3a0;
+}
+.robot-cell {
+  border-radius: 10px;
+  background: rgb(255 255 255 / 0.6);
+  display: grid;
+  place-items: center;
+  font-size: clamp(20px, 6vw, 40px);
+}
+.robot-owl {
+  width: 90%;
+  height: 90%;
+  object-fit: contain;
+}
+.robot-program {
+  min-height: 48px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+}
+.robot-step {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #5856d6;
+  color: #fff;
+  font-size: 26px;
+  font-weight: 900;
+  display: grid;
+  place-items: center;
+}
+.robot-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+.robot-arrow {
+  width: 72px;
+  height: 72px;
+  border: 0;
+  border-radius: 20px;
+  background: #007aff;
+  color: #fff;
+  font-size: 40px;
+  font-weight: 900;
+  display: grid;
+  place-items: center;
+}
+.robot-arrow.erase {
+  background: #8e8e93;
+}
+.robot-go {
+  height: 72px;
+  padding: 0 24px;
+  border: 0;
+  border-radius: 20px;
+  background: #34c759;
+  color: #fff;
+  font-size: 26px;
+  font-weight: 800;
+}
+.robot-arrow:disabled,
+.robot-go:disabled {
+  opacity: 0.45;
+}
+.robot-star {
+  color: #ffcc00;
+  display: grid;
+  place-items: center;
+  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.2));
+}
+.robot-rock {
+  width: 70%;
+  height: 58%;
+  border-radius: 46% 54% 40% 60% / 60% 55% 45% 40%;
+  background: radial-gradient(circle at 35% 30%, #b8b3ad, #7d756d 70%);
+  box-shadow: inset 0 -4px 0 rgb(0 0 0 / 0.18);
+}
+/* Телефон лёжа: поле слева, стрелки справа — всё в экране. */
+@media (orientation: landscape) {
+  .robot {
+    display: grid;
+    grid-template-columns: auto minmax(0, 420px);
+    grid-template-areas:
+      'grid prog'
+      'grid ctrl';
+    align-content: center;
+    justify-content: center;
+    column-gap: 32px;
+    row-gap: 12px;
+    padding: 16px 112px;
+  }
+  .robot-grid {
+    grid-area: grid;
+    width: min(42vw, 82vh, 520px);
+  }
+  .robot-program {
+    grid-area: prog;
+    align-self: end;
+  }
+  .robot-controls {
+    grid-area: ctrl;
+    align-self: start;
+  }
+}

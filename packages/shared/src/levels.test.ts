@@ -30,6 +30,9 @@ const SPECS = [
   { kind: 'orchestra', players: 3, rounds: 4 },
   { kind: 'letter', letters: ['А', 'О'], choices: 2, rounds: 4 },
   { kind: 'syllable', syllables: ['МА', 'ПА'], choices: 2, rounds: 4 },
+  { kind: 'clock', half: false, choices: 3, rounds: 3 },
+  { kind: 'shop', imageIds: [ID], max: 5, coins: [1], rounds: 3 },
+  { kind: 'robot', size: 4, steps: 3, rocks: false, rounds: 2 },
 ] as const;
 
 describe('уровни сложности (этап 34)', () => {
