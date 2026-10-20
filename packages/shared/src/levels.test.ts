@@ -33,6 +33,9 @@ const SPECS = [
   { kind: 'clock', half: false, choices: 3, rounds: 3 },
   { kind: 'shop', imageIds: [ID], max: 5, coins: [1], rounds: 3 },
   { kind: 'robot', size: 4, steps: 3, rocks: false, rounds: 2 },
+  { kind: 'space', order: 'numbers', count: 5, step: 1, reverse: false, rounds: 2 },
+  { kind: 'space', order: 'letters', count: 5, step: 1, reverse: false, rounds: 2 },
+  { kind: 'fishing', mode: 'numbers', max: 5, fish: 3, speed: 'slow', rounds: 4 },
 ] as const;
 
 describe('уровни сложности (этап 34)', () => {

@@ -9,6 +9,7 @@ import {
 import {
   BALLOON_COLORS,
   COLORING_PICTURES,
+  FISHING_LETTERS,
   FLASHLIGHT_SCENES,
   GAME_KINDS,
   MOLE_SPEEDS,
@@ -29,6 +30,7 @@ import {
   Group,
   MultiSelect,
   NumberInput,
+  SegmentedControl,
   Select,
   Stack,
   Switch,
@@ -175,6 +177,8 @@ const DEFAULTS: { [K in GameKind]: Extract<GameSpec, { kind: K }> } = {
   clock: { kind: 'clock', half: false, choices: 3, rounds: 4 },
   shop: { kind: 'shop', imageIds: [], max: 5, coins: [1], rounds: 4 },
   robot: { kind: 'robot', size: 4, steps: 3, rocks: false, rounds: 3 },
+  space: { kind: 'space', order: 'numbers', count: 5, step: 1, reverse: false, rounds: 2 },
+  fishing: { kind: 'fishing', mode: 'numbers', max: 5, fish: 3, speed: 'slow', rounds: 4 },
 };
 
 /** Число из NumberInput (пустое поле — минимум). */
@@ -1348,6 +1352,103 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
             checked={spec.rocks}
             onChange={(e) => onChange({ ...spec, rocks: e.currentTarget.checked })}
           />
+        </Stack>
+      );
+    case 'space':
+      return (
+        <Stack gap="xs">
+          <SegmentedControl
+            data={[
+              { value: 'numbers', label: 'Цифры' },
+              { value: 'letters', label: 'Буквы' },
+            ]}
+            value={spec.order}
+            onChange={(v) => onChange({ ...spec, order: v as 'numbers' | 'letters' })}
+          />
+          <Group grow>
+            <NumberInput
+              label="Планет"
+              min={3}
+              max={10}
+              value={spec.count}
+              onChange={(v) => onChange({ ...spec, count: num(v, 3) })}
+            />
+            <NumberInput
+              label="Раундов"
+              min={1}
+              max={5}
+              value={spec.rounds}
+              onChange={(v) => onChange({ ...spec, rounds: num(v, 1) })}
+            />
+          </Group>
+          {spec.order === 'numbers' && (
+            <Checkbox
+              label="Через одну: 2, 4, 6…"
+              checked={spec.step === 2}
+              onChange={(e) => onChange({ ...spec, step: e.currentTarget.checked ? 2 : 1 })}
+            />
+          )}
+          <Checkbox
+            label="С конца"
+            checked={spec.reverse}
+            onChange={(e) => onChange({ ...spec, reverse: e.currentTarget.checked })}
+          />
+          <Text size="xs" c="dimmed">
+            Сложность растёт сама: больше планет, через одну, с конца.
+          </Text>
+        </Stack>
+      );
+    case 'fishing':
+      return (
+        <Stack gap="xs">
+          <SegmentedControl
+            data={[
+              { value: 'numbers', label: 'Цифры' },
+              { value: 'letters', label: 'Буквы' },
+              { value: 'sums', label: 'Примеры' },
+            ]}
+            value={spec.mode}
+            onChange={(v) => onChange({ ...spec, mode: v as 'numbers' | 'letters' | 'sums' })}
+          />
+          <Group grow>
+            <NumberInput
+              label={
+                spec.mode === 'letters' ? 'Букв' : spec.mode === 'sums' ? 'Ответ до' : 'Цифры до'
+              }
+              min={3}
+              max={10}
+              value={spec.max}
+              onChange={(v) => onChange({ ...spec, max: num(v, 3) })}
+            />
+            <NumberInput
+              label="Рыбок"
+              min={3}
+              max={6}
+              value={spec.fish}
+              onChange={(v) => onChange({ ...spec, fish: num(v, 3) })}
+            />
+            <NumberInput
+              label="Раундов"
+              min={2}
+              max={10}
+              value={spec.rounds}
+              onChange={(v) => onChange({ ...spec, rounds: num(v, 2) })}
+            />
+          </Group>
+          <SegmentedControl
+            data={[
+              { value: 'slow', label: 'Медленно' },
+              { value: 'normal', label: 'Обычно' },
+              { value: 'fast', label: 'Быстро' },
+            ]}
+            value={spec.speed}
+            onChange={(v) => onChange({ ...spec, speed: v as 'slow' | 'normal' | 'fast' })}
+          />
+          {spec.mode === 'letters' && (
+            <Text size="xs" c="dimmed">
+              Буквы по порядку: {FISHING_LETTERS.slice(0, spec.max).join(' ')}
+            </Text>
+          )}
         </Stack>
       );
   }

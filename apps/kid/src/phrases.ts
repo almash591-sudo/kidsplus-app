@@ -9,7 +9,7 @@ import type {
   GameSpec,
   TraceShape,
 } from '@kidsplus/shared/games';
-import { NOTE_NAMES } from '@kidsplus/shared/games';
+import { FISHING_LETTERS, NOTE_NAMES, SPACE_LETTERS } from '@kidsplus/shared/games';
 import { SONGS } from '@kidsplus/shared/songs';
 import { NUMBERS, paint, PALETTE } from './games/common';
 import { SORTER } from './games/sorterShapes';
@@ -211,6 +211,19 @@ export const ROBOT_PROMPT =
 export const ROBOT_MISS = 'Не дошли. Попробуй другой путь!';
 export const ROBOT_ROCK = 'Ой, камень! Обойди его.';
 
+// ─── Этап 36: игры посложнее ───
+export const SPACE_PROMPT = 'Облети планеты по порядку! Нажимай на них по очереди.';
+/** Первая планета: «Начни с цифры один!» / «Начни с буквы А!». */
+export const spaceStart = (v: string, letters: boolean) =>
+  letters ? `Начни с буквы ${v}!` : `Начни с цифры ${v}!`;
+export const SPACE_BACK = 'А теперь — с конца!';
+export const SPACE_BY_TWO = 'Считай через одну: два, четыре, шесть!';
+
+export const FISHING_PROMPT = 'Веди крючок пальчиком и отпусти у нужной рыбки.';
+export const fishingFind = (v: string, letter: boolean) =>
+  letter ? `Поймай рыбку с буквой ${v}!` : `Поймай рыбку с цифрой ${v}!`;
+export const FISHING_SUM = 'Поймай рыбку с ответом!';
+
 /** Как играть — для игр без своего задания и для «ушка», если задание ещё не звучало. */
 export const GAME_INTRO: Record<GameKind, string> = {
   drawing: 'Рисуй пальчиком! Краски — внизу.',
@@ -253,6 +266,8 @@ export const GAME_INTRO: Record<GameKind, string> = {
   clock: CLOCK_PROMPT,
   shop: SHOP_PROMPT,
   robot: ROBOT_PROMPT,
+  space: SPACE_PROMPT,
+  fishing: FISHING_PROMPT,
 };
 
 /** Подсказки на экранах выбора — для тех, кто не читает. */
@@ -364,6 +379,25 @@ function gamePhrases(spec: GameSpec): string[] {
       ];
     case 'robot':
       return [ROBOT_PROMPT, ROBOT_MISS, ROBOT_ROCK];
+    // Уровни могут включить буквы до К, «через одну» и «с конца» — озвучиваем всё заранее.
+    case 'space':
+      return [
+        SPACE_PROMPT,
+        SPACE_BACK,
+        SPACE_BY_TWO,
+        ...(spec.order === 'letters'
+          ? SPACE_LETTERS.flatMap((l) => [spaceStart(l, true), isLetter(l)])
+          : NUMBERS.slice(1).map((n) => spaceStart(n, false))),
+      ];
+    case 'fishing':
+      return [
+        FISHING_PROMPT,
+        ...(spec.mode === 'letters'
+          ? FISHING_LETTERS.flatMap((l) => [fishingFind(l, true), isLetter(l)])
+          : spec.mode === 'sums'
+            ? [FISHING_SUM, PLUS]
+            : NUMBERS.slice(1, 11).map((n) => fishingFind(n, false))),
+      ];
     case 'drawing':
     case 'puzzle':
     case 'memory':
