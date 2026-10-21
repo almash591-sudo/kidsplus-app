@@ -51,6 +51,9 @@ export const ICON: Record<GameKind, string> = {
   fishing: '🎣',
   flight: '🦉',
   builder: '🧱',
+  syllableWord: '🔤',
+  riddle: '❓',
+  sudoku: '🔲',
 };
 
 /** Глиняный значок игры (этап 35): квадратная картинка с прозрачным фоном, вписывается без растяжения. */
@@ -79,6 +82,7 @@ export function tileImage(spec: GameSpec): string | null {
     case 'arithmetic':
     case 'size':
     case 'shop':
+    case 'sudoku':
       return spec.imageIds[0]!;
     case 'compare':
       return spec.imageIds[0] ?? null;
@@ -90,6 +94,7 @@ export function tileImage(spec: GameSpec): string | null {
     case 'sequence':
       return spec.rounds[0]!.imageIds[0]!;
     case 'word':
+    case 'syllableWord':
       return spec.words[0]!.imageId;
     default:
       return null;

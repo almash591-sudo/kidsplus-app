@@ -1,5 +1,5 @@
 import type { GameInput } from '@kidsplus/shared/api';
-import { gameSpec } from '@kidsplus/shared/games';
+import { gameSpec, SYLLABLE_WORD_RE } from '@kidsplus/shared/games';
 
 /** Понятная причина, почему игру нельзя сохранить. */
 export function problem(v: GameInput): string | null {
@@ -57,6 +57,20 @@ export function problem(v: GameInput): string | null {
       if (!spec.words.length) return 'Добавьте слово с картинкой.';
       if (spec.words.some((w) => !/^[А-ЯЁA-Z]{2,10}$/u.test(w.word.trim())))
         return 'Слово — только буквы, от 2 до 10.';
+      break;
+    case 'syllableWord':
+      if (!spec.words.length) return 'Добавьте слово с картинкой.';
+      if (spec.words.some((w) => !SYLLABLE_WORD_RE.test(w.word.trim().toUpperCase())))
+        return 'Слово — слоги через дефис: МА-ШИ-НА.';
+      break;
+    case 'riddle':
+      if (spec.riddles.length < 2) return 'Нужно хотя бы 2 загадки.';
+      if (spec.riddles.some((r) => !r.text.trim() || !r.name.trim()))
+        return 'У каждой загадки — текст и отгадка.';
+      break;
+    case 'sudoku':
+      if (new Set(spec.imageIds).size < (spec.size ?? 3))
+        return `Выберите ${spec.size ?? 3} разные картинки.`;
       break;
     default:
       break;

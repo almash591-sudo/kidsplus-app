@@ -5,6 +5,7 @@ import { gameLevels, MAX_LEVEL, specAtLevel, startLevel } from './levels';
 const ID = '00000000-0000-4000-8000-000000000001';
 const ID2 = '00000000-0000-4000-8000-000000000002';
 const ID3 = '00000000-0000-4000-8000-000000000003';
+const ID4 = '00000000-0000-4000-8000-000000000004';
 
 /** Игры с минимальными параметрами — у них есть что усложнять. */
 const SPECS = [
@@ -38,6 +39,17 @@ const SPECS = [
   { kind: 'fishing', mode: 'numbers', max: 5, fish: 3, speed: 'slow', rounds: 4 },
   { kind: 'flight', stars: 5, clouds: 'none', speed: 'slow' },
   { kind: 'builder', height: 3, blocks: 3, hide: false, rounds: 2 },
+  { kind: 'syllableWord', words: [{ imageId: ID, word: 'МА-ШИ-НА' }], extra: 0 },
+  {
+    kind: 'riddle',
+    riddles: [
+      { text: 'Кто мяукает?', name: 'кошка', imageId: ID },
+      { text: 'Кто лает?', name: 'собака', imageId: ID2 },
+    ],
+    choices: 2,
+    rounds: 2,
+  },
+  { kind: 'sudoku', imageIds: [ID, ID2, ID3, ID4], size: 3, blanks: 3, rounds: 2 },
 ] as const;
 
 describe('уровни сложности (этап 34)', () => {
@@ -79,5 +91,22 @@ describe('уровни сложности (этап 34)', () => {
   it('старт: с 5 лет — второй уровень', () => {
     expect(startLevel(3)).toBe(1);
     expect(startLevel(5)).toBe(2);
+  });
+});
+
+describe('игры этапа 41', () => {
+  it('слово из слогов: только слоги через дефис', () => {
+    const ok = (word: string) =>
+      gameSpec.safeParse({ kind: 'syllableWord', words: [{ imageId: ID, word }] }).success;
+    expect(ok('ма-ши-на')).toBe(true);
+    expect(ok('МАШИНА')).toBe(false);
+    expect(ok('МА--НА')).toBe(false);
+  });
+
+  it('судоку: картинок не меньше, чем клеток в строке; 4 × 4 — только с 4 картинками', () => {
+    const base = { kind: 'sudoku', blanks: 3, rounds: 1 } as const;
+    expect(gameSpec.safeParse({ ...base, imageIds: [ID, ID2, ID3], size: 4 }).success).toBe(false);
+    const three = gameSpec.parse({ ...base, imageIds: [ID, ID2, ID3], size: 3 }) as GameSpec;
+    expect(specAtLevel(three, MAX_LEVEL)).toMatchObject({ size: 3, blanks: 6 });
   });
 });

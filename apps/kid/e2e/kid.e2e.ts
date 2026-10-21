@@ -2613,6 +2613,104 @@ test.describe('новые игры', () => {
     await expectFinished(page, backend);
     expect((await spoken(page)).map((s) => s.text)).toContain('кот');
   });
+
+  test('слово из слогов (этап 41): слоги по порядку касанием, не тот слог не встаёт', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [
+      game(1, { kind: 'syllableWord', words: [{ imageId: CAT, word: 'КОШ-КА' }], extra: 1 }),
+    ];
+    await openGame(page);
+    const g = page.getByTestId('game-syllableWord');
+    await expect(g).toBeVisible();
+    await expect(page.getByTestId('word-tile')).toHaveCount(3);
+    await shot(page, 'syllable-word');
+    const tile = (l: string) => page.locator(`[data-testid=word-tile][data-letter="${l}"]`);
+    await tile('КА').click();
+    await expect(page.locator('.word-slot.filled')).toHaveCount(0);
+    for (const l of ['КОШ', 'КА']) {
+      await page.waitForTimeout(450);
+      await tile(l).click();
+    }
+    await expect(page.locator('.word-slot.filled')).toHaveCount(2);
+    await expectFinished(page, backend);
+    const said = (await spoken(page)).map((s) => s.text);
+    expect(said).toContain('кош!');
+    expect(said).toContain('кошка!');
+  });
+
+  test('загадки (этап 41): совёнок загадывает, не та картинка — «ещё», отгадка — «Это …!»', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [
+      game(1, {
+        kind: 'riddle',
+        riddles: [
+          { text: 'Говорю «мяу». Кто я?', name: 'кошка', imageId: CAT },
+          { text: 'Царь зверей с гривой. Кто я?', name: 'лев', imageId: LION },
+          { text: 'Ушки длинные. Кто я?', name: 'зайчик', imageId: RABBIT },
+        ],
+        choices: 3,
+        rounds: 2,
+      }),
+    ];
+    await openGame(page);
+    const g = page.getByTestId('game-riddle');
+    await expect(page.getByTestId('riddle-option')).toHaveCount(3);
+    await shot(page, 'riddle');
+    const answers: string[] = [];
+    for (let round = 0; round < 2; round++) {
+      const answer = (await g.getAttribute('data-answer'))!;
+      answers.push(answer);
+      if (round === 0) {
+        await page
+          .locator(`[data-testid=riddle-option]:not([data-id="${answer}"])`)
+          .first()
+          .click();
+        await expect(page.locator('[data-testid=riddle-option].off')).toHaveCount(1);
+        await page.waitForTimeout(1200);
+      }
+      await page.locator(`[data-testid=riddle-option][data-id="${answer}"]`).click();
+      if (round === 0)
+        await expect(g).not.toHaveAttribute('data-answer', answer, { timeout: 10_000 });
+    }
+    await expectFinished(page, backend);
+    const said = (await spoken(page)).map((s) => s.text);
+    const names = { [CAT]: 'кошка', [LION]: 'лев', [RABBIT]: 'зайчик' } as Record<string, string>;
+    for (const a of answers) expect(said).toContain(`Это ${names[a]}!`);
+  });
+
+  test('судоку-малыш (этап 41): пустая клетка, картинка снизу; не та — не встаёт', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [
+      game(1, { kind: 'sudoku', imageIds: [CAT, LION, RABBIT], size: 3, blanks: 3, rounds: 1 }),
+    ];
+    await openGame(page);
+    await expect(page.getByTestId('sudoku-cell')).toHaveCount(9);
+    await expect(page.locator('[data-testid=sudoku-cell][data-empty]')).toHaveCount(3);
+    await shot(page, 'sudoku');
+    for (let k = 0; k < 3; k++) {
+      const target = page.locator('[data-testid=sudoku-cell][data-hint-target]');
+      const v = Number(await target.getAttribute('data-value'));
+      if (k === 0) {
+        await page.locator(`[data-testid=sudoku-pick][data-value="${(v + 1) % 3}"]`).click();
+        await expect(page.locator('[data-testid=sudoku-cell][data-empty]')).toHaveCount(3);
+        await page.waitForTimeout(1200);
+      }
+      await page.locator(`[data-testid=sudoku-pick][data-value="${v}"]`).click();
+      await expect(page.locator('[data-testid=sudoku-cell][data-empty]')).toHaveCount(2 - k);
+      await page.waitForTimeout(300);
+    }
+    await shot(page, 'sudoku-done');
+    await expectFinished(page, backend);
+    expect((await spoken(page)).map((s) => s.text)).toContain(
+      'Получилось! В каждой строчке и в каждом столбике все картинки по разу.',
+    );
+  });
 });
 
 // ─── Расписание дня (этап 4) ─────────────────────────────────────────────────
@@ -3738,6 +3836,17 @@ test.describe('картинки не растягиваются (этап 35)', 
     { kind: 'flashlight', scene: 'forest', items: [{ imageId: RABBIT, name: null }] },
     { kind: 'maze', heroId: RABBIT, goalId: CARROT, size: 4, rounds: 1 },
     { kind: 'shop', imageIds: [CARROT], max: 5, coins: [1], rounds: 2 },
+    { kind: 'syllableWord', words: [{ imageId: CAT, word: 'КОШ-КА' }], extra: 0 },
+    {
+      kind: 'riddle',
+      riddles: [
+        { text: 'x', name: 'a', imageId: CARROT },
+        { text: 'y', name: 'b', imageId: BANANA },
+      ],
+      choices: 2,
+      rounds: 1,
+    },
+    { kind: 'sudoku', imageIds: [CAT, LION, RABBIT], size: 3, blanks: 2, rounds: 1 },
   ];
   test('картинки 3:2 нигде не растянуты: игры, плитка и экран карточек', async ({
     page,

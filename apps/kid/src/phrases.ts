@@ -259,6 +259,35 @@ export const BLOCK_NAMES: Record<BuilderBlock, string> = {
   drum: 'Фиолетовый цилиндр!',
 };
 
+// ─── Этап 41: чтение и логика ───
+export const SYLLABLE_WORD_PROMPT = 'Собери слово из слогов!';
+/** Лишние слоги «Слова из слогов» — простые, их легко прочитать. */
+export const EXTRA_SYLLABLES = [
+  'МА',
+  'ПА',
+  'ЛУ',
+  'КО',
+  'РЫ',
+  'СИ',
+  'НО',
+  'ДЕ',
+  'ТУ',
+  'ВА',
+  'ЗИ',
+  'БО',
+];
+/** «МА-ШИ-НА» → «машина!». */
+export const syllableWhole = (word: string) => sayWord(word.replace(/-/g, ''));
+
+export const RIDDLE_PROMPT = 'Послушай загадку и найди отгадку!';
+export const riddleAnswer = (name: string) => `Это ${name}!`;
+
+export const SUDOKU_PROMPT =
+  'Заполни пустые клеточки! В каждой строчке и в каждом столбике — все картинки по одному разу.';
+export const SUDOKU_ROW = 'В этой строчке такая картинка уже есть!';
+export const SUDOKU_COL = 'В этом столбике такая картинка уже есть!';
+export const SUDOKU_DONE = 'Получилось! В каждой строчке и в каждом столбике все картинки по разу.';
+
 /** Как играть — для игр без своего задания и для «ушка», если задание ещё не звучало. */
 export const GAME_INTRO: Record<GameKind, string> = {
   drawing: 'Рисуй пальчиком! Краски — внизу.',
@@ -305,6 +334,9 @@ export const GAME_INTRO: Record<GameKind, string> = {
   fishing: FISHING_PROMPT,
   flight: FLIGHT_PROMPT,
   builder: BUILDER_PROMPT,
+  syllableWord: SYLLABLE_WORD_PROMPT,
+  riddle: RIDDLE_PROMPT,
+  sudoku: SUDOKU_PROMPT,
 };
 
 /** Подсказки на экранах выбора — для тех, кто не читает. */
@@ -442,6 +474,16 @@ export function gamePhrases(spec: GameSpec): string[] {
       return [FLIGHT_PROMPT, FLIGHT_CLOUD];
     case 'builder':
       return [BUILDER_PROMPT, BUILDER_REMEMBER, ...BUILDER_BLOCKS.map((b) => BLOCK_NAMES[b])];
+    case 'syllableWord':
+      return [
+        SYLLABLE_WORD_PROMPT,
+        ...EXTRA_SYLLABLES.map(sayWord),
+        ...spec.words.flatMap((w) => [syllableWhole(w.word), ...w.word.split('-').map(sayWord)]),
+      ];
+    case 'riddle':
+      return [RIDDLE_PROMPT, ...spec.riddles.flatMap((r) => [r.text, riddleAnswer(r.name)])];
+    case 'sudoku':
+      return [SUDOKU_PROMPT, SUDOKU_ROW, SUDOKU_COL, SUDOKU_DONE];
     case 'drawing':
     case 'puzzle':
     case 'memory':
