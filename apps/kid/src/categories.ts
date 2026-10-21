@@ -33,14 +33,17 @@ export function itemsOf(items: readonly KidItem[], category: KidCategory | null)
 }
 
 /**
- * Этап 34: сначала новое, пройденное (отдыхает) — в конце, в прежнем порядке. Дорожка уроков
- * музыки и букв — как есть: там свой порядок и свои звёздочки.
+ * Этап 34: сначала новое, пройденное (отдыхает) — в конце, в прежнем порядке. Этап 38: в свободном
+ * режиме (есть plays) — редко пройденное вперёд, любимое — в конец; поровну — порядок родителя.
+ * Дорожка уроков музыки и букв — как есть: там свой порядок и свои звёздочки.
  */
-function freshFirst(list: KidItem[]): KidItem[] {
+export function freshFirst(list: KidItem[]): KidItem[] {
   const path = list.every(
     (i) => i.kind === 'interactive' && (i.category === 'music' || i.category === 'letters'),
   );
   if (path) return list;
+  if (list.some((i) => i.plays !== undefined))
+    return [...list].sort((a, b) => (a.plays ?? 0) - (b.plays ?? 0));
   return [...list.filter((i) => !i.rest), ...list.filter((i) => i.rest)];
 }
 

@@ -5,13 +5,14 @@ import {
   mediaUrl,
   kidSpeechRequest,
   quizSettings,
+  type KidItem,
   type KidPhrases,
   type KidPlaylist,
   type RepeatMode,
   type Speech,
 } from '@kidsplus/shared/api';
 import { loadSchedule } from '@kidsplus/db/day';
-import { loadGameLevels, restKey, restMap } from '@kidsplus/db/rest';
+import { loadGameLevels, playCounts, restKey, restMap } from '@kidsplus/db/rest';
 import { startLevel } from '@kidsplus/shared/levels';
 import { PHRASES, PHRASES_EN, type PhraseKind } from '@kidsplus/shared/phrases';
 import { pushMessages } from '@kidsplus/shared/push';
@@ -131,15 +132,20 @@ export function kidRoutes(app: FastifyInstance, ctx: Ctx) {
         now: ctx.now(),
       });
       // Этап 34: пройденное отдыхает — отметка у пункта (порядок решает телефон).
+      // Этап 38: в свободном режиме вместо отдыха — сколько раз пройдено (редкое — вперёд).
+      const mode = child.repeatMode as RepeatMode;
       const rest = await restMap(
         db,
         childId,
         ctx.now(),
         (await loadSchedule(db, childId)).timezone,
-        child.repeatMode as RepeatMode,
+        mode,
       );
-      const result = built.map((it) => {
-        const r = rest.get(restKey(it.kind, it.id));
+      const plays = mode === 'free' ? await playCounts(db, childId, ctx.now()) : null;
+      const result = built.map((it): KidItem => {
+        const key = restKey(it.kind, it.id);
+        const r = rest.get(key);
+        if (plays) return { ...it, plays: plays.get(key) ?? 0 };
         return r ? { ...it, rest: r } : it;
       });
 
