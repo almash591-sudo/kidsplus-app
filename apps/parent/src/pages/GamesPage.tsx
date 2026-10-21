@@ -115,6 +115,12 @@ export function gameSummary(spec: GameSpec): string {
       return `звёздочек: ${spec.stars} · тучки: ${{ none: 'нет', few: 'немного', many: 'много' }[spec.clouds]}`;
     case 'builder':
       return `башня из ${spec.height}, деталей ${spec.blocks}${spec.hide ? ' · по памяти' : ''} · башен: ${spec.rounds}`;
+    case 'syllableWord':
+      return spec.words.map((w) => w.word.toLowerCase()).join(', ');
+    case 'riddle':
+      return `загадок: ${spec.riddles.length} (${spec.riddles.map((r) => r.name).join(', ')}) · за игру: ${spec.rounds}`;
+    case 'sudoku':
+      return `поле ${spec.size}×${spec.size}, пустых ${spec.blanks} · полей: ${spec.rounds}`;
   }
 }
 

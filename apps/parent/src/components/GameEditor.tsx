@@ -20,6 +20,7 @@ import {
   type GameKind,
   type GameSpec,
 } from '@kidsplus/shared/games';
+import { RIDDLE_SETS, SUDOKU_SETS, SYLLABLE_WORD_SETS } from '@kidsplus/shared/game-presets';
 import { SONG_IDS, SONGS, type SongId } from '@kidsplus/shared/songs';
 import {
   ActionIcon,
@@ -181,6 +182,9 @@ const DEFAULTS: { [K in GameKind]: Extract<GameSpec, { kind: K }> } = {
   fishing: { kind: 'fishing', mode: 'numbers', max: 5, fish: 3, speed: 'slow', rounds: 4 },
   flight: { kind: 'flight', stars: 8, clouds: 'few', speed: 'slow' },
   builder: { kind: 'builder', height: 3, blocks: 3, hide: false, rounds: 3 },
+  syllableWord: { kind: 'syllableWord', words: [], extra: 0 },
+  riddle: { kind: 'riddle', riddles: [], choices: 3, rounds: 5 },
+  sudoku: { kind: 'sudoku', imageIds: [], size: 3, blanks: 3, rounds: 2 },
 };
 
 /** Число из NumberInput (пустое поле — минимум). */
@@ -1525,7 +1529,231 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
           </Text>
         </Stack>
       );
+    case 'syllableWord':
+      return (
+        <Stack gap="xs">
+          <Presets
+            label="Готовые слова (заменят список)"
+            sets={SYLLABLE_WORD_SETS}
+            title={(s) => s.title}
+            apply={async (s) => {
+              const ids = await emojiIds(s.words.map((w) => w.code));
+              onChange({
+                ...spec,
+                words: s.words.map((w, i) => ({ imageId: ids[i]!, word: w.word })),
+              });
+            }}
+          />
+          <NumberInput
+            label="Лишних слогов"
+            min={0}
+            max={2}
+            value={spec.extra}
+            onChange={(v) => onChange({ ...spec, extra: Number(v) || 0 })}
+          />
+          <Text size="sm" fw={500}>
+            Слова с картинками (1–10), слоги через дефис
+          </Text>
+          <LabeledImages
+            items={spec.words}
+            max={10}
+            placeholder="МА-ШИ-НА"
+            text={(w) => w.word}
+            withText={(w, word) => ({ ...w, word: word.toUpperCase() })}
+            make={(imageId) => ({ imageId, word: '' })}
+            onChange={(words) => onChange({ ...spec, words })}
+          />
+        </Stack>
+      );
+    case 'riddle':
+      return (
+        <Stack gap="xs">
+          <Presets
+            label="Готовые загадки (заменят список)"
+            sets={RIDDLE_SETS}
+            title={(s) => s.title}
+            apply={async (s) => {
+              const ids = await emojiIds(s.riddles.map((r) => r.code));
+              onChange({
+                ...spec,
+                riddles: s.riddles.map((r, i) => ({
+                  text: r.text,
+                  name: r.name,
+                  imageId: ids[i]!,
+                })),
+              });
+            }}
+          />
+          <Group grow>
+            <Choices value={spec.choices} onChange={(choices) => onChange({ ...spec, choices })} />
+            <NumberInput
+              label="Загадок за игру"
+              min={1}
+              max={12}
+              value={spec.rounds}
+              onChange={(v) => onChange({ ...spec, rounds: num(v, 1) })}
+            />
+          </Group>
+          <Text size="sm" fw={500}>
+            Загадки (2–12): картинка-отгадка, слово и текст
+          </Text>
+          {spec.riddles.map((r, i) => {
+            const set = (next: typeof r) =>
+              onChange({ ...spec, riddles: spec.riddles.map((x, k) => (k === i ? next : x)) });
+            return (
+              <Stack key={i} gap={4} p="xs" style={{ border: '1px solid #eee', borderRadius: 8 }}>
+                <Group gap="xs" wrap="nowrap">
+                  <ImageSlot
+                    image={ref(r.imageId)}
+                    onPick={(img) => set({ ...r, imageId: img.id })}
+                  />
+                  <TextInput
+                    style={{ flex: 1 }}
+                    placeholder="ёжик"
+                    value={r.name}
+                    maxLength={60}
+                    onChange={(e) => set({ ...r, name: e.currentTarget.value })}
+                  />
+                  <ActionIcon
+                    variant="subtle"
+                    color="red"
+                    aria-label="Убрать"
+                    onClick={() =>
+                      onChange({ ...spec, riddles: spec.riddles.filter((_, k) => k !== i) })
+                    }
+                  >
+                    ✕
+                  </ActionIcon>
+                </Group>
+                <Textarea
+                  autosize
+                  minRows={2}
+                  placeholder="Хожу по лесу в колючей шубке. Кто я?"
+                  value={r.text}
+                  maxLength={300}
+                  onChange={(e) => set({ ...r, text: e.currentTarget.value })}
+                />
+              </Stack>
+            );
+          })}
+          {spec.riddles.length < 12 && (
+            <ImageSlot
+              image={null}
+              hint="Добавить загадку"
+              onPick={(img) =>
+                onChange({
+                  ...spec,
+                  riddles: [...spec.riddles, { text: '', name: '', imageId: img.id }],
+                })
+              }
+            />
+          )}
+          <Text size="xs" c="dimmed">
+            Остальные варианты — отгадки других загадок. После ответа совёнок скажет «Это …!».
+          </Text>
+        </Stack>
+      );
+    case 'sudoku':
+      return (
+        <Stack gap="xs">
+          <Presets
+            label="Готовые картинки"
+            sets={SUDOKU_SETS}
+            title={(s) => s.title}
+            apply={async (s) => onChange({ ...spec, imageIds: await emojiIds(s.codes) })}
+          />
+          <Text size="sm" fw={500}>
+            Картинки (3–4, разные)
+          </Text>
+          <ImageList
+            ids={spec.imageIds}
+            max={4}
+            onChange={(imageIds) =>
+              onChange({ ...spec, imageIds, size: imageIds.length < 4 ? 3 : spec.size })
+            }
+          />
+          <Group grow>
+            <Select
+              label="Поле"
+              allowDeselect={false}
+              value={String(spec.size)}
+              data={[
+                { value: '3', label: '3 × 3' },
+                { value: '4', label: '4 × 4', disabled: new Set(spec.imageIds).size < 4 },
+              ]}
+              onChange={(v) => v && onChange({ ...spec, size: Number(v) as 3 | 4 })}
+            />
+            <NumberInput
+              label="Пустых клеток"
+              min={1}
+              max={spec.size === 4 ? 12 : 6}
+              value={spec.blanks}
+              onChange={(v) => onChange({ ...spec, blanks: num(v, 1) })}
+            />
+            <NumberInput
+              label="Полей"
+              min={1}
+              max={5}
+              value={spec.rounds}
+              onChange={(v) => onChange({ ...spec, rounds: num(v, 1) })}
+            />
+          </Group>
+          <Text size="xs" c="dimmed">
+            В каждой строке и столбце каждая картинка — по разу; решение всегда одно. Сложность
+            растёт сама: поле 4 × 4 и больше пустых клеток.
+          </Text>
+        </Stack>
+      );
   }
+}
+
+/** Картинки-эмодзи по кодам (этап 41) — для готовых наборов игр. */
+const emojiIds = (codes: string[]) =>
+  Promise.all(codes.map((code) => api.post<MediaRef>('/parent/media/emoji', { code }))).then(
+    (refs) => refs.map((r) => r.id),
+  );
+
+/** Кнопки «готовый набор»: по нажатию картинки создаются на сервере и набор подставляется. */
+function Presets<T>(props: {
+  label: string;
+  sets: T[];
+  title: (s: T) => string;
+  apply: (s: T) => Promise<void>;
+}) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <Stack gap={4}>
+      <Text size="sm" fw={500}>
+        {props.label}
+      </Text>
+      <Group gap={6}>
+        {props.sets.map((s) => (
+          <Button
+            key={props.title(s)}
+            size="compact-sm"
+            variant="light"
+            loading={busy === props.title(s)}
+            onClick={() => {
+              setBusy(props.title(s));
+              setError(null);
+              props
+                .apply(s)
+                .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
+                .finally(() => setBusy(null));
+            }}
+          >
+            {props.title(s)}
+          </Button>
+        ))}
+      </Group>
+      {error && (
+        <Text size="xs" c="red">
+          {error}
+        </Text>
+      )}
+    </Stack>
+  );
 }
 
 /** Сколько вариантов ответа показать. */
