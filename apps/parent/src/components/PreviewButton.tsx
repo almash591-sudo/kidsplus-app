@@ -1,12 +1,21 @@
 // «Глазами ребёнка» (этап 16а): детское приложение под этим ребёнком — в окне размером с телефон
 // (на компьютере) или в новой вкладке (на телефоне). Прогресс там не записывается.
 import type { PairingCreated } from '@kidsplus/shared/api';
-import { Button } from '@mantine/core';
+import { ActionIcon, Button } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useState } from 'react';
 import { api, errorMessage } from '../api';
 
-export function PreviewButton({ childId, fullWidth }: { childId: string; fullWidth?: boolean }) {
+export function PreviewButton({
+  childId,
+  fullWidth,
+  icon,
+}: {
+  childId: string;
+  fullWidth?: boolean;
+  /** Круглая кнопка-«глаз» в шапке «Распорядка» (этап 40). */
+  icon?: boolean;
+}) {
   const [busy, setBusy] = useState(false);
   const open = async () => {
     // Окно открываем сразу по нажатию (иначе браузер посчитает его всплывающим), адрес — потом.
@@ -23,6 +32,33 @@ export function PreviewButton({ childId, fullWidth }: { childId: string; fullWid
       setBusy(false);
     }
   };
+  if (icon)
+    return (
+      <ActionIcon
+        size={40}
+        radius="xl"
+        variant="light"
+        loading={busy}
+        onClick={() => void open()}
+        data-testid="preview-child"
+        aria-label="Глазами ребёнка"
+        title="Глазами ребёнка"
+      >
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
+        </svg>
+      </ActionIcon>
+    );
   return (
     <Button
       variant="default"

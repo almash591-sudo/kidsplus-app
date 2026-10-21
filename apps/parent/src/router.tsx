@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router';
+import { createBrowserRouter, Navigate, useLocation } from 'react-router';
 import { Layout } from './Layout';
 import { AccountPage } from './pages/AccountPage';
 import { AuthFormPage } from './pages/AuthFormPage';
@@ -15,7 +15,6 @@ import { ContentPage } from './pages/ContentPage';
 import { HomePage } from './pages/HomePage';
 import { MorePage } from './pages/MorePage';
 import { CallsPage } from './pages/CallsPage';
-import { NowPage } from './pages/NowPage';
 import { ChildPage } from './pages/ChildPage';
 import { RoutinePage } from './pages/RoutinePage';
 import { PlanPage } from './pages/PlanPage';
@@ -28,6 +27,12 @@ import { VoicesPage } from './pages/VoicesPage';
 import { FamiliesPage } from './pages/FamiliesPage';
 import { SleepPage } from './pages/SleepPage';
 import { HabitsPage } from './pages/HabitsPage';
+
+/** /now?listen=… → /routine?listen=… */
+function NowRedirect() {
+  const { search } = useLocation();
+  return <Navigate to={`/routine${search}`} replace />;
+}
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -47,7 +52,8 @@ export const router = createBrowserRouter([
       { path: 'voice', element: <VoicePage /> },
       { path: 'backup', element: <BackupPage /> },
       { path: 'mom-voice', element: <MomVoicePage /> },
-      { path: 'now', element: <NowPage /> },
+      // Этап 40: «Подробно сейчас» — теперь карточка «Сейчас» в «Распорядке» (старые push ведут сюда).
+      { path: 'now', element: <NowRedirect /> },
       { path: 'child/:id', element: <ChildPage /> },
       { path: 'routine', element: <RoutinePage /> },
       { path: 'habits', element: <HabitsPage /> },

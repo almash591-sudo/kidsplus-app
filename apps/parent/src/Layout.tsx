@@ -11,7 +11,6 @@ const NAV = [
   { to: '/content', label: 'Контент', icon: '🎬' },
   { to: '/routine', label: 'Распорядок', icon: '📅' },
   { to: '/progress', label: 'Прогресс', icon: '📊' },
-  { to: '/now', label: 'Подробно сейчас', icon: '⏱️' },
   { to: '/captures', label: 'Фото и видео', icon: '📷' },
   { to: '/calls', label: 'Звонки', icon: '📞' },
   { to: '/children', label: 'Дети', icon: '👧' },
@@ -21,7 +20,7 @@ const NAV = [
 
 /** Вкладки внизу на телефоне — как в приложениях iPhone; остальное — в «Ещё» (меню). */
 const TABS = [
-  { to: '/home', label: 'Главная', icon: 'M4 11.5L12 5l8 6.5M6.5 10v9.5h11V10', also: ['/now'] },
+  { to: '/home', label: 'Главная', icon: 'M4 11.5L12 5l8 6.5M6.5 10v9.5h11V10', also: [] },
   {
     to: '/content',
     label: 'Контент',
@@ -33,14 +32,24 @@ const TABS = [
     to: '/routine',
     label: 'Распорядок',
     icon: 'M4 6h16v14H4zM4 10h16M9 3v4M15 3v4',
-    also: ['/plan', '/habits', '/sleep'],
+    also: ['/plan', '/habits', '/sleep', '/now', '/child'],
   },
   { to: '/progress', label: 'Прогресс', icon: 'M5 19V11M12 19V5M19 19v-6', also: ['/analytics'] },
   {
     to: '/more',
     label: 'Ещё',
     icon: 'M5 12h.01M12 12h.01M19 12h.01',
-    also: ['/captures', '/calls', '/children', '/devices', '/account'],
+    also: [
+      '/captures',
+      '/calls',
+      '/children',
+      '/devices',
+      '/account',
+      '/mom-voice',
+      '/voice',
+      '/families',
+      '/backup',
+    ],
   },
 ];
 

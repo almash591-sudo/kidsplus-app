@@ -1,15 +1,14 @@
-// Главная кабинета (Кабинет 2.0): то, что родитель открывает много раз в день.
-// «Нужно ваше внимание» — дела, которые ждут; карточка каждого ребёнка — чем занят, кольца
-// предметов, заряд и быстрые действия; новые снимки.
+// Главная кабинета (Кабинет 2.0, этап 40): то, что родитель открывает много раз в день.
+// «Нужно ваше внимание» — только когда есть что; по строке на ребёнка — чем занят, кольца уроков,
+// заряд, звонок (касание — его «Распорядок» с пультом); что доступно; новые снимки.
 import type { Child } from '@kidsplus/shared/api';
 import type { ModerationItem } from '@kidsplus/shared/moderation';
 import type { ParentCapture } from '@kidsplus/shared/captures';
 import type { MonitorState } from '@kidsplus/shared/monitor';
 import { childPeer } from '@kidsplus/shared/calls';
-import type { ChildNow, ControlRequest } from '@kidsplus/shared/schedule';
+import type { ChildNow } from '@kidsplus/shared/schedule';
 import {
   ActionIcon,
-  Avatar,
   Button,
   Card,
   Group,
@@ -18,67 +17,27 @@ import {
   Text,
   UnstyledButton,
 } from '@mantine/core';
-import { useMutation, useQueries, useQuery } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { api } from '../api';
 import { parentCalls } from '../calls/CallLayer';
-import { SUBJECT_LABELS } from '../lib/subjects';
-import { keys, queryClient, useChildNow, useChildren, useMe, useSegments } from '../queries';
-import { PreviewButton } from '../components/PreviewButton';
+import { keys, useChildNow, useChildren, useMe, useSegments } from '../queries';
+import {
+  KID_COLORS,
+  KidAvatar,
+  kidColor,
+  RING,
+  Ring,
+  statusLine,
+  subjectPart,
+  useControl,
+} from '../components/KidBits';
 import { LibraryCard } from '../components/Library';
 import { setCurrentChild, useCurrentChildRaw } from '../lib/currentChild';
 
-/** Цвет ребёнка — по порядку: аватар, кольца. */
-const KID_COLORS = ['#e5533f', '#c27c00', '#5856d6', '#1d8f3a'];
-const RING: Record<string, string> = {
-  english: '#ff6b5c',
-  chinese: '#e8453c',
-  math: '#ff9500',
-  geography: '#2d9cff',
-  nature: '#34c759',
-  music: '#00a9bd',
-  letters: '#e8590c',
-  games: '#ff2d55',
-  other: '#8e5cf6',
-  video: '#5856d6',
-};
-const LESSON_SEC = 20 * 60;
-
 const today = () =>
   new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
-
-function Ring({ part, color, label }: { part: number; color: string; label: string }) {
-  const r = 22;
-  const c = 2 * Math.PI * r;
-  return (
-    <Stack gap={4} align="center" style={{ flex: 1, minWidth: 0 }}>
-      <svg width="54" height="54" viewBox="0 0 54 54" aria-hidden="true">
-        <circle cx="27" cy="27" r={r} fill="none" stroke="var(--app-separator)" strokeWidth="6" />
-        {part > 0 && (
-          <circle
-            cx="27"
-            cy="27"
-            r={r}
-            fill="none"
-            stroke={color}
-            strokeWidth="6"
-            strokeLinecap="round"
-            // Дуга «дорисовывается» при появлении (этап 17б).
-            className="ring-arc"
-            strokeDasharray={c}
-            strokeDashoffset={c * (1 - part)}
-            style={{ '--len': c } as React.CSSProperties}
-            transform="rotate(-90 27 27)"
-          />
-        )}
-      </svg>
-      <Text size="xs" fw={600} truncate maw="100%">
-        {label}
-      </Text>
-    </Stack>
-  );
-}
 
 /** Строка блока «Нужно ваше внимание». */
 function AttentionRow({
@@ -181,7 +140,7 @@ function Attention({ kids }: { kids: Child[] }) {
         color: '#ff3b30',
         icon: 'M3 7h16v10H3zM21 11v2M6 10v4',
         text: `Телефон ${k.nickname}: ${b.level} %`,
-        to: '/now',
+        to: `/routine?child=${k.id}`,
       });
     // Этап 34: телефон подряд не открывает видео — обычно нет связи с YouTube или выключен VPN.
     if (nows[i]?.videosDown)
@@ -199,7 +158,7 @@ function Attention({ kids }: { kids: Child[] }) {
         color: '#5856d6',
         icon: 'M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z',
         text: `${k.nickname}: в комнате было шумно`,
-        to: `/now?listen=${k.id}`,
+        to: `/routine?listen=${k.id}`,
       });
   });
 
@@ -218,138 +177,95 @@ function Attention({ kids }: { kids: Child[] }) {
   );
 }
 
-function statusLine(d: ChildNow) {
-  if (d.paused) return 'Пауза';
-  if (d.closed) return 'На сегодня занятия закончены';
-  if (!d.online) return 'Не в приложении';
-  const activity =
-    d.activity === 'free'
-      ? 'Свободное время'
-      : d.activity
-        ? SUBJECT_LABELS[d.activity]
-        : 'Выбирает';
-  return d.item?.title ? `${activity} · «${d.item.title}»` : activity;
-}
-
-function KidCard({ child, color }: { child: Child; color: string }) {
+/**
+ * Строка ребёнка (этап 40): аватар, что делает, кольца уроков, звонок. Касание — его «Распорядок»
+ * с пультом. Пауза и «+10» прямо здесь — только пока ребёнок в приложении.
+ */
+function KidRow({ child, color }: { child: Child; color: string }) {
   const now = useChildNow(child.id);
   const navigate = useNavigate();
-  const monitor = useQuery({
-    queryKey: ['monitor', child.id],
-    queryFn: () => api.get<MonitorState>(`/parent/children/${child.id}/monitor`),
-    refetchInterval: 30_000,
-  });
-  const control = useMutation({
-    mutationFn: (body: ControlRequest) =>
-      api.post<ChildNow>(`/parent/children/${child.id}/control`, body),
-    onSuccess: (data) => queryClient.setQueryData(keys.now(child.id), data),
-  });
-  const toggleMonitor = useMutation({
-    mutationFn: (on: boolean) =>
-      api.put<MonitorState>(`/parent/children/${child.id}/monitor`, { on }),
-    onSuccess: (data) => queryClient.setQueryData(['monitor', child.id], data),
-  });
+  const control = useControl(child.id);
   const d = now.data;
-  if (!d) return <Skeleton height={190} radius="xl" />;
+  if (!d) return <Skeleton height={76} radius="xl" />;
   const b = d.battery;
+  const live = d.online && d.mode === 'plan' && !d.closed && !d.rest;
 
   return (
-    <Card padding="md" data-testid="kid-card">
-      <Stack gap="sm">
-        <Group wrap="nowrap" gap="sm">
-          <UnstyledButton
-            onClick={() => navigate(`/child/${child.id}`)}
-            aria-label={`Открыть: ${child.nickname}`}
-            style={{ display: 'flex', gap: 12, alignItems: 'center', flex: 1, minWidth: 0 }}
-          >
-            <Avatar
-              radius="xl"
-              size={46}
-              styles={{
-                placeholder: { background: `${color}22`, color, fontWeight: 800, fontSize: 20 },
-              }}
-            >
-              {child.nickname.slice(0, 1)}
-            </Avatar>
-            <Stack gap={0} style={{ minWidth: 0 }}>
-              <Text fw={700} size="lg">
-                {child.nickname}
-              </Text>
-              <Text size="sm" c="dimmed" truncate>
-                {statusLine(d)}
-                {b ? ` · ${b.charging ? '⚡' : ''}${b.level} %` : ''}
-              </Text>
-            </Stack>
-          </UnstyledButton>
-          <ActionIcon
-            size={40}
-            radius="xl"
-            variant="light"
-            color="green"
-            aria-label={`Позвонить: ${child.nickname}`}
-            onClick={() => void parentCalls()?.start([childPeer(child.id)], true)}
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M6.5 4h3l1.6 4.2-2 1.3a11 11 0 0 0 5.4 5.4l1.3-2L20 14.5v3a2.5 2.5 0 0 1-2.5 2.5A14.5 14.5 0 0 1 4 6.5 2.5 2.5 0 0 1 6.5 4z" />
-            </svg>
-          </ActionIcon>
-        </Group>
-
-        {d.mode === 'plan' && d.subjects.length > 0 && (
-          <Group gap="xs" wrap="nowrap">
-            {d.subjects.map((s) => (
-              <Ring
-                key={s.subject}
-                label={SUBJECT_LABELS[s.subject].split(' ')[0]!}
-                color={RING[s.subject] ?? '#007aff'}
-                part={s.done ? 1 : 1 - s.secondsLeft / Math.max(LESSON_SEC, s.secondsLeft)}
-              />
-            ))}
-          </Group>
-        )}
-
-        <Group gap={8} grow>
-          {d.mode === 'plan' && (
-            <Button
-              px={6}
-              variant="light"
-              onClick={() => control.mutate({ action: d.paused ? 'resume' : 'pause' })}
-              loading={control.isPending}
-            >
-              {d.paused ? 'Продолжить' : 'Пауза'}
-            </Button>
+    <Card padding="sm" className="kid-row" data-testid="kid-card">
+      <Group wrap="nowrap" gap="sm">
+        <UnstyledButton
+          onClick={() => navigate(`/routine?child=${child.id}`)}
+          aria-label={`Открыть: ${child.nickname}`}
+          className="kid-row-main"
+        >
+          <span className="kid-row-avatar">
+            <KidAvatar child={child} color={color} />
+            {d.online && <span className="live-dot on" aria-hidden="true" />}
+          </span>
+          <Stack gap={0} style={{ minWidth: 0, flex: 1 }}>
+            <Text fw={700} size="lg" lh={1.25}>
+              {child.nickname}
+            </Text>
+            <Text size="sm" c="dimmed" truncate>
+              {statusLine(d)}
+              {b ? ` · ${b.charging ? '⚡' : ''}${b.level} %` : ''}
+            </Text>
+          </Stack>
+          {d.mode === 'plan' && d.subjects.length > 0 && (
+            <Group gap={2} wrap="nowrap" aria-hidden="true">
+              {d.subjects.slice(0, 3).map((s) => (
+                <Ring
+                  key={s.subject}
+                  size={24}
+                  color={RING[s.subject] ?? '#007aff'}
+                  part={subjectPart(s)}
+                />
+              ))}
+            </Group>
           )}
-          {d.mode === 'plan' && (
-            <Button
-              px={6}
-              variant="light"
-              onClick={() => control.mutate({ action: 'add', minutes: 10 })}
-            >
-              +10 мин
-            </Button>
-          )}
+        </UnstyledButton>
+        <ActionIcon
+          size={40}
+          radius="xl"
+          variant="light"
+          color="green"
+          aria-label={`Позвонить: ${child.nickname}`}
+          onClick={() => void parentCalls()?.start([childPeer(child.id)], true)}
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M6.5 4h3l1.6 4.2-2 1.3a11 11 0 0 0 5.4 5.4l1.3-2L20 14.5v3a2.5 2.5 0 0 1-2.5 2.5A14.5 14.5 0 0 1 4 6.5 2.5 2.5 0 0 1 6.5 4z" />
+          </svg>
+        </ActionIcon>
+      </Group>
+      {(live || d.paused) && (
+        <Group gap={8} grow mt="sm" data-testid="kid-quick">
           <Button
-            px={6}
-            variant={monitor.data?.on ? 'filled' : 'light'}
-            color="violet"
-            onClick={() => toggleMonitor.mutate(!monitor.data?.on)}
-            loading={toggleMonitor.isPending}
+            size="xs"
+            variant={d.paused ? 'filled' : 'light'}
+            onClick={() => control.mutate({ action: d.paused ? 'resume' : 'pause' })}
+            loading={control.isPending}
           >
-            🌙 Няня
+            {d.paused ? 'Дальше' : 'Пауза'}
+          </Button>
+          <Button
+            size="xs"
+            variant="light"
+            onClick={() => control.mutate({ action: 'add', minutes: 10 })}
+          >
+            +10 мин
           </Button>
         </Group>
-        <PreviewButton childId={child.id} fullWidth />
-      </Stack>
+      )}
     </Card>
   );
 }
@@ -434,11 +350,15 @@ export function HomePage() {
         <h1 className="page-title">Главная</h1>
       </Stack>
       {kids.length > 1 && <KidSwitch kids={kids} value={picked?.id ?? null} />}
-      {children.isPending && <Skeleton height={190} radius="xl" />}
+      {children.isPending && <Skeleton height={76} radius="xl" />}
       <Attention kids={kids} />
-      {shown.map((k) => (
-        <KidCard key={k.id} child={k} color={KID_COLORS[kids.indexOf(k) % KID_COLORS.length]!} />
-      ))}
+      {shown.length > 0 && (
+        <Stack gap={8}>
+          {shown.map((k) => (
+            <KidRow key={k.id} child={k} color={kidColor(kids, k.id)} />
+          ))}
+        </Stack>
+      )}
       {(picked ?? (kids.length === 1 ? kids[0] : null)) && (
         <LibraryCard child={(picked ?? kids[0])!} kids={kids} />
       )}

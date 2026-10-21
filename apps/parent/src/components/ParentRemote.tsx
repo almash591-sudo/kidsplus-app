@@ -14,10 +14,12 @@ import {
   Button,
   Group,
   SegmentedControl,
+  SimpleGrid,
   Slider,
   Stack,
   Text,
   Timeline,
+  UnstyledButton,
 } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -86,47 +88,51 @@ export function ScreenControls({
         </Alert>
       ) : (
         <div>
-          <Text size="sm" fw={500} mb={4}>
+          <Text size="sm" fw={600} mb={6}>
             Выключить экран — совёнок скажет почему
           </Text>
-          <Group gap={6}>
+          <SimpleGrid cols={3} spacing={8}>
             {REST_REASONS.map((reason) => (
-              <Button
+              <UnstyledButton
                 key={reason}
-                size="xs"
-                variant="light"
-                color="indigo"
+                className="rest-tile"
                 onClick={() => act({ action: 'rest', reason })}
                 data-testid={`rest-${reason}`}
               >
-                {REST_ICON[reason]} {REST_LABELS[reason]}
-              </Button>
+                <span className="rest-tile-icon" aria-hidden="true">
+                  {REST_ICON[reason]}
+                </span>
+                <span>{REST_LABELS[reason]}</span>
+              </UnstyledButton>
             ))}
-          </Group>
+          </SimpleGrid>
         </div>
       )}
-      <Group gap="xs" align="center" wrap="wrap">
-        <Button
-          size="xs"
-          variant="light"
-          color="orange"
-          onClick={() => act({ action: 'call' })}
-          data-testid="call-kid"
-        >
-          📣 Позвать
-        </Button>
-        <Text size="sm" ml="sm">
-          Громкость
+      <Button
+        fullWidth
+        variant="light"
+        color="orange"
+        onClick={() => act({ action: 'call' })}
+        data-testid="call-kid"
+      >
+        📣 Позвать — на телефоне «Мама зовёт!»
+      </Button>
+      <Group gap="sm" align="center" wrap="nowrap">
+        <Text size="sm" fw={600}>
+          🔊
         </Text>
         <Slider
+          style={{ flex: 1 }}
           value={volume}
           onChange={setVolume}
           onChangeEnd={(level) => act({ action: 'volume', level })}
-          w={160}
           step={10}
           label={(v) => `${v}%`}
           aria-label="Громкость телефона"
         />
+        <Text size="sm" fw={700} className="tabular" w={42} ta="right">
+          {volume}%
+        </Text>
       </Group>
       <Text size="xs" c="dimmed">
         Громкость меняется на Android-телефоне с киоском KidsPlus; на iPhone — кнопками телефона.
