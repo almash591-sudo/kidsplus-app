@@ -602,6 +602,27 @@ export const curriculumDrafts = pgTable(
   (t) => [index().on(t.status)],
 );
 
+/** Этап 39: «Предложить пояснение» к вопросу квиза — очередь для worker'а (как черновик плана). */
+export const explanationDrafts = pgTable(
+  'explanation_drafts',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    familyId: uuid()
+      .notNull()
+      .references(() => families.id, { onDelete: 'cascade' }),
+    /** queued | processing | ready | failed */
+    status: text().notNull().default('queued'),
+    /** Что передаётся модели: вопрос и подписи вариантов — без данных ребёнка. */
+    request: jsonb().notNull(),
+    result: text(),
+    error: text(),
+    attempts: integer().notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index().on(t.status)],
+);
+
 /** Подписки родителей на push-уведомления (по одной на браузер/телефон). */
 export const pushSubscriptions = pgTable('push_subscriptions', {
   id: uuid().primaryKey().defaultRandom(),

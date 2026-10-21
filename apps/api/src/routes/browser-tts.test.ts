@@ -153,6 +153,38 @@ function eqKind(kind: 'audio' | 'image') {
   return eqFn(schema.mediaAssets.kind, kind);
 }
 
+describe('«Предложить пояснение» (этап 39)', () => {
+  it('в очередь — только вопрос и подписи; статус читается своей семьёй', async () => {
+    const res = await t.app.inject({
+      method: 'POST',
+      url: '/api/parent/explanation-drafts',
+      cookies: parent,
+      payload: { prompt: 'Кто говорит «мяу»?', correct: 'кошка', wrong: ['рыба'] },
+    });
+    expect(res.statusCode).toBe(201);
+    const draft = res.json<{ id: string; status: string }>();
+    expect(draft).toMatchObject({ status: 'queued', explanation: null });
+    const [row] = await t.db.select().from(schema.explanationDrafts);
+    expect(row!.request).toEqual({
+      prompt: 'Кто говорит «мяу»?',
+      correct: 'кошка',
+      wrong: ['рыба'],
+    });
+    const read = await t.app.inject({
+      url: `/api/parent/explanation-drafts/${draft.id}`,
+      cookies: parent,
+    });
+    expect(read.json()).toMatchObject({ id: draft.id, status: 'queued' });
+    const bad = await t.app.inject({
+      method: 'POST',
+      url: '/api/parent/explanation-drafts',
+      cookies: parent,
+      payload: { prompt: '', correct: 'кошка' },
+    });
+    expect(bad.statusCode).toBe(400);
+  });
+});
+
 describe('погружение (иностранные карточки без перевода)', () => {
   it('по умолчанию выключено; включается в профиле; плейлист отдаёт английскую похвалу', async () => {
     const device = await pairDevice(t, parent, child);
