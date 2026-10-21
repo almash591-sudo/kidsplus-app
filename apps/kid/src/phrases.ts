@@ -21,7 +21,7 @@ import { NUMBERS, paint, PALETTE } from './games/common';
 import { SORTER } from './games/sorterShapes';
 import { PICTURES } from './games/pictures';
 import { TRACES } from './games/traceShapes';
-import { checkPrompt } from './quiz/engine';
+import { checkAnswer, checkPrompt } from './quiz/engine';
 
 export const CATEGORY_LABELS: Record<KidCategory, string> = {
   video: 'Видео',
@@ -568,10 +568,17 @@ export function appPhrases(playlist: KidPlaylist): Phrase[] {
         else out.push(p);
       }
     }
+    if (item.kind === 'segment')
+      for (const s of item.questions.flatMap((q) => q.answer ?? []))
+        if (s.lang === 'ru') ru.add(s.text);
+        else out.push({ text: s.text, lang: s.lang });
     if (item.kind === 'deck') {
       for (const card of item.cards) {
-        if (card.question) continue; // свой вопрос озвучен на сервере вместе с карточкой
-        for (const s of checkPrompt(card.word, playlist.immersion)) {
+        const said = [
+          ...(card.question ? [] : checkPrompt(card.word, playlist.immersion)), // свой вопрос озвучен на сервере
+          ...checkAnswer(card, playlist.immersion),
+        ];
+        for (const s of said) {
           if (s.audioUrl) continue;
           if (s.lang === 'ru') ru.add(s.text);
           else out.push({ text: s.text, lang: s.lang });

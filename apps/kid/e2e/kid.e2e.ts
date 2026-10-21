@@ -1119,6 +1119,7 @@ const question = (id: string, n = 4) => ({
     imageUrl: `/api/media/img-${id}-${i}`,
     isCorrect: i === 0,
   })),
+  answer: [{ text: `Ответ ${id}.`, lang: 'ru', audioUrl: null }],
 });
 
 const withQuiz = (backend: Backend, options: number, questions: number) => {
@@ -1174,6 +1175,9 @@ test.describe('цикл видео → квиз → видео', () => {
     expect(answers).toHaveLength(2);
     expect(answers[0]!.payload).toMatchObject({ firstTry: true, attempts: 1 });
     expect(backend.events.some((e) => e.type === 'quiz_complete')).toBe(true);
+    // Этап 39: за похвалой совёнок договаривает ответ — после каждого верного.
+    const said = (await spoken(page)).map((s) => s.text);
+    expect(said.filter((t) => /^Ответ q\d\.$/.test(t))).toHaveLength(2);
   });
 
   test('малышу — 2 крупных варианта, каждый не меньше четверти экрана', async ({

@@ -74,6 +74,54 @@ describe('озвучка в браузере', () => {
       audioUrl: null,
     });
     expect(playlist.phrases.retry.length).toBeGreaterThan(0);
+    // Этап 39: без пояснения — только «Это <подпись верного>.»
+    expect(item.kind === 'segment' && item.questions[0]!.answer).toEqual([
+      { text: 'Это кошка.', lang: 'ru', audioUrl: null },
+    ]);
+  });
+
+  it('пояснение (этап 39): сохраняется, отдаётся родителю и звучит ребёнку после ответа', async () => {
+    const device = await pairDevice(t, parent, child);
+    const s = await createSegment(t, parent, { videoId: 'aaaaaaaaaaa', childIds: [child] });
+    const options = [
+      { imageId: await image(), label: 'кошка', isCorrect: true },
+      { imageId: await image(), label: 'рыба', isCorrect: false },
+    ];
+    const created = await t.app.inject({
+      method: 'POST',
+      url: `/api/parent/segments/${s}/questions`,
+      cookies: parent,
+      payload: {
+        prompt: 'Кто говорит «мяу»?',
+        lang: 'ru',
+        options,
+        explanation: ' Кошка мяукает. ',
+      },
+    });
+    const q = created.json<Question>();
+    expect(q.explanation).toBe('Кошка мяукает.');
+    let playlist = (
+      await t.app.inject({ url: '/api/kid/playlist', cookies: device })
+    ).json<KidPlaylist>();
+    let item = playlist.items[0]!;
+    expect(item.kind === 'segment' && item.questions[0]!.answer).toEqual([
+      { text: 'Это кошка.', lang: 'ru', audioUrl: null },
+      { text: 'Кошка мяукает.', lang: 'ru', audioUrl: null },
+    ]);
+
+    // Пустое пояснение — убрано; английский вопрос — без «Это …» (подпись по-русски).
+    const updated = await t.app.inject({
+      method: 'PUT',
+      url: `/api/parent/questions/${q.id}`,
+      cookies: parent,
+      payload: { prompt: 'Where is the cat?', lang: 'en', options, explanation: '' },
+    });
+    expect(updated.json<Question>().explanation).toBeNull();
+    playlist = (
+      await t.app.inject({ url: '/api/kid/playlist', cookies: device })
+    ).json<KidPlaylist>();
+    item = playlist.items[0]!;
+    expect(item.kind === 'segment' && item.questions[0]!.answer).toEqual([]);
   });
 
   it('карточки: слово на языке набора, перевод — на русском', async () => {

@@ -306,6 +306,13 @@ export const questionInput = z
       )
       .min(2, 'минимум 2 варианта')
       .max(4, 'максимум 4 варианта'),
+    /** Этап 39: пояснение — совёнок говорит его после верного ответа («…потому что…»). */
+    explanation: z
+      .string()
+      .trim()
+      .max(200)
+      .nullish()
+      .transform((v) => v || null),
   })
   .refine((q) => q.options.filter((o) => o.isCorrect).length === 1, {
     message: 'должен быть ровно один верный вариант',
@@ -327,6 +334,7 @@ export interface Question {
   lang: Language;
   audio: MediaRef | null;
   options: QuestionOption[];
+  explanation: string | null;
 }
 
 // ─── Карточки ────────────────────────────────────────────────────────────────
@@ -449,6 +457,8 @@ export interface KidQuestion {
   id: string;
   prompt: Speech;
   options: { id: string; imageUrl: string; isCorrect: boolean }[];
+  /** Этап 39: что сказать после верного ответа («Это кошка.» + пояснение родителя). */
+  answer?: Speech[];
 }
 
 export interface KidCard {

@@ -148,6 +148,21 @@ export async function buildKidItems(
   const speech = (text: string, lang: string, audioId: string | null) =>
     toSpeech(tts, text, lang, audioId, ready);
 
+  /**
+   * Этап 39: после верного ответа — сам ответ («Это кошка.», подпись верного варианта; только
+   * у русских вопросов) и пояснение родителя. Озвучивает телефон через /api/kid/speech.
+   */
+  const questionAnswer = (
+    q: typeof quizQuestions.$inferSelect,
+    opts: (typeof quizOptions.$inferSelect)[],
+  ): Speech[] => {
+    const label = opts.find((o) => o.isCorrect)?.label.trim();
+    return [
+      ...(q.lang === 'ru' && label ? [`Это ${label}.`] : []),
+      ...(q.explanation ? [q.explanation] : []),
+    ].map((text) => ({ text, lang: 'ru', audioUrl: null }));
+  };
+
   const kidQuestions = (segmentId: string): KidQuestion[] =>
     questions
       .filter((q) => q.segmentId === segmentId)
@@ -162,6 +177,7 @@ export async function buildKidItems(
       .map(({ q, prompt, opts }) => ({
         id: q.id,
         prompt: prompt!,
+        answer: questionAnswer(q, opts),
         options: opts.map((o) => ({
           id: o.id,
           imageUrl: imageUrl(o.imageId),

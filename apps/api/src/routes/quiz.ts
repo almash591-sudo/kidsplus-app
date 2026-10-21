@@ -40,6 +40,7 @@ export async function loadQuestions(
     segmentId: q.segmentId,
     prompt: q.prompt,
     lang: q.lang as Language,
+    explanation: q.explanation,
     audio:
       q.promptAudioId && assets.get(q.promptAudioId)
         ? toMediaRef(assets.get(q.promptAudioId)!)
@@ -76,6 +77,7 @@ export async function insertQuestion(
       segmentId,
       prompt: body.prompt,
       lang: body.lang,
+      explanation: body.explanation,
       promptAudioId: await ensureTts(tx, tts, body.prompt, body.lang),
       position: (last?.pos ?? -1) + 1,
     })
@@ -127,6 +129,7 @@ export function quizRoutes(app: FastifyInstance, ctx: Ctx) {
         .set({
           prompt: body.prompt,
           lang: body.lang,
+          explanation: body.explanation,
           promptAudioId: await ensureTts(tx, ctx.config.tts, body.prompt, body.lang),
         })
         .where(eq(quizQuestions.id, id))

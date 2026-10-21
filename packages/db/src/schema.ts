@@ -357,6 +357,8 @@ export const quizQuestions = pgTable(
     prompt: text().notNull(),
     lang: text().notNull().default('ru'),
     promptAudioId: uuid().references(() => mediaAssets.id, { onDelete: 'set null' }),
+    /** Этап 39: пояснение после верного ответа (пишет родитель, может предложить модель). */
+    explanation: text(),
     position: integer().notNull(),
     createdAt: createdAt(),
   },

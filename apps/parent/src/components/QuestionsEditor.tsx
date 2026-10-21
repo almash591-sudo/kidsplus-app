@@ -16,6 +16,7 @@ import {
   SegmentedControl,
   Stack,
   Text,
+  Textarea,
   TextInput,
   Title,
 } from '@mantine/core';
@@ -38,6 +39,7 @@ interface Draft {
   lang: Language;
   options: DraftOption[];
   correct: number;
+  explanation: string;
 }
 
 const emptyDraft = (): Draft => ({
@@ -48,6 +50,7 @@ const emptyDraft = (): Draft => ({
     { image: null, label: '' },
   ],
   correct: 0,
+  explanation: '',
 });
 
 const fromQuestion = (q: Question): Draft => ({
@@ -58,6 +61,7 @@ const fromQuestion = (q: Question): Draft => ({
     0,
     q.options.findIndex((o) => o.isCorrect),
   ),
+  explanation: q.explanation ?? '',
 });
 
 /** Вопросы квиза к фрагменту: озвучиваемый текст и 2–4 картинки, одна верная. */
@@ -123,6 +127,11 @@ export function QuestionsEditor({ segmentId }: { segmentId: string }) {
                     </Stack>
                   ))}
                 </Group>
+                {q.explanation && (
+                  <Text size="sm" c="dimmed" data-testid="question-explanation">
+                    Пояснение: {q.explanation}
+                  </Text>
+                )}
               </Stack>
               <Group gap={4}>
                 <Button
@@ -192,6 +201,7 @@ function QuestionForm(props: {
           label: o.label,
           isCorrect: i === d.correct,
         })),
+        explanation: d.explanation,
       };
       return props.questionId
         ? api.put<Question>(`/parent/questions/${props.questionId}`, body)
@@ -232,7 +242,7 @@ function QuestionForm(props: {
                 />
                 <TextInput
                   style={{ flex: 1 }}
-                  placeholder="подпись для себя: кошка"
+                  placeholder="подпись: кошка"
                   value={o.label}
                   maxLength={60}
                   onChange={(e) => setOption(i, { label: e.currentTarget.value })}
@@ -268,6 +278,20 @@ function QuestionForm(props: {
             + вариант
           </Button>
         )}
+        <Textarea
+          label="Пояснение (необязательно)"
+          description={
+            d.lang === 'ru'
+              ? 'После верного ответа совёнок скажет «Это <подпись верного варианта>» и это пояснение.'
+              : 'После верного ответа совёнок скажет это пояснение.'
+          }
+          placeholder="Кошка говорит «мяу» и ловит мышей."
+          autosize
+          minRows={2}
+          maxLength={200}
+          value={d.explanation}
+          onChange={(e) => setD({ ...d, explanation: e.currentTarget.value })}
+        />
         <Text size="xs" c="dimmed">
           Если в профиле ребёнка 2 варианта, а здесь 4, — ребёнку покажется верный и один случайный
           неверный.
