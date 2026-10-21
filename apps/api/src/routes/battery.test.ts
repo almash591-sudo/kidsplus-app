@@ -77,7 +77,11 @@ describe('заряд телефона', () => {
     for (const l of [30, 16, 15, 14, 10]) await report(l);
     await flush();
     expect(sent).toHaveLength(1);
-    expect(sent[0]).toMatchObject({ kind: 'battery', childId: child, url: '/now' });
+    expect(sent[0]).toMatchObject({
+      kind: 'battery',
+      childId: child,
+      url: `/routine?child=${child}`,
+    });
     expect(sent[0]!.body).toContain('15 %');
     expect(sent[0]!.body).not.toContain('Зайка');
 
