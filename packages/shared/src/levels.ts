@@ -161,6 +161,23 @@ export function specAtLevel(spec: GameSpec, level: number): GameSpec {
         blocks: clamp(spec.blocks + up, 3, 5),
         hide: up >= 2 || spec.hide,
       };
+    case 'syllableWord':
+      return { ...spec, extra: clamp(spec.extra + up, 0, 2) };
+    case 'riddle':
+      return {
+        ...spec,
+        choices: clamp(spec.choices + up, 2, 4),
+        rounds: clamp(spec.rounds + up, 1, 12),
+      };
+    case 'sudoku': {
+      // Поле 4 × 4 (если картинок 4) и больше пустых клеток.
+      const size = up >= 1 && new Set(spec.imageIds).size >= 4 ? 4 : spec.size;
+      return {
+        ...spec,
+        size,
+        blanks: clamp(spec.blanks + 2 * up, 1, size === 4 ? 12 : 6),
+      };
+    }
     default:
       // Раскраска, рисовалка, пары, сортировка, фонарик, «лишнее», «по порядку», песенки — как есть.
       return spec;

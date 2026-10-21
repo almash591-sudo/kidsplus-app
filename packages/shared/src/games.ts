@@ -72,6 +72,8 @@ export type MoleSpeed = (typeof MOLE_SPEEDS)[number];
 
 /** Слово «Собери слово»: буквы русского или английского алфавита, 2–10. */
 const WORD_RE = /^[А-ЯЁA-Z]{2,10}$/u;
+/** Слово по слогам: 2–5 слогов заглавными через дефис. */
+export const SYLLABLE_WORD_RE = /^[А-ЯЁ]{1,5}(-[А-ЯЁ]{1,5}){1,4}$/u;
 
 /** Ноты от «до» первой октавы до «до» второй — так их поёт ребёнок (сольфеджио). */
 export const NOTE_NAMES = ['до', 'ре', 'ми', 'фа', 'соль', 'ля', 'си', 'до'] as const;
@@ -434,6 +436,63 @@ export const gameSpec = z.discriminatedUnion('kind', [
     hide: z.boolean().default(false),
     rounds: z.number().int().min(1).max(5),
   }),
+  // ─── Чтение и логика (этап 41) ───
+  /**
+   * Собери слово из слогов: картинка и слово «МА-ШИ-НА» — слоги поставить по порядку; extra —
+   * лишние слоги.
+   */
+  z.object({
+    kind: z.literal('syllableWord'),
+    words: z
+      .array(
+        z.object({
+          imageId: uuid,
+          word: z
+            .string()
+            .trim()
+            .toUpperCase()
+            .regex(SYLLABLE_WORD_RE, 'слоги через дефис: МА-ШИ-НА'),
+        }),
+      )
+      .min(1)
+      .max(10),
+    extra: z.number().int().min(0).max(2).default(0),
+  }),
+  /**
+   * Загадки: совёнок читает загадку — выбрать отгадку среди choices картинок (остальные —
+   * отгадки других загадок); после ответа — «Это ёжик!».
+   */
+  z.object({
+    kind: z.literal('riddle'),
+    riddles: z
+      .array(
+        z.object({
+          text: z.string().trim().min(1).max(300),
+          /** Отгадка именительным падежом: «ёжик». */
+          name: z.string().trim().min(1).max(60),
+          imageId: uuid,
+        }),
+      )
+      .min(2)
+      .max(12),
+    choices: z.number().int().min(2).max(4).default(3),
+    rounds: z.number().int().min(1).max(12),
+  }),
+  /**
+   * Судоку-малыш: поле size × size из картинок, в каждой строке и столбце каждая — по разу;
+   * blanks пустых клеток заполнить (решение всегда одно).
+   */
+  z
+    .object({
+      kind: z.literal('sudoku'),
+      imageIds: z.array(uuid).min(3).max(4),
+      size: z.union([z.literal(3), z.literal(4)]).default(3),
+      blanks: z.number().int().min(1).max(12),
+      rounds: z.number().int().min(1).max(5),
+    })
+    .refine((g) => g.size <= new Set(g.imageIds).size, {
+      message: 'картинок должно быть не меньше, чем клеток в строке',
+    }),
 ]);
 
 /** Детали «Строителя»: кубик, брусок, крыша, арка, цилиндр. */
@@ -505,6 +564,9 @@ export const GAME_KINDS: Record<GameKind, string> = {
   fishing: 'Рыбалка',
   flight: 'Совёнок летит',
   builder: 'Строитель',
+  syllableWord: 'Слово из слогов',
+  riddle: 'Загадки',
+  sudoku: 'Судоку-малыш',
 };
 
 /** id картинок в параметрах игры — для проверки, что они есть и готовы. */
@@ -524,7 +586,11 @@ export function gameImageIds(g: GameSpec): string[] {
     case 'arithmetic':
     case 'size':
     case 'shop':
+    case 'sudoku':
       return g.imageIds;
+    case 'syllableWord':
+    case 'riddle':
+      return (g.kind === 'riddle' ? g.riddles : g.words).map((w) => w.imageId);
     case 'maze':
       return [g.heroId, g.goalId];
     case 'flashlight':
