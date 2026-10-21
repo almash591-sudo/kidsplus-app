@@ -1,6 +1,7 @@
 import {
   LANGUAGES,
   type Language,
+  type ExplanationDraft,
   type MediaRef,
   type Question,
   type QuestionInput,
@@ -16,6 +17,7 @@ import {
   SegmentedControl,
   Stack,
   Text,
+  Textarea,
   TextInput,
   Title,
 } from '@mantine/core';
@@ -38,6 +40,30 @@ interface Draft {
   lang: Language;
   options: DraftOption[];
   correct: number;
+  explanation: string;
+}
+
+/** Сколько ждать предложения модели (worker опрашивает очередь раз в несколько секунд). */
+const SUGGEST_WAIT_MS = 60_000;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * «Предложить пояснение» (этап 39): в очередь worker'у уходят вопрос и подписи вариантов,
+ * кабинет ждёт ответа. Ребёнку звучит только то, что родитель сохранит.
+ */
+async function suggestExplanation(d: Draft): Promise<string> {
+  const draft = await api.post<ExplanationDraft>('/parent/explanation-drafts', {
+    prompt: d.prompt,
+    correct: d.options[d.correct]!.label,
+    wrong: d.options.filter((_, i) => i !== d.correct).map((o) => o.label),
+  });
+  for (const until = Date.now() + SUGGEST_WAIT_MS; Date.now() < until;) {
+    await sleep(1500);
+    const r = await api.get<ExplanationDraft>(`/parent/explanation-drafts/${draft.id}`);
+    if (r.status === 'ready' && r.explanation) return r.explanation;
+    if (r.status === 'failed') break;
+  }
+  throw new Error('Не получилось — напишите пояснение сами.');
 }
 
 const emptyDraft = (): Draft => ({
@@ -48,6 +74,7 @@ const emptyDraft = (): Draft => ({
     { image: null, label: '' },
   ],
   correct: 0,
+  explanation: '',
 });
 
 const fromQuestion = (q: Question): Draft => ({
@@ -58,6 +85,7 @@ const fromQuestion = (q: Question): Draft => ({
     0,
     q.options.findIndex((o) => o.isCorrect),
   ),
+  explanation: q.explanation ?? '',
 });
 
 /** Вопросы квиза к фрагменту: озвучиваемый текст и 2–4 картинки, одна верная. */
@@ -123,6 +151,11 @@ export function QuestionsEditor({ segmentId }: { segmentId: string }) {
                     </Stack>
                   ))}
                 </Group>
+                {q.explanation && (
+                  <Text size="sm" c="dimmed" data-testid="question-explanation">
+                    Пояснение: {q.explanation}
+                  </Text>
+                )}
               </Stack>
               <Group gap={4}>
                 <Button
@@ -181,6 +214,11 @@ function QuestionForm(props: {
     setD((s) => ({ ...s, options: s.options.map((o, j) => (j === i ? { ...o, ...patch } : o)) }));
 
   const ready = d.prompt.trim() && d.options.every((o) => o.image && o.label.trim());
+  const canSuggest = Boolean(d.prompt.trim() && d.options.every((o) => o.label.trim()));
+  const suggest = useMutation({
+    mutationFn: () => suggestExplanation(d),
+    onSuccess: (explanation) => setD((s) => ({ ...s, explanation })),
+  });
 
   const save = useMutation({
     mutationFn: () => {
@@ -192,6 +230,7 @@ function QuestionForm(props: {
           label: o.label,
           isCorrect: i === d.correct,
         })),
+        explanation: d.explanation,
       };
       return props.questionId
         ? api.put<Question>(`/parent/questions/${props.questionId}`, body)
@@ -232,7 +271,7 @@ function QuestionForm(props: {
                 />
                 <TextInput
                   style={{ flex: 1 }}
-                  placeholder="подпись для себя: кошка"
+                  placeholder="подпись: кошка"
                   value={o.label}
                   maxLength={60}
                   onChange={(e) => setOption(i, { label: e.currentTarget.value })}
@@ -268,6 +307,33 @@ function QuestionForm(props: {
             + вариант
           </Button>
         )}
+        <Textarea
+          label="Пояснение (необязательно)"
+          description={
+            d.lang === 'ru'
+              ? 'После верного ответа совёнок скажет «Это <подпись верного варианта>» и это пояснение.'
+              : 'После верного ответа совёнок скажет это пояснение.'
+          }
+          placeholder="Кошка говорит «мяу» и ловит мышей."
+          autosize
+          minRows={2}
+          maxLength={200}
+          value={d.explanation}
+          onChange={(e) => setD({ ...d, explanation: e.currentTarget.value })}
+          error={suggest.error?.message}
+        />
+        <Button
+          variant="light"
+          w="fit-content"
+          size="compact-sm"
+          leftSection="✨"
+          onClick={() => suggest.mutate()}
+          loading={suggest.isPending}
+          disabled={!canSuggest}
+          title={canSuggest ? undefined : 'Сначала вопрос и подписи вариантов'}
+        >
+          Предложить пояснение
+        </Button>
         <Text size="xs" c="dimmed">
           Если в профиле ребёнка 2 варианта, а здесь 4, — ребёнку покажется верный и один случайный
           неверный.

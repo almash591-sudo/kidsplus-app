@@ -21,7 +21,7 @@ import { NUMBERS, paint, PALETTE } from './games/common';
 import { SORTER } from './games/sorterShapes';
 import { PICTURES } from './games/pictures';
 import { TRACES } from './games/traceShapes';
-import { checkPrompt } from './quiz/engine';
+import { checkAnswer, checkPrompt } from './quiz/engine';
 
 export const CATEGORY_LABELS: Record<KidCategory, string> = {
   video: 'Видео',
@@ -212,6 +212,20 @@ export const SHOP_PROMPT = 'Купи покупку — положи столь�
 export const SHOP_TOO_MUCH = 'Ой, многовато! Давай ещё раз.';
 export const SHOP_BUY = 'Покупаем!';
 
+// Этап 39: после верного ответа — сам ответ и почему (закрепить).
+export const countAnswer = (n: number) => `Здесь ${NUMBERS[n]}!`;
+export const clockAnswer = (h: number, half: boolean) => [
+  `Сейчас ${timeName(h, half)}.`,
+  half
+    ? 'Большая стрелка внизу — значит, половина.'
+    : `Большая стрелка наверху, маленькая показывает ${NUMBERS[h]}.`,
+];
+export const shopAnswer = (n: number) => `Положили ровно ${coinsWord(n)}!`;
+export const SORTER_DONE = 'Все фигуры в своих домиках!';
+export const SHADOWS_DONE = 'Каждая картинка нашла свою тень!';
+export const SIZE_DONE = 'Вот так: от маленького к большому!';
+export const PATTERN_DONE = 'Картинки повторяются по порядку!';
+
 export const ROBOT_PROMPT =
   'Помоги совёнку дойти до звёздочки! Нажимай стрелки, потом — «Поехали».';
 export const ROBOT_MISS = 'Не дошли. Попробуй другой путь!';
@@ -298,7 +312,7 @@ export const HINT_TODAY = 'Нажми на кружок — начнём!';
 export const HINT_PICK = 'Нажми на любую картинку!';
 
 /** Всё, что может прозвучать в игре. */
-function gamePhrases(spec: GameSpec): string[] {
+export function gamePhrases(spec: GameSpec): string[] {
   switch (spec.kind) {
     case 'coloring':
       return spec.tasks
@@ -321,11 +335,11 @@ function gamePhrases(spec: GameSpec): string[] {
       return [balloonsPrompt(target), ...wrong];
     }
     case 'counting':
-      return [COUNT_PROMPT];
+      return [COUNT_PROMPT, ...Array.from({ length: spec.max }, (_, i) => countAnswer(i + 1))];
     case 'maze':
       return [MAZE_PROMPT];
     case 'shadows':
-      return [SHADOWS_PROMPT];
+      return [SHADOWS_PROMPT, SHADOWS_DONE];
     case 'flashlight':
       return [FLASH_PROMPT, ...spec.items.flatMap((i) => (i.name ? [i.name] : []))];
     case 'moles':
@@ -333,17 +347,17 @@ function gamePhrases(spec: GameSpec): string[] {
     case 'melody':
       return [MELODY_LISTEN, MELODY_AGAIN, MELODY_YOU, MELODY_GUIDE];
     case 'shapes':
-      return [SORTER_PROMPT, SORTER_TURN, ...spec.shapes.map((s) => SORTER[s].name)];
+      return [SORTER_PROMPT, SORTER_TURN, SORTER_DONE, ...spec.shapes.map((s) => SORTER[s].name)];
     case 'odd':
       return [ODD_PROMPT, ...spec.rounds.flatMap((r) => (r.explain ? [r.explain] : []))];
     case 'pattern':
-      return [PATTERN_PROMPT];
+      return [PATTERN_PROMPT, PATTERN_DONE];
     case 'compare':
       return [COMPARE_MORE, COMPARE_LESS, MORE_THAN, LESS_THAN];
     case 'arithmetic':
       return [PLUS, MINUS, WILL_BE, HOW_MANY];
     case 'size':
-      return [SIZE_PROMPT];
+      return [SIZE_PROMPT, SIZE_DONE];
     case 'sequence':
       return spec.rounds.map((r) => r.prompt);
     case 'word':
@@ -391,6 +405,8 @@ function gamePhrases(spec: GameSpec): string[] {
         ...Array.from({ length: 12 }, (_, i) => [
           clockFind(i + 1, false),
           clockFind(i + 1, true),
+          ...clockAnswer(i + 1, false),
+          ...clockAnswer(i + 1, true),
         ]).flat(),
       ];
     case 'shop':
@@ -398,7 +414,7 @@ function gamePhrases(spec: GameSpec): string[] {
         SHOP_PROMPT,
         SHOP_TOO_MUCH,
         SHOP_BUY,
-        ...Array.from({ length: 10 }, (_, i) => shopPrice(i + 1)),
+        ...Array.from({ length: 10 }, (_, i) => [shopPrice(i + 1), shopAnswer(i + 1)]).flat(),
       ];
     case 'robot':
       return [ROBOT_PROMPT, ROBOT_MISS, ROBOT_ROCK];
@@ -568,10 +584,17 @@ export function appPhrases(playlist: KidPlaylist): Phrase[] {
         else out.push(p);
       }
     }
+    if (item.kind === 'segment')
+      for (const s of item.questions.flatMap((q) => q.answer ?? []))
+        if (s.lang === 'ru') ru.add(s.text);
+        else out.push({ text: s.text, lang: s.lang });
     if (item.kind === 'deck') {
       for (const card of item.cards) {
-        if (card.question) continue; // свой вопрос озвучен на сервере вместе с карточкой
-        for (const s of checkPrompt(card.word, playlist.immersion)) {
+        const said = [
+          ...(card.question ? [] : checkPrompt(card.word, playlist.immersion)), // свой вопрос озвучен на сервере
+          ...checkAnswer(card, playlist.immersion),
+        ];
+        for (const s of said) {
           if (s.audioUrl) continue;
           if (s.lang === 'ru') ru.add(s.text);
           else out.push({ text: s.text, lang: s.lang });

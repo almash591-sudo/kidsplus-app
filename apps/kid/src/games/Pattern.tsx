@@ -1,7 +1,7 @@
 import type { Pattern as PatternKind } from '@kidsplus/shared/games';
 import { useEffect, useRef, useState } from 'react';
-import { PATTERN_PROMPT } from '../phrases';
-import { ask, nice, praise, retry, shuffled, type GameProps } from './common';
+import { PATTERN_DONE, PATTERN_PROMPT } from '../phrases';
+import { afterSpeech, ask, nice, praise, retry, shuffled, type GameProps } from './common';
 import { Pic } from './DragItem';
 
 /**
@@ -51,14 +51,13 @@ export function Pattern({ spec, phrases, onFinish }: GameProps<'pattern'>) {
     }
     setSolved(true);
     nice(slot.current);
-    void praise(phrases);
-    setTimeout(() => {
+    void afterSpeech(praise(phrases, undefined, [PATTERN_DONE]), 2200).then(() => {
       if (round + 1 >= spec.rounds) return onFinish();
       setRound(round + 1);
       setR(make());
       setWrong([]);
       setSolved(false);
-    }, 2200);
+    });
   };
 
   return (

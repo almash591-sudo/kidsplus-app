@@ -1,8 +1,8 @@
 import type { SorterShape } from '@kidsplus/shared/games';
 import { useEffect, useRef, useState } from 'react';
 import { fx } from '../fx';
-import { SORTER_PROMPT, SORTER_TURN } from '../phrases';
-import { ask, nice, praise, retry, say, shuffled, type GameProps } from './common';
+import { SORTER_DONE, SORTER_PROMPT, SORTER_TURN } from '../phrases';
+import { afterSpeech, ask, nice, praise, retry, say, shuffled, type GameProps } from './common';
 import { DragItem } from './DragItem';
 import { cheer } from './juice';
 import { fits, SORTER } from './sorterShapes';
@@ -56,8 +56,10 @@ export function Shapes({ spec, phrases, onFinish }: GameProps<'shapes'>) {
     setFilled(next);
     setPieces((list) => list.filter((x) => x.k !== k));
     if (next.size === spec.shapes.length) {
-      setTimeout(() => void praise(phrases), 600);
-      setTimeout(onFinish, 1900);
+      setTimeout(
+        () => void afterSpeech(praise(phrases, undefined, [SORTER_DONE]), 1300).then(onFinish),
+        600,
+      );
     }
     return true;
   };

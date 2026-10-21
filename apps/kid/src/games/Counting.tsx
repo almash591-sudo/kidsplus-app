@@ -1,7 +1,7 @@
 import { mediaUrl } from '@kidsplus/shared/api';
 import { useEffect, useState } from 'react';
-import { COUNT_PROMPT } from '../phrases';
-import { ask, NUMBERS, praise, retry, say, shuffled, type GameProps } from './common';
+import { COUNT_PROMPT, countAnswer } from '../phrases';
+import { afterSpeech, ask, NUMBERS, praise, retry, say, shuffled, type GameProps } from './common';
 import { CachedImg } from '../ui/CachedImg';
 
 /** Варианты ответа: верный и соседние числа, по возрастанию (как на линейке). */
@@ -50,15 +50,14 @@ export function Counting({ spec, phrases, onFinish }: GameProps<'counting'>) {
       return;
     }
     setSolved(true);
-    void say(`${NUMBERS[n]}!`).then(() => praise(phrases));
-    setTimeout(() => {
+    void afterSpeech(praise(phrases, undefined, [countAnswer(n)]), 2000).then(() => {
       if (round + 1 >= spec.rounds) return onFinish();
       setRound(round + 1);
       setAnswer(nextAnswer(spec.max, answer));
       setCounted([]);
       setWrong([]);
       setSolved(false);
-    }, 2000);
+    });
   };
 
   return (

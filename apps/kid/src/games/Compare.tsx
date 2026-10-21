@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { COMPARE_LESS, COMPARE_MORE, LESS_THAN, MORE_THAN } from '../phrases';
-import { ask, NUMBERS, praise, retry, say, shuffled, type GameProps } from './common';
+import { afterSpeech, ask, NUMBERS, praise, retry, shuffled, type GameProps } from './common';
 import { Pic } from './DragItem';
 import { burstAt } from './juice';
 
@@ -53,13 +53,12 @@ export function Compare({ spec, phrases, onFinish }: GameProps<'compare'>) {
       r.ask === 'more'
         ? [NUMBERS[big]!, MORE_THAN, NUMBERS[small]!]
         : [NUMBERS[small]!, LESS_THAN, NUMBERS[big]!];
-    void say(...told).then(() => praise(phrases));
-    setTimeout(() => {
+    void afterSpeech(praise(phrases, undefined, told), 2200).then(() => {
       if (round + 1 >= spec.rounds) return onFinish();
       setRound(round + 1);
       setR(make());
       setSolved(false);
-    }, 3200);
+    });
   };
 
   return (

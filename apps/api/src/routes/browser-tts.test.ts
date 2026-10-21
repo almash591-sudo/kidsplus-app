@@ -74,6 +74,54 @@ describe('озвучка в браузере', () => {
       audioUrl: null,
     });
     expect(playlist.phrases.retry.length).toBeGreaterThan(0);
+    // Этап 39: без пояснения — только «Это <подпись верного>.»
+    expect(item.kind === 'segment' && item.questions[0]!.answer).toEqual([
+      { text: 'Это кошка.', lang: 'ru', audioUrl: null },
+    ]);
+  });
+
+  it('пояснение (этап 39): сохраняется, отдаётся родителю и звучит ребёнку после ответа', async () => {
+    const device = await pairDevice(t, parent, child);
+    const s = await createSegment(t, parent, { videoId: 'aaaaaaaaaaa', childIds: [child] });
+    const options = [
+      { imageId: await image(), label: 'кошка', isCorrect: true },
+      { imageId: await image(), label: 'рыба', isCorrect: false },
+    ];
+    const created = await t.app.inject({
+      method: 'POST',
+      url: `/api/parent/segments/${s}/questions`,
+      cookies: parent,
+      payload: {
+        prompt: 'Кто говорит «мяу»?',
+        lang: 'ru',
+        options,
+        explanation: ' Кошка мяукает. ',
+      },
+    });
+    const q = created.json<Question>();
+    expect(q.explanation).toBe('Кошка мяукает.');
+    let playlist = (
+      await t.app.inject({ url: '/api/kid/playlist', cookies: device })
+    ).json<KidPlaylist>();
+    let item = playlist.items[0]!;
+    expect(item.kind === 'segment' && item.questions[0]!.answer).toEqual([
+      { text: 'Это кошка.', lang: 'ru', audioUrl: null },
+      { text: 'Кошка мяукает.', lang: 'ru', audioUrl: null },
+    ]);
+
+    // Пустое пояснение — убрано; английский вопрос — без «Это …» (подпись по-русски).
+    const updated = await t.app.inject({
+      method: 'PUT',
+      url: `/api/parent/questions/${q.id}`,
+      cookies: parent,
+      payload: { prompt: 'Where is the cat?', lang: 'en', options, explanation: '' },
+    });
+    expect(updated.json<Question>().explanation).toBeNull();
+    playlist = (
+      await t.app.inject({ url: '/api/kid/playlist', cookies: device })
+    ).json<KidPlaylist>();
+    item = playlist.items[0]!;
+    expect(item.kind === 'segment' && item.questions[0]!.answer).toEqual([]);
   });
 
   it('карточки: слово на языке набора, перевод — на русском', async () => {
@@ -104,6 +152,38 @@ describe('озвучка в браузере', () => {
 function eqKind(kind: 'audio' | 'image') {
   return eqFn(schema.mediaAssets.kind, kind);
 }
+
+describe('«Предложить пояснение» (этап 39)', () => {
+  it('в очередь — только вопрос и подписи; статус читается своей семьёй', async () => {
+    const res = await t.app.inject({
+      method: 'POST',
+      url: '/api/parent/explanation-drafts',
+      cookies: parent,
+      payload: { prompt: 'Кто говорит «мяу»?', correct: 'кошка', wrong: ['рыба'] },
+    });
+    expect(res.statusCode).toBe(201);
+    const draft = res.json<{ id: string; status: string }>();
+    expect(draft).toMatchObject({ status: 'queued', explanation: null });
+    const [row] = await t.db.select().from(schema.explanationDrafts);
+    expect(row!.request).toEqual({
+      prompt: 'Кто говорит «мяу»?',
+      correct: 'кошка',
+      wrong: ['рыба'],
+    });
+    const read = await t.app.inject({
+      url: `/api/parent/explanation-drafts/${draft.id}`,
+      cookies: parent,
+    });
+    expect(read.json()).toMatchObject({ id: draft.id, status: 'queued' });
+    const bad = await t.app.inject({
+      method: 'POST',
+      url: '/api/parent/explanation-drafts',
+      cookies: parent,
+      payload: { prompt: '', correct: 'кошка' },
+    });
+    expect(bad.statusCode).toBe(400);
+  });
+});
 
 describe('погружение (иностранные карточки без перевода)', () => {
   it('по умолчанию выключено; включается в профиле; плейлист отдаёт английскую похвалу', async () => {

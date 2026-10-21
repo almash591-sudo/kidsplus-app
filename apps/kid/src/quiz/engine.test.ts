@@ -1,6 +1,7 @@
 import type { KidCard } from '@kidsplus/shared/api';
 import { describe, expect, it } from 'vitest';
 import {
+  checkAnswer,
   checkPrompt,
   checkpointIndexes,
   deckCheckQuestions,
@@ -178,5 +179,33 @@ describe('checkPrompt — погружение', () => {
   });
   it('без погружения: «Покажи» по-русски', () => {
     expect(checkPrompt(word, false)[0]).toEqual({ text: 'Покажи', lang: 'ru', audioUrl: null });
+  });
+});
+
+describe('checkAnswer — ответ после верного касания (этап 39)', () => {
+  const ru = (text: string) => ({ text, lang: 'ru' as const, audioUrl: null });
+  const cat = { text: 'cat', lang: 'en' as const, audioUrl: '/a/cat' };
+  it('русский набор: «Это кошка.»', () => {
+    expect(checkAnswer({ word: ru('кошка'), translation: null }, false)).toEqual([
+      ru('Это кошка.'),
+    ]);
+  });
+  it('иностранный: слово, затем «Это кошка.» по-русски', () => {
+    expect(checkAnswer({ word: cat, translation: ru('кошка') }, false)).toEqual([
+      cat,
+      ru('Это кошка.'),
+    ]);
+  });
+  it('в погружении и без перевода — только слово', () => {
+    expect(checkAnswer({ word: cat, translation: ru('кошка') }, true)).toEqual([cat]);
+    expect(checkAnswer({ word: cat, translation: null }, false)).toEqual([cat]);
+  });
+  it('вопрос проверки несёт ответ', () => {
+    const deck = [
+      { id: 'a', imageUrl: '/a', word: ru('кошка'), translation: null, question: null },
+      { id: 'b', imageUrl: '/b', word: ru('собака'), translation: null, question: null },
+    ];
+    const [x] = deckCheckQuestions(deck, [deck[0]!], 1);
+    expect(x!.answer).toEqual([ru('Это кошка.')]);
   });
 });

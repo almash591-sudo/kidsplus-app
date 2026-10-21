@@ -306,12 +306,40 @@ export const questionInput = z
       )
       .min(2, 'минимум 2 варианта')
       .max(4, 'максимум 4 варианта'),
+    /** Этап 39: пояснение — совёнок говорит его после верного ответа («…потому что…»). */
+    explanation: z
+      .string()
+      .trim()
+      .max(200)
+      .nullish()
+      .transform((v) => v || null),
   })
   .refine((q) => q.options.filter((o) => o.isCorrect).length === 1, {
     message: 'должен быть ровно один верный вариант',
     path: ['options'],
   });
 export type QuestionInput = z.input<typeof questionInput>;
+
+/**
+ * Этап 39: «Предложить пояснение» — модель предлагает, родитель правит и сохраняет сам.
+ * В модель — только вопрос и подписи вариантов.
+ */
+export const explanationDraftRequest = z.object({
+  prompt: ttsText,
+  correct: z.string().trim().min(1).max(60),
+  wrong: z.array(z.string().trim().min(1).max(60)).max(3).default([]),
+});
+export type ExplanationDraftRequest = z.input<typeof explanationDraftRequest>;
+
+export const explanationDraftResult = z.object({
+  explanation: z.string().trim().min(1).max(200),
+});
+
+export interface ExplanationDraft {
+  id: string;
+  status: 'queued' | 'processing' | 'ready' | 'failed';
+  explanation: string | null;
+}
 
 export interface QuestionOption {
   id: string;
@@ -327,6 +355,7 @@ export interface Question {
   lang: Language;
   audio: MediaRef | null;
   options: QuestionOption[];
+  explanation: string | null;
 }
 
 // ─── Карточки ────────────────────────────────────────────────────────────────
@@ -449,6 +478,8 @@ export interface KidQuestion {
   id: string;
   prompt: Speech;
   options: { id: string; imageUrl: string; isCorrect: boolean }[];
+  /** Этап 39: что сказать после верного ответа («Это кошка.» + пояснение родителя). */
+  answer?: Speech[];
 }
 
 export interface KidCard {

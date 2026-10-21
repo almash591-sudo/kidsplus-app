@@ -175,7 +175,9 @@ function QuestionRound(props: {
       });
       const phrase = praisePhrase(phrases);
       if (streak.get() % STREAK_EVERY === 0) burst(undefined, 24);
-      await Promise.all([phrase ? playSpeech(phrase) : null, sleep(PRAISE_FALLBACK_MS)]);
+      // Этап 39: за похвалой — сам ответ («Молодец! Это кошка.»), чтобы закрепить.
+      const said = [...(phrase ? [phrase] : []), ...(question.answer ?? [])];
+      await Promise.all([said.length ? playSequence(said) : null, sleep(PRAISE_FALLBACK_MS)]);
       if (alive.current) props.onCorrect();
       return;
     }

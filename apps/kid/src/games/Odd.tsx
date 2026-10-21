@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ODD_PROMPT } from '../phrases';
-import { ask, praise, retry, say, shuffled, type GameProps } from './common';
+import { afterSpeech, ask, praise, retry, shuffled, type GameProps } from './common';
 import { Pic } from './DragItem';
 import { burstAt } from './juice';
 
@@ -26,18 +26,15 @@ export function Odd({ spec, phrases, onFinish }: GameProps<'odd'>) {
     }
     setSolved(true);
     burstAt(cells.current[slot] ?? null, 16);
-    void (r.explain ? say(r.explain) : Promise.resolve()).then(() => praise(phrases));
-    setTimeout(
-      () => {
-        if (round + 1 >= spec.rounds.length) return onFinish();
-        const next = spec.rounds[round + 1]!;
-        setRound(round + 1);
-        setOrder(shuffled(next.imageIds.map((_, k) => k)));
-        setWrong([]);
-        setSolved(false);
-      },
-      r.explain ? 3800 : 1800,
-    );
+    // «Мяч лишний — остальное фрукты» — после похвалы.
+    void afterSpeech(praise(phrases, undefined, r.explain ? [r.explain] : []), 1800).then(() => {
+      if (round + 1 >= spec.rounds.length) return onFinish();
+      const next = spec.rounds[round + 1]!;
+      setRound(round + 1);
+      setOrder(shuffled(next.imageIds.map((_, k) => k)));
+      setWrong([]);
+      setSolved(false);
+    });
   };
 
   return (

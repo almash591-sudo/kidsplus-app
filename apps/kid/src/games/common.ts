@@ -41,16 +41,28 @@ export const repeatCurrentTask = () => {
   return true;
 };
 
-/** Похвала: звук успеха, искры там, где палец, радость маскота и фраза (за серию — особая). */
-export const praise = (phrases: KidPhrases, at?: { x: number; y: number }) => {
+/**
+ * Похвала: звук успеха, искры там, где палец, радость маскота и фраза (за серию — особая).
+ * answer — после похвалы сам ответ и почему (этап 39): «Пять больше, чем три».
+ */
+export const praise = (
+  phrases: KidPhrases,
+  at?: { x: number; y: number },
+  answer: string[] = [],
+) => {
   fx.success();
   const phrase = praisePhrase(phrases);
   const series = streak.get() % STREAK_EVERY === 0;
   burst(at, series ? 28 : undefined);
   cheer(series ? 'wow' : 'happy');
   wrongTimes.length = 0;
-  return playSequence([phrase ?? null]);
+  return playSequence([phrase ?? null, ...answer.map(ru)]);
 };
+
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/** Дальше — когда договорили, но не раньше min и не позже max (мс). */
+export const afterSpeech = (speech: Promise<unknown>, min: number, max = 9000) =>
+  Promise.race([Promise.all([speech, wait(min)]), wait(max)]);
 
 // ─── Реакция на ошибку (этап 30) ───────────────────────────────────────────────
 

@@ -357,6 +357,8 @@ export const quizQuestions = pgTable(
     prompt: text().notNull(),
     lang: text().notNull().default('ru'),
     promptAudioId: uuid().references(() => mediaAssets.id, { onDelete: 'set null' }),
+    /** Этап 39: пояснение после верного ответа (пишет родитель, может предложить модель). */
+    explanation: text(),
     position: integer().notNull(),
     createdAt: createdAt(),
   },
@@ -592,6 +594,27 @@ export const curriculumDrafts = pgTable(
     /** Что передаётся модели: только возраст, предметы и число недель — без имени ребёнка. */
     request: jsonb().notNull(),
     result: jsonb(),
+    error: text(),
+    attempts: integer().notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index().on(t.status)],
+);
+
+/** Этап 39: «Предложить пояснение» к вопросу квиза — очередь для worker'а (как черновик плана). */
+export const explanationDrafts = pgTable(
+  'explanation_drafts',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    familyId: uuid()
+      .notNull()
+      .references(() => families.id, { onDelete: 'cascade' }),
+    /** queued | processing | ready | failed */
+    status: text().notNull().default('queued'),
+    /** Что передаётся модели: вопрос и подписи вариантов — без данных ребёнка. */
+    request: jsonb().notNull(),
+    result: text(),
     error: text(),
     attempts: integer().notNull().default(0),
     createdAt: createdAt(),

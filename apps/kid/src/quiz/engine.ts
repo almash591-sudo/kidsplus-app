@@ -10,6 +10,8 @@ export interface QuizItem {
   options: { id: string; imageUrl: string; isCorrect: boolean }[];
   /** Для проверки по карточкам — какую карточку спрашивали (аналитика). */
   cardId?: string;
+  /** Этап 39: после верного ответа совёнок договаривает ответ («Это кошка.») — закрепить. */
+  answer?: Speech[];
 }
 
 /** Вопрос родителя к видео → вопрос экрана квиза. */
@@ -17,6 +19,7 @@ export const fromKidQuestion = (q: KidQuestion): QuizItem => ({
   id: q.id,
   prompt: [q.prompt],
   options: q.options,
+  ...(q.answer?.length ? { answer: q.answer } : {}),
 });
 
 export type Rng = () => number;
@@ -125,6 +128,20 @@ export function checkPrompt(word: Speech, immersion: boolean): Speech[] {
   ];
 }
 
+/**
+ * Ответ после верного касания (этап 39): русский набор — «Это кошка.»; иностранный —
+ * «Cat — это кошка.»; в погружении — только слово на языке набора.
+ */
+export function checkAnswer(
+  card: Pick<KidCard, 'word' | 'translation'>,
+  immersion: boolean,
+): Speech[] {
+  const { word, translation } = card;
+  if (word.lang === 'ru') return [{ text: `Это ${word.text}.`, lang: 'ru', audioUrl: null }];
+  if (immersion || !translation) return [word];
+  return [word, { text: `Это ${translation.text}.`, lang: 'ru', audioUrl: null }];
+}
+
 export function deckCheckQuestions(
   deck: readonly KidCard[],
   focus: readonly KidCard[],
@@ -146,6 +163,7 @@ export function deckCheckQuestions(
         id: `check-${target.id}`,
         cardId: target.id,
         prompt,
+        answer: checkAnswer(target, immersion),
         options: [
           { id: target.id, imageUrl: target.imageUrl, isCorrect: true },
           ...others.slice(0, 3).map((o) => ({ id: o.id, imageUrl: o.imageUrl, isCorrect: false })),

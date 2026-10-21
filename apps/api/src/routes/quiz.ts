@@ -1,6 +1,12 @@
 import { schema, type Db } from '@kidsplus/db';
-import { questionInput, type Language, type Question } from '@kidsplus/shared/api';
-import { asc, eq, inArray, max } from 'drizzle-orm';
+import {
+  explanationDraftRequest,
+  questionInput,
+  type ExplanationDraft,
+  type Language,
+  type Question,
+} from '@kidsplus/shared/api';
+import { and, asc, eq, inArray, max } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import type { z } from 'zod';
 import { requireParent } from '../auth';
@@ -8,7 +14,13 @@ import type { Ctx } from '../context';
 import { idFrom, notFound, parse } from '../lib/http';
 import { assertImages, ensureTts, loadAssets, toMediaRef } from '../services/media';
 
-const { quizQuestions, quizOptions, videoSegments } = schema;
+const { explanationDrafts, quizQuestions, quizOptions, videoSegments } = schema;
+
+const toExplanationDraft = (r: typeof explanationDrafts.$inferSelect): ExplanationDraft => ({
+  id: r.id,
+  status: r.status as ExplanationDraft['status'],
+  explanation: r.result,
+});
 
 /** Вопросы с вариантами и состоянием озвучки — в порядке добавления. */
 export async function loadQuestions(
@@ -40,6 +52,7 @@ export async function loadQuestions(
     segmentId: q.segmentId,
     prompt: q.prompt,
     lang: q.lang as Language,
+    explanation: q.explanation,
     audio:
       q.promptAudioId && assets.get(q.promptAudioId)
         ? toMediaRef(assets.get(q.promptAudioId)!)
@@ -76,6 +89,7 @@ export async function insertQuestion(
       segmentId,
       prompt: body.prompt,
       lang: body.lang,
+      explanation: body.explanation,
       promptAudioId: await ensureTts(tx, tts, body.prompt, body.lang),
       position: (last?.pos ?? -1) + 1,
     })
@@ -127,6 +141,7 @@ export function quizRoutes(app: FastifyInstance, ctx: Ctx) {
         .set({
           prompt: body.prompt,
           lang: body.lang,
+          explanation: body.explanation,
           promptAudioId: await ensureTts(tx, ctx.config.tts, body.prompt, body.lang),
         })
         .where(eq(quizQuestions.id, id))
@@ -139,6 +154,39 @@ export function quizRoutes(app: FastifyInstance, ctx: Ctx) {
     });
     return (await loadQuestions(db, eq(quizQuestions.id, id)))[0]!;
   });
+
+  /** «Предложить пояснение» (этап 39): в очередь worker'у — только вопрос и подписи. */
+  app.post(
+    '/api/parent/explanation-drafts',
+    { preHandler, config: { rateLimit: { max: 30, timeWindow: '1 hour' } } },
+    async (request, reply): Promise<ExplanationDraft> => {
+      const body = parse(explanationDraftRequest, request.body);
+      const [row] = await db
+        .insert(explanationDrafts)
+        .values({ familyId: request.parent!.familyId, request: body })
+        .returning();
+      reply.code(201);
+      return toExplanationDraft(row!);
+    },
+  );
+
+  app.get(
+    '/api/parent/explanation-drafts/:id',
+    { preHandler },
+    async (request): Promise<ExplanationDraft> => {
+      const [row] = await db
+        .select()
+        .from(explanationDrafts)
+        .where(
+          and(
+            eq(explanationDrafts.id, idFrom(request.params)),
+            eq(explanationDrafts.familyId, request.parent!.familyId),
+          ),
+        );
+      if (!row) throw notFound('пояснение не найдено');
+      return toExplanationDraft(row);
+    },
+  );
 
   app.delete('/api/parent/questions/:id', { preHandler }, async (request, reply) => {
     const id = idFrom(request.params);

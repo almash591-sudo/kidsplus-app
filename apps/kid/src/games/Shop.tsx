@@ -2,8 +2,8 @@
 // по 1, а на уровнях выше ещё по 2 и по 5 — счёт и первые шаги в сложении. Монетку с прилавка
 // можно убрать касанием.
 import { useEffect, useRef, useState } from 'react';
-import { SHOP_BUY, SHOP_TOO_MUCH, shopPrice } from '../phrases';
-import { ask, nice, praise, retry, say, type GameProps } from './common';
+import { SHOP_BUY, SHOP_TOO_MUCH, shopAnswer, shopPrice } from '../phrases';
+import { afterSpeech, ask, nice, praise, retry, say, type GameProps } from './common';
 import { Pic } from './DragItem';
 import { burstAt } from './juice';
 
@@ -47,14 +47,15 @@ export function Shop({ spec, phrases, onFinish }: GameProps<'shop'>) {
     if (total === r.price) {
       setSolved(true);
       burstAt(tag.current, 20);
-      void say(SHOP_BUY).then(() => praise(phrases));
-      setTimeout(() => {
-        if (round + 1 >= spec.rounds) return onFinish();
-        setRound(round + 1);
-        setR(shopRound(spec));
-        setTray([]);
-        setSolved(false);
-      }, 2600);
+      void afterSpeech(praise(phrases, undefined, [SHOP_BUY, shopAnswer(r.price)]), 2600).then(
+        () => {
+          if (round + 1 >= spec.rounds) return onFinish();
+          setRound(round + 1);
+          setR(shopRound(spec));
+          setTray([]);
+          setSolved(false);
+        },
+      );
     }
   };
 
