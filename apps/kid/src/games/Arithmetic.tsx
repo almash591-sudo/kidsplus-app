@@ -2,7 +2,16 @@ import { useEffect, useState } from 'react';
 import { fx } from '../fx';
 import { HOW_MANY, MINUS, PLUS, WILL_BE } from '../phrases';
 import { countOptions } from './Counting';
-import { NUMBERS, praise, retry, say, setTask, shuffled, type GameProps } from './common';
+import {
+  afterSpeech,
+  NUMBERS,
+  praise,
+  retry,
+  say,
+  setTask,
+  shuffled,
+  type GameProps,
+} from './common';
 import { Pic } from './DragItem';
 
 export interface Sum {
@@ -74,16 +83,15 @@ export function Arithmetic({ spec, phrases, onFinish }: GameProps<'arithmetic'>)
       return;
     }
     setPhase('solved');
-    void say(NUMBERS[a]!, sign, NUMBERS[b]!, WILL_BE, `${NUMBERS[answer]}!`).then(() =>
-      praise(phrases),
-    );
-    setTimeout(() => {
+    // «Два плюс три будет пять!» — после похвалы, чтобы закрепить.
+    const told = [NUMBERS[a]!, sign, NUMBERS[b]!, WILL_BE, `${NUMBERS[answer]}!`];
+    void afterSpeech(praise(phrases, undefined, told), 3000).then(() => {
       if (round + 1 >= spec.rounds) return onFinish();
       setRound(round + 1);
       setR(make());
       setWrong([]);
       setPhase('show');
-    }, 4200);
+    });
   };
 
   const things =

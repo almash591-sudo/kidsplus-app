@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { SHADOWS_PROMPT } from '../phrases';
-import { ask, nice, praise, retry, shuffled, type GameProps } from './common';
+import { SHADOWS_DONE, SHADOWS_PROMPT } from '../phrases';
+import { afterSpeech, ask, nice, praise, retry, shuffled, type GameProps } from './common';
 import { DragItem, Pic } from './DragItem';
 import { inside } from './useDrag';
 
@@ -25,11 +25,10 @@ export function Shadows({ spec, phrases, onFinish }: GameProps<'shadows'>) {
       ids={rounds[round]!}
       onWrong={() => void retry(phrases)}
       onSolved={() => {
-        void praise(phrases);
-        setTimeout(() => {
+        void afterSpeech(praise(phrases, undefined, [SHADOWS_DONE]), 1400).then(() => {
           if (round + 1 < rounds.length) setRound(round + 1);
           else onFinish();
-        }, 1400);
+        });
       }}
     />
   );

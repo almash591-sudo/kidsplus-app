@@ -1839,6 +1839,8 @@ test.describe('игры', () => {
     }
     await expectFinished(page, backend);
     expect((await spoken(page)).map((s) => s.text)).toContain('один');
+    // Этап 39: после похвалы — ответ.
+    expect((await spoken(page)).some((s) => /^Здесь \S+!$/.test(s.text))).toBe(true);
     // Этап 34: ошибки уходят на сервер — по ним растёт уровень.
     expect(backend.events.find((e) => e.type === 'interactive_complete')?.payload).toMatchObject({
       kind: 'counting',
@@ -1883,6 +1885,10 @@ test.describe('игры', () => {
     }
     await expectFinished(page, backend);
     expect((await spoken(page)).some((s) => /^Где (половина )?\S/.test(s.text))).toBe(true);
+    // Этап 39: «Сейчас три часа. Большая стрелка наверху…»
+    expect((await spoken(page)).some((s) => /^Большая стрелка (наверху|внизу)/.test(s.text))).toBe(
+      true,
+    );
   });
 
   test('магазин (этап 34): монетки на сумму ценника, перебор — заново', async ({
@@ -1910,6 +1916,7 @@ test.describe('игры', () => {
       await page.waitForTimeout(2800);
     }
     await expectFinished(page, backend);
+    expect((await spoken(page)).some((s) => /^Положили ровно /.test(s.text))).toBe(true);
   });
 
   test('совёнок-робот (этап 34): путь стрелками, «Поехали», камни обходит', async ({

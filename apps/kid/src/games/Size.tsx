@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { SIZE_PROMPT } from '../phrases';
-import { ask, nice, praise, retry, shuffled, type GameProps } from './common';
+import { SIZE_DONE, SIZE_PROMPT } from '../phrases';
+import { afterSpeech, ask, nice, praise, retry, shuffled, type GameProps } from './common';
 import { DragItem, Pic } from './DragItem';
 import { inside } from './useDrag';
 
@@ -20,11 +20,10 @@ export function Size({ spec, phrases, onFinish }: GameProps<'size'>) {
       count={spec.count}
       onWrong={() => void retry(phrases)}
       onSolved={() => {
-        void praise(phrases);
-        setTimeout(() => {
+        void afterSpeech(praise(phrases, undefined, [SIZE_DONE]), 1600).then(() => {
           if (round + 1 < spec.imageIds.length) setRound(round + 1);
           else onFinish();
-        }, 1600);
+        });
       }}
     />
   );

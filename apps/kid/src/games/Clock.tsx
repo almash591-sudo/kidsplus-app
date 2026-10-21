@@ -1,8 +1,8 @@
 // «Который час?» (этап 34): звучит время — «три часа» или «половина пятого», — ребёнок находит
 // часы со стрелками среди нескольких. Часовая стрелка на половине стоит между цифрами, как в жизни.
 import { useEffect, useRef, useState } from 'react';
-import { clockFind } from '../phrases';
-import { ask, praise, retry, shuffled, type GameProps } from './common';
+import { clockAnswer, clockFind } from '../phrases';
+import { afterSpeech, ask, praise, retry, shuffled, type GameProps } from './common';
 import { burstAt } from './juice';
 
 type Time = { h: number; half: boolean };
@@ -94,13 +94,14 @@ export function Clock({ spec, phrases, onFinish }: GameProps<'clock'>) {
     }
     setSolved(true);
     burstAt(buttons.current[i] ?? null, 16);
-    void praise(phrases);
-    setTimeout(() => {
-      if (round + 1 >= spec.rounds) return onFinish();
-      setRound(round + 1);
-      setR(clockRound(spec));
-      setSolved(false);
-    }, 2200);
+    void afterSpeech(praise(phrases, undefined, clockAnswer(r.target.h, r.target.half)), 2200).then(
+      () => {
+        if (round + 1 >= spec.rounds) return onFinish();
+        setRound(round + 1);
+        setR(clockRound(spec));
+        setSolved(false);
+      },
+    );
   };
 
   const answer = r.options.findIndex((o) => same(o, r.target));
