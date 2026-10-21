@@ -36,7 +36,9 @@ import { Sequence } from './Sequence';
 import { Shadows } from './Shadows';
 import { Shapes } from './Shapes';
 import { Size } from './Size';
-import { Word } from './Word';
+import { RiddleGame } from './Riddle';
+import { Sudoku } from './Sudoku';
+import { SyllableWord, Word } from './Word';
 import { Beats } from './music/Beats';
 import { LetterGame } from './letters/LetterGame';
 import { MusicChoice } from './music/Choice';
@@ -74,7 +76,7 @@ const BACKDROPS: [Backdrop, GameKind[]][] = [
       'orchestra',
     ],
   ],
-  ['letters', ['word', 'letter', 'syllable', 'firstLetter', 'readWord', 'tracing']],
+  ['letters', ['word', 'syllableWord', 'letter', 'syllable', 'firstLetter', 'readWord', 'tracing']],
   ['math', ['counting', 'arithmetic', 'compare', 'size', 'clock', 'shop', 'pattern']],
   ['cosmos', ['space']],
 ];
@@ -94,7 +96,15 @@ export const backdropOf = (kind: GameKind): Backdrop | undefined =>
     : (BACKDROPS.find(([, kinds]) => kinds.includes(kind))?.[0] ?? 'games');
 
 /** Игры, где совёнок — герой на поле. */
-const OWL_INSIDE: readonly GameKind[] = ['robot', 'space', 'fishing', 'flight', 'builder'];
+const OWL_INSIDE: readonly GameKind[] = [
+  'robot',
+  'space',
+  'fishing',
+  'flight',
+  'builder',
+  // Загадки (этап 41): совёнок загадывает посреди экрана.
+  'riddle',
+];
 
 /** Игры без своего задания: как играть — звучит при входе. */
 const SILENT: readonly GameKind[] = ['drawing', 'memory', 'puzzle'];
@@ -145,6 +155,9 @@ const GAMES: { [K in GameKind]: ComponentType<GameProps<K>> } = {
   fishing: Fishing,
   flight: Flight,
   builder: Builder,
+  syllableWord: SyllableWord,
+  riddle: RiddleGame,
+  sudoku: Sudoku,
 };
 
 /** Экран игры: сама игра, кнопка «домой», в конце — звёздочка и следующий пункт. */

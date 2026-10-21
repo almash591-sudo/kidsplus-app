@@ -1676,3 +1676,180 @@
     align-self: start;
   }
 }
+
+/* ─── Этап 41: «Слово из слогов», «Загадки», «Судоку-малыш» ─── */
+
+.game.word.syllables .word-slot {
+  width: auto;
+  min-width: min(20vw, 13vh);
+  padding: 0 6px;
+  aspect-ratio: auto;
+  height: min(16vw, 10vh);
+  font-size: min(9vw, 6vh);
+}
+.game.word.syllables .word-tile {
+  width: auto;
+  min-width: min(20vw, 13vh);
+  padding: 0 10px;
+  aspect-ratio: auto;
+  height: min(17vw, 11vh);
+  font-size: min(8vw, 5.4vh);
+}
+
+.game.riddle {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+.riddle-owl {
+  position: relative;
+  flex: none;
+  width: min(44vw, 26vh);
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.riddle-owl img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+.riddle-bubble {
+  position: absolute;
+  top: 0;
+  right: -18%;
+  display: grid;
+  place-items: center;
+  width: 44%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 4px 0 #e8d9bd;
+  color: #7c3aed;
+  font-size: min(9vw, 5.5vh);
+  font-weight: 900;
+  animation: bounce 1.6s ease-in-out infinite;
+}
+.riddle-grid {
+  height: auto;
+  max-width: min(100%, 60vh);
+  align-content: center;
+}
+.riddle-grid.n3 {
+  grid-template-columns: repeat(3, 1fr);
+  max-width: 100%;
+}
+.riddle-grid .odd-cell {
+  aspect-ratio: 1;
+}
+.odd-cell.answer {
+  background: #d3f9d8;
+  box-shadow: 0 6px 0 #8ce99a;
+  animation: bounce 0.6s ease-out 2;
+}
+@media (orientation: landscape) {
+  .game.riddle {
+    flex-direction: row;
+  }
+  .riddle-grid {
+    height: auto;
+  }
+}
+
+.game.sudoku {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+}
+.sudoku-grid {
+  --cell: min(calc((100vw - 48px) / var(--n)), calc(56vh / var(--n)), 140px);
+  display: grid;
+  grid-template-columns: repeat(var(--n), var(--cell));
+  grid-auto-rows: var(--cell);
+  gap: 6px;
+  padding: 8px;
+  border-radius: 24px;
+  background: rgb(255 255 255 / 0.55);
+}
+.sudoku-cell {
+  display: grid;
+  place-items: center;
+  padding: 12%;
+  border: 0;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 4px 0 #e8d9bd;
+}
+.sudoku-cell.hole {
+  background: rgb(255 255 255 / 0.5);
+  box-shadow: inset 0 0 0 3px rgb(201 164 106 / 0.6);
+}
+.sudoku-cell.target {
+  box-shadow:
+    inset 0 0 0 4px #f59e0b,
+    0 0 0 4px rgb(245 158 11 / 0.25);
+  animation: pulse-soft 1.4s ease-in-out infinite;
+}
+.sudoku-cell.filled {
+  background: #fff7d6;
+  box-shadow: 0 4px 0 #f5c451;
+}
+.sudoku-cell.filled img {
+  animation: pop-in 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+.sudoku-cell img,
+.sudoku-pick img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+.sudoku-palette {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+.sudoku-pick {
+  display: grid;
+  place-items: center;
+  width: min(19vw, 12vh, 110px);
+  aspect-ratio: 1;
+  padding: 10%;
+  border: 0;
+  border-radius: 20px;
+  background: #fde68a;
+  box-shadow: 0 5px 0 #f59e0b;
+}
+.sudoku-pick:active {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 #f59e0b;
+}
+@keyframes pulse-soft {
+  50% {
+    transform: scale(1.04);
+  }
+}
+@media (orientation: landscape) {
+  .game.sudoku {
+    flex-direction: row;
+  }
+  .sudoku-grid {
+    --cell: min(calc((100vh - 120px) / var(--n)), 120px);
+  }
+  .sudoku-palette {
+    flex-direction: column;
+  }
+  .sudoku-pick {
+    width: min(14vh, 90px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sudoku-cell.target,
+  .riddle-bubble {
+    animation: none;
+  }
+}
