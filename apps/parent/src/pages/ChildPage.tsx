@@ -124,8 +124,8 @@ export function ChildPage() {
         title="Распорядок"
         rows={[
           {
-            to: '/now',
-            label: 'Сейчас подробно',
+            to: `/routine?child=${child.id}`,
+            label: 'Сейчас и пульт',
             color: '#007aff',
             icon: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2',
           },

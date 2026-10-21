@@ -1,4 +1,5 @@
 // «Ещё» (Кабинет 2.0): всё, что нужно реже, — сгруппированными списками, как «Настройки» iPhone.
+// Этап 40: «Подробно сейчас» ушло в «Распорядок»; группы — ребёнок, связь, телефоны и аккаунт.
 import { Card, Stack, Text, UnstyledButton } from '@mantine/core';
 import { Link } from 'react-router';
 import { useMe } from '../queries';
@@ -9,25 +10,13 @@ const GROUPS: {
   items: { to: string; label: string; color: string; icon: string; admin?: boolean }[];
 }[] = [
   {
-    title: 'Дети',
+    title: 'Ребёнок',
     items: [
       {
-        to: '/now',
-        label: 'Подробно сейчас',
-        color: '#007aff',
-        icon: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2',
-      },
-      {
-        to: '/captures',
-        label: 'Фото и видео',
-        color: '#ff9500',
-        icon: 'M3 5h18v14H3zM8 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM21 16l-5-5-9 8',
-      },
-      {
-        to: '/calls',
-        label: 'Звонки',
-        color: '#34c759',
-        icon: 'M6.5 4h3l1.6 4.2-2 1.3a11 11 0 0 0 5.4 5.4l1.3-2L20 14.5v3a2.5 2.5 0 0 1-2.5 2.5A14.5 14.5 0 0 1 4 6.5 2.5 2.5 0 0 1 6.5 4z',
+        to: '/children',
+        label: 'Профили детей',
+        color: '#ff2d55',
+        icon: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20a8 8 0 0 1 16 0',
       },
       {
         to: '/mom-voice',
@@ -42,11 +31,22 @@ const GROUPS: {
         color: '#af52de',
         icon: 'M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3',
       },
+    ],
+  },
+  {
+    title: 'Связь',
+    items: [
       {
-        to: '/children',
-        label: 'Профили детей',
-        color: '#ff2d55',
-        icon: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20a8 8 0 0 1 16 0',
+        to: '/captures',
+        label: 'Фото и видео',
+        color: '#ff9500',
+        icon: 'M3 5h18v14H3zM8 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM21 16l-5-5-9 8',
+      },
+      {
+        to: '/calls',
+        label: 'Звонки',
+        color: '#34c759',
+        icon: 'M6.5 4h3l1.6 4.2-2 1.3a11 11 0 0 0 5.4 5.4l1.3-2L20 14.5v3a2.5 2.5 0 0 1-2.5 2.5A14.5 14.5 0 0 1 4 6.5 2.5 2.5 0 0 1 6.5 4z',
       },
     ],
   },
