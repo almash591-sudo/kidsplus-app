@@ -2760,6 +2760,54 @@ test.describe('новые игры', () => {
     expect(said).toContain('Ура, сундук с жемчугом!');
   });
 
+  test('найди отличия (этап 43): промах, лупа-подсказка, все отличия на двух картинках, финиш', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(180_000);
+    backend.items = [
+      game(1, { kind: 'differences', scenes: ['sea', 'meadow'], count: 3, rounds: 2, hint: true }),
+    ];
+    await openGame(page);
+    const g = page.getByTestId('game-differences');
+    await expect(g).toHaveAttribute('data-phase', 'play', { timeout: 8000 });
+    await page.waitForTimeout(1200);
+    await shot(page, 'diff-start');
+    const read = async <T>(attr: string) => JSON.parse((await g.getAttribute(attr)) ?? 'null') as T;
+    // Промах — «Здесь одинаково», отличие не засчитано.
+    const same = await read<{ x: number; y: number }>('data-same');
+    await page.mouse.click(same.x, same.y);
+    await expect
+      .poll(async () => (await spoken(page)).some((x) => x.text === 'Здесь одинаково. Ищи ещё!'))
+      .toBe(true);
+    await expect(g).toHaveAttribute('data-found', '0');
+    // Долго не находим — прилетает лупа.
+    await expect(g).not.toHaveAttribute('data-hint', '-1', { timeout: 30_000 });
+    await page.waitForTimeout(1200);
+    await shot(page, 'diff-lens');
+    for (let round = 0; round < 2; round++) {
+      await expect(g).toHaveAttribute('data-round', String(round), { timeout: 15_000 });
+      await expect(g).toHaveAttribute('data-phase', 'play', { timeout: 8000 });
+      for (let k = 0; k < 3; k++) {
+        await expect.poll(async () => (await read<unknown[]>('data-diffs'))?.length).toBe(3 - k);
+        const [d] = await read<{ x: number; y: number }[]>('data-diffs');
+        await page.mouse.click(d!.x, d!.y);
+        await expect(g).toHaveAttribute('data-found', String(k + 1));
+        if (round === 0 && k === 1) {
+          await page.waitForTimeout(500);
+          await shot(page, 'diff-found');
+        }
+      }
+    }
+    await expect(g).toHaveAttribute('data-phase', 'finish', { timeout: 10_000 });
+    await expectFinished(page, backend);
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain('Найди отличия! Картинки почти одинаковые. Нажми, где по-другому.');
+    expect(said).toContain('Посмотри сюда, где лупа!');
+    expect(said).toContain('Осталось два отличия.');
+    expect(said).toContain('Все отличия нашли! Вот новая картинка.');
+  });
+
   test('гонки (этап 43): светофор, ворота с ответом (сначала не те), обгон и финиш', async ({
     page,
     backend,

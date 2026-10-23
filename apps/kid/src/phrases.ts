@@ -457,6 +457,39 @@ export const racePhrases = (quiz: 'colors' | 'numbers' | 'letters') => [
       : NUMBERS.slice(1, 11).flatMap((_, i) => [raceToNumber(i + 1), raceIsNumber(i + 1)])),
 ];
 
+// ─── «Найди отличия» (этап 43) ───
+export const DIFF_PROMPT = 'Найди отличия! Картинки почти одинаковые. Нажми, где по-другому.';
+export const DIFF_NEXT = 'Все отличия нашли! Вот новая картинка.';
+export const DIFF_SAME = 'Здесь одинаково. Ищи ещё!';
+export const DIFF_HINT = 'Посмотри сюда, где лупа!';
+/** Что нашли — по виду отличия. */
+export const DIFF_FOUND = {
+  gone: 'Здесь чего-то не хватает!',
+  color: 'Другой цвет!',
+  swap: 'Здесь другая картинка!',
+  flip: 'Смотрит в другую сторону!',
+  big: 'Здесь больше!',
+} as const;
+const LEFT = [
+  '',
+  'одно отличие',
+  'два отличия',
+  'три отличия',
+  'четыре отличия',
+  'пять отличий',
+  'шесть отличий',
+];
+/** «Осталось два отличия.» */
+export const diffLeft = (n: number) => `Осталось ${LEFT[n]}.`;
+export const diffPhrases = () => [
+  DIFF_PROMPT,
+  DIFF_NEXT,
+  DIFF_SAME,
+  DIFF_HINT,
+  ...Object.values(DIFF_FOUND),
+  ...LEFT.slice(1).map((_, i) => diffLeft(i + 1)),
+];
+
 /** Как играть — для игр без своего задания и для «ушка», если задание ещё не звучало. */
 export const GAME_INTRO: Record<GameKind, string> = {
   drawing: 'Рисуй пальчиком! Краски — внизу.',
@@ -512,6 +545,7 @@ export const GAME_INTRO: Record<GameKind, string> = {
   dive: DIVE_PROMPT,
   rocket: ROCKET_PROMPT,
   race: RACE_PROMPT,
+  differences: DIFF_PROMPT,
 };
 
 /** Подсказки на экранах выбора — для тех, кто не читает. */
@@ -676,6 +710,8 @@ export function gamePhrases(spec: GameSpec): string[] {
       return rocketPhrases(spec.quiz);
     case 'race':
       return racePhrases(spec.quiz);
+    case 'differences':
+      return diffPhrases();
     case 'drawing':
     case 'puzzle':
     case 'memory':

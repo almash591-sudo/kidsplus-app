@@ -56,6 +56,7 @@ const SPECS = [
   { kind: 'dive', task: 'colors', max: 5, jellies: 'few', speed: 'slow', rounds: 3 },
   { kind: 'rocket', parts: 3, memory: false, quiz: 'sums', max: 5, asteroids: 'few', rounds: 2 },
   { kind: 'race', quiz: 'numbers', max: 5, gates: 4, rivals: true, cones: 'few', speed: 'slow' },
+  { kind: 'differences', scenes: ['sea'], count: 3, rounds: 2, hint: true },
 ] as const;
 
 describe('уровни сложности (этап 34)', () => {
@@ -147,5 +148,16 @@ describe('игры этапа 41', () => {
     expect(specAtLevel(race, 2)).toMatchObject({ max: 5, gates: 5, cones: 'many', speed: 'slow' });
     expect(specAtLevel(race, 3)).toMatchObject({ max: 7, gates: 6, speed: 'normal' });
     expect(gameSpec.safeParse({ kind: 'race', max: 5, gates: 11 }).success).toBe(false);
+  });
+
+  it('найди отличия (этап 43): больше отличий, потом без лупы и больше картинок', () => {
+    const diff = gameSpec.parse({ kind: 'differences', count: 3, rounds: 1 }) as GameSpec;
+    expect(diff).toMatchObject({ scenes: ['meadow', 'forest', 'sea', 'space'], hint: true });
+    expect(specAtLevel(diff, 2)).toMatchObject({ count: 4, hint: false, rounds: 1 });
+    expect(specAtLevel(diff, 4)).toMatchObject({ count: 6, rounds: 3 });
+    expect(gameSpec.safeParse({ kind: 'differences', count: 8, rounds: 1 }).success).toBe(false);
+    expect(
+      gameSpec.safeParse({ kind: 'differences', scenes: [], count: 3, rounds: 1 }).success,
+    ).toBe(false);
   });
 });

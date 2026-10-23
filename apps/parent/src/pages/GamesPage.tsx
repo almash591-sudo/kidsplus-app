@@ -115,6 +115,8 @@ export function gameSummary(spec: GameSpec): string {
       return `${{ colors: 'цвета и счёт', numbers: 'цифры до ' + spec.max, mixed: 'цвета и цифры до ' + spec.max }[spec.task]} · заданий: ${spec.rounds}`;
     case 'rocket':
       return `деталей: ${spec.parts}${spec.memory ? ' · по памяти' : ''} · ${{ numbers: 'цифры', sums: 'сложение', letters: 'буквы' }[spec.quiz]} до ${spec.max} · полётов: ${spec.rounds}`;
+    case 'differences':
+      return `отличий: ${spec.count} · картинок: ${spec.rounds}${spec.hint ? ' · с лупой' : ''}`;
     case 'race':
       return `${{ colors: 'цвета', numbers: 'цифры до ' + spec.max, letters: 'буквы (' + spec.max + ')' }[spec.quiz]} · ворот: ${spec.gates}${spec.rivals ? ' · с соперниками' : ''}`;
     case 'flight':

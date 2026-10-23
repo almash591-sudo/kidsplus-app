@@ -1,6 +1,27 @@
 import { gameSpec, type GameSpec } from '@kidsplus/shared/games';
 import { describe, expect, it } from 'vitest';
-import { diveCatch, divePhrases, gamePhrases, rocketPhrases, rocketWrongColor } from '../phrases';
+import {
+  DIFF_FOUND,
+  diffLeft,
+  diveCatch,
+  divePhrases,
+  gamePhrases,
+  rocketPhrases,
+  rocketWrongColor,
+} from '../phrases';
+import { ASPECT } from './diffAspect';
+import {
+  BACKDROP,
+  H,
+  hitDiff,
+  look,
+  pickDiffs,
+  SCENES,
+  sceneOrder,
+  spot,
+  spritesOf,
+  W,
+} from './diffLogic';
 import type { SpecOf } from './common';
 import {
   diveTasks,
@@ -253,5 +274,68 @@ describe('гонки (этап 43)', () => {
       }
     }
     expect(gamePhrases(race())).toContain('Проезжай в синие ворота!');
+  });
+});
+
+describe('найди отличия (этап 43)', () => {
+  const all = Object.keys(SCENES) as (keyof typeof SCENES)[];
+
+  it('у всех предметов есть картинка и пропорции, предметы в пределах картинки', () => {
+    for (const sc of all) {
+      for (const s of spritesOf(sc).filter((s) => s !== BACKDROP[sc]))
+        expect(ASPECT[s], s).toBeGreaterThan(0);
+      for (const t of SCENES[sc]) {
+        expect(t.x - t.w / 2, t.s).toBeGreaterThanOrEqual(0);
+        expect(t.x + t.w / 2, t.s).toBeLessThanOrEqual(W);
+        expect(t.y, t.s).toBeLessThanOrEqual(H);
+        expect(t.y - t.w * ASPECT[t.s]!, t.s).toBeGreaterThanOrEqual(0);
+      }
+    }
+  });
+
+  it('отличия: столько, сколько просили, не налезают, виды разные; каждое — на одной картинке', () => {
+    for (const sc of all) {
+      for (let n = 0; n < 30; n++) {
+        const diffs = pickDiffs(SCENES[sc], 7);
+        expect(diffs.length, sc).toBeGreaterThanOrEqual(5);
+        const small = pickDiffs(SCENES[sc], 3);
+        expect(small).toHaveLength(3);
+        expect(new Set(small.map((d) => d.kind)).size).toBe(3);
+        for (const d of diffs) {
+          const t = SCENES[sc][d.thing]!;
+          const other = (1 - d.side) as 0 | 1;
+          expect(look(t, d.thing, diffs, other)).toEqual({ s: t.s, w: t.w, mirror: !!t.mirror });
+          const changed = look(t, d.thing, diffs, d.side);
+          if (d.kind === 'gone') expect(changed).toBeNull();
+          else expect(changed).not.toEqual(look(t, d.thing, diffs, other));
+          if (d.kind === 'color' || d.kind === 'swap') expect(d.alt).not.toBe(t.s);
+        }
+      }
+    }
+  });
+
+  it('касание: попадает в ненайденное отличие рядом, мимо и найденное — нет', () => {
+    const scene = SCENES.sea;
+    const diffs = pickDiffs(scene, 3);
+    const p = spot(scene[diffs[0]!.thing]!, diffs[0]);
+    expect(hitDiff(scene, diffs, new Set(), p.x + 20, p.y - 20)).toBe(0);
+    expect(hitDiff(scene, diffs, new Set([0]), p.x, p.y)).not.toBe(0);
+    expect(hitDiff(scene, diffs, new Set(), -500, -500)).toBe(-1);
+  });
+
+  it('картинки по кругу без повторов подряд; фразы — в списке озвучки', () => {
+    for (let n = 0; n < 20; n++) {
+      const order = sceneOrder(['sea', 'space'], 4);
+      expect(order).toHaveLength(4);
+      for (let i = 1; i < 4; i++) expect(order[i]).not.toBe(order[i - 1]);
+    }
+    expect(sceneOrder(['forest'], 3)).toEqual(['forest', 'forest', 'forest']);
+    const phrases = gamePhrases(
+      gameSpec.parse({ kind: 'differences', count: 7, rounds: 1 }) as GameSpec,
+    );
+    for (const k of Object.values(DIFF_FOUND)) expect(phrases).toContain(k);
+    for (let i = 1; i <= 6; i++) expect(phrases).toContain(diffLeft(i));
+    expect(diffLeft(2)).toBe('Осталось два отличия.');
+    expect(diffLeft(5)).toBe('Осталось пять отличий.');
   });
 });

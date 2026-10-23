@@ -2166,3 +2166,46 @@
 .race-flag.miss {
   background: #fb923c;
 }
+
+/* ─── «Найди отличия» (этап 43) ─── */
+.game.differences {
+  padding: 0;
+  inset: 0;
+  background: #bfe6ff;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.diff-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+/* Найденные отличия внизу: зелёный кружок — нашли. */
+.diff-marks {
+  position: absolute;
+  bottom: max(10px, env(safe-area-inset-bottom));
+  left: 50%;
+  translate: -50% 0;
+  display: flex;
+  gap: 8px;
+  pointer-events: none;
+}
+.diff-mark {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.7);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.3);
+  transition:
+    background 0.3s,
+    scale 0.3s;
+}
+.diff-mark.on {
+  background: #22c55e;
+  scale: 1.25;
+}
