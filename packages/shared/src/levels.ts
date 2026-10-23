@@ -141,6 +141,14 @@ export function specAtLevel(spec: GameSpec, level: number): GameSpec {
         speed: speeds[clamp(speeds.indexOf(spec.speed) + Math.max(0, up - 1), 0, 2)]!,
       };
     }
+    case 'differences':
+      // Больше отличий, со второго шага — без лупы, с третьего — больше картинок.
+      return {
+        ...spec,
+        count: clamp(spec.count + up, 2, 7),
+        hint: spec.hint && up < 1,
+        rounds: clamp(spec.rounds + Math.max(0, up - 1), 1, 4),
+      };
     case 'robot':
       return {
         ...spec,

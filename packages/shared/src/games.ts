@@ -109,6 +109,10 @@ const picWord = z.object({
 const choices = z.number().int().min(2).max(4);
 const letterRounds = z.number().int().min(2).max(12);
 
+/** Картинки «Найди отличия» (этап 43). */
+export const DIFF_SCENES = ['meadow', 'forest', 'sea', 'space'] as const;
+export type DiffScene = (typeof DIFF_SCENES)[number];
+
 export const gameSpec = z.discriminatedUnion('kind', [
   /** Рисовалка: кисть, цвета, наклейки. */
   z.object({
@@ -581,6 +585,23 @@ export const gameSpec = z.discriminatedUnion('kind', [
     cones: z.enum(['none', 'few', 'many']).default('few'),
     speed: z.enum(['slow', 'normal', 'fast']).default('slow'),
   }),
+  /**
+   * Найди отличия (этап 43): две почти одинаковые живые картинки (полянка, лес, море, космос) —
+   * ребёнок нажимает, где по-другому: чего-то нет, другой цвет, другая картинка, смотрит в другую
+   * сторону, больше. count — отличий на картинке, rounds — картинок за игру; hint — если долго
+   * не находит, лупа подсказывает, где искать.
+   */
+  z.object({
+    kind: z.literal('differences'),
+    scenes: z
+      .array(z.enum(DIFF_SCENES))
+      .min(1)
+      .max(DIFF_SCENES.length)
+      .default([...DIFF_SCENES]),
+    count: z.number().int().min(2).max(7),
+    rounds: z.number().int().min(1).max(4),
+    hint: z.boolean().default(true),
+  }),
 ]);
 
 /** Цвета рыбок «Подводного плавания» (этап 43). */
@@ -675,6 +696,7 @@ export const GAME_KINDS: Record<GameKind, string> = {
   dive: 'Подводное плавание',
   rocket: 'Ракета: собери и лети',
   race: 'Гонки',
+  differences: 'Найди отличия',
 };
 
 /** id картинок в параметрах игры — для проверки, что они есть и готовы. */
@@ -740,6 +762,7 @@ export function gameImageIds(g: GameSpec): string[] {
     case 'dive':
     case 'rocket':
     case 'race':
+    case 'differences':
       return [];
   }
 }
