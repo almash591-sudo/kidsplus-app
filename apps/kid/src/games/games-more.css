@@ -2066,3 +2066,37 @@
   filter: none;
   scale: 1.15;
 }
+
+/* ─── «Ракета: собери и лети» (этап 43) ─── */
+.game.rocket {
+  padding: 0;
+  inset: 0;
+  background: #0b1030;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.rocket-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+/* Задание полёта: «5», «М», «2 + 3 = ?». */
+.rocket-task {
+  position: absolute;
+  top: max(14px, env(safe-area-inset-top));
+  left: 50%;
+  translate: -50% 0;
+  padding: 6px 22px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.9);
+  box-shadow: 0 4px 18px rgb(120 160 255 / 0.5);
+  font: 900 34px var(--font);
+  color: #1d2346;
+  pointer-events: none;
+  white-space: nowrap;
+}

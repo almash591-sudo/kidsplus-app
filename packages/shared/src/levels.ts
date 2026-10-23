@@ -117,6 +117,18 @@ export function specAtLevel(spec: GameSpec, level: number): GameSpec {
         rounds: clamp(spec.rounds + up, 2, 8),
       };
     }
+    case 'rocket': {
+      // Больше деталей, ответы до большего, больше камней, со второго шага — по памяти.
+      const asteroids = ['none', 'few', 'many'] as const;
+      return {
+        ...spec,
+        parts: clamp(spec.parts + up, 3, 5),
+        memory: up >= 2 || spec.memory,
+        max: clamp(spec.max + 2 * up, 3, 10),
+        asteroids: asteroids[clamp(asteroids.indexOf(spec.asteroids) + up, 0, 2)]!,
+        rounds: clamp(spec.rounds + up, 1, 5),
+      };
+    }
     case 'robot':
       return {
         ...spec,

@@ -113,6 +113,8 @@ export function gameSummary(spec: GameSpec): string {
       return `${spec.mode === 'letters' ? `буквы (${spec.max})` : spec.mode === 'sums' ? `примеры до ${spec.max}` : `цифры до ${spec.max}`} · рыбок: ${spec.fish} · раундов: ${spec.rounds}`;
     case 'dive':
       return `${{ colors: 'цвета и счёт', numbers: 'цифры до ' + spec.max, mixed: 'цвета и цифры до ' + spec.max }[spec.task]} · заданий: ${spec.rounds}`;
+    case 'rocket':
+      return `деталей: ${spec.parts}${spec.memory ? ' · по памяти' : ''} · ${{ numbers: 'цифры', sums: 'сложение', letters: 'буквы' }[spec.quiz]} до ${spec.max} · полётов: ${spec.rounds}`;
     case 'flight':
       return `звёздочек: ${spec.stars} · тучки: ${{ none: 'нет', few: 'немного', many: 'много' }[spec.clouds]}`;
     case 'builder':

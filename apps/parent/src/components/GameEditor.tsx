@@ -242,6 +242,15 @@ const DEFAULTS: { [K in GameKind]: Extract<GameSpec, { kind: K }> } = {
   tangram: { kind: 'tangram', figures: ['house', 'tree', 'boat'], outline: true },
   colorNumbers: { kind: 'colorNumbers', pictures: ['sun', 'house'], hint: true },
   dive: { kind: 'dive', task: 'colors', max: 5, jellies: 'few', speed: 'slow', rounds: 3 },
+  rocket: {
+    kind: 'rocket',
+    parts: 3,
+    memory: false,
+    quiz: 'numbers',
+    max: 5,
+    asteroids: 'few',
+    rounds: 2,
+  },
 };
 
 /** Число из NumberInput (пустое поле — минимум). */
@@ -1876,6 +1885,64 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
             Ребёнок ведёт батискаф пальцем и ловит рыбок: «три жёлтые рыбки» (до пяти) или «рыбку с
             цифрой пять». Медуза только отталкивает. Сложность растёт сама: цифры больше, медуз
             больше, потом задания вперемешку.
+          </Text>
+        </Stack>
+      );
+    case 'rocket':
+      return (
+        <Stack gap="xs">
+          <Group grow>
+            <NumberInput
+              label="Деталей ракеты"
+              min={3}
+              max={5}
+              value={spec.parts}
+              onChange={(v) => onChange({ ...spec, parts: num(v, 3) })}
+            />
+            <NumberInput
+              label="Полётов"
+              min={1}
+              max={5}
+              value={spec.rounds}
+              onChange={(v) => onChange({ ...spec, rounds: num(v, 2) })}
+            />
+          </Group>
+          <Switch
+            label="По памяти: чертёж прячется (подсмотреть можно)"
+            checked={spec.memory}
+            onChange={(e) => onChange({ ...spec, memory: e.currentTarget.checked })}
+          />
+          <Text size="sm">На планетах</Text>
+          <SegmentedControl
+            data={[
+              { value: 'numbers', label: 'Цифры' },
+              { value: 'sums', label: 'Сложение' },
+              { value: 'letters', label: 'Буквы' },
+            ]}
+            value={spec.quiz}
+            onChange={(v) => onChange({ ...spec, quiz: v as 'numbers' | 'sums' | 'letters' })}
+          />
+          <NumberInput
+            label={spec.quiz === 'letters' ? 'Сколько первых букв' : 'Ответы до'}
+            min={3}
+            max={10}
+            value={spec.max}
+            onChange={(v) => onChange({ ...spec, max: num(v, 5) })}
+          />
+          <Text size="sm">Камни в космосе</Text>
+          <SegmentedControl
+            data={[
+              { value: 'none', label: 'Нет' },
+              { value: 'few', label: 'Немного' },
+              { value: 'many', label: 'Много' },
+            ]}
+            value={spec.asteroids}
+            onChange={(v) => onChange({ ...spec, asteroids: v as 'none' | 'few' | 'many' })}
+          />
+          <Text size="xs" c="dimmed">
+            Сначала ребёнок собирает ракету по цветному чертежу, потом летит и ведёт её пальцем к
+            планете с ответом. Буквы: {FISHING_LETTERS.slice(0, spec.max).join(' ')}. Сложность
+            растёт сама: больше деталей, по памяти, ответы до большего, больше камней.
           </Text>
         </Stack>
       );

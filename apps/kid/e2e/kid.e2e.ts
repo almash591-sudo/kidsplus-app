@@ -2760,6 +2760,127 @@ test.describe('новые игры', () => {
     expect(said).toContain('Ура, сундук с жемчугом!');
   });
 
+  test('ракета (этап 43): сборка по чертежу, отсчёт, полёт к планете с ответом и посадка', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(240_000);
+    backend.items = [
+      game(1, {
+        kind: 'rocket',
+        parts: 4,
+        memory: false,
+        quiz: 'sums',
+        max: 5,
+        asteroids: 'none',
+        rounds: 2,
+      }),
+    ];
+    await openGame(page);
+    const g = page.getByTestId('game-rocket');
+    await expect(g).toHaveAttribute('data-phase', 'build');
+    type Part = { x: number; y: number; part: string; good: boolean };
+    const tray = async (): Promise<Part[]> => {
+      await expect.poll(async () => (await g.getAttribute('data-tray')) !== null).toBe(true);
+      return JSON.parse((await g.getAttribute('data-tray'))!);
+    };
+    const drop = async () =>
+      (await g.getAttribute('data-drop'))!.split(',').map(Number) as [number, number];
+    const drag = async (p: Part) => {
+      const [dx, dy] = await drop();
+      await page.mouse.move(p.x, p.y);
+      await page.mouse.down();
+      await page.mouse.move((p.x + dx) / 2, (p.y + dy) / 2, { steps: 4 });
+      await page.mouse.move(dx, dy, { steps: 4 });
+      await page.mouse.up();
+      await page.waitForTimeout(450);
+    };
+    await page.waitForTimeout(1500);
+    await shot(page, 'rocket-build');
+    // Не того цвета — не встаёт: «Нужен …» / «Нужны …».
+    await drag((await tray()).find((p) => !p.good)!);
+    // Фраза — после «Попробуй ещё.», поэтому ждём подольше.
+    await expect
+      .poll(async () => (await spoken(page)).some((x) => /^Нуж(ны|ен) /.test(x.text)), {
+        timeout: 12_000,
+      })
+      .toBe(true);
+    await page.waitForTimeout(1200);
+    for (let i = 0; i < 8; i++) {
+      const good = (await tray()).filter((p) => p.good);
+      if (!good.length) break;
+      await drag(good[0]!);
+    }
+    // Отсчёт → старт → гиперпрыжок идут сами, по времени; под нагрузкой фазу можно и проскочить.
+    await expect(g).toHaveAttribute('data-phase', 'countdown', { timeout: 8000 });
+    await page.waitForTimeout(1500);
+    await shot(page, 'rocket-countdown');
+    const phaseShot = async (phase: string, name: string, after: number) => {
+      const seen = await expect(g)
+        .toHaveAttribute('data-phase', phase, { timeout: 5000 })
+        .then(() => true)
+        .catch(() => false);
+      if (!seen) return;
+      await page.waitForTimeout(after);
+      await shot(page, name);
+    };
+    await phaseShot('launch', 'rocket-launch', 1200);
+    await phaseShot('warp', 'rocket-warp', 700);
+    const view = page.viewportSize()!;
+    for (let round = 0; round < 2; round++) {
+      await expect(g).toHaveAttribute('data-round', String(round), { timeout: 20_000 });
+      await expect(g).toHaveAttribute('data-phase', /^(fly|land)$/, { timeout: 10_000 });
+      await expect(page.getByTestId('rocket-task')).toHaveText(/^\d+ \+ \d+ = \?$/);
+      // Ждём планеты и ведём ракету под планету с ответом (ракета посередине могла сесть сама).
+      let planets: { x: number; good: boolean }[] = [];
+      await expect
+        .poll(
+          async () => {
+            if ((await g.getAttribute('data-phase')) === 'land') return 3;
+            planets = JSON.parse((await g.getAttribute('data-planets')) ?? '[]');
+            return planets.length;
+          },
+          { timeout: 15_000 },
+        )
+        .toBe(3);
+      if (round === 0 && planets.length) await shot(page, 'rocket-fly');
+      // Подруливаем под планету с ответом, пока не сядем: под нагрузкой WebKit даёт мало кадров,
+      // ракета может не успеть — тогда не та планета отлетит и вернётся.
+      await expect
+        .poll(
+          async () => {
+            const phase = await g.getAttribute('data-phase');
+            if (phase === 'land') return phase;
+            const now = JSON.parse(
+              (await g.getAttribute('data-planets')) ?? '[]',
+            ) as typeof planets;
+            const target = now.find((p) => p.good);
+            if (phase === 'fly' && target) {
+              const [rx] = ((await g.getAttribute('data-rocket')) ?? '').split(',').map(Number);
+              await page.mouse.move(rx || view.width / 2, view.height * 0.8);
+              await page.mouse.down();
+              await page.mouse.move(target.x, view.height * 0.8, { steps: 6 });
+              await page.mouse.up();
+            }
+            return phase;
+          },
+          { timeout: 60_000, intervals: [1000] },
+        )
+        .toBe('land');
+      if (round === 0) {
+        await page.waitForTimeout(700);
+        await shot(page, 'rocket-land');
+      }
+    }
+    await expectFinished(page, backend);
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain('Три! Два! Один! Пуск!');
+    expect(
+      said.some((x) => /^Сколько будет .+ плюс .+\? Лети на планету с ответом!$/.test(x)),
+    ).toBe(true);
+    expect(said).toContain('Посадка! Мы на планете!');
+  });
+
   test('соедини точки (этап 42): по порядку — линия, не та точка — ошибка, в конце «Это …!»', async ({
     page,
     backend,

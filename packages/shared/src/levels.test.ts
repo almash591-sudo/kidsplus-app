@@ -54,6 +54,7 @@ const SPECS = [
   { kind: 'tangram', figures: ['house'], outline: true },
   { kind: 'colorNumbers', pictures: ['sun'], hint: true },
   { kind: 'dive', task: 'colors', max: 5, jellies: 'few', speed: 'slow', rounds: 3 },
+  { kind: 'rocket', parts: 3, memory: false, quiz: 'sums', max: 5, asteroids: 'few', rounds: 2 },
 ] as const;
 
 describe('уровни сложности (этап 34)', () => {
@@ -129,5 +130,13 @@ describe('игры этапа 41', () => {
     expect(specAtLevel(dive, 2)).toMatchObject({ max: 7, jellies: 'many', task: 'colors' });
     expect(specAtLevel(dive, 3)).toMatchObject({ max: 9, task: 'mixed', speed: 'normal' });
     expect(gameSpec.safeParse({ kind: 'dive', max: 11, rounds: 3 }).success).toBe(false);
+  });
+
+  it('ракета (этап 43): больше деталей, со второго шага — по памяти', () => {
+    const rocket = gameSpec.parse({ kind: 'rocket', parts: 3, max: 5, rounds: 2 }) as GameSpec;
+    expect(rocket).toMatchObject({ memory: false, quiz: 'numbers', asteroids: 'few' });
+    expect(specAtLevel(rocket, 2)).toMatchObject({ parts: 4, memory: false, max: 7 });
+    expect(specAtLevel(rocket, 3)).toMatchObject({ parts: 5, memory: true, max: 9, rounds: 4 });
+    expect(gameSpec.safeParse({ kind: 'rocket', parts: 6, max: 5, rounds: 2 }).success).toBe(false);
   });
 });
