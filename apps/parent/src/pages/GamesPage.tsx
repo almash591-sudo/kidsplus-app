@@ -121,6 +121,11 @@ export function gameSummary(spec: GameSpec): string {
       return `загадок: ${spec.riddles.length} (${spec.riddles.map((r) => r.name).join(', ')}) · за игру: ${spec.rounds}`;
     case 'sudoku':
       return `поле ${spec.size}×${spec.size}, пустых ${spec.blanks} · полей: ${spec.rounds}`;
+    case 'dots':
+    case 'colorNumbers':
+      return `картинок: ${spec.pictures.length}${spec.hint ? ' · с подсказкой' : ''}`;
+    case 'tangram':
+      return `фигур: ${spec.figures.length}${spec.outline ? ' · с контурами деталей' : ''}`;
   }
 }
 

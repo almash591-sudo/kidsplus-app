@@ -43,7 +43,7 @@ interface Backend {
   /** Уровни сложности игр (этап 34). */
   levels?: { start: number; byKind: Record<string, number> };
   /** Аудиотека: треки «детям». */
-  audio?: { id: string; title: string; url: string }[];
+  audio?: { id: string; title: string; url: string; video?: boolean }[];
   /** «Мои дела» (этап 30). */
   habits?: KidHabits;
   habitsDone?: string[];
@@ -1639,6 +1639,8 @@ async function dragTo(page: Page, from: { x: number; y: number }, to: { x: numbe
   await page.mouse.up();
 }
 
+const xy = (p: { x: number; y: number }) => [p.x, p.y] as const;
+
 const center = async (locator: ReturnType<Page['locator']>) => {
   const b = (await locator.boundingBox())!;
   return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
@@ -2710,6 +2712,80 @@ test.describe('новые игры', () => {
     expect((await spoken(page)).map((s) => s.text)).toContain(
       'Получилось! В каждой строчке и в каждом столбике все картинки по разу.',
     );
+  });
+
+  test('соедини точки (этап 42): по порядку — линия, не та точка — ошибка, в конце «Это …!»', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [game(1, { kind: 'dots', pictures: ['house'], hint: true })];
+    await openGame(page);
+    const dots = page.getByTestId('dot');
+    await expect(dots).toHaveCount(9);
+    await expect(page.locator('[data-testid=dot].next')).toHaveAttribute('data-n', '1');
+    // Сначала — не та точка: ничего не соединилось.
+    await page.mouse.click(...xy(await center(dots.nth(4).locator('circle').nth(1))));
+    await expect(page.locator('[data-testid=dot].on')).toHaveCount(0);
+    await page.waitForTimeout(1200);
+    for (let i = 0; i < 9; i++) {
+      await page.mouse.click(...xy(await center(dots.nth(i).locator('circle').nth(1))));
+      if (i === 4) await shot(page, 'dots');
+    }
+    await expect(page.locator('.dots-fill')).toBeVisible();
+    await shot(page, 'dots-done');
+    await expectFinished(page, backend);
+    expect((await spoken(page)).map((s) => s.text)).toContain('Это домик!');
+  });
+
+  test('танграм-малыш (этап 42): детали — в силуэт, не та деталь — не встаёт', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [game(1, { kind: 'tangram', figures: ['house'], outline: true })];
+    await openGame(page);
+    await expect(page.getByTestId('tangram-piece')).toHaveCount(3);
+    await shot(page, 'tangram');
+    const slot = (kind: string) => page.locator(`[data-testid=tangram-slot][data-kind="${kind}"]`);
+    const piece = (kind: string) =>
+      page.locator(`[data-testid=tangram-piece][data-kind="${kind}"]`);
+    // Крыша на место двери — мимо.
+    await dragTo(page, await center(piece('tri:76x34')), await center(slot('rect:16x26')));
+    await expect(page.getByTestId('tangram-piece')).toHaveCount(3);
+    await page.waitForTimeout(1200);
+    for (const kind of ['tri:76x34', 'rect:60x40', 'rect:16x26']) {
+      await dragTo(page, await center(piece(kind)), await center(slot(kind)));
+      await expect(piece(kind)).toHaveCount(0);
+    }
+    await shot(page, 'tangram-done');
+    await expectFinished(page, backend);
+    expect((await spoken(page)).map((s) => s.text)).toContain('Это домик!');
+  });
+
+  test('раскраска по цифрам (этап 42): краска с цифрой — на свою область', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [game(1, { kind: 'colorNumbers', pictures: ['sun'], hint: true })];
+    await openGame(page);
+    const spots = page.getByTestId('number-spot');
+    await expect(spots).toHaveCount(3);
+    await expect(page.locator('.paint.numbered')).toHaveCount(3);
+    await shot(page, 'color-numbers');
+    // Краска 1 (небо) — на солнышко (3): не закрашивается, совёнок подсказывает.
+    await page.locator('.paint.numbered[data-n="1"]').click();
+    await page.mouse.click(...xy(await center(spots.nth(2).locator('circle'))));
+    await expect(spots).toHaveCount(3);
+    await page.waitForTimeout(1200);
+    for (const n of [1, 2, 3]) {
+      await page.locator(`.paint.numbered[data-n="${n}"]`).click();
+      await page.mouse.click(...xy(await center(spots.first().locator('circle'))));
+      await expect(spots).toHaveCount(3 - n);
+    }
+    await shot(page, 'color-numbers-done');
+    await expectFinished(page, backend);
+    const said = (await spoken(page)).map((s) => s.text);
+    expect(said).toContain('Здесь цифра три. Возьми краску с цифрой три!');
+    expect(said).toContain('Какая красивая картинка получилась!');
   });
 });
 
@@ -3791,6 +3867,32 @@ test.describe('аудиотека', () => {
     await page.getByTestId('audio-close').click();
     await expect(page.getByTestId('audio-library')).toHaveCount(0);
     await expect(page.getByTestId('home')).toBeVisible();
+  });
+
+  test('видео семьи (этап 42): плитка 🎬 открывает плеер на весь экран, ✕ — назад', async ({
+    page,
+    backend,
+  }) => {
+    backend.audio = [
+      { id: 'a1', title: 'Колыбельная', url: '/api/audio/a1/file', video: false },
+      { id: 'v1', title: 'Осень', url: '/api/audio/v1/file', video: true },
+    ];
+    const asked: string[] = [];
+    await page.route('**/api/audio/**', (r) => {
+      asked.push(new URL(r.request().url()).pathname);
+      return r.fulfill({ status: 200, contentType: 'video/mp4', body: Buffer.alloc(0) });
+    });
+    await page.goto('/');
+    await page.getByTestId('audio-open').click();
+    const tiles = page.getByTestId('audio-tile');
+    await expect(tiles.nth(1)).toContainText('🎬');
+    await tiles.nth(1).click();
+    await expect(page.getByTestId('kid-video')).toBeVisible();
+    await expect.poll(() => asked).toContain('/api/audio/v1/file');
+    await shot(page, 'kid-video');
+    await page.getByTestId('kid-video-close').click();
+    await expect(page.getByTestId('kid-video')).toHaveCount(0);
+    await expect(page.getByTestId('audio-library')).toBeVisible();
   });
 });
 

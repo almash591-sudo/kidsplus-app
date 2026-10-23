@@ -50,6 +50,9 @@ const SPECS = [
     rounds: 2,
   },
   { kind: 'sudoku', imageIds: [ID, ID2, ID3, ID4], size: 3, blanks: 3, rounds: 2 },
+  { kind: 'dots', pictures: ['star', 'fish'], hint: true },
+  { kind: 'tangram', figures: ['house'], outline: true },
+  { kind: 'colorNumbers', pictures: ['sun'], hint: true },
 ] as const;
 
 describe('уровни сложности (этап 34)', () => {
@@ -108,5 +111,14 @@ describe('игры этапа 41', () => {
     expect(gameSpec.safeParse({ ...base, imageIds: [ID, ID2, ID3], size: 4 }).success).toBe(false);
     const three = gameSpec.parse({ ...base, imageIds: [ID, ID2, ID3], size: 3 }) as GameSpec;
     expect(specAtLevel(three, MAX_LEVEL)).toMatchObject({ size: 3, blanks: 6 });
+  });
+
+  it('этап 42: со второго уровня — без подсказок и без контуров деталей', () => {
+    const dots = gameSpec.parse({ kind: 'dots', pictures: ['star'] }) as GameSpec;
+    expect(dots).toMatchObject({ hint: true });
+    expect(specAtLevel(dots, 2)).toMatchObject({ hint: false });
+    const tangram = gameSpec.parse({ kind: 'tangram', figures: ['car'] }) as GameSpec;
+    expect(specAtLevel(tangram, 2)).toMatchObject({ outline: false });
+    expect(gameSpec.safeParse({ kind: 'colorNumbers', pictures: [] }).success).toBe(false);
   });
 });

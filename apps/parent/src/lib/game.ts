@@ -72,6 +72,13 @@ export function problem(v: GameInput): string | null {
       if (new Set(spec.imageIds).size < (spec.size ?? 3))
         return `Выберите ${spec.size ?? 3} разные картинки.`;
       break;
+    case 'dots':
+    case 'colorNumbers':
+      if (!spec.pictures.length) return 'Выберите картинку.';
+      break;
+    case 'tangram':
+      if (!spec.figures.length) return 'Выберите фигуру.';
+      break;
     default:
       break;
   }

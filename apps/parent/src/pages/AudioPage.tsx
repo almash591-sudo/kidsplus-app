@@ -1,6 +1,6 @@
 // «Аудио» (этап 20): общая аудиотека семьи. Любой родитель загружает mp3 с телефона или
 // компьютера и слушает здесь же; отметка «Детям» — трек появляется в плеере на телефонах детей.
-import { titleFromFile, type AudioTrack } from '@kidsplus/shared/audio';
+import { isVideo, titleFromFile, type AudioTrack } from '@kidsplus/shared/audio';
 import {
   ActionIcon,
   Alert,
@@ -56,7 +56,10 @@ export function AudioPage() {
           forKids: forKids ? '1' : '0',
         });
         // На некоторых телефонах тип файла пустой — сервер всё равно проверит содержимое.
-        const blob = f.type ? f : new Blob([f], { type: 'audio/mpeg' });
+        const blob =
+          f.type === 'video/mp4' || f.type.startsWith('audio/')
+            ? f
+            : new Blob([f], { type: /\.mp4$/i.test(f.name) ? 'video/mp4' : 'audio/mpeg' });
         try {
           await api.upload(`/parent/audio?${q}`, blob);
         } catch (err) {
@@ -80,16 +83,21 @@ export function AudioPage() {
     <Stack>
       <h1 className="page-title">Аудио</h1>
       <Text size="sm" c="dimmed" px={4}>
-        Общая аудиотека семьи: песни, сказки, колыбельные. Загружать и слушать можно с любого
-        телефона родителя. Отмеченные «Детям» звучат в плеере 🎧 на телефонах детей.
+        Общая аудиотека семьи: песни, сказки, колыбельные и свои видео (MP4). Загружать и слушать
+        можно с любого телефона родителя. Отмеченные «Детям» есть в плеере 🎧 на телефонах детей;
+        видео открывается там на весь экран.
       </Text>
       <Card padding="md">
         <Stack gap="sm">
           <Group>
-            <FileButton onChange={(f) => f.length && upload.mutate(f)} accept="audio/*" multiple>
+            <FileButton
+              onChange={(f) => f.length && upload.mutate(f)}
+              accept="audio/*,video/mp4"
+              multiple
+            >
               {(props) => (
                 <Button {...props} loading={upload.isPending}>
-                  Добавить mp3
+                  Добавить mp3 или видео
                 </Button>
               )}
             </FileButton>
@@ -264,7 +272,16 @@ function TrackRow({ track: t }: { track: AudioTrack }) {
           ✕
         </ActionIcon>
       </Group>
-      <audio controls preload="none" src={t.url} style={{ width: '100%' }} />
+      {isVideo(t.mimeType) ? (
+        <video
+          controls
+          preload="metadata"
+          src={t.url}
+          style={{ width: '100%', borderRadius: 8, background: '#000' }}
+        />
+      ) : (
+        <audio controls preload="none" src={t.url} style={{ width: '100%' }} />
+      )}
       <Switch
         size="sm"
         label="Детям"

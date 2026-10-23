@@ -34,6 +34,42 @@ const upload = (cookies: Record<string, string>, query: string, payload: Uint8Ar
   });
 
 describe('аудиотека', () => {
+  it('видео MP4 (этап 42): принимается, телефону — с признаком «видео»', async () => {
+    const { parent, device } = await start();
+    const ascii = (x: string) => [...x].map((c) => c.charCodeAt(0));
+    const mp4 = new Uint8Array([
+      0,
+      0,
+      0,
+      0x18,
+      ...ascii('ftypisom'),
+      ...new Array(12).fill(0),
+      ...ascii('hdlr'),
+      ...new Array(8).fill(0),
+      ...ascii('vide'),
+      ...new Array(500).fill(7),
+    ]);
+    const res = await t.app.inject({
+      method: 'POST',
+      url: '/api/parent/audio?title=Осень&forKids=1',
+      cookies: parent,
+      headers: { 'content-type': 'video/mp4' },
+      payload: Buffer.from(mp4),
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.json<AudioTrack>().mimeType).toBe('video/mp4');
+    await upload(parent, 'title=Песня&forKids=1');
+    const kid = (await t.app.inject({ url: '/api/kid/audio', cookies: device })).json<
+      KidAudioTrack[]
+    >();
+    expect(kid.map((k) => [k.title, k.video]).sort()).toEqual([
+      ['Осень', true],
+      ['Песня', false],
+    ]);
+    const file = await t.app.inject({ url: res.json<AudioTrack>().url, cookies: device });
+    expect(file.headers['content-type']).toBe('video/mp4');
+  });
+
   it('родитель загружает и слушает; ребёнку — только отмеченные «детям»', async () => {
     const { parent, device } = await start();
     const song = (await upload(parent, 'title=Колыбельная&forKids=1')).json<AudioTrack>();

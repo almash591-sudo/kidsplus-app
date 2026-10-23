@@ -9,6 +9,7 @@ import {
 import {
   BALLOON_COLORS,
   COLORING_PICTURES,
+  DOT_PICTURES,
   FISHING_LETTERS,
   FLASHLIGHT_SCENES,
   GAME_KINDS,
@@ -16,6 +17,7 @@ import {
   PATTERNS,
   PIANO_MODES,
   SORTER_SHAPES,
+  TANGRAM_FIGURES,
   TRACE_SHAPES,
   type GameKind,
   type GameSpec,
@@ -91,6 +93,57 @@ const PICTURE_LABELS: Record<(typeof COLORING_PICTURES)[number], string> = {
   butterfly: 'Бабочка',
   rocket: 'Ракета',
 };
+
+const DOT_LABELS: Record<(typeof DOT_PICTURES)[number], string> = {
+  star: 'Звёздочка',
+  house: 'Домик',
+  fish: 'Рыбка',
+  heart: 'Сердечко',
+  boat: 'Кораблик',
+  fir: 'Ёлочка (15 точек)',
+  rocket: 'Ракета',
+};
+
+const TANGRAM_LABELS: Record<(typeof TANGRAM_FIGURES)[number], string> = {
+  house: 'Домик (3)',
+  tree: 'Ёлочка (3)',
+  rocket: 'Ракета (5)',
+  car: 'Машинка (4)',
+  boat: 'Кораблик (3)',
+  snowman: 'Снеговик (3)',
+  fish: 'Рыбка (3)',
+  castle: 'Замок (6)',
+};
+
+/** Выбор нескольких картинок (этап 42): порядок — как в списке, не как нажимали. */
+function PickChips<T extends string>(props: {
+  label: string;
+  all: readonly T[];
+  labels: Record<T, string>;
+  value: T[];
+  onChange: (v: T[]) => void;
+}) {
+  return (
+    <Stack gap={4}>
+      <Text size="sm" fw={500}>
+        {props.label}
+      </Text>
+      <Chip.Group
+        multiple
+        value={props.value}
+        onChange={(v) => props.onChange(props.all.filter((s) => v.includes(s)))}
+      >
+        <Group gap={6}>
+          {props.all.map((s) => (
+            <Chip key={s} value={s} size="sm">
+              {props.labels[s]}
+            </Chip>
+          ))}
+        </Group>
+      </Chip.Group>
+    </Stack>
+  );
+}
 
 const SHAPE_LABELS: Record<(typeof TRACE_SHAPES)[number], string> = {
   line: 'линия',
@@ -185,6 +238,9 @@ const DEFAULTS: { [K in GameKind]: Extract<GameSpec, { kind: K }> } = {
   syllableWord: { kind: 'syllableWord', words: [], extra: 0 },
   riddle: { kind: 'riddle', riddles: [], choices: 3, rounds: 5 },
   sudoku: { kind: 'sudoku', imageIds: [], size: 3, blanks: 3, rounds: 2 },
+  dots: { kind: 'dots', pictures: ['star', 'house', 'fish'], hint: true },
+  tangram: { kind: 'tangram', figures: ['house', 'tree', 'boat'], outline: true },
+  colorNumbers: { kind: 'colorNumbers', pictures: ['sun', 'house'], hint: true },
 };
 
 /** Число из NumberInput (пустое поле — минимум). */
@@ -1701,6 +1757,68 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
           <Text size="xs" c="dimmed">
             В каждой строке и столбце каждая картинка — по разу; решение всегда одно. Сложность
             растёт сама: поле 4 × 4 и больше пустых клеток.
+          </Text>
+        </Stack>
+      );
+    case 'dots':
+      return (
+        <Stack gap="xs">
+          <PickChips
+            label="Картинки (по очереди, до 10)"
+            all={DOT_PICTURES}
+            labels={DOT_LABELS}
+            value={spec.pictures}
+            onChange={(pictures) => onChange({ ...spec, pictures })}
+          />
+          <Switch
+            label="Подсказка: следующая точка мигает"
+            checked={spec.hint}
+            onChange={(e) => onChange({ ...spec, hint: e.currentTarget.checked })}
+          />
+          <Text size="xs" c="dimmed">
+            Ребёнок нажимает (или ведёт пальцем) по точкам 1, 2, 3… — получается картинка. Когда
+            получается без ошибок, подсказка выключается сама.
+          </Text>
+        </Stack>
+      );
+    case 'tangram':
+      return (
+        <Stack gap="xs">
+          <PickChips
+            label="Фигуры (по очереди, до 10; в скобках — сколько деталей)"
+            all={TANGRAM_FIGURES}
+            labels={TANGRAM_LABELS}
+            value={spec.figures}
+            onChange={(figures) => onChange({ ...spec, figures })}
+          />
+          <Switch
+            label="Видны контуры каждой детали (проще)"
+            checked={spec.outline}
+            onChange={(e) => onChange({ ...spec, outline: e.currentTarget.checked })}
+          />
+          <Text size="xs" c="dimmed">
+            Детали перетаскивают в серый силуэт. Сложность растёт сама: остаётся только общий
+            силуэт.
+          </Text>
+        </Stack>
+      );
+    case 'colorNumbers':
+      return (
+        <Stack gap="xs">
+          <PickChips
+            label="Картинки (по очереди)"
+            all={COLORING_PICTURES}
+            labels={PICTURE_LABELS}
+            value={spec.pictures}
+            onChange={(pictures) => onChange({ ...spec, pictures })}
+          />
+          <Switch
+            label="Подсказка: области чуть подкрашены своим цветом"
+            checked={spec.hint}
+            onChange={(e) => onChange({ ...spec, hint: e.currentTarget.checked })}
+          />
+          <Text size="xs" c="dimmed">
+            У каждой области — цифра, у краски — тоже. Цифры 1–7 ребёнок узнаёт по ходу игры.
           </Text>
         </Stack>
       );
