@@ -9,6 +9,7 @@ import {
 import {
   BALLOON_COLORS,
   COLORING_PICTURES,
+  DIFF_SCENES,
   DOT_PICTURES,
   FISHING_LETTERS,
   FLASHLIGHT_SCENES,
@@ -260,6 +261,20 @@ const DEFAULTS: { [K in GameKind]: Extract<GameSpec, { kind: K }> } = {
     cones: 'few',
     speed: 'slow',
   },
+  differences: {
+    kind: 'differences',
+    scenes: ['meadow', 'forest', 'sea', 'space'],
+    count: 3,
+    rounds: 2,
+    hint: true,
+  },
+};
+
+const DIFF_SCENE_LABELS: Record<(typeof DIFF_SCENES)[number], string> = {
+  meadow: 'Полянка',
+  forest: 'Лес',
+  sea: 'Море',
+  space: 'Космос',
 };
 
 /** Число из NumberInput (пустое поле — минимум). */
@@ -2019,6 +2034,52 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
             Ребёнок ведёт машинку пальцем и проезжает в ворота с ответом: «Проезжай в красные
             ворота!», «…с цифрой три!». Не те ворота — машинка притормаживает, и задание
             повторяется. Сложность растёт сама: ответы до большего, больше ворот и конусов, быстрее.
+          </Text>
+        </Stack>
+      );
+    case 'differences':
+      return (
+        <Stack gap="xs">
+          <Chip.Group
+            multiple
+            value={spec.scenes}
+            onChange={(v) =>
+              v.length && onChange({ ...spec, scenes: v as (typeof DIFF_SCENES)[number][] })
+            }
+          >
+            <Group gap="xs">
+              {DIFF_SCENES.map((s) => (
+                <Chip key={s} value={s}>
+                  {DIFF_SCENE_LABELS[s]}
+                </Chip>
+              ))}
+            </Group>
+          </Chip.Group>
+          <Group grow>
+            <NumberInput
+              label="Отличий на картинке"
+              min={2}
+              max={7}
+              value={spec.count}
+              onChange={(v) => onChange({ ...spec, count: num(v, 3) })}
+            />
+            <NumberInput
+              label="Картинок"
+              min={1}
+              max={4}
+              value={spec.rounds}
+              onChange={(v) => onChange({ ...spec, rounds: num(v, 2) })}
+            />
+          </Group>
+          <Switch
+            label="Лупа подсказывает, если долго не находит"
+            checked={spec.hint}
+            onChange={(e) => onChange({ ...spec, hint: e.currentTarget.checked })}
+          />
+          <Text size="xs" c="dimmed">
+            Две живые картинки — ребёнок нажимает, где по-другому: чего-то нет, другой цвет, другая
+            картинка, смотрит в другую сторону, больше. Сложность растёт сама: больше отличий, потом
+            без лупы и больше картинок.
           </Text>
         </Stack>
       );
