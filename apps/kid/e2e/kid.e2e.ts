@@ -2714,6 +2714,52 @@ test.describe('новые игры', () => {
     );
   });
 
+  test('подводное плавание (этап 43): батискаф за пальцем ловит нужных рыбок, не та — «Это …»', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(120_000);
+    backend.items = [
+      game(1, { kind: 'dive', task: 'mixed', max: 4, jellies: 'none', speed: 'slow', rounds: 2 }),
+    ];
+    await openGame(page);
+    const g = page.getByTestId('game-dive');
+    await expect(g).toHaveAttribute('data-task', /^color:/);
+    const view = page.viewportSize()!;
+    await page.mouse.move(view.width * 0.3, view.height * 0.5);
+    await page.mouse.down();
+    type Fish = { x: number; y: number; good: boolean; jelly: boolean };
+    const swimmers = async (): Promise<Fish[]> =>
+      JSON.parse((await g.getAttribute('data-swimmers', { timeout: 1000 })) ?? '[]');
+    const sub = async () =>
+      ((await g.getAttribute('data-sub', { timeout: 1000 })) ?? '0,0').split(',').map(Number);
+    // Автопилот: палец ведёт батискаф к ближайшей нужной рыбке (сначала один раз — к чужой).
+    let wrongDone = false;
+    for (let i = 0; i < 1500; i++) {
+      // Игра кончилась — поле пропало (между проверками тоже может).
+      const now = await Promise.all([sub(), swimmers()]).catch(() => null);
+      if (!now) break;
+      const [[sx, sy], fish] = now;
+      const all = fish.filter((f) => !f.jelly && f.x > 20 && f.x < view.width - 10);
+      const want = all
+        .filter((f) => f.good === wrongDone)
+        .sort((a, b) => Math.hypot(a.x - sx!, a.y - sy!) - Math.hypot(b.x - sx!, b.y - sy!))[0];
+      if (want) await page.mouse.move(want.x - 25, want.y);
+      if (!wrongDone && (await spoken(page)).some((x) => /^Это .+ рыбка.$/.test(x.text)))
+        wrongDone = true;
+      if (i === 25) await shot(page, 'dive');
+      if (i === 200) await shot(page, 'dive-2');
+      await page.waitForTimeout(30);
+    }
+    await page.mouse.up();
+    expect(wrongDone).toBe(true);
+    await expectFinished(page, backend);
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said.some((x) => /^Поймай (две|три|четыре) .+ рыбк/.test(x))).toBe(true);
+    expect(said.some((x) => /^Поймай рыбку с цифрой/.test(x))).toBe(true);
+    expect(said).toContain('Ура, сундук с жемчугом!');
+  });
+
   test('соедини точки (этап 42): по порядку — линия, не та точка — ошибка, в конце «Это …!»', async ({
     page,
     backend,

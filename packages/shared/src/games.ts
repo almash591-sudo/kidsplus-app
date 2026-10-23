@@ -537,7 +537,25 @@ export const gameSpec = z.discriminatedUnion('kind', [
     pictures: z.array(z.enum(COLORING_PICTURES)).min(1).max(10),
     hint: z.boolean().default(true),
   }),
+  // ─── Зрелищные игры (этап 43) ───
+  /**
+   * Подводное плавание: ребёнок ведёт пальцем батискаф с совёнком и ловит рыбок по заданию —
+   * colors «поймай три жёлтые рыбки», numbers «рыбку с цифрой пять», mixed — по очереди. Рыбки с
+   * цифрами — от 1 до max; медузы (jellies) только отталкивают; speed — как быстро плывёт море.
+   */
+  z.object({
+    kind: z.literal('dive'),
+    task: z.enum(['colors', 'numbers', 'mixed']).default('colors'),
+    max: z.number().int().min(3).max(10),
+    jellies: z.enum(['none', 'few', 'many']).default('few'),
+    speed: z.enum(['slow', 'normal', 'fast']).default('slow'),
+    rounds: z.number().int().min(2).max(8),
+  }),
 ]);
+
+/** Цвета рыбок «Подводного плавания» (этап 43). */
+export const DIVE_FISH = ['red', 'yellow', 'blue', 'green', 'purple', 'orange'] as const;
+export type DiveFish = (typeof DIVE_FISH)[number];
 
 /** Детали «Строителя»: кубик, брусок, крыша, арка, цилиндр. */
 export const BUILDER_BLOCKS = ['cube', 'bar', 'roof', 'arch', 'drum'] as const;
@@ -614,6 +632,7 @@ export const GAME_KINDS: Record<GameKind, string> = {
   dots: 'Соедини точки',
   tangram: 'Танграм-малыш',
   colorNumbers: 'Раскраска по цифрам',
+  dive: 'Подводное плавание',
 };
 
 /** id картинок в параметрах игры — для проверки, что они есть и готовы. */
@@ -676,6 +695,7 @@ export function gameImageIds(g: GameSpec): string[] {
     case 'dots':
     case 'tangram':
     case 'colorNumbers':
+    case 'dive':
       return [];
   }
 }
