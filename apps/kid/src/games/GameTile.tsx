@@ -60,6 +60,7 @@ export const ICON: Record<GameKind, string> = {
   dive: '🐠',
   rocket: '🚀',
   race: '🏎️',
+  differences: '🔍',
 };
 
 /** Глиняный значок игры (этап 35): квадратная картинка с прозрачным фоном, вписывается без растяжения. */
