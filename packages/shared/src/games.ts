@@ -551,11 +551,33 @@ export const gameSpec = z.discriminatedUnion('kind', [
     speed: z.enum(['slow', 'normal', 'fast']).default('slow'),
     rounds: z.number().int().min(2).max(8),
   }),
+  /**
+   * Ракета: собери и лети. Сначала собрать ракету из parts деталей по цветному чертежу (memory —
+   * чертёж прячется, собирать по памяти), потом rounds полётов: ракета ведётся пальцем к планете
+   * с ответом — цифрой (numbers), суммой (sums, ответ до max) или буквой (letters — первые max из
+   * FISHING_LETTERS). Камни-астероиды (asteroids) только отталкивают.
+   */
+  z.object({
+    kind: z.literal('rocket'),
+    parts: z.number().int().min(3).max(5),
+    memory: z.boolean().default(false),
+    quiz: z.enum(['numbers', 'sums', 'letters']).default('numbers'),
+    max: z.number().int().min(3).max(10),
+    asteroids: z.enum(['none', 'few', 'many']).default('few'),
+    rounds: z.number().int().min(1).max(5),
+  }),
 ]);
 
 /** Цвета рыбок «Подводного плавания» (этап 43). */
 export const DIVE_FISH = ['red', 'yellow', 'blue', 'green', 'purple', 'orange'] as const;
 export type DiveFish = (typeof DIVE_FISH)[number];
+
+/** Детали ракеты снизу вверх (этап 43): при parts = 3 — корпус, крылья, нос; 4 — ещё окошко; 5 — двигатель. */
+export const ROCKET_PARTS = ['body', 'fins', 'nose', 'window', 'engine'] as const;
+export type RocketPart = (typeof ROCKET_PARTS)[number];
+/** Цвета деталей ракеты. */
+export const ROCKET_COLORS = ['red', 'blue', 'yellow', 'green', 'purple'] as const;
+export type RocketColor = (typeof ROCKET_COLORS)[number];
 
 /** Детали «Строителя»: кубик, брусок, крыша, арка, цилиндр. */
 export const BUILDER_BLOCKS = ['cube', 'bar', 'roof', 'arch', 'drum'] as const;
@@ -633,6 +655,7 @@ export const GAME_KINDS: Record<GameKind, string> = {
   tangram: 'Танграм-малыш',
   colorNumbers: 'Раскраска по цифрам',
   dive: 'Подводное плавание',
+  rocket: 'Ракета: собери и лети',
 };
 
 /** id картинок в параметрах игры — для проверки, что они есть и готовы. */
@@ -696,6 +719,7 @@ export function gameImageIds(g: GameSpec): string[] {
     case 'tangram':
     case 'colorNumbers':
     case 'dive':
+    case 'rocket':
       return [];
   }
 }
