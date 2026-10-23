@@ -184,6 +184,19 @@ export function specAtLevel(spec: GameSpec, level: number): GameSpec {
       return { ...spec, hint: spec.hint && up < 1 };
     case 'tangram':
       return { ...spec, outline: spec.outline && up < 1 };
+    case 'dive': {
+      // Цифры до большего, медуз больше, море быстрее, со второго шага — цвета и цифры вперемешку.
+      const jellies = ['none', 'few', 'many'] as const;
+      const speeds = ['slow', 'normal', 'fast'] as const;
+      return {
+        ...spec,
+        max: clamp(spec.max + 2 * up, 3, 10),
+        jellies: jellies[clamp(jellies.indexOf(spec.jellies) + up, 0, 2)]!,
+        speed: speeds[clamp(speeds.indexOf(spec.speed) + Math.max(0, up - 1), 0, 2)]!,
+        task: up >= 2 ? 'mixed' : spec.task,
+        rounds: clamp(spec.rounds + up, 2, 8),
+      };
+    }
     default:
       // Раскраска, рисовалка, пары, сортировка, фонарик, «лишнее», «по порядку», песенки — как есть.
       return spec;

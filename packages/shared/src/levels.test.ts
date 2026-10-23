@@ -53,6 +53,7 @@ const SPECS = [
   { kind: 'dots', pictures: ['star', 'fish'], hint: true },
   { kind: 'tangram', figures: ['house'], outline: true },
   { kind: 'colorNumbers', pictures: ['sun'], hint: true },
+  { kind: 'dive', task: 'colors', max: 5, jellies: 'few', speed: 'slow', rounds: 3 },
 ] as const;
 
 describe('уровни сложности (этап 34)', () => {
@@ -120,5 +121,13 @@ describe('игры этапа 41', () => {
     const tangram = gameSpec.parse({ kind: 'tangram', figures: ['car'] }) as GameSpec;
     expect(specAtLevel(tangram, 2)).toMatchObject({ outline: false });
     expect(gameSpec.safeParse({ kind: 'colorNumbers', pictures: [] }).success).toBe(false);
+  });
+
+  it('подводное плавание (этап 43): цифры до большего, медуз больше, потом вперемешку', () => {
+    const dive = gameSpec.parse({ kind: 'dive', max: 5, rounds: 3 }) as GameSpec;
+    expect(dive).toMatchObject({ task: 'colors', jellies: 'few', speed: 'slow' });
+    expect(specAtLevel(dive, 2)).toMatchObject({ max: 7, jellies: 'many', task: 'colors' });
+    expect(specAtLevel(dive, 3)).toMatchObject({ max: 9, task: 'mixed', speed: 'normal' });
+    expect(gameSpec.safeParse({ kind: 'dive', max: 11, rounds: 3 }).success).toBe(false);
   });
 });
