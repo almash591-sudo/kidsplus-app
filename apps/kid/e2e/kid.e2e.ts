@@ -2760,6 +2760,66 @@ test.describe('новые игры', () => {
     expect(said).toContain('Ура, сундук с жемчугом!');
   });
 
+  test('гонки (этап 43): светофор, ворота с ответом (сначала не те), обгон и финиш', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(240_000);
+    backend.items = [
+      game(1, {
+        kind: 'race',
+        quiz: 'numbers',
+        max: 5,
+        gates: 3,
+        rivals: true,
+        cones: 'none',
+        speed: 'slow',
+      }),
+    ];
+    await openGame(page);
+    const g = page.getByTestId('game-race');
+    await expect(g).toHaveAttribute('data-phase', 'ready');
+    await page.waitForTimeout(1800);
+    await shot(page, 'race-ready');
+    await expect(g).toHaveAttribute('data-phase', 'race', { timeout: 8000 });
+    const view = page.viewportSize()!;
+    /** Повести машинку пальцем туда, где x. */
+    const steerTo = async (x: number) => {
+      const car = Number(await g.getAttribute('data-car')) || view.width / 2;
+      await page.mouse.move(car, view.height * 0.85);
+      await page.mouse.down();
+      await page.mouse.move(x, view.height * 0.85, { steps: 6 });
+      await page.mouse.up();
+    };
+    for (let gate = 0; gate < 3; gate++) {
+      await expect(g).toHaveAttribute('data-gate', String(gate), { timeout: 60_000 });
+      await expect.poll(async () => (await g.getAttribute('data-target')) ?? '').not.toBe('');
+      // У первых ворот — нарочно в не те: задание повторится у следующих.
+      const attr = gate === 0 ? 'data-wrong-target' : 'data-target';
+      await steerTo(Number(await g.getAttribute(attr)));
+      await expect(page.getByTestId('race-task')).toHaveText(/^\d+$/);
+      if (gate === 1) {
+        await page.waitForTimeout(5200);
+        await shot(page, 'race-drive');
+      }
+      if (gate === 0) {
+        await expect
+          .poll(async () => (await spoken(page)).some((x) => /^Это цифра .+\.$/.test(x.text)), {
+            timeout: 60_000,
+          })
+          .toBe(true);
+      }
+    }
+    await expect(g).toHaveAttribute('data-phase', 'finish', { timeout: 60_000 });
+    await page.waitForTimeout(700);
+    await shot(page, 'race-finish');
+    await expectFinished(page, backend);
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain('На старт! Внимание! Марш!');
+    expect(said.some((x) => /^Проезжай в ворота с цифрой .+!$/.test(x))).toBe(true);
+    expect(said).toContain('Финиш! Мы первые!');
+  });
+
   test('ракета (этап 43): сборка по чертежу, отсчёт, полёт к планете с ответом и посадка', async ({
     page,
     backend,
