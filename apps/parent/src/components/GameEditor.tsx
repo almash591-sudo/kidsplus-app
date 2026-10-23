@@ -241,6 +241,7 @@ const DEFAULTS: { [K in GameKind]: Extract<GameSpec, { kind: K }> } = {
   dots: { kind: 'dots', pictures: ['star', 'house', 'fish'], hint: true },
   tangram: { kind: 'tangram', figures: ['house', 'tree', 'boat'], outline: true },
   colorNumbers: { kind: 'colorNumbers', pictures: ['sun', 'house'], hint: true },
+  dive: { kind: 'dive', task: 'colors', max: 5, jellies: 'few', speed: 'slow', rounds: 3 },
 };
 
 /** Число из NumberInput (пустое поле — минимум). */
@@ -1819,6 +1820,62 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
           />
           <Text size="xs" c="dimmed">
             У каждой области — цифра, у краски — тоже. Цифры 1–7 ребёнок узнаёт по ходу игры.
+          </Text>
+        </Stack>
+      );
+    case 'dive':
+      return (
+        <Stack gap="xs">
+          <Text size="sm">Задания</Text>
+          <SegmentedControl
+            data={[
+              { value: 'colors', label: 'Цвета и счёт' },
+              { value: 'numbers', label: 'Цифры' },
+              { value: 'mixed', label: 'Вперемешку' },
+            ]}
+            value={spec.task}
+            onChange={(v) => onChange({ ...spec, task: v as 'colors' | 'numbers' | 'mixed' })}
+          />
+          <Group grow>
+            <NumberInput
+              label="Цифры до"
+              min={3}
+              max={10}
+              value={spec.max}
+              onChange={(v) => onChange({ ...spec, max: num(v, 5) })}
+            />
+            <NumberInput
+              label="Заданий"
+              min={2}
+              max={8}
+              value={spec.rounds}
+              onChange={(v) => onChange({ ...spec, rounds: num(v, 3) })}
+            />
+          </Group>
+          <Text size="sm">Медузы</Text>
+          <SegmentedControl
+            data={[
+              { value: 'none', label: 'Нет' },
+              { value: 'few', label: 'Немного' },
+              { value: 'many', label: 'Много' },
+            ]}
+            value={spec.jellies}
+            onChange={(v) => onChange({ ...spec, jellies: v as 'none' | 'few' | 'many' })}
+          />
+          <Text size="sm">Скорость</Text>
+          <SegmentedControl
+            data={[
+              { value: 'slow', label: 'Медленно' },
+              { value: 'normal', label: 'Обычно' },
+              { value: 'fast', label: 'Быстро' },
+            ]}
+            value={spec.speed}
+            onChange={(v) => onChange({ ...spec, speed: v as 'slow' | 'normal' | 'fast' })}
+          />
+          <Text size="xs" c="dimmed">
+            Ребёнок ведёт батискаф пальцем и ловит рыбок: «три жёлтые рыбки» (до пяти) или «рыбку с
+            цифрой пять». Медуза только отталкивает. Сложность растёт сама: цифры больше, медуз
+            больше, потом задания вперемешку.
           </Text>
         </Stack>
       );
