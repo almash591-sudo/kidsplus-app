@@ -55,6 +55,7 @@ const SPECS = [
   { kind: 'colorNumbers', pictures: ['sun'], hint: true },
   { kind: 'dive', task: 'colors', max: 5, jellies: 'few', speed: 'slow', rounds: 3 },
   { kind: 'rocket', parts: 3, memory: false, quiz: 'sums', max: 5, asteroids: 'few', rounds: 2 },
+  { kind: 'race', quiz: 'numbers', max: 5, gates: 4, rivals: true, cones: 'few', speed: 'slow' },
 ] as const;
 
 describe('уровни сложности (этап 34)', () => {
@@ -138,5 +139,13 @@ describe('игры этапа 41', () => {
     expect(specAtLevel(rocket, 2)).toMatchObject({ parts: 4, memory: false, max: 7 });
     expect(specAtLevel(rocket, 3)).toMatchObject({ parts: 5, memory: true, max: 9, rounds: 4 });
     expect(gameSpec.safeParse({ kind: 'rocket', parts: 6, max: 5, rounds: 2 }).success).toBe(false);
+  });
+
+  it('гонки (этап 43): ответы до большего, ворот и конусов больше, потом быстрее', () => {
+    const race = gameSpec.parse({ kind: 'race', max: 3, gates: 4 }) as GameSpec;
+    expect(race).toMatchObject({ quiz: 'colors', rivals: true, cones: 'few', speed: 'slow' });
+    expect(specAtLevel(race, 2)).toMatchObject({ max: 5, gates: 5, cones: 'many', speed: 'slow' });
+    expect(specAtLevel(race, 3)).toMatchObject({ max: 7, gates: 6, speed: 'normal' });
+    expect(gameSpec.safeParse({ kind: 'race', max: 5, gates: 11 }).success).toBe(false);
   });
 });
