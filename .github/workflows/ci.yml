@@ -103,7 +103,7 @@ jobs:
       - if: steps.changed.outputs.run == 'true'
         run: pnpm install --frozen-lockfile
       - if: steps.changed.outputs.run == 'true'
-        run: for i in 1 2 3; do timeout 420 pnpm --filter @kidsplus/kid exec playwright install --with-deps chromium && exit 0; echo "повтор установки $i"; done; exit 1
+        run: bash .github/pw-install.sh @kidsplus/kid chromium
       - if: steps.changed.outputs.run == 'true'
         run: pnpm --filter @kidsplus/kid e2e --project s20-portrait --project s20-landscape
       - uses: actions/upload-artifact@v4
@@ -148,7 +148,7 @@ jobs:
       - if: steps.changed.outputs.run == 'true'
         run: pnpm install --frozen-lockfile
       - if: steps.changed.outputs.run == 'true'
-        run: for i in 1 2 3; do timeout 420 pnpm --filter @kidsplus/kid exec playwright install --with-deps webkit && exit 0; echo "повтор установки $i"; done; exit 1
+        run: bash .github/pw-install.sh @kidsplus/kid webkit
       - if: steps.changed.outputs.run == 'true'
         run: pnpm --filter @kidsplus/kid e2e --project iphone-15 --project iphone-se
       - uses: actions/upload-artifact@v4
@@ -192,7 +192,7 @@ jobs:
       - if: steps.changed.outputs.run == 'true'
         run: pnpm install --frozen-lockfile
       - if: steps.changed.outputs.run == 'true'
-        run: for i in 1 2 3; do timeout 420 pnpm --filter @kidsplus/parent exec playwright install --with-deps webkit chromium && exit 0; echo "повтор установки $i"; done; exit 1
+        run: bash .github/pw-install.sh @kidsplus/parent webkit chromium
       - if: steps.changed.outputs.run == 'true'
         run: pnpm --filter @kidsplus/parent e2e
       - uses: actions/upload-artifact@v4
