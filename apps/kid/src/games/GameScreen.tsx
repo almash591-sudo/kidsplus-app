@@ -39,6 +39,7 @@ import { Size } from './Size';
 import { RiddleGame } from './Riddle';
 import { Sudoku } from './Sudoku';
 import { ColorNumbers } from './ColorNumbers';
+import { Dive } from './Dive';
 import { Dots } from './Dots';
 import { Tangram } from './Tangram';
 import { SyllableWord, Word } from './Word';
@@ -92,6 +93,7 @@ const OWN_SCENE: GameKind[] = [
   'fishing',
   'flight',
   'builder',
+  'dive',
 ];
 export const backdropOf = (kind: GameKind): Backdrop | undefined =>
   OWN_SCENE.includes(kind)
@@ -105,6 +107,7 @@ const OWL_INSIDE: readonly GameKind[] = [
   'fishing',
   'flight',
   'builder',
+  'dive',
   // Загадки (этап 41): совёнок загадывает посреди экрана.
   'riddle',
 ];
@@ -164,6 +167,7 @@ const GAMES: { [K in GameKind]: ComponentType<GameProps<K>> } = {
   dots: Dots,
   tangram: Tangram,
   colorNumbers: ColorNumbers,
+  dive: Dive,
 };
 
 /** Экран игры: сама игра, кнопка «домой», в конце — звёздочка и следующий пункт. */

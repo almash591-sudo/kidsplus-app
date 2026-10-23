@@ -13,10 +13,12 @@ import type {
 } from '@kidsplus/shared/games';
 import {
   BUILDER_BLOCKS,
+  DIVE_FISH,
   FISHING_LETTERS,
   NOTE_NAMES,
   SPACE_LETTERS,
   type BuilderBlock,
+  type DiveFish,
 } from '@kidsplus/shared/games';
 import { SONGS } from '@kidsplus/shared/songs';
 import { NUMBERS, paint, PALETTE } from './games/common';
@@ -320,6 +322,44 @@ export const TANGRAM_NAMES: Record<TangramFigure, string> = {
 };
 export const itIs = (name: string) => `Это ${name}!`;
 
+// ─── Этап 43: зрелищные игры ───
+export const DIVE_PROMPT = 'Веди батискаф пальчиком и лови рыбок!';
+export const DIVE_JELLY = 'Ой, медуза! Проплывай мимо медуз.';
+export const DIVE_DONE = 'Ура, сундук с жемчугом!';
+/** Цвет рыбки: «одну красную», «две красные», «пять красных», «это красная». */
+const FISH_COLOR: Record<DiveFish, [one: string, few: string, many: string, is: string]> = {
+  red: ['красную', 'красные', 'красных', 'красная'],
+  yellow: ['жёлтую', 'жёлтые', 'жёлтых', 'жёлтая'],
+  blue: ['синюю', 'синие', 'синих', 'синяя'],
+  green: ['зелёную', 'зелёные', 'зелёных', 'зелёная'],
+  purple: ['фиолетовую', 'фиолетовые', 'фиолетовых', 'фиолетовая'],
+  orange: ['оранжевую', 'оранжевые', 'оранжевых', 'оранжевая'],
+};
+/** Самое большее рыбок одного цвета за задание. */
+export const DIVE_MAX_COUNT = 5;
+const COUNT_WORD = ['', 'одну', 'две', 'три', 'четыре', 'пять'];
+/** «Поймай три жёлтые рыбки!» */
+export const diveCatch = (color: DiveFish, count: number) => {
+  const [one, few, many] = FISH_COLOR[color];
+  const words = count === 1 ? [one, 'рыбку'] : count < 5 ? [few, 'рыбки'] : [many, 'рыбок'];
+  return `Поймай ${COUNT_WORD[count]} ${words.join(' ')}!`;
+};
+export const diveNumber = (n: number) => `Поймай рыбку с цифрой ${NUMBERS[n]}!`;
+/** Не та рыбка — что поймали (потом звучит задание ещё раз). */
+export const diveIsColor = (color: DiveFish) => `Это ${FISH_COLOR[color][3]} рыбка.`;
+export const diveIsNumber = (n: number) => `Это цифра ${NUMBERS[n]}.`;
+/** Все фразы «Подводного плавания» — уровни меняют цифры и смешивают задания. */
+export const divePhrases = () => [
+  DIVE_PROMPT,
+  DIVE_JELLY,
+  DIVE_DONE,
+  ...DIVE_FISH.flatMap((c) => [
+    diveIsColor(c),
+    ...Array.from({ length: DIVE_MAX_COUNT }, (_, i) => diveCatch(c, i + 1)),
+  ]),
+  ...NUMBERS.slice(1, 11).flatMap((_, i) => [diveNumber(i + 1), diveIsNumber(i + 1)]),
+];
+
 /** Как играть — для игр без своего задания и для «ушка», если задание ещё не звучало. */
 export const GAME_INTRO: Record<GameKind, string> = {
   drawing: 'Рисуй пальчиком! Краски — внизу.',
@@ -372,6 +412,7 @@ export const GAME_INTRO: Record<GameKind, string> = {
   dots: DOTS_PROMPT,
   tangram: TANGRAM_PROMPT,
   colorNumbers: COLOR_NUMBERS_PROMPT,
+  dive: DIVE_PROMPT,
 };
 
 /** Подсказки на экранах выбора — для тех, кто не читает. */
@@ -530,6 +571,8 @@ export function gamePhrases(spec: GameSpec): string[] {
         COLOR_NUMBERS_DONE,
         ...Array.from({ length: 7 }, (_, i) => colorNumberWrong(i + 1)),
       ];
+    case 'dive':
+      return divePhrases();
     case 'drawing':
     case 'puzzle':
     case 'memory':
