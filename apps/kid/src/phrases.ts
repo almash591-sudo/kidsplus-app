@@ -5,8 +5,10 @@ import type { KidCategory, KidPlaylist } from '@kidsplus/shared/api';
 import type {
   BalloonColor,
   ColoringPicture,
+  DotPicture,
   GameKind,
   GameSpec,
+  TangramFigure,
   TraceShape,
 } from '@kidsplus/shared/games';
 import {
@@ -288,6 +290,36 @@ export const SUDOKU_ROW = 'В этой строчке такая картинк�
 export const SUDOKU_COL = 'В этом столбике такая картинка уже есть!';
 export const SUDOKU_DONE = 'Получилось! В каждой строчке и в каждом столбике все картинки по разу.';
 
+export const DOTS_PROMPT = 'Соедини точки по порядку: один, два, три… Что получится?';
+export const TANGRAM_PROMPT = 'Собери фигуру! Перетащи детали на свои места.';
+export const COLOR_NUMBERS_PROMPT =
+  'Раскрась по цифрам! Возьми краску с цифрой и нажми, где такая же цифра.';
+export const COLOR_NUMBERS_DONE = 'Какая красивая картинка получилась!';
+/** Не та краска: «Здесь цифра три. Возьми краску с цифрой три!» */
+export const colorNumberWrong = (n: number) =>
+  `Здесь цифра ${NUMBERS[n]}. Возьми краску с цифрой ${NUMBERS[n]}!`;
+/** Что получилось в «Соедини точки» и «Танграме». */
+export const DOT_NAMES: Record<DotPicture, string> = {
+  star: 'звёздочка',
+  house: 'домик',
+  fish: 'рыбка',
+  heart: 'сердечко',
+  boat: 'кораблик',
+  fir: 'ёлочка',
+  rocket: 'ракета',
+};
+export const TANGRAM_NAMES: Record<TangramFigure, string> = {
+  house: 'домик',
+  tree: 'ёлочка',
+  rocket: 'ракета',
+  car: 'машинка',
+  boat: 'кораблик',
+  snowman: 'снеговик',
+  fish: 'рыбка',
+  castle: 'замок',
+};
+export const itIs = (name: string) => `Это ${name}!`;
+
 /** Как играть — для игр без своего задания и для «ушка», если задание ещё не звучало. */
 export const GAME_INTRO: Record<GameKind, string> = {
   drawing: 'Рисуй пальчиком! Краски — внизу.',
@@ -337,6 +369,9 @@ export const GAME_INTRO: Record<GameKind, string> = {
   syllableWord: SYLLABLE_WORD_PROMPT,
   riddle: RIDDLE_PROMPT,
   sudoku: SUDOKU_PROMPT,
+  dots: DOTS_PROMPT,
+  tangram: TANGRAM_PROMPT,
+  colorNumbers: COLOR_NUMBERS_PROMPT,
 };
 
 /** Подсказки на экранах выбора — для тех, кто не читает. */
@@ -484,6 +519,17 @@ export function gamePhrases(spec: GameSpec): string[] {
       return [RIDDLE_PROMPT, ...spec.riddles.flatMap((r) => [r.text, riddleAnswer(r.name)])];
     case 'sudoku':
       return [SUDOKU_PROMPT, SUDOKU_ROW, SUDOKU_COL, SUDOKU_DONE];
+    // Номера точек — общие фразы (счёт).
+    case 'dots':
+      return [DOTS_PROMPT, ...spec.pictures.map((p) => itIs(DOT_NAMES[p]))];
+    case 'tangram':
+      return [TANGRAM_PROMPT, ...spec.figures.map((f) => itIs(TANGRAM_NAMES[f]))];
+    case 'colorNumbers':
+      return [
+        COLOR_NUMBERS_PROMPT,
+        COLOR_NUMBERS_DONE,
+        ...Array.from({ length: 7 }, (_, i) => colorNumberWrong(i + 1)),
+      ];
     case 'drawing':
     case 'puzzle':
     case 'memory':

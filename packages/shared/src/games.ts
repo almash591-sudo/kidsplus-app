@@ -18,6 +18,23 @@ export const COLORING_PICTURES = [
 ] as const;
 export type ColoringPicture = (typeof COLORING_PICTURES)[number];
 
+/** Картинки «Соедини точки» (этап 42) — контуры нарисованы в коде детского приложения. */
+export const DOT_PICTURES = ['star', 'house', 'fish', 'heart', 'boat', 'fir', 'rocket'] as const;
+export type DotPicture = (typeof DOT_PICTURES)[number];
+
+/** Фигуры «Танграма-малыша» (этап 42): силуэт из простых деталей. */
+export const TANGRAM_FIGURES = [
+  'house',
+  'tree',
+  'rocket',
+  'car',
+  'boat',
+  'snowman',
+  'fish',
+  'castle',
+] as const;
+export type TangramFigure = (typeof TANGRAM_FIGURES)[number];
+
 /** Фигуры и цифры для обводки по точкам. */
 export const TRACE_SHAPES = [
   'line',
@@ -493,6 +510,33 @@ export const gameSpec = z.discriminatedUnion('kind', [
     .refine((g) => g.size <= new Set(g.imageIds).size, {
       message: 'картинок должно быть не меньше, чем клеток в строке',
     }),
+  /**
+   * Соедини точки: нажимать на точки 1, 2, 3… — получается картинка. hint — следующая точка
+   * мигает.
+   */
+  z.object({
+    kind: z.literal('dots'),
+    pictures: z.array(z.enum(DOT_PICTURES)).min(1).max(10),
+    hint: z.boolean().default(true),
+  }),
+  /**
+   * Танграм-малыш: перетащить детали в силуэт фигуры. outline — внутри силуэта видны контуры
+   * каждой детали (проще); без них — только общий силуэт.
+   */
+  z.object({
+    kind: z.literal('tangram'),
+    figures: z.array(z.enum(TANGRAM_FIGURES)).min(1).max(10),
+    outline: z.boolean().default(true),
+  }),
+  /**
+   * Раскраска по цифрам: у каждой области — цифра, у краски — та же цифра. hint — области
+   * чуть подкрашены своим цветом.
+   */
+  z.object({
+    kind: z.literal('colorNumbers'),
+    pictures: z.array(z.enum(COLORING_PICTURES)).min(1).max(10),
+    hint: z.boolean().default(true),
+  }),
 ]);
 
 /** Детали «Строителя»: кубик, брусок, крыша, арка, цилиндр. */
@@ -567,6 +611,9 @@ export const GAME_KINDS: Record<GameKind, string> = {
   syllableWord: 'Слово из слогов',
   riddle: 'Загадки',
   sudoku: 'Судоку-малыш',
+  dots: 'Соедини точки',
+  tangram: 'Танграм-малыш',
+  colorNumbers: 'Раскраска по цифрам',
 };
 
 /** id картинок в параметрах игры — для проверки, что они есть и готовы. */
@@ -626,6 +673,9 @@ export function gameImageIds(g: GameSpec): string[] {
     case 'syllable':
     case 'firstLetter':
     case 'readWord':
+    case 'dots':
+    case 'tangram':
+    case 'colorNumbers':
       return [];
   }
 }

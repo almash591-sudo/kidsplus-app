@@ -178,6 +178,12 @@ export function specAtLevel(spec: GameSpec, level: number): GameSpec {
         blanks: clamp(spec.blanks + 2 * up, 1, size === 4 ? 12 : 6),
       };
     }
+    // Этап 42: со второго шага без подсказок.
+    case 'dots':
+    case 'colorNumbers':
+      return { ...spec, hint: spec.hint && up < 1 };
+    case 'tangram':
+      return { ...spec, outline: spec.outline && up < 1 };
     default:
       // Раскраска, рисовалка, пары, сортировка, фонарик, «лишнее», «по порядку», песенки — как есть.
       return spec;

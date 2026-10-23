@@ -38,6 +38,9 @@ import { Shapes } from './Shapes';
 import { Size } from './Size';
 import { RiddleGame } from './Riddle';
 import { Sudoku } from './Sudoku';
+import { ColorNumbers } from './ColorNumbers';
+import { Dots } from './Dots';
+import { Tangram } from './Tangram';
 import { SyllableWord, Word } from './Word';
 import { Beats } from './music/Beats';
 import { LetterGame } from './letters/LetterGame';
@@ -158,6 +161,9 @@ const GAMES: { [K in GameKind]: ComponentType<GameProps<K>> } = {
   syllableWord: SyllableWord,
   riddle: RiddleGame,
   sudoku: Sudoku,
+  dots: Dots,
+  tangram: Tangram,
+  colorNumbers: ColorNumbers,
 };
 
 /** Экран игры: сама игра, кнопка «домой», в конце — звёздочка и следующий пункт. */
