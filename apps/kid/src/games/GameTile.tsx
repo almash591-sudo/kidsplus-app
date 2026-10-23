@@ -58,6 +58,7 @@ export const ICON: Record<GameKind, string> = {
   tangram: '🔺',
   colorNumbers: '🔢',
   dive: '🐠',
+  rocket: '🚀',
 };
 
 /** Глиняный значок игры (этап 35): квадратная картинка с прозрачным фоном, вписывается без растяжения. */
