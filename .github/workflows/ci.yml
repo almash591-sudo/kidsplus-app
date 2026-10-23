@@ -103,7 +103,7 @@ jobs:
       - if: steps.changed.outputs.run == 'true'
         run: pnpm install --frozen-lockfile
       - if: steps.changed.outputs.run == 'true'
-        run: pnpm --filter @kidsplus/kid exec playwright install --with-deps chromium
+        run: for i in 1 2 3; do timeout 420 pnpm --filter @kidsplus/kid exec playwright install --with-deps chromium && exit 0; echo "повтор установки $i"; done; exit 1
       - if: steps.changed.outputs.run == 'true'
         run: pnpm --filter @kidsplus/kid e2e --project s20-portrait --project s20-landscape
       - uses: actions/upload-artifact@v4
@@ -148,7 +148,7 @@ jobs:
       - if: steps.changed.outputs.run == 'true'
         run: pnpm install --frozen-lockfile
       - if: steps.changed.outputs.run == 'true'
-        run: pnpm --filter @kidsplus/kid exec playwright install --with-deps webkit
+        run: for i in 1 2 3; do timeout 420 pnpm --filter @kidsplus/kid exec playwright install --with-deps webkit && exit 0; echo "повтор установки $i"; done; exit 1
       - if: steps.changed.outputs.run == 'true'
         run: pnpm --filter @kidsplus/kid e2e --project iphone-15 --project iphone-se
       - uses: actions/upload-artifact@v4
@@ -161,7 +161,7 @@ jobs:
   # Кабинет на телефонах (этап 24): Safari-движок с экранами iPhone и узкий Android, демо-стенд на PGlite.
   e2e-phone:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     env:
       COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
       CI: 'true'
@@ -192,7 +192,7 @@ jobs:
       - if: steps.changed.outputs.run == 'true'
         run: pnpm install --frozen-lockfile
       - if: steps.changed.outputs.run == 'true'
-        run: pnpm --filter @kidsplus/parent exec playwright install --with-deps webkit chromium
+        run: for i in 1 2 3; do timeout 420 pnpm --filter @kidsplus/parent exec playwright install --with-deps webkit chromium && exit 0; echo "повтор установки $i"; done; exit 1
       - if: steps.changed.outputs.run == 'true'
         run: pnpm --filter @kidsplus/parent e2e
       - uses: actions/upload-artifact@v4
