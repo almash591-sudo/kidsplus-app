@@ -566,6 +566,21 @@ export const gameSpec = z.discriminatedUnion('kind', [
     asteroids: z.enum(['none', 'few', 'many']).default('few'),
     rounds: z.number().int().min(1).max(5),
   }),
+  /**
+   * Гонки (этап 43): машинка с совёнком едет по дороге (псевдо-3D), ребёнок ведёт её пальцем и
+   * проезжает в ворота с ответом — цвет (colors), цифра (numbers, до max) или буква (letters —
+   * первые max из FISHING_LETTERS); gates — ворот за гонку. Верные ворота — рывок вперёд и
+   * обгон соперника (rivals), не те — машинка притормаживает. Конусы (cones) только мешают.
+   */
+  z.object({
+    kind: z.literal('race'),
+    quiz: z.enum(['colors', 'numbers', 'letters']).default('colors'),
+    max: z.number().int().min(3).max(10),
+    gates: z.number().int().min(3).max(10),
+    rivals: z.boolean().default(true),
+    cones: z.enum(['none', 'few', 'many']).default('few'),
+    speed: z.enum(['slow', 'normal', 'fast']).default('slow'),
+  }),
 ]);
 
 /** Цвета рыбок «Подводного плавания» (этап 43). */
@@ -578,6 +593,9 @@ export type RocketPart = (typeof ROCKET_PARTS)[number];
 /** Цвета деталей ракеты. */
 export const ROCKET_COLORS = ['red', 'blue', 'yellow', 'green', 'purple'] as const;
 export type RocketColor = (typeof ROCKET_COLORS)[number];
+/** Цвета ворот «Гонок». */
+export const RACE_COLORS = ['red', 'yellow', 'blue', 'green', 'purple', 'orange'] as const;
+export type RaceColor = (typeof RACE_COLORS)[number];
 
 /** Детали «Строителя»: кубик, брусок, крыша, арка, цилиндр. */
 export const BUILDER_BLOCKS = ['cube', 'bar', 'roof', 'arch', 'drum'] as const;
@@ -656,6 +674,7 @@ export const GAME_KINDS: Record<GameKind, string> = {
   colorNumbers: 'Раскраска по цифрам',
   dive: 'Подводное плавание',
   rocket: 'Ракета: собери и лети',
+  race: 'Гонки',
 };
 
 /** id картинок в параметрах игры — для проверки, что они есть и готовы. */
@@ -720,6 +739,7 @@ export function gameImageIds(g: GameSpec): string[] {
     case 'colorNumbers':
     case 'dive':
     case 'rocket':
+    case 'race':
       return [];
   }
 }

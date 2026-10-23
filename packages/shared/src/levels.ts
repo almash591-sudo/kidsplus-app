@@ -129,6 +129,18 @@ export function specAtLevel(spec: GameSpec, level: number): GameSpec {
         rounds: clamp(spec.rounds + up, 1, 5),
       };
     }
+    case 'race': {
+      // Ответы до большего, ворот и конусов больше, с третьего шага — быстрее.
+      const cones = ['none', 'few', 'many'] as const;
+      const speeds = ['slow', 'normal', 'fast'] as const;
+      return {
+        ...spec,
+        max: clamp(spec.max + 2 * up, 3, 10),
+        gates: clamp(spec.gates + up, 3, 10),
+        cones: cones[clamp(cones.indexOf(spec.cones) + up, 0, 2)]!,
+        speed: speeds[clamp(speeds.indexOf(spec.speed) + Math.max(0, up - 1), 0, 2)]!,
+      };
+    }
     case 'robot':
       return {
         ...spec,

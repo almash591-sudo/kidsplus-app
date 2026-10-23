@@ -251,6 +251,15 @@ const DEFAULTS: { [K in GameKind]: Extract<GameSpec, { kind: K }> } = {
     asteroids: 'few',
     rounds: 2,
   },
+  race: {
+    kind: 'race',
+    quiz: 'colors',
+    max: 3,
+    gates: 4,
+    rivals: true,
+    cones: 'few',
+    speed: 'slow',
+  },
 };
 
 /** Число из NumberInput (пустое поле — минимум). */
@@ -1943,6 +1952,73 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
             Сначала ребёнок собирает ракету по цветному чертежу, потом летит и ведёт её пальцем к
             планете с ответом. Буквы: {FISHING_LETTERS.slice(0, spec.max).join(' ')}. Сложность
             растёт сама: больше деталей, по памяти, ответы до большего, больше камней.
+          </Text>
+        </Stack>
+      );
+    case 'race':
+      return (
+        <Stack gap="xs">
+          <Text size="sm">На воротах</Text>
+          <SegmentedControl
+            data={[
+              { value: 'colors', label: 'Цвета' },
+              { value: 'numbers', label: 'Цифры' },
+              { value: 'letters', label: 'Буквы' },
+            ]}
+            value={spec.quiz}
+            onChange={(v) => onChange({ ...spec, quiz: v as 'colors' | 'numbers' | 'letters' })}
+          />
+          <Group grow>
+            <NumberInput
+              label={
+                spec.quiz === 'letters'
+                  ? 'Сколько первых букв'
+                  : spec.quiz === 'colors'
+                    ? 'Сколько цветов (до 6)'
+                    : 'Цифры до'
+              }
+              min={3}
+              max={10}
+              value={spec.max}
+              onChange={(v) => onChange({ ...spec, max: num(v, 3) })}
+            />
+            <NumberInput
+              label="Ворот"
+              min={3}
+              max={10}
+              value={spec.gates}
+              onChange={(v) => onChange({ ...spec, gates: num(v, 4) })}
+            />
+          </Group>
+          <Switch
+            label="Машинки-соперники (обгонять)"
+            checked={spec.rivals}
+            onChange={(e) => onChange({ ...spec, rivals: e.currentTarget.checked })}
+          />
+          <Text size="sm">Конусы на дороге</Text>
+          <SegmentedControl
+            data={[
+              { value: 'none', label: 'Нет' },
+              { value: 'few', label: 'Немного' },
+              { value: 'many', label: 'Много' },
+            ]}
+            value={spec.cones}
+            onChange={(v) => onChange({ ...spec, cones: v as 'none' | 'few' | 'many' })}
+          />
+          <Text size="sm">Скорость</Text>
+          <SegmentedControl
+            data={[
+              { value: 'slow', label: 'Медленно' },
+              { value: 'normal', label: 'Средне' },
+              { value: 'fast', label: 'Быстро' },
+            ]}
+            value={spec.speed}
+            onChange={(v) => onChange({ ...spec, speed: v as 'slow' | 'normal' | 'fast' })}
+          />
+          <Text size="xs" c="dimmed">
+            Ребёнок ведёт машинку пальцем и проезжает в ворота с ответом: «Проезжай в красные
+            ворота!», «…с цифрой три!». Не те ворота — машинка притормаживает, и задание
+            повторяется. Сложность растёт сама: ответы до большего, больше ворот и конусов, быстрее.
           </Text>
         </Stack>
       );

@@ -14,6 +14,16 @@ import {
   type Swimmer,
 } from './diveLogic';
 import {
+  buildTrack,
+  gateValues,
+  LANES,
+  laneOf,
+  raceTasks,
+  steer as raceSteer,
+  taskPhrase as raceTaskPhrase,
+  wrongPhrase as raceWrongPhrase,
+} from './raceLogic';
+import {
   blueprintOf,
   fits,
   flightPhrase,
@@ -176,5 +186,72 @@ describe('ракета (этап 43)', () => {
       expect(all).toContain('Нужны фиолетовые крылья.');
     }
     expect(rocketPhrases('sums')).toContain(flightPhrase({ kind: 'sum', a: 4, b: 6, answer: 10 }));
+  });
+});
+
+describe('гонки (этап 43)', () => {
+  const race = (over: Partial<SpecOf<'race'>> = {}) =>
+    gameSpec.parse({ kind: 'race', max: 5, gates: 6, ...over }) as SpecOf<'race'>;
+
+  it('задания подряд не повторяются, на воротах — ответ и два других', () => {
+    for (const quiz of ['colors', 'numbers', 'letters'] as const) {
+      const spec = race({ quiz });
+      const tasks = raceTasks(spec);
+      expect(tasks).toHaveLength(6);
+      for (let i = 1; i < tasks.length; i++)
+        expect(tasks[i]!.answer).not.toBe(tasks[i - 1]!.answer);
+      for (const t of tasks) {
+        const v = gateValues(t, spec);
+        expect(v).toHaveLength(3);
+        expect(new Set(v).size).toBe(3);
+        expect(v.filter((x) => x === t.answer)).toHaveLength(1);
+      }
+    }
+    // Цвета — из первых max (не меньше трёх).
+    const colors = raceTasks(race({ quiz: 'colors', max: 3, gates: 10 })).map((t) => t.answer);
+    expect(colors.every((c) => ['red', 'yellow', 'blue'].includes(String(c)))).toBe(true);
+  });
+
+  it('трасса: ворота по порядку, у ворот дорога прямая, финиш за последними, конусы далеко от ворот', () => {
+    const track = buildTrack(race({ cones: 'many' }));
+    expect(track.gates).toHaveLength(6);
+    expect(track.gates).toEqual([...track.gates].sort((a, b) => a - b));
+    expect(track.finish).toBeGreaterThan(track.gates.at(-1)!);
+    expect(track.segments.length).toBeGreaterThan(track.finish + 100);
+    for (const g of track.gates) {
+      for (let i = g - 10; i <= g; i++) expect(track.segments[i]!.curve).toBe(0);
+      expect(track.segments[g]!.gate).toBe(track.gates.indexOf(g));
+    }
+    const cones = track.segments.filter((s) => s.cone !== undefined);
+    expect(cones.length).toBe(3 * 7);
+    for (const c of cones) {
+      for (const g of [...track.gates, track.finish])
+        expect(Math.abs(c.index - g)).toBeGreaterThanOrEqual(18);
+      expect(LANES).toContain(c.cone);
+    }
+    expect(buildTrack(race({ cones: 'none' })).segments.some((s) => s.cone !== undefined)).toBe(
+      false,
+    );
+  });
+
+  it('полосы и руль: машинка догоняет палец и не уезжает с дороги', () => {
+    expect([-0.9, -0.4, 0.1, 0.5].map(laneOf)).toEqual([0, 0, 1, 2]);
+    let car = { x: 0, vx: 0 };
+    for (let i = 0; i < 60; i++) car = raceSteer(car.x, car.vx, 0.64, 1 / 60);
+    expect(car.x).toBeCloseTo(0.64, 1);
+    for (let i = 0; i < 120; i++) car = raceSteer(car.x, car.vx, 5, 1 / 60);
+    expect(car.x).toBeLessThanOrEqual(0.95);
+  });
+
+  it('все фразы — в списке озвучки', () => {
+    for (const quiz of ['colors', 'numbers', 'letters'] as const) {
+      const spec = race({ quiz, max: 10 });
+      const all = gamePhrases(spec);
+      for (const t of raceTasks(spec)) {
+        expect(all).toContain(raceTaskPhrase(t));
+        for (const v of gateValues(t, spec)) expect(all).toContain(raceWrongPhrase(t, v));
+      }
+    }
+    expect(gamePhrases(race())).toContain('Проезжай в синие ворота!');
   });
 });

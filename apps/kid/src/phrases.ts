@@ -16,10 +16,12 @@ import {
   DIVE_FISH,
   FISHING_LETTERS,
   ROCKET_COLORS,
+  RACE_COLORS,
   NOTE_NAMES,
   SPACE_LETTERS,
   type BuilderBlock,
   type DiveFish,
+  type RaceColor,
   type RocketColor,
   type RocketPart,
 } from '@kidsplus/shared/games';
@@ -421,6 +423,40 @@ export const rocketPhrases = (quiz: 'numbers' | 'sums' | 'letters') => {
   ];
 };
 
+// ─── «Гонки» (этап 43) ───
+export const RACE_PROMPT = 'Гонка! Веди машинку пальцем и проезжай в нужные ворота.';
+export const RACE_START = 'На старт! Внимание! Марш!';
+export const RACE_CONE = 'Ой, конус! Объезжай конусы.';
+export const RACE_FINISH = 'Финиш! Мы первые!';
+/** Ворота «в … ворота»: множественное число. */
+const RACE_COLOR: Record<RaceColor, string> = {
+  red: 'красные',
+  yellow: 'жёлтые',
+  blue: 'синие',
+  green: 'зелёные',
+  purple: 'фиолетовые',
+  orange: 'оранжевые',
+};
+export const raceToColor = (c: RaceColor) => `Проезжай в ${RACE_COLOR[c]} ворота!`;
+export const raceToNumber = (n: number) => `Проезжай в ворота с цифрой ${NUMBERS[n]}!`;
+export const raceToLetter = (l: string) => `Проезжай в ворота с буквой ${l}!`;
+/** Не те ворота: «Это синие ворота.» / «Это цифра четыре.» / «Это буква К.» */
+export const raceIsColor = (c: RaceColor) => `Это ${RACE_COLOR[c]} ворота.`;
+export const raceIsNumber = (n: number) => `Это цифра ${NUMBERS[n]}.`;
+export const raceIsLetter = (l: string) => `Это буква ${l}.`;
+/** Все фразы «Гонок» для вида заданий — уровни меняют ответы до 10. */
+export const racePhrases = (quiz: 'colors' | 'numbers' | 'letters') => [
+  RACE_PROMPT,
+  RACE_START,
+  RACE_CONE,
+  RACE_FINISH,
+  ...(quiz === 'colors'
+    ? RACE_COLORS.flatMap((c) => [raceToColor(c), raceIsColor(c)])
+    : quiz === 'letters'
+      ? FISHING_LETTERS.flatMap((l) => [raceToLetter(l), raceIsLetter(l)])
+      : NUMBERS.slice(1, 11).flatMap((_, i) => [raceToNumber(i + 1), raceIsNumber(i + 1)])),
+];
+
 /** Как играть — для игр без своего задания и для «ушка», если задание ещё не звучало. */
 export const GAME_INTRO: Record<GameKind, string> = {
   drawing: 'Рисуй пальчиком! Краски — внизу.',
@@ -475,6 +511,7 @@ export const GAME_INTRO: Record<GameKind, string> = {
   colorNumbers: COLOR_NUMBERS_PROMPT,
   dive: DIVE_PROMPT,
   rocket: ROCKET_PROMPT,
+  race: RACE_PROMPT,
 };
 
 /** Подсказки на экранах выбора — для тех, кто не читает. */
@@ -637,6 +674,8 @@ export function gamePhrases(spec: GameSpec): string[] {
       return divePhrases();
     case 'rocket':
       return rocketPhrases(spec.quiz);
+    case 'race':
+      return racePhrases(spec.quiz);
     case 'drawing':
     case 'puzzle':
     case 'memory':
