@@ -1,6 +1,6 @@
 import { gameSpec, type GameSpec } from '@kidsplus/shared/games';
 import { describe, expect, it } from 'vitest';
-import { diveCatch, divePhrases, gamePhrases } from '../phrases';
+import { diveCatch, divePhrases, gamePhrases, rocketPhrases, rocketWrongColor } from '../phrases';
 import type { SpecOf } from './common';
 import {
   diveTasks,
@@ -13,6 +13,17 @@ import {
   wrongPhrase,
   type Swimmer,
 } from './diveLogic';
+import {
+  blueprintOf,
+  fits,
+  flightPhrase,
+  flightTasks,
+  partsOf,
+  planetAnswers,
+  planetPhrase,
+  taskLabel,
+  trayOf,
+} from './rocketLogic';
 
 /** Повторяемый «случай» для тестов. */
 const seeded = (seed: number) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
@@ -98,5 +109,72 @@ describe('подводное плавание (этап 43)', () => {
     for (let i = 0; i < 120; i++) pos = steer(pos, { x: 2, y: -1 }, 1 / 60);
     expect(pos.x).toBeLessThanOrEqual(0.8);
     expect(pos.y).toBeGreaterThanOrEqual(WATER.top);
+  });
+});
+
+const rocket = (raw: object) => gameSpec.parse({ kind: 'rocket', ...raw }) as SpecOf<'rocket'>;
+
+describe('ракета (этап 43)', () => {
+  it('чертёж: цвет у каждой цветной детали, соседние разные; на столе — верная и чужого цвета', () => {
+    const rnd = seeded(7);
+    for (let k = 0; k < 40; k++) {
+      const s = rocket({ parts: 5, max: 5, rounds: 2 });
+      const parts = partsOf(s);
+      expect(parts).toEqual(['body', 'fins', 'nose', 'window', 'engine']);
+      const bp = blueprintOf(s, rnd);
+      expect(bp.body).not.toBe(bp.fins);
+      expect(bp.fins).not.toBe(bp.nose);
+      const tray = trayOf(bp, parts, rnd);
+      expect(tray).toHaveLength(9);
+      expect(new Set(tray.map((t) => t.id)).size).toBe(9);
+      for (const part of parts) {
+        const mine = tray.filter((t) => t.part === part);
+        expect(mine.filter((t) => fits(bp, t))).toHaveLength(1);
+        expect(mine).toHaveLength(part === 'window' ? 1 : 2);
+      }
+    }
+    expect(partsOf(rocket({ parts: 3, max: 5, rounds: 1 }))).toEqual(['body', 'fins', 'nose']);
+  });
+
+  it('полёты: ответы до max, подряд не повторяются; на планетах — ответ и два других', () => {
+    const rnd = seeded(3);
+    for (let k = 0; k < 40; k++) {
+      for (const quiz of ['numbers', 'sums', 'letters'] as const) {
+        const s = rocket({ parts: 3, quiz, max: 4, rounds: 5 });
+        const tasks = flightTasks(s, rnd);
+        expect(tasks).toHaveLength(5);
+        for (const [i, t] of tasks.entries()) {
+          if (i) expect(t.answer).not.toBe(tasks[i - 1]!.answer);
+          if (t.kind === 'sum') {
+            expect(t.a + t.b).toBe(t.answer);
+            expect(t.a).toBeGreaterThanOrEqual(1);
+            expect(t.b).toBeGreaterThanOrEqual(1);
+            expect(t.answer).toBeLessThanOrEqual(4);
+          }
+          if (t.kind === 'number') expect(t.answer).toBeLessThanOrEqual(4);
+          const answers = planetAnswers(t, s, rnd);
+          expect(answers).toHaveLength(3);
+          expect(new Set(answers).size).toBe(3);
+          expect(answers).toContain(t.answer);
+        }
+      }
+    }
+  });
+
+  it('фразы: «Нужен синий корпус», «Нужны зелёные крылья», задания и подписи; всё озвучено заранее', () => {
+    expect(rocketWrongColor('body', 'blue')).toBe('Нужен синий корпус.');
+    expect(rocketWrongColor('fins', 'green')).toBe('Нужны зелёные крылья.');
+    const sum = { kind: 'sum', a: 2, b: 3, answer: 5 } as const;
+    expect(taskLabel(sum)).toBe('2 + 3 = ?');
+    expect(flightPhrase(sum)).toBe('Сколько будет два плюс три? Лети на планету с ответом!');
+    expect(planetPhrase(3)).toBe('Здесь три.');
+    expect(planetPhrase('М')).toBe('Здесь буква М.');
+    for (const quiz of ['numbers', 'sums', 'letters'] as const) {
+      // На уровнях max растёт до 10 — фразы озвучиваются на все.
+      const all = gamePhrases(rocket({ parts: 3, quiz, max: 3, rounds: 1 }) as GameSpec);
+      for (const p of rocketPhrases(quiz)) expect(all).toContain(p);
+      expect(all).toContain('Нужны фиолетовые крылья.');
+    }
+    expect(rocketPhrases('sums')).toContain(flightPhrase({ kind: 'sum', a: 4, b: 6, answer: 10 }));
   });
 });

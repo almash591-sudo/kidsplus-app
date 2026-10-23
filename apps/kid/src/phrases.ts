@@ -15,10 +15,13 @@ import {
   BUILDER_BLOCKS,
   DIVE_FISH,
   FISHING_LETTERS,
+  ROCKET_COLORS,
   NOTE_NAMES,
   SPACE_LETTERS,
   type BuilderBlock,
   type DiveFish,
+  type RocketColor,
+  type RocketPart,
 } from '@kidsplus/shared/games';
 import { SONGS } from '@kidsplus/shared/songs';
 import { NUMBERS, paint, PALETTE } from './games/common';
@@ -360,6 +363,64 @@ export const divePhrases = () => [
   ...NUMBERS.slice(1, 11).flatMap((_, i) => [diveNumber(i + 1), diveIsNumber(i + 1)]),
 ];
 
+export const ROCKET_PROMPT = 'Собери ракету как на чертеже! Перетаскивай детали на ракету.';
+export const ROCKET_REMEMBER = 'Запомни ракету — сейчас чертёж спрячется!';
+export const ROCKET_BUILT = 'Ракета готова!';
+export const ROCKET_COUNTDOWN = 'Три! Два! Один! Пуск!';
+export const ROCKET_ROCK = 'Ой, камень! Облетай камни.';
+export const ROCKET_LANDED = 'Посадка! Мы на планете!';
+/** Деталь с цветом на чертеже: «Нужен синий корпус.», «Нужны зелёные крылья.» */
+const PART_NAME: Record<Exclude<RocketPart, 'window'>, [name: string, plural: boolean]> = {
+  body: ['корпус', false],
+  fins: ['крылья', true],
+  nose: ['нос', false],
+  engine: ['двигатель', false],
+};
+const ROCKET_COLOR: Record<RocketColor, [one: string, many: string]> = {
+  red: ['красный', 'красные'],
+  blue: ['синий', 'синие'],
+  yellow: ['жёлтый', 'жёлтые'],
+  green: ['зелёный', 'зелёные'],
+  purple: ['фиолетовый', 'фиолетовые'],
+};
+export const rocketWrongColor = (part: Exclude<RocketPart, 'window'>, color: RocketColor) => {
+  const [name, plural] = PART_NAME[part];
+  return `${plural ? 'Нужны' : 'Нужен'} ${ROCKET_COLOR[color][plural ? 1 : 0]} ${name}.`;
+};
+export const rocketToNumber = (n: number) => `Лети на планету с цифрой ${NUMBERS[n]}!`;
+export const rocketToLetter = (l: string) => `Лети на планету с буквой ${l}!`;
+export const rocketToSum = (a: number, b: number) =>
+  `Сколько будет ${NUMBERS[a]} плюс ${NUMBERS[b]}? Лети на планету с ответом!`;
+/** Не та планета: «Здесь три.» / «Здесь буква М.» */
+export const rocketIsNumber = (n: number) => `Здесь ${NUMBERS[n]}.`;
+export const rocketIsLetter = (l: string) => `Здесь буква ${l}.`;
+/** Все фразы «Ракеты» для вида заданий — уровни меняют число деталей и ответы до 10. */
+export const rocketPhrases = (quiz: 'numbers' | 'sums' | 'letters') => {
+  const tasks =
+    quiz === 'letters'
+      ? FISHING_LETTERS.flatMap((l) => [rocketToLetter(l), rocketIsLetter(l)])
+      : [
+          ...(quiz === 'numbers'
+            ? NUMBERS.slice(1, 11).map((_, i) => rocketToNumber(i + 1))
+            : Array.from({ length: 9 }, (_, a) =>
+                Array.from({ length: 9 - a }, (_, b) => rocketToSum(a + 1, b + 1)),
+              ).flat()),
+          ...NUMBERS.slice(1, 11).map((_, i) => rocketIsNumber(i + 1)),
+        ];
+  return [
+    ROCKET_PROMPT,
+    ROCKET_REMEMBER,
+    ROCKET_BUILT,
+    ROCKET_COUNTDOWN,
+    ROCKET_ROCK,
+    ROCKET_LANDED,
+    ...(['body', 'fins', 'nose', 'engine'] as const).flatMap((p) =>
+      ROCKET_COLORS.map((c) => rocketWrongColor(p, c)),
+    ),
+    ...tasks,
+  ];
+};
+
 /** Как играть — для игр без своего задания и для «ушка», если задание ещё не звучало. */
 export const GAME_INTRO: Record<GameKind, string> = {
   drawing: 'Рисуй пальчиком! Краски — внизу.',
@@ -413,6 +474,7 @@ export const GAME_INTRO: Record<GameKind, string> = {
   tangram: TANGRAM_PROMPT,
   colorNumbers: COLOR_NUMBERS_PROMPT,
   dive: DIVE_PROMPT,
+  rocket: ROCKET_PROMPT,
 };
 
 /** Подсказки на экранах выбора — для тех, кто не читает. */
@@ -573,6 +635,8 @@ export function gamePhrases(spec: GameSpec): string[] {
       ];
     case 'dive':
       return divePhrases();
+    case 'rocket':
+      return rocketPhrases(spec.quiz);
     case 'drawing':
     case 'puzzle':
     case 'memory':
