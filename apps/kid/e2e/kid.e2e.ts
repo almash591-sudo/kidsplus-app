@@ -43,7 +43,7 @@ interface Backend {
   /** Уровни сложности игр (этап 34). */
   levels?: { start: number; byKind: Record<string, number> };
   /** Аудиотека: треки «детям». */
-  audio?: { id: string; title: string; url: string }[];
+  audio?: { id: string; title: string; url: string; video?: boolean }[];
   /** «Мои дела» (этап 30). */
   habits?: KidHabits;
   habitsDone?: string[];
@@ -3791,6 +3791,32 @@ test.describe('аудиотека', () => {
     await page.getByTestId('audio-close').click();
     await expect(page.getByTestId('audio-library')).toHaveCount(0);
     await expect(page.getByTestId('home')).toBeVisible();
+  });
+
+  test('видео семьи (этап 42): плитка 🎬 открывает плеер на весь экран, ✕ — назад', async ({
+    page,
+    backend,
+  }) => {
+    backend.audio = [
+      { id: 'a1', title: 'Колыбельная', url: '/api/audio/a1/file', video: false },
+      { id: 'v1', title: 'Осень', url: '/api/audio/v1/file', video: true },
+    ];
+    const asked: string[] = [];
+    await page.route('**/api/audio/**', (r) => {
+      asked.push(new URL(r.request().url()).pathname);
+      return r.fulfill({ status: 200, contentType: 'video/mp4', body: Buffer.alloc(0) });
+    });
+    await page.goto('/');
+    await page.getByTestId('audio-open').click();
+    const tiles = page.getByTestId('audio-tile');
+    await expect(tiles.nth(1)).toContainText('🎬');
+    await tiles.nth(1).click();
+    await expect(page.getByTestId('kid-video')).toBeVisible();
+    await expect.poll(() => asked).toContain('/api/audio/v1/file');
+    await shot(page, 'kid-video');
+    await page.getByTestId('kid-video-close').click();
+    await expect(page.getByTestId('kid-video')).toHaveCount(0);
+    await expect(page.getByTestId('audio-library')).toBeVisible();
   });
 });
 

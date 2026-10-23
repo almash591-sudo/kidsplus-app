@@ -6,6 +6,7 @@ import {
   AUDIO_TRACK_MAX_BYTES,
   audioUpdate,
   audioUploadQuery,
+  isVideo,
   parseRange,
   sniffAudio,
   type AudioTrack,
@@ -19,7 +20,7 @@ import { HttpError, idFrom, notFound, parse } from '../lib/http';
 
 const { audioTracks } = schema;
 
-const EXT: Record<string, string> = { 'audio/mpeg': 'mp3', 'audio/mp4': 'm4a' };
+const EXT: Record<string, string> = { 'audio/mpeg': 'mp3', 'audio/mp4': 'm4a', 'video/mp4': 'mp4' };
 const fileUrl = (id: string) => `/api/audio/${id}/file`;
 
 const toTrack = (r: typeof audioTracks.$inferSelect): AudioTrack => ({
@@ -39,6 +40,12 @@ export function audioRoutes(app: FastifyInstance, ctx: Ctx) {
   const parentOrDevice = requireParentOrDevice(ctx);
 
   // Тело — «сырой» файл: разбор audio/* общий с «Маминым голосом» (family-voice.ts), предел — свой.
+  // Видео (этап 42) — тоже «сырым» телом.
+  app.addContentTypeParser(
+    'video/mp4',
+    { parseAs: 'buffer', bodyLimit: AUDIO_TRACK_MAX_BYTES },
+    (_request, body, done) => done(null, body),
+  );
 
   const load = async (id: string) => {
     const [row] = await db.select().from(audioTracks).where(eq(audioTracks.id, id));
@@ -70,7 +77,7 @@ export function audioRoutes(app: FastifyInstance, ctx: Ctx) {
         throw new HttpError(400, 'validation', 'нет файла');
       const data = new Uint8Array(body);
       const mime = sniffAudio(data);
-      if (!mime) throw new HttpError(415, 'unsupported_media', 'это не MP3 и не M4A');
+      if (!mime) throw new HttpError(415, 'unsupported_media', 'это не MP3, M4A или MP4');
       const id = crypto.randomUUID();
       const key = `tracks/${id}.${EXT[mime]}`;
       await storage.put(key, data, mime);
@@ -113,12 +120,12 @@ export function audioRoutes(app: FastifyInstance, ctx: Ctx) {
   app.get('/api/kid/audio', { preHandler: deviceOnly }, async (request): Promise<KidAudioTrack[]> =>
     (
       await db
-        .select({ id: audioTracks.id, title: audioTracks.title })
+        .select({ id: audioTracks.id, title: audioTracks.title, mimeType: audioTracks.mimeType })
         .from(audioTracks)
         .innerJoin(schema.children, eq(schema.children.familyId, audioTracks.familyId))
         .where(and(eq(audioTracks.forKids, true), eq(schema.children.id, request.device!.childId)))
         .orderBy(desc(audioTracks.createdAt))
-    ).map((t) => ({ ...t, url: fileUrl(t.id) })),
+    ).map((t) => ({ id: t.id, title: t.title, url: fileUrl(t.id), video: isVideo(t.mimeType) })),
   );
 
   /**

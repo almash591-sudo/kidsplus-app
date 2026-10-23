@@ -9,6 +9,31 @@ describe('sniffAudio', () => {
     expect(sniffAudio(bytes(0xff, 0xfb, 0x90))).toBe('audio/mpeg');
     expect(sniffAudio(bytes(0, 0, 0, 0x20, 0x66, 0x74, 0x79, 0x70))).toBe('audio/mp4');
     expect(sniffAudio(bytes(0x89, 0x50, 0x4e, 0x47))).toBeNull();
+    // Этап 42: MP4 с видеодорожкой — видео; M4A по бренду — аудио, даже если что-то похожее есть.
+    const ascii = (t: string) => [...t].map((c) => c.charCodeAt(0));
+    const mp4 = (brand: string, handler: string) =>
+      bytes(
+        0,
+        0,
+        0,
+        0x20,
+        ...ascii('ftyp'),
+        ...ascii(brand),
+        ...new Array(20).fill(0),
+        ...ascii('hdlr'),
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        ...ascii(handler),
+      );
+    expect(sniffAudio(mp4('isom', 'vide'))).toBe('video/mp4');
+    expect(sniffAudio(mp4('isom', 'soun'))).toBe('audio/mp4');
+    expect(sniffAudio(mp4('M4A ', 'vide'))).toBe('audio/mp4');
     expect(sniffAudio(new Uint8Array(3))).toBeNull();
   });
 });
