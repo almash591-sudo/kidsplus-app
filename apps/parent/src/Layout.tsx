@@ -1,97 +1,76 @@
-import { AppShell, Burger, Center, Group, Loader, NavLink, Title } from '@mantine/core';
+import {
+  AppShell,
+  Burger,
+  Center,
+  Group,
+  Loader,
+  NavLink,
+  ScrollArea,
+  Stack,
+  Text,
+  Title,
+} from '@mantine/core';
 import { useDisclosure, useMediaQuery } from '@mantine/hooks';
 import { Navigate, NavLink as RouterLink, Outlet, useLocation } from 'react-router';
 import { CallLayer } from './calls/CallLayer';
 import { useMe } from './queries';
 import { CompactTitle, FetchBar, PageTransition } from './components/Chrome';
+import { LineIcon, TileIcon } from './components/NavIcon';
+import { isActive, MAIN, MORE, moreFor, type NavItem } from './nav';
 
-/** Боковое меню (компьютер): главные разделы и всё из «Ещё». */
-const NAV = [
-  { to: '/remote', label: 'Пульт', icon: '🎛' },
-  { to: '/content', label: 'Контент', icon: '🎬' },
-  { to: '/routine', label: 'Распорядок', icon: '📅' },
-  { to: '/progress', label: 'Прогресс', icon: '📊' },
-  { to: '/captures', label: 'Фото и видео', icon: '📷' },
-  { to: '/calls', label: 'Звонки', icon: '📞' },
-  { to: '/children', label: 'Дети', icon: '👧' },
-  { to: '/devices', label: 'Устройства', icon: '📱' },
-  { to: '/account', label: 'Аккаунт', icon: '⚙️' },
-];
-
-/** Вкладки внизу на телефоне — как в приложениях iPhone; остальное — в «Ещё» (меню). */
-const TABS = [
-  // Этап 47: «Пульт» вместо «Главной» — значок пульта (корпус, кнопка, клавиши).
-  {
-    to: '/remote',
-    label: 'Пульт',
-    icon: 'M8 2.5h8a1.5 1.5 0 0 1 1.5 1.5v16a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 20V4A1.5 1.5 0 0 1 8 2.5zM12 9.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM10 13h4M10 16h4M10 19h4',
-    also: ['/home', '/now', '/child/'],
-  },
-  {
-    to: '/content',
-    label: 'Контент',
-    icon: 'M4 5h16v14H4zM9 9.5v5l4.5-2.5z',
-    also: ['/moderation', '/videos', '/decks', '/games'],
-  },
-  // Этап 33: план, привычки и сон — одна вкладка «Распорядок».
-  {
-    to: '/routine',
-    label: 'Распорядок',
-    icon: 'M4 6h16v14H4zM4 10h16M9 3v4M15 3v4',
-    also: ['/plan', '/habits', '/sleep'],
-  },
-  { to: '/progress', label: 'Прогресс', icon: 'M5 19V11M12 19V5M19 19v-6', also: ['/analytics'] },
-  {
-    to: '/more',
-    label: 'Ещё',
-    icon: 'M5 12h.01M12 12h.01M19 12h.01',
-    also: [
-      '/captures',
-      '/calls',
-      '/children',
-      '/devices',
-      '/account',
-      '/mom-voice',
-      '/voice',
-      '/families',
-      '/backup',
-    ],
-  },
-];
-
-function TabIcon({ d }: { d: string }) {
-  return (
-    <svg
-      width="26"
-      height="26"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d={d} />
-    </svg>
-  );
-}
+/** «Ещё» на телефоне подсвечен на любой странице из своих групп. */
+const MORE_TAB = {
+  to: '/more',
+  label: 'Ещё',
+  icon: 'M5 12h.01M12 12h.01M19 12h.01',
+  also: MORE.flatMap((g) => g.items.map((it) => it.to)),
+};
 
 function TabBar() {
   const { pathname } = useLocation();
   return (
     <nav className="tabbar" aria-label="Разделы кабинета">
-      {TABS.map((t) => {
+      {[...MAIN, MORE_TAB].map((t) => {
         // Вложенные страницы подсвечивают свою вкладку: «Фото» — «Ещё», «Модерация» — «Контент».
-        const active = [t.to, ...t.also].some((p) => pathname.startsWith(p));
+        const active = isActive(pathname, t);
         return (
           <RouterLink key={t.to} to={t.to} aria-current={active ? 'page' : undefined}>
-            <TabIcon d={t.icon} />
+            <LineIcon d={t.icon} />
             <span>{t.label}</span>
           </RouterLink>
         );
       })}
     </nav>
+  );
+}
+
+/** Боковое меню на компьютере: главные разделы и группы «Ещё» — те же, что на телефоне. */
+function SideNav({ admin, onPick }: { admin: boolean; onPick: () => void }) {
+  const { pathname } = useLocation();
+  const link = (it: NavItem) => (
+    <NavLink
+      key={it.to}
+      component={RouterLink}
+      to={it.to}
+      label={it.label}
+      leftSection={<TileIcon d={it.icon} color={it.color} />}
+      active={isActive(pathname, it)}
+      onClick={onPick}
+      className="side-link"
+    />
+  );
+  return (
+    <ScrollArea type="never" data-testid="side-nav">
+      <Stack gap={2}>{MAIN.map(link)}</Stack>
+      {moreFor(admin).map((g) => (
+        <Stack key={g.title} gap={2} mt="md">
+          <Text size="xs" fw={600} c="dimmed" tt="uppercase" px="sm" mb={2}>
+            {g.title}
+          </Text>
+          {g.items.map(link)}
+        </Stack>
+      ))}
+    </ScrollArea>
   );
 }
 
@@ -125,17 +104,7 @@ export function Layout() {
         </Group>
       </AppShell.Header>
       <AppShell.Navbar p="xs">
-        {NAV.map((item) => (
-          <NavLink
-            key={item.to}
-            component={RouterLink}
-            to={item.to}
-            label={item.label}
-            leftSection={<span aria-hidden>{item.icon}</span>}
-            active={location.pathname.startsWith(item.to)}
-            onClick={close}
-          />
-        ))}
+        <SideNav admin={me.data.isAdmin === true} onPick={close} />
       </AppShell.Navbar>
       <AppShell.Main>
         <PageTransition>
