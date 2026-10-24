@@ -1,6 +1,7 @@
 // Журнал действий ребёнка за день (этап 29): события телефона, звонки и снимки — одной лентой.
 import { schema, type Db } from '@kidsplus/db';
 import { loadSchedule } from '@kidsplus/db/day';
+import { POEMS, type Poem } from '@kidsplus/shared/poems';
 import { localClock, type ActivityEntry } from '@kidsplus/shared/schedule';
 import { and, desc, eq, gte, inArray } from 'drizzle-orm';
 
@@ -19,6 +20,23 @@ const {
 } = schema;
 
 const DAY_MS = 86_400_000;
+
+/**
+ * Стих или сказка (этап 45): что выучено — «Учил стих «Осень наступила»: часть 2 из 4»,
+ * «Выучил наизусть…», «Рассказал вместе с голосом…». Не стих — null.
+ */
+function poemDone(p: Record<string, unknown>): string | null {
+  const poem = (POEMS as Record<string, Poem>)[String(p.poem)];
+  if (p.kind !== 'poem' || !poem) return null;
+  const what = poem.genre === 'tale' ? 'сказку' : poem.genre === 'fable' ? 'басню' : 'стих';
+  const title = `«${poem.title}»`;
+  const parts = Number(p.parts) || 0;
+  if (p.recall === true) return `Рассказал вместе с голосом ${what} ${title}`;
+  if (p.learned === true) return `Выучил наизусть ${what} ${title}`;
+  if (parts && Number(p.part) > 0)
+    return `Учил ${what} ${title}: часть ${Number(p.part)} из ${parts}`;
+  return `Послушал ${what} ${title}`;
+}
 
 export async function childActivity(
   db: Db,
@@ -132,7 +150,7 @@ export async function childActivity(
         add(
           e.createdAt,
           'game',
-          `Прошёл игру ${q(gameTitle.get(p.interactiveId as string))}`.trim(),
+          poemDone(p) ?? `Прошёл игру ${q(gameTitle.get(p.interactiveId as string))}`.trim(),
         );
         break;
       // Этап 44: открыл и ушёл, не пройдя.
