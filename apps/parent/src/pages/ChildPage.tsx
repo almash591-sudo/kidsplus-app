@@ -1,15 +1,21 @@
 // Страница ребёнка (этап 33): всё про одного ребёнка в одном месте — сейчас, что доступно
 // (и «добавить то, что есть у …»), распорядок, профиль. Разделы открываются на этом ребёнке.
-// Этап 47: «Глазами ребёнка» — крупной кнопкой здесь же.
-import { Alert, Avatar, Card, Group, Loader, Stack, Text, UnstyledButton } from '@mantine/core';
-import { useEffect } from 'react';
-import { Link, useParams } from 'react-router';
+// Этап 47: «Глазами ребёнка» — крупной кнопкой здесь же; «Изменить», телефон и «Удалить» — тоже
+// здесь (раньше — только в списке «Дети»).
+import type { Child } from '@kidsplus/shared/api';
+import { Alert, Button, Card, Group, Loader, Stack, Text, UnstyledButton } from '@mantine/core';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router';
+import { ChildFormModal, useRemoveChild } from '../components/ChildForm';
+import { KidAvatar, kidColor } from '../components/KidBits';
 import { copyFrom, LibraryCard, useAssignables } from '../components/Library';
+import { TileIcon } from '../components/NavIcon';
 import { PreviewButton } from '../components/PreviewButton';
-import { ageText } from '../lib/child';
+import { ageText, LANGUAGE_LABELS } from '../lib/child';
 import { setCurrentChild } from '../lib/currentChild';
 import { allOf } from '../lib/names';
-import { useChildNow, useChildren } from '../queries';
+import { MAIN } from '../nav';
+import { useChildNow, useChildren, useDevices } from '../queries';
 
 type Row = {
   to?: string;
@@ -31,21 +37,7 @@ function Group_({ title, rows }: { title: string; rows: Row[] }) {
           {rows.map((r) => {
             const inner = (
               <>
-                <span className="attention-icon" style={{ background: r.color }}>
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#fff"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <path d={r.icon} />
-                  </svg>
-                </span>
+                <TileIcon d={r.icon} color={r.color} />
                 <Text fw={500} style={{ flex: 1 }}>
                   {r.label}
                 </Text>
@@ -82,6 +74,10 @@ export function ChildPage() {
   const child = kids.find((k) => k.id === id);
   const now = useChildNow(id ?? '');
   const all = useAssignables();
+  const devices = useDevices();
+  const navigate = useNavigate();
+  const [editing, setEditing] = useState<Child | null>(null);
+  const remove = useRemoveChild(() => void navigate('/children', { replace: true }));
   // Открыли ребёнка — разделы кабинета теперь про него.
   useEffect(() => {
     if (child) setCurrentChild(child.id);
@@ -91,14 +87,13 @@ export function ChildPage() {
   if (!child) return <Alert color="red">Ребёнок не найден.</Alert>;
   const b = now.data?.battery;
   const others = kids.filter((k) => k.id !== child.id);
+  const phones = devices.data?.filter((d) => d.childId === child.id && !d.revokedAt).length ?? 0;
 
   return (
     <Stack gap="md" data-testid="child-page">
       <Group gap="md" wrap="nowrap">
-        <Avatar radius="xl" size={60} color="ios">
-          {child.nickname.slice(0, 1)}
-        </Avatar>
-        <Stack gap={0}>
+        <KidAvatar child={child} color={kidColor(kids, child.id)} size={60} />
+        <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
           <h1 className="page-title" style={{ margin: 0 }}>
             {child.nickname}
           </h1>
@@ -108,6 +103,9 @@ export function ChildPage() {
             {b ? ` · ${b.charging ? '⚡' : ''}${b.level} %` : ''}
           </Text>
         </Stack>
+        <Button variant="light" size="xs" onClick={() => setEditing(child)}>
+          Изменить
+        </Button>
       </Group>
 
       <PreviewButton childId={child.id} fullWidth />
@@ -130,8 +128,8 @@ export function ChildPage() {
           {
             to: `/remote?child=${child.id}`,
             label: 'Пульт',
-            color: '#007aff',
-            icon: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2',
+            color: MAIN[0]!.color,
+            icon: MAIN[0]!.icon,
           },
           {
             to: '/routine?tab=plan',
@@ -163,14 +161,25 @@ export function ChildPage() {
             icon: 'M5 19V11M12 19V5M19 19v-6',
           },
           {
-            to: '/children',
+            onClick: () => setEditing(child),
             label: 'Возраст, языки, вопросы',
+            value: child.languages.map((l) => LANGUAGE_LABELS[l] ?? l).join(', '),
             color: '#ff2d55',
             icon: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20a8 8 0 0 1 16 0',
           },
-          { to: '/devices', label: 'Телефон', color: '#8e8e93', icon: 'M7 3h10v18H7zM11 18h2' },
+          {
+            to: '/devices',
+            label: 'Телефон',
+            value: devices.data ? (phones ? 'привязан' : 'не привязан') : undefined,
+            color: '#8e8e93',
+            icon: 'M7 3h10v18H7zM11 18h2',
+          },
         ]}
       />
+      <Button variant="subtle" color="red" onClick={() => remove(child)} data-testid="child-delete">
+        Удалить профиль
+      </Button>
+      <ChildFormModal editing={editing} onClose={() => setEditing(null)} />
     </Stack>
   );
 }
