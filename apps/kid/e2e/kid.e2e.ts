@@ -1509,8 +1509,9 @@ test.describe('карточки: проверки и стрелки', () => {
     page,
     backend,
   }) => {
+    // Слово звучит 2,5 с — все касания успевают попасть в него и под нагрузкой (700 мс не хватало).
     await page.addInitScript(
-      () => ((window as unknown as { __speechMs: number }).__speechMs = 700),
+      () => ((window as unknown as { __speechMs: number }).__speechMs = 2500),
     );
     backend.items = [deckOf(3)];
     await page.goto('/');
