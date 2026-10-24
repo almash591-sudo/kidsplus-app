@@ -80,7 +80,7 @@ describe('заряд телефона', () => {
     expect(sent[0]).toMatchObject({
       kind: 'battery',
       childId: child,
-      url: `/routine?child=${child}`,
+      url: `/remote?child=${child}`,
     });
     expect(sent[0]!.body).toContain('15 %');
     expect(sent[0]!.body).not.toContain('Зайка');
