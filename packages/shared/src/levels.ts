@@ -149,6 +149,9 @@ export function specAtLevel(spec: GameSpec, level: number): GameSpec {
         hint: spec.hint && up < 1,
         rounds: clamp(spec.rounds + Math.max(0, up - 1), 1, 4),
       };
+    case 'poem':
+      // Больше вариантов в «Договори» и вопросах.
+      return { ...spec, choices: clamp(spec.choices + up, 2, 4) };
     case 'robot':
       return {
         ...spec,

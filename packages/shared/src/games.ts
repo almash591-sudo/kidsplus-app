@@ -1,6 +1,7 @@
 // Интерактивные игры (п. 5.6 ТЗ): каждый вид — компонент детского приложения + схема параметров.
 // Параметры хранятся в БД (interactives.params) и проверяются этой схемой и при записи, и при выдаче.
 import { z } from 'zod';
+import { POEM_CODES } from './poems';
 import { SONG_IDS } from './songs';
 
 const uuid = z.uuid();
@@ -602,6 +603,19 @@ export const gameSpec = z.discriminatedUnion('kind', [
     rounds: z.number().int().min(1).max(4),
     hint: z.boolean().default(true),
   }),
+  /**
+   * Стих или сказка (этап 45) из встроенной библиотеки: послушать под глиняные картинки, повторять
+   * за голосом по частям (repeat), «Договори словечко» (blanks) и вопросы по смыслу (questions) —
+   * choices вариантов-картинок. Выученную часть телефон помнит: в следующий раз учим следующую.
+   */
+  z.object({
+    kind: z.literal('poem'),
+    poem: z.enum(POEM_CODES),
+    repeat: z.boolean().default(true),
+    blanks: z.boolean().default(true),
+    questions: z.boolean().default(true),
+    choices: z.number().int().min(2).max(4).default(3),
+  }),
 ]);
 
 /** Цвета рыбок «Подводного плавания» (этап 43). */
@@ -697,6 +711,7 @@ export const GAME_KINDS: Record<GameKind, string> = {
   rocket: 'Ракета: собери и лети',
   race: 'Гонки',
   differences: 'Найди отличия',
+  poem: 'Стих или сказка',
 };
 
 /** id картинок в параметрах игры — для проверки, что они есть и готовы. */
@@ -763,6 +778,7 @@ export function gameImageIds(g: GameSpec): string[] {
     case 'rocket':
     case 'race':
     case 'differences':
+    case 'poem':
       return [];
   }
 }

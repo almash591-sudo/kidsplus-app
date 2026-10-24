@@ -198,6 +198,7 @@ export const DECK_CATEGORIES = [
   'nature',
   'music',
   'letters',
+  'poems',
   'other',
 ] as const;
 export type DeckCategory = (typeof DECK_CATEGORIES)[number];
