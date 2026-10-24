@@ -588,4 +588,30 @@ describe('пульт родителя (этап 29)', () => {
       'Учил стих «Осень наступила»: часть 2 из 4',
     ]);
   });
+
+  it('журнал: рассказ без заучивания — «Послушал рассказ…» (этап 46)', async () => {
+    const game = await addGame('Четыре желания', 'poems');
+    await t.app.inject({
+      method: 'POST',
+      url: '/api/kid/events',
+      cookies: device,
+      payload: {
+        type: 'interactive_complete',
+        interactiveId: game,
+        payload: {
+          kind: 'poem',
+          poem: 'zhelaniya',
+          part: 0,
+          parts: 0,
+          learned: false,
+          recall: false,
+        },
+      },
+    });
+    const log = await get<{ entries: { text: string }[] }>(
+      `/api/parent/children/${child}/activity`,
+      parent,
+    );
+    expect(log.entries.map((e) => e.text)).toEqual(['Послушал рассказ «Четыре желания»']);
+  });
 });
