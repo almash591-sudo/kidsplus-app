@@ -40,6 +40,11 @@ describe('занятие стихом', () => {
     expect(tale[1]!.kind === 'blanks' && tale[1]!.rounds).toHaveLength(3);
   });
 
+  it('рассказ без заучивания (Толстой): сразу «Договори» и вопросы по всему тексту', () => {
+    const plan = poemPlan(spec({ poem: 'golubka' }), 0);
+    expect(plan.map((x) => x.kind)).toEqual(['listen', 'blanks', 'questions']);
+  });
+
   it('вариантов ответа — сколько задано (уровень прибавляет)', () => {
     const plan = poemPlan(spec({ choices: 4 }), 4);
     for (const step of plan)
