@@ -150,6 +150,10 @@ const spoken = (page: Page) =>
     (window as unknown as { __spoken: Spoken[] }).__spoken.filter((s) => s.text.trim()),
   );
 
+/** Сколько поддельный голос «говорит» фразу — с этой минуты. */
+const slowSpeech = (page: Page, ms: number) =>
+  page.evaluate((v) => ((window as unknown as { __speechMs: number }).__speechMs = v), ms);
+
 const OFF_TODAY = {
   mode: 'off',
   closed: null,
@@ -2849,6 +2853,147 @@ test.describe('новые игры', () => {
     expect(said).toContain('Все отличия нашли! Вот новая картинка.');
   });
 
+  test('стих (этап 45): послушать, повторять за голосом, «Договори словечко», вопросы — часть выучена', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(120_000);
+    // Голос «говорит» по 700 мс — успеваем увидеть каждый шаг занятия.
+    await page.addInitScript(
+      () => ((window as unknown as { __speechMs: number }).__speechMs = 700),
+    );
+    backend.items = [
+      game(
+        1,
+        { kind: 'poem', poem: 'petushok', repeat: true, blanks: true, questions: true, choices: 3 },
+        'poems',
+      ),
+      game(2, { kind: 'balloons', count: 5, target: null }),
+    ];
+    await gameMedia(page);
+    await page.goto('/');
+    // Свой раздел; плитка стиха — обложка из первой картинки.
+    await page.locator('[data-category=poems]').click();
+    await expect(page.locator('.poem-tile > img')).toHaveAttribute('src', '/poems/rooster-1.webp');
+    await shot(page, 'poem-tile');
+    // Пока проверяем «Дальше» — фраза длится 4 с: сама часть не сменится.
+    await slowSpeech(page, 4000);
+    await page.getByTestId('tile').first().click();
+    const g = page.getByTestId('game-poem');
+    await expect(g).toHaveAttribute('data-step', 'listen');
+    await expect(g).toHaveAttribute('data-learned', '0');
+    await expect(g.locator('.poem-pic')).toHaveAttribute('data-picture', 'rooster-1');
+    await expect(g.getByTestId('poem-text')).toContainText('Золотой гребешок');
+    await page.waitForTimeout(600);
+    await shot(page, 'poem-listen');
+    // «Дальше» листает, не дожидаясь голоса.
+    await g.getByTestId('poem-next').click();
+    await expect(g.locator('.poem-pic')).toHaveAttribute('data-picture', 'rooster-2', {
+      timeout: 2500,
+    });
+    await slowSpeech(page, 700);
+    // Учим первую часть: голос — строчку, совёнок слушает ребёнка.
+    await expect(g).toHaveAttribute('data-step', 'repeat', { timeout: 15_000 });
+    await expect(g.getByTestId('poem-turn')).toBeVisible({ timeout: 10_000 });
+    await shot(page, 'poem-repeat');
+    // «Договори»: только из выученной части — гребешок; сначала не то слово.
+    await expect(g).toHaveAttribute('data-step', 'blanks', { timeout: 20_000 });
+    await expect(g.getByTestId('poem-option')).toHaveCount(3);
+    await expect(g.getByTestId('poem-gap')).not.toHaveClass(/filled/);
+    await page.waitForTimeout(600);
+    await shot(page, 'poem-blanks');
+    await g.locator('[data-testid=poem-option]:not([data-hint])').first().click();
+    await expect(g.locator('.poem-option.off')).toHaveCount(1);
+    await g.locator('[data-testid=poem-option][data-hint]').click();
+    await expect(g.getByTestId('poem-gap')).toHaveText('гребешок');
+    // Вопросы — ответ картинкой.
+    await expect(g).toHaveAttribute('data-step', 'questions', { timeout: 15_000 });
+    await page.waitForTimeout(600);
+    await shot(page, 'poem-questions');
+    for (let k = 0; k < 2; k++) {
+      const question = await g.getByTestId('poem-text').textContent();
+      await g.locator('[data-testid=poem-option][data-hint]').click();
+      if (k === 0)
+        await expect(g.getByTestId('poem-text')).not.toHaveText(question!, { timeout: 15_000 });
+    }
+    await expectFinished(page, backend);
+    const done = backend.events.find((e) => e.type === 'interactive_complete')!;
+    expect(done.payload).toMatchObject({
+      kind: 'poem',
+      poem: 'petushok',
+      part: 1,
+      parts: 3,
+      learned: false,
+      recall: false,
+      mistakes: 1,
+    });
+    // Телефон помнит: в следующий раз — вторая часть.
+    expect(await page.evaluate(() => localStorage.getItem('kidsplus.poems'))).toBe(
+      '{"petushok":1}',
+    );
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain('Стихи и сказки!');
+    expect(said).toContain('Потешка «Петушок, петушок».');
+    expect(said).toContain('Повторяй за мной!');
+    expect(said).toContain('Теперь ты!');
+    expect(said).toContain('А теперь всё вместе!');
+    expect(said).toContain('Молодец! Эту часть выучили.');
+    expect(said).toContain('Договори словечко!');
+    expect(said).toContain('Петушок, петушок, золотой…');
+    expect(said).toContain('А теперь вопросы!');
+  });
+
+  test('стих выучен (этап 45): «Расскажи вместе со мной» — голос начинает строку, ребёнок продолжает', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(120_000);
+    await page.addInitScript(() => localStorage.setItem('kidsplus.poems', '{"petushok":3}'));
+    // Голос «говорит» по 700 мс — успеваем увидеть каждый шаг занятия.
+    await page.addInitScript(
+      () => ((window as unknown as { __speechMs: number }).__speechMs = 700),
+    );
+    backend.items = [
+      game(
+        1,
+        {
+          kind: 'poem',
+          poem: 'petushok',
+          repeat: true,
+          blanks: false,
+          questions: false,
+          choices: 3,
+        },
+        'poems',
+      ),
+    ];
+    await openGame(page);
+    const g = page.getByTestId('game-poem');
+    await expect(g).toHaveAttribute('data-learned', '3');
+    await slowSpeech(page, 4000);
+    for (const picture of ['rooster-2', 'rooster-3']) {
+      await g.getByTestId('poem-next').click();
+      await expect(g.locator('.poem-pic')).toHaveAttribute('data-picture', picture, {
+        timeout: 2500,
+      });
+    }
+    await slowSpeech(page, 700);
+    await expect(g).toHaveAttribute('data-step', 'recall', { timeout: 15_000 });
+    // Под картинкой — только начало строки: дальше ребёнок сам.
+    await expect(g.getByTestId('poem-text')).toContainText('…', { timeout: 10_000 });
+    await shot(page, 'poem-recall');
+    await expectFinished(page, backend);
+    expect(backend.events.find((e) => e.type === 'interactive_complete')!.payload).toMatchObject({
+      part: 3,
+      learned: true,
+      recall: true,
+    });
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain('Расскажи вместе со мной! Я начну, а ты продолжай.');
+    expect(said.some((x) => ['Петушок…', 'Масляна…', 'Что ты…'].includes(x))).toBe(true);
+    expect(said).not.toContain('Повторяй за мной!');
+  });
+
   test('гонки (этап 43): светофор, ворота с ответом (сначала не те), обгон и финиш', async ({
     page,
     backend,
@@ -3657,7 +3802,7 @@ test.describe('главный экран', () => {
     ),
   ];
 
-  test('все девять разделов (с музыкой и играми) помещаются на экран без прокрутки', async ({
+  test('все десять разделов (с музыкой, играми и стихами) помещаются на экран без прокрутки', async ({
     page,
     backend,
   }) => {
@@ -3665,11 +3810,17 @@ test.describe('главный экран', () => {
       ...seven(),
       game(1, { kind: 'loudness', rounds: 2 }, 'music'),
       game(2, { kind: 'balloons', count: 5, target: null }),
+      game(
+        3,
+        { kind: 'poem', poem: 'osen', repeat: true, blanks: true, questions: true, choices: 3 },
+        'poems',
+      ),
     ];
     await gameMedia(page);
     await page.goto('/');
-    await expect(page.getByTestId('category')).toHaveCount(9);
-    await shot(page, 'nine-categories');
+    await expect(page.getByTestId('category')).toHaveCount(10);
+    await page.waitForTimeout(800);
+    await shot(page, 'ten-categories');
     const fits = await page.evaluate(() => {
       const last = [...document.querySelectorAll('[data-testid=category]')].at(-1)!;
       const dock = document.querySelector('.dock');
@@ -4197,9 +4348,6 @@ test.describe('наклейки', () => {
 });
 
 test.describe('озвучка не обрывается', () => {
-  const slowSpeech = (page: Page, ms: number) =>
-    page.evaluate((v) => ((window as unknown as { __speechMs: number }).__speechMs = v), ms);
-
   test('праздник ждёт, пока договорено имя наклейки', async ({ page, backend }) => {
     backend.items = [game(1, { kind: 'drawing', stickerIds: [] })];
     await openGame(page);
