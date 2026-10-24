@@ -31,6 +31,11 @@ export default tseslint.config(
     languageOptions: { globals: globals.browser },
   },
   {
+    // Промо-ролики: съёмка и рендер — в Node, монтаж и их фрагменты — на странице Chromium.
+    files: ['scripts/promo/**'],
+    languageOptions: { globals: { ...globals.browser, ...globals.node } },
+  },
+  {
     // e2e: тесты Playwright выполняются в Node, а их фрагменты — в браузере.
     files: ['apps/*/e2e/**'],
     languageOptions: { globals: { ...globals.browser, ...globals.node } },
