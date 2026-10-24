@@ -1,0 +1,291 @@
+/* Промо-ролики (этап 48): кадр 1080×1920. Цвета и шрифты — как на лендинге. */
+:root {
+  --night: #0e1222;
+  --cream: #faf6ee;
+  --paper: #fffdf8;
+  --ink: #171a24;
+  --soft: #5d6273;
+  --line: #e9e1d1;
+  --gold: #c9a157;
+  --gold-deep: #a9802f;
+  --blush: #f7ddd5;
+  --sage: #dcefe4;
+  --sky: #e1e7ff;
+  --coral: #ff6b5b;
+}
+* {
+  box-sizing: border-box;
+  margin: 0;
+}
+html,
+body {
+  width: 1080px;
+  height: 1920px;
+  overflow: hidden;
+  background: var(--cream);
+}
+#stage {
+  position: relative;
+  width: 1080px;
+  height: 1920px;
+  overflow: hidden;
+  font-family: Onest, sans-serif;
+  color: var(--ink);
+  background: var(--cream);
+}
+.layer {
+  position: absolute;
+  inset: 0;
+}
+.night {
+  background: radial-gradient(120% 80% at 50% 40%, #1c2340 0%, var(--night) 60%);
+}
+
+/* Мягкие пятна на кремовом фоне */
+.blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+}
+
+/* Телефон: экран в родном размере кадров (1170×2532), масштаб — transform */
+.phone {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1250px;
+  height: 2612px;
+  padding: 40px;
+  border-radius: 200px;
+  background: #15171f;
+  transform-origin: 0 0;
+  box-shadow:
+    inset 0 0 0 8px #2b2e3a,
+    0 80px 160px rgb(23 26 36 / 0.3),
+    0 20px 50px rgb(23 26 36 / 0.18);
+}
+.phone .screen {
+  position: relative;
+  width: 1170px;
+  height: 2532px;
+  border-radius: 160px;
+  overflow: hidden;
+  background: #fff;
+}
+.phone .screen img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Титр: крупно, слова выезжают по одному */
+.cap {
+  position: absolute;
+  left: 76px;
+  right: 76px;
+  top: 300px;
+  font:
+    800 74px/1.1 Onest,
+    sans-serif;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+.cap .w {
+  display: inline-block;
+  white-space: pre;
+}
+.cap em {
+  font:
+    italic 600 1.08em/1 Playfair,
+    serif;
+  letter-spacing: 0;
+  color: var(--gold-deep);
+}
+.cap.light {
+  color: var(--cream);
+}
+.cap.light em {
+  color: var(--gold);
+}
+.cap.center {
+  text-align: center;
+}
+
+/* Реплика голоса приложения: совёнок и что он сказал */
+.bubble {
+  position: absolute;
+  left: 540px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  width: max-content;
+  max-width: 900px;
+  padding: 16px 40px 16px 16px;
+  border-radius: 64px;
+  background: #fff;
+  box-shadow: 0 20px 50px rgb(23 26 36 / 0.22);
+  font:
+    800 46px/1.15 Nunito,
+    sans-serif;
+  transform-origin: 50% 100%;
+}
+.bubble img {
+  flex: none;
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+}
+
+/* Часы в начале: сколько прошло вместо «5 минут» */
+.clock {
+  position: absolute;
+  left: 190px;
+  top: 560px;
+  width: 700px;
+  height: 700px;
+}
+.clock svg {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+.clock .time {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  color: var(--cream);
+  font: 800 150px/1 Onest;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+.clock .time small {
+  margin-top: 18px;
+  font: 600 40px/1 Onest;
+  letter-spacing: 0;
+  color: rgb(250 246 238 / 0.55);
+}
+
+.owl {
+  position: absolute;
+  width: 440px;
+  height: 440px;
+}
+
+/* Уведомление на телефоне родителя */
+.push {
+  position: absolute;
+  left: 70px;
+  right: 70px;
+  display: grid;
+  grid-template-columns: 104px 1fr;
+  gap: 4px 28px;
+  align-items: center;
+  padding: 30px 36px;
+  border-radius: 48px;
+  background: rgb(250 250 252 / 0.94);
+  box-shadow:
+    0 30px 80px rgb(0 0 0 / 0.28),
+    0 0 0 1px rgb(0 0 0 / 0.04);
+}
+.push svg {
+  width: 104px;
+  height: 104px;
+  grid-row: span 3;
+}
+.push .app {
+  display: flex;
+  justify-content: space-between;
+  font: 600 30px/1.2 Onest;
+  color: #7a7e8a;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.push .t {
+  font: 700 42px/1.2 Onest;
+}
+.push .b {
+  font: 500 40px/1.25 Onest;
+  color: #3a3d48;
+}
+
+/* Подпись-чип */
+.chip {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 32px;
+  border-radius: 999px;
+  background: var(--paper);
+  box-shadow: 0 12px 34px rgb(23 26 36 / 0.14);
+  font: 700 40px/1 Onest;
+  white-space: nowrap;
+}
+
+/* Логотип */
+.brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
+  font:
+    600 112px/1 Playfair,
+    serif;
+}
+.brand svg {
+  width: 128px;
+  height: 128px;
+}
+
+/* Призыв */
+.cta {
+  position: absolute;
+  left: 70px;
+  right: 70px;
+  padding: 44px 40px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #e2bf7c, #b98a43);
+  box-shadow: 0 30px 70px rgb(185 138 67 / 0.45);
+  color: #fff;
+  text-align: center;
+  font: 800 54px/1.15 Onest;
+}
+.cta small {
+  display: block;
+  margin-bottom: 8px;
+  font: 600 36px/1.2 Onest;
+  opacity: 0.85;
+}
+
+/* Лупа: увеличенный кусок экрана поверх телефона */
+.lens {
+  position: absolute;
+  overflow: hidden;
+  border-radius: 44px;
+  background: #fff;
+  box-shadow:
+    0 30px 80px rgb(23 26 36 / 0.3),
+    0 0 0 6px var(--paper);
+}
+.lens img {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1170px;
+  height: 2532px;
+  transform-origin: 0 0;
+}
+
+/* Касание пальцем на экране телефона */
+.ring {
+  position: absolute;
+  width: 110px;
+  height: 110px;
+  margin: -55px 0 0 -55px;
+  border-radius: 50%;
+  border: 8px solid var(--gold);
+  background: rgb(201 161 87 / 0.25);
+}
