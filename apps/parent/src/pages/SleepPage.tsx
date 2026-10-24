@@ -18,7 +18,6 @@ import {
   Chip,
   Collapse,
   Group,
-  SegmentedControl,
   Select,
   Stack,
   Switch,
@@ -29,7 +28,8 @@ import {
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api, errorMessage } from '../api';
-import { queryClient, useChildren } from '../queries';
+import { queryClient } from '../queries';
+import { KidSwitch } from '../components/KidSwitch';
 import { useCurrentChild } from '../lib/currentChild';
 
 const DAY_LABELS: Record<Weekday, string> = {
@@ -61,9 +61,8 @@ const STATUS: Record<Story['status'], { label: string; color: string }> = {
 };
 
 export function SleepPage() {
-  const children = useChildren();
   // Этап 33: выбранный ребёнок — общий на весь кабинет.
-  const [childId, setPicked] = useCurrentChild();
+  const [childId] = useCurrentChild();
 
   return (
     <Stack>
@@ -71,16 +70,9 @@ export function SleepPage() {
       <Text size="sm" c="dimmed">
         За несколько минут до отбоя совёнок зовёт ребёнка делать вечерние дела. В отбой занятия
         заканчиваются: тёмный экран, сказка и колыбельная, потом экран гаснет. Утром — «Доброе
-        утро!». Снять ночь можно кнопкой «Разбудить» на странице «Сейчас».
+        утро!». Снять ночь можно кнопкой «Разбудить» в «Пульте».
       </Text>
-      {children.data && children.data.length > 1 && (
-        <SegmentedControl
-          className="child-picker"
-          value={childId ?? ''}
-          onChange={setPicked}
-          data={children.data.map((c) => ({ value: c.id, label: c.nickname }))}
-        />
-      )}
+      <KidSwitch />
       {childId && <ChildSleep key={childId} childId={childId} />}
     </Stack>
   );

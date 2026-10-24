@@ -26,7 +26,6 @@ import { api } from '../api';
 import { parentCalls } from '../calls/CallLayer';
 import { keys, useChildNow, useChildren, useMe, useSegments } from '../queries';
 import {
-  KID_COLORS,
   KidAvatar,
   kidColor,
   RING,
@@ -36,6 +35,7 @@ import {
   useControl,
 } from '../components/KidBits';
 import { DayLine } from '../components/DayLine';
+import { KidSwitch } from '../components/KidSwitch';
 import { LibraryCard } from '../components/Library';
 import { MonitorCard } from '../components/MonitorCard';
 import { NowHero } from '../components/NowHero';
@@ -310,41 +310,6 @@ function RecentPhotos() {
   );
 }
 
-/** Переключатель «Все / ребёнок» (этап 33): выбор общий на весь кабинет. */
-function KidSwitch({ kids, value }: { kids: Child[]; value: string | null }) {
-  return (
-    <div className="kid-switch" role="tablist" aria-label="Ребёнок" data-testid="kid-switch">
-      <button
-        type="button"
-        role="tab"
-        aria-selected={!value}
-        className={value ? 'all' : 'all on'}
-        onClick={() => setCurrentChild(null)}
-      >
-        Все
-      </button>
-      {kids.map((k, i) => {
-        const color = KID_COLORS[i % KID_COLORS.length]!;
-        return (
-          <button
-            key={k.id}
-            type="button"
-            role="tab"
-            aria-selected={value === k.id}
-            className={value === k.id ? 'on' : ''}
-            onClick={() => setCurrentChild(k.id)}
-          >
-            <span className="dot" style={{ color }}>
-              {k.nickname.slice(0, 1)}
-            </span>
-            {k.nickname}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 /** Строки «Распорядка» и профиля — настройки, к которым идут из пульта. */
 const SETTINGS = [
   {
@@ -464,7 +429,7 @@ export function RemotePage() {
         </Text>
         <h1 className="page-title">Пульт</h1>
       </Stack>
-      {kids.length > 1 && <KidSwitch kids={kids} value={picked?.id ?? null} />}
+      <KidSwitch all />
       {children.isPending && <Skeleton height={76} radius="xl" />}
       <Attention kids={shown} />
       {picked ? (

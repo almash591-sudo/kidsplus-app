@@ -19,7 +19,6 @@ import {
   Card,
   Group,
   NumberInput,
-  SegmentedControl,
   Select,
   Stack,
   Text,
@@ -30,7 +29,8 @@ import {
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api, errorMessage } from '../api';
-import { queryClient, useChildren } from '../queries';
+import { queryClient } from '../queries';
+import { KidSwitch } from '../components/KidSwitch';
 import { useCurrentChild } from '../lib/currentChild';
 
 const PRESET_ICON: Record<HabitPreset, string> = {
@@ -60,9 +60,8 @@ const weekday = (date: string) =>
   new Date(`${date}T12:00:00Z`).toLocaleDateString('ru-RU', { weekday: 'short', timeZone: 'UTC' });
 
 export function HabitsPage() {
-  const children = useChildren();
   // Этап 33: выбранный ребёнок — общий на весь кабинет.
-  const [childId, setPicked] = useCurrentChild();
+  const [childId] = useCurrentChild();
 
   return (
     <Stack>
@@ -71,14 +70,7 @@ export function HabitsPage() {
         Дела ребёнка утром, днём и вечером. Сделал — нажал на картинку в «Моих делах» на телефоне,
         звёздочка — в копилку. За звёзды — награды, которые вы задаёте.
       </Text>
-      {children.data && children.data.length > 1 && (
-        <SegmentedControl
-          className="child-picker"
-          value={childId ?? ''}
-          onChange={setPicked}
-          data={children.data.map((c) => ({ value: c.id, label: c.nickname }))}
-        />
-      )}
+      <KidSwitch />
       {childId && <ChildHabits key={childId} childId={childId} />}
     </Stack>
   );

@@ -4,8 +4,8 @@
 import { SegmentedControl, Stack } from '@mantine/core';
 import { useEffect } from 'react';
 import { Navigate, useSearchParams } from 'react-router';
-import { KidAvatar, kidColor } from '../components/KidBits';
-import { setCurrentChild, useCurrentChild } from '../lib/currentChild';
+import { Embedded, KidSwitch } from '../components/KidSwitch';
+import { setCurrentChild } from '../lib/currentChild';
 import { useChildren } from '../queries';
 import { HabitsPage } from './HabitsPage';
 import { PlanPage } from './PlanPage';
@@ -21,8 +21,6 @@ type Tab = (typeof TABS)[number]['value'];
 export function RoutinePage() {
   const [params, setParams] = useSearchParams();
   const children = useChildren();
-  const kids = children.data ?? [];
-  const [childId] = useCurrentChild();
   const asked = params.get('tab');
   const tab = (TABS.some((t) => t.value === asked) ? asked : 'plan') as Tab;
   const open = (t: Tab) => setParams({ tab: t }, { replace: true });
@@ -40,34 +38,20 @@ export function RoutinePage() {
   return (
     <Stack gap="md">
       <h1 className="page-title">Распорядок</h1>
-      {kids.length > 1 && (
-        <div className="kid-switch sticky" role="tablist" aria-label="Ребёнок">
-          {kids.map((k) => (
-            <button
-              key={k.id}
-              type="button"
-              role="tab"
-              aria-selected={k.id === childId}
-              className={k.id === childId ? 'on' : ''}
-              onClick={() => setCurrentChild(k.id)}
-            >
-              <KidAvatar child={k} color={kidColor(kids, k.id)} size={26} />
-              {k.nickname}
-            </button>
-          ))}
-        </div>
-      )}
+      <KidSwitch sticky />
       <SegmentedControl
         fullWidth
         value={tab}
         onChange={(v) => open(v as Tab)}
         data={TABS.map((t) => ({ value: t.value, label: t.label }))}
       />
-      <div className="embedded-page">
-        {tab === 'plan' && <PlanPage />}
-        {tab === 'habits' && <HabitsPage />}
-        {tab === 'sleep' && <SleepPage />}
-      </div>
+      <Embedded.Provider value={true}>
+        <div className="embedded-page">
+          {tab === 'plan' && <PlanPage />}
+          {tab === 'habits' && <HabitsPage />}
+          {tab === 'sleep' && <SleepPage />}
+        </div>
+      </Embedded.Provider>
     </Stack>
   );
 }
