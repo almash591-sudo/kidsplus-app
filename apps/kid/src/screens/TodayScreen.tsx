@@ -19,21 +19,20 @@ import { IdleHint } from '../ui/IdleHint';
 import { Icon } from '../ui/icons';
 import { CATEGORY_SHORT } from './HomeScreen';
 
-/** Урок по умолчанию — 20 минут; кольцо показывает, сколько уже позанимались. */
-const LESSON_SEC = 20 * 60;
-
-/** Кольцо прогресса вокруг значка предмета — как «Активность» на часах. */
+/**
+ * Кольцо прогресса вокруг значка предмета — как «Активность» на часах. Долю считает сервер по
+ * минутам предмета из расписания (этап 44: раньше урок всегда считался за 20 минут).
+ */
 function ProgressRing({
   done,
-  secondsLeft,
+  progress,
   subject,
 }: {
   done: boolean;
-  secondsLeft: number;
+  progress: number;
   subject: Subject;
 }) {
-  const total = Math.max(LESSON_SEC, secondsLeft);
-  const part = done ? 1 : 1 - secondsLeft / total;
+  const part = done ? 1 : progress;
   const r = 42;
   const c = 2 * Math.PI * r;
   return (
@@ -102,9 +101,10 @@ export function TodayScreen({
           data-subject={s.subject}
           data-hint={s.subject === next ? '' : undefined}
           data-done={s.done}
+          data-progress={s.done ? 1 : s.progress}
           aria-label={CATEGORY_LABELS[s.subject]}
         >
-          <ProgressRing done={s.done} secondsLeft={s.secondsLeft} subject={s.subject} />
+          <ProgressRing done={s.done} progress={s.progress} subject={s.subject} />
           <span className="lesson-text" aria-hidden="true">
             <span className="tile-label">{CATEGORY_SHORT[s.subject]}</span>
             <span className="lesson-left">

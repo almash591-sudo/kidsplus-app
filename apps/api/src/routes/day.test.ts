@@ -141,11 +141,24 @@ describe('расписание дня', () => {
     await done(tunes[0]!); // тот же урок ещё раз — не новый
     await done(tunes[1]!);
     expect(await music()).toMatchObject({ done: false, secondsLeft: 1200 });
+    // Кольцо — по урокам: два из трёх (этап 44).
+    expect((await music())!.progress).toBeCloseTo(2 / 3);
     await done(tunes[2]!);
     expect(await music()).toMatchObject({ done: true, secondsLeft: 0 });
     // Назавтра — снова.
     t.advance(86_400_000);
     expect(await music()).toMatchObject({ done: false });
+  });
+
+  it('кольцо предмета — от минут из расписания, а не от 20 (этап 44)', async () => {
+    await addGame('Счёт', 'math');
+    await enable({ minutesPerSubject: 10 });
+    const before = await get<KidToday>('/api/kid/today');
+    expect(before.subjects[0]).toMatchObject({ secondsLeft: 600, progress: 0 });
+    const half = await study('math', 5);
+    expect(half.subjects[0]!.progress).toBeCloseTo(0.5, 1);
+    const now = await get<ChildNow>(`/api/parent/children/${child}/now`, parent);
+    expect(now.subjects[0]!.progress).toBeCloseTo(0.5, 1);
   });
 
   it('без сигналов и на паузе время не идёт', async () => {

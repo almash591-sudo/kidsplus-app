@@ -3071,9 +3071,9 @@ const planDay = (o: Record<string, unknown> = {}) => ({
   closed: null,
   paused: false,
   subjects: [
-    { subject: 'math', secondsLeft: 1200, done: false },
-    { subject: 'nature', secondsLeft: 1200, done: false },
-    { subject: 'english', secondsLeft: 0, done: true },
+    { subject: 'math', secondsLeft: 1200, done: false, progress: 0 },
+    { subject: 'nature', secondsLeft: 1200, done: false, progress: 0 },
+    { subject: 'english', secondsLeft: 0, done: true, progress: 1 },
   ],
   free: { open: false, secondsLeft: 1200 },
   windowSecondsLeft: 30000,
@@ -3094,6 +3094,39 @@ test.describe('расписание дня', () => {
     await expect
       .poll(async () => (await spoken(page)).map((s) => s.text))
       .toContain('Привет! Вот твои занятия на сегодня.');
+  });
+
+  test('«Сегодня»: кольцо — по доле с сервера; подписи не обрезаются и лёжа (этап 44)', async ({
+    page,
+    backend,
+  }) => {
+    // Пять предметов с самыми длинными подписями — самый тесный случай.
+    backend.today = planDay({
+      subjects: [
+        { subject: 'math', secondsLeft: 300, done: false, progress: 0.5 },
+        { subject: 'english', secondsLeft: 600, done: false, progress: 0 },
+        { subject: 'geography', secondsLeft: 600, done: false, progress: 0 },
+        { subject: 'chinese', secondsLeft: 600, done: false, progress: 0 },
+        { subject: 'nature', secondsLeft: 0, done: true, progress: 1 },
+      ],
+    });
+    await page.goto('/');
+    await expect(page.getByTestId('subject')).toHaveCount(5);
+    await expect(page.locator('[data-subject=math]')).toHaveAttribute('data-progress', '0.5');
+    await expect(page.locator('[data-subject=english]')).toHaveAttribute('data-progress', '0');
+    await page.waitForTimeout(800);
+    const clipped = await page.getByTestId('subject').evaluateAll((tiles) =>
+      tiles.flatMap((tile) => {
+        const label = tile.querySelector('.tile-label')!;
+        const range = document.createRange();
+        range.selectNodeContents(label);
+        const text = range.getBoundingClientRect();
+        const box = tile.getBoundingClientRect();
+        return text.left < box.left || text.right > box.right ? [label.textContent] : [];
+      }),
+    );
+    expect(clipped).toEqual([]);
+    await shot(page, 'today-five');
   });
 
   test('урок по предмету: время идёт на сервере, вышло — похвала и снова «Сегодня»', async ({
@@ -3139,7 +3172,7 @@ test.describe('расписание дня', () => {
 
   test('после всех предметов — свободное время с разделами', async ({ page, backend }) => {
     backend.today = planDay({
-      subjects: [{ subject: 'math', secondsLeft: 0, done: true }],
+      subjects: [{ subject: 'math', secondsLeft: 0, done: true, progress: 1 }],
       free: { open: true, secondsLeft: 1200 },
     });
     backend.items = [
@@ -4173,7 +4206,9 @@ test.describe('аудиотека', () => {
 
 test.describe('урок из одних видео', () => {
   test('«Разное», где только видео, открывается плеером', async ({ page, backend }) => {
-    backend.today = planDay({ subjects: [{ subject: 'other', secondsLeft: 1200, done: false }] });
+    backend.today = planDay({
+      subjects: [{ subject: 'other', secondsLeft: 1200, done: false, progress: 0 }],
+    });
     backend.lessons = {
       other: [{ ...SEGMENTS[0]!, kind: 'segment', subject: 'other', questions: [] } as Item],
     };

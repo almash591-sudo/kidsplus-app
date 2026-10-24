@@ -30,11 +30,8 @@ export const RING: Record<string, string> = {
   other: '#8e5cf6',
   video: '#5856d6',
 };
-const LESSON_SEC = 20 * 60;
-
-/** Доля пройденного урока для кольца. */
-export const subjectPart = (s: ChildNow['subjects'][number]) =>
-  s.done ? 1 : 1 - s.secondsLeft / Math.max(LESSON_SEC, s.secondsLeft);
+/** Доля пройденного урока для кольца — считает сервер по минутам предмета из расписания. */
+export const subjectPart = (s: ChildNow['subjects'][number]) => (s.done ? 1 : s.progress);
 
 export function Ring({
   part,

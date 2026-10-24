@@ -43,4 +43,4 @@ bash scripts/build-libbox.sh       # sing-box libbox.aar для киоска (Go
 
 Киоск для детских телефонов (Android, Capacitor + Java) — `apps/kiosk`, инструкция `docs/kiosk.md`.
 
-Деплой: push → Railway после зелёного CI; инфраструктура — `.railway/railway.ts`, применяется `railway config apply` (см. `docs/railway.md`). Бэкап отложен до тарифа Hobby (см. `docs/backup.md`).
+Деплой: push → Railway после зелёного CI; инфраструктура — `.railway/railway.ts`, применяется `railway config apply` (см. `docs/railway.md`). Бэкап базы — каждую ночь в R2 (см. `docs/backup.md`). Приёмка на телефонах — `docs/acceptance.md`.
