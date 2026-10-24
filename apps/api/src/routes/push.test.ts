@@ -116,7 +116,7 @@ describe('push-уведомления', () => {
     await flush();
     const done = sent.filter((s) => s.payload.kind === 'day_done');
     expect(done).toHaveLength(1);
-    expect(done[0]!.payload).toMatchObject({ childId: child, url: `/routine?child=${child}` });
+    expect(done[0]!.payload).toMatchObject({ childId: child, url: `/remote?child=${child}` });
     expect(JSON.stringify(done[0]!.payload)).not.toContain('Зайка');
   });
 

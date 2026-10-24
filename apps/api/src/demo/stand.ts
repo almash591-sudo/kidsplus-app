@@ -367,7 +367,12 @@ async function main() {
     if (path.startsWith('/api/')) {
       const chunks: Buffer[] = [];
       for await (const c of q) chunks.push(c as Buffer);
+      // Вкладка закрылась (окно «Глазами ребёнка», конец теста) — оборвать и запрос к api,
+      // иначе поток событий висит до таймаута.
+      const gone = new AbortController();
+      r.on('close', () => gone.abort());
       const up = await fetch(`http://127.0.0.1:${API_PORT}${q.url}`, {
+        signal: gone.signal,
         method: q.method,
         headers: Object.fromEntries(
           Object.entries(q.headers).filter(([k]) => k !== 'host' && k !== 'connection') as [
@@ -416,6 +421,9 @@ async function main() {
   const web = (dist: string, port: number) =>
     createServer((q, r) => {
       serve(dist)(q, r).catch((e: Error) => {
+        // Ответ уже начат (оборвался поток событий) — заголовок 502 не отправить, только закрыть:
+        // раньше здесь падал весь стенд (ERR_HTTP_HEADERS_SENT), а с ним — все следующие e2e.
+        if (r.headersSent) return void r.destroy();
         r.writeHead(502);
         r.end(e.message);
       });

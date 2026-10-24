@@ -12,10 +12,10 @@ import { ModerationPage } from './pages/ModerationPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { CapturesPage } from './pages/CapturesPage';
 import { ContentPage } from './pages/ContentPage';
-import { HomePage } from './pages/HomePage';
 import { MorePage } from './pages/MorePage';
 import { CallsPage } from './pages/CallsPage';
 import { ChildPage } from './pages/ChildPage';
+import { RemotePage } from './pages/RemotePage';
 import { RoutinePage } from './pages/RoutinePage';
 import { PlanPage } from './pages/PlanPage';
 import { SegmentEditorPage } from './pages/SegmentEditorPage';
@@ -28,10 +28,10 @@ import { FamiliesPage } from './pages/FamiliesPage';
 import { SleepPage } from './pages/SleepPage';
 import { HabitsPage } from './pages/HabitsPage';
 
-/** /now?listen=… → /routine?listen=… */
-function NowRedirect() {
+/** Старые адреса (/home, /now?listen=… из push) → «Пульт» с теми же параметрами (этап 47). */
+function ToRemote() {
   const { search } = useLocation();
-  return <Navigate to={`/routine${search}`} replace />;
+  return <Navigate to={`/remote${search}`} replace />;
 }
 
 export const router = createBrowserRouter([
@@ -44,16 +44,17 @@ export const router = createBrowserRouter([
     path: '/',
     element: <Layout />,
     children: [
-      { index: true, element: <Navigate to="/home" replace /> },
-      { path: 'home', element: <HomePage /> },
+      { index: true, element: <Navigate to="/remote" replace /> },
+      { path: 'remote', element: <RemotePage /> },
+      { path: 'home', element: <ToRemote /> },
       { path: 'content', element: <ContentPage /> },
       { path: 'progress', element: <AnalyticsPage /> },
       { path: 'more', element: <MorePage /> },
       { path: 'voice', element: <VoicePage /> },
       { path: 'backup', element: <BackupPage /> },
       { path: 'mom-voice', element: <MomVoicePage /> },
-      // Этап 40: «Подробно сейчас» — теперь карточка «Сейчас» в «Распорядке» (старые push ведут сюда).
-      { path: 'now', element: <NowRedirect /> },
+      // Этап 40: «Подробно сейчас» — теперь «Пульт» (старые push ведут сюда).
+      { path: 'now', element: <ToRemote /> },
       { path: 'child/:id', element: <ChildPage /> },
       { path: 'routine', element: <RoutinePage /> },
       { path: 'habits', element: <HabitsPage /> },
@@ -76,7 +77,7 @@ export const router = createBrowserRouter([
       { path: 'devices', element: <DevicesPage /> },
       { path: 'account', element: <AccountPage /> },
       { path: 'families', element: <FamiliesPage /> },
-      { path: '*', element: <Navigate to="/home" replace /> },
+      { path: '*', element: <Navigate to="/remote" replace /> },
     ],
   },
 ]);

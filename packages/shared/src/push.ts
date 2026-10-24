@@ -54,7 +54,7 @@ export const pushMessages = {
     kind: 'day_done',
     title: 'Занятия на сегодня закончены',
     body: '{child}: всё пройдено. Молодец!',
-    url: `/routine?child=${childId}`,
+    url: `/remote?child=${childId}`,
     childId,
   }),
   video: (title: string): PushMessage => ({
@@ -68,7 +68,7 @@ export const pushMessages = {
     kind: 'video',
     title: 'Видео не открываются',
     body: 'На телефоне {child} подряд не открываются видео. Проверьте интернет и VPN.',
-    url: '/home',
+    url: `/remote?child=${childId}`,
     childId,
   }),
   tokens: (percent: number): PushMessage => ({
@@ -93,7 +93,7 @@ export const pushMessages = {
     kind: 'noise',
     title: 'Радионяня',
     body: 'В комнате {child} шумно — нажмите, чтобы послушать.',
-    url: `/routine?listen=${childId}`,
+    url: `/remote?listen=${childId}`,
     childId,
   }),
   /** Телефон не выходил на связь больше двух часов (днём). */
@@ -108,14 +108,14 @@ export const pushMessages = {
     kind: 'offline',
     title: 'Телефон снова на связи',
     body: 'Телефон {child} снова на связи.',
-    url: `/routine?child=${childId}`,
+    url: `/remote?child=${childId}`,
     childId,
   }),
   battery: (childId: string, level: number): PushMessage => ({
     kind: 'battery',
     title: 'Телефон садится',
     body: `Телефон {child}: ${level} %. Поставьте его на зарядку.`,
-    url: `/routine?child=${childId}`,
+    url: `/remote?child=${childId}`,
     childId,
   }),
   weekly: (childId: string): PushMessage => ({

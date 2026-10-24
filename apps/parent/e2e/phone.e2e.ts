@@ -6,6 +6,7 @@ const EMAIL = 'demo@example.com';
 const PASSWORD = 'demo-password-123';
 
 const PAGES = [
+  '/remote',
   '/home',
   '/content',
   '/content?tab=videos',
@@ -37,7 +38,7 @@ async function login(page: Page) {
   await page.getByLabel('Email').fill(EMAIL);
   await page.getByLabel('Пароль').fill(PASSWORD);
   await page.getByRole('button', { name: 'Войти' }).click();
-  await expect(page).toHaveURL(/\/home/);
+  await expect(page).toHaveURL(/\/remote/);
 }
 
 /** Ширина страницы не больше экрана, поля ввода — не мельче 16px (иначе iPhone приближает). */
@@ -154,14 +155,16 @@ test('кабинет вокруг ребёнка (этап 33): переключ
 }) => {
   await login(page);
   const sw = page.getByTestId('kid-switch');
-  await sw.getByRole('tab', { name: /Зайка/ }).click();
-  await expect(page.getByTestId('kid-card')).toHaveCount(1);
+  // «Все» — по строке на ребёнка; касание строки — пульт этого ребёнка (этап 47).
+  await expect(page.getByTestId('kid-card').nth(1)).toBeVisible();
+  await page.getByRole('button', { name: 'Открыть: Зайка' }).click();
+  await expect(page).toHaveURL(/\/remote/);
+  await expect(page.getByTestId('kid-remote')).toBeVisible();
+  await expect(sw.getByRole('tab', { name: /Зайка/ })).toHaveAttribute('aria-selected', 'true');
   const lib = page.getByTestId('library');
   await expect(lib).toContainText('Что доступно: Зайка');
   await expect(page.getByTestId('library-videos')).toHaveText(/\d+/);
   expect(await layoutProblems(page)).toEqual([]);
-  if (process.env.SHOTS)
-    await page.screenshot({ path: `${process.env.SHOTS}/home33-${test.info().project.name}.png` });
 
   // Видео ребёнка — «Контент» уже с фильтром «Есть у Зайки».
   await lib.getByRole('link', { name: /Видео/ }).click();
@@ -170,13 +173,12 @@ test('кабинет вокруг ребёнка (этап 33): переключ
     page.getByTestId('owner-chips').getByRole('button', { name: /^Есть у Зайки/ }),
   ).toHaveClass(/on/);
 
-  // Строка ребёнка — его «Распорядок» с карточкой «Сейчас»; оттуда — профиль. Выбор общий.
-  await page.goto('/home');
-  await page.getByRole('button', { name: 'Открыть: Зайка' }).click();
-  await expect(page).toHaveURL(/\/routine\?child=/);
-  await expect(page.getByTestId('now-hero')).toBeVisible();
-  await page.getByRole('link', { name: 'Профиль ›' }).click();
-  await expect(page.getByTestId('child-page')).toContainText('Зайка');
+  // Из пульта — профиль: там «Глазами ребёнка» крупной кнопкой. Выбор ребёнка общий.
+  await page.goto('/remote');
+  await page.getByTestId('now-hero').getByRole('link', { name: 'Профиль ›' }).click();
+  const child = page.getByTestId('child-page');
+  await expect(child).toContainText('Зайка');
+  await expect(child.getByTestId('preview-child')).toHaveText(/Глазами ребёнка/);
   expect(await layoutProblems(page)).toEqual([]);
   await page.getByRole('button', { name: /Всё, что есть у Мишутки/ }).click();
   await expect(page.getByText(/Зайка: добавлено|У Зайки уже есть/)).toBeVisible();
@@ -184,70 +186,99 @@ test('кабинет вокруг ребёнка (этап 33): переключ
   await expect(page).toHaveURL(/\/routine\?tab=habits/);
   await expect(page.getByRole('tab', { name: 'Зайка' })).toHaveAttribute('aria-selected', 'true');
 
-  // «Распорядок» → «День»: лента по порядку; касание строки урока — вкладка «План».
-  await page.goto('/routine');
+  // Пульт: лента дня по порядку; касание строки — её вкладка в «Распорядке».
+  await page.goto('/remote');
   const day = page.getByTestId('dayline');
   await expect(day).toBeVisible();
-  expect(await layoutProblems(page)).toEqual([]);
-  if (process.env.SHOTS)
-    await page.screenshot({ path: `${process.env.SHOTS}/routine-${test.info().project.name}.png` });
   await day.locator('[data-state]').first().click();
-  await expect(page).toHaveURL(/tab=(plan|habits|sleep)/);
+  await expect(page).toHaveURL(/\/routine\?tab=(plan|habits|sleep)/);
 
-  // «Все» — снова карточки всех детей.
-  await page.goto('/home');
+  // «Все» — снова строки всех детей.
+  await page.goto('/remote');
   await sw.getByRole('tab', { name: 'Все' }).click();
   await expect(page.getByTestId('kid-card').nth(1)).toBeVisible();
 });
 
-test('«Распорядок» — пульт ребёнка (этап 40): карточка «Сейчас», шторка, «Глазами ребёнка»', async ({
+test('«Пульт» (этап 47): всё на виду — звонок, «Позвать», «Слушать», «Глазами ребёнка»', async ({
   page,
 }) => {
   await login(page);
   await expect(page.getByTestId('kid-card').first()).toBeVisible();
+  expect(await layoutProblems(page)).toEqual([]);
   if (process.env.SHOTS)
-    await page.screenshot({ path: `${process.env.SHOTS}/home40-${test.info().project.name}.png` });
-  await page.goto('/routine');
+    await page.screenshot({
+      path: `${process.env.SHOTS}/remote-all-${test.info().project.name}.png`,
+    });
+
+  // Выбран ребёнок — его пульт целиком, без шторки.
+  const sw = page.getByTestId('kid-switch');
+  await sw.getByRole('tab').nth(1).click();
   const hero = page.getByTestId('now-hero');
   await expect(hero).toBeVisible();
-  await expect(page.getByTestId('preview-child')).toBeVisible();
+  const actions = page.getByTestId('remote-actions');
+  for (const id of ['call-video', 'call-kid', 'monitor-listen', 'preview-child'])
+    await expect(actions.getByTestId(id)).toBeVisible();
+  await expect(actions.getByTestId('preview-child')).toContainText('Глазами ребёнка');
+  await expect(page.getByTestId('rest-eat')).toBeVisible();
+  await expect(page.getByTestId('volume')).toBeVisible();
+  await expect(page.getByTestId('monitor-switch')).toBeAttached();
+  await expect(page.getByTestId('dayline')).toBeVisible();
+  await expect(page.getByTestId('activity-log')).toBeVisible();
+  await expect(page.getByTestId('remote-settings')).toContainText('План дня');
   expect(await layoutProblems(page)).toEqual([]);
   if (process.env.SHOTS) {
     await page.waitForTimeout(1000); // кольца дорисовываются
     await page.screenshot({
-      path: `${process.env.SHOTS}/routine40-${test.info().project.name}.png`,
+      path: `${process.env.SHOTS}/remote-kid-${test.info().project.name}.png`,
       fullPage: true,
     });
   }
 
-  // Переключатель детей — карточка другого ребёнка.
+  // «Глазами ребёнка» — детское приложение этого ребёнка в отдельном окне: окно уходит на привязку
+  // по коду. Ждём сам запрос, а не загрузку: WebKit на Linux идёт на localhost по IPv6, а стенд
+  // слушает только 127.0.0.1.
+  const paired = page.context().waitForEvent('request', (r) => r.url().includes('/pair?code='));
+  const [popup] = await Promise.all([
+    page.waitForEvent('popup'),
+    actions.getByTestId('preview-child').click(),
+  ]);
+  await paired;
+  await popup.close();
+
+  // Переключатель — пульт другого ребёнка.
   const first = await hero.getAttribute('data-child');
-  await page.getByRole('tablist', { name: 'Ребёнок' }).getByRole('tab').nth(1).click();
+  await sw.getByRole('tab').nth(2).click();
   await expect(hero).not.toHaveAttribute('data-child', first!);
 
-  // «Пульт» — шторка: поводы выключить экран, «Позвать», радионяня.
-  await page.getByTestId('open-remote').click();
-  const sheet = page.getByTestId('remote-sheet');
-  await expect(sheet.getByTestId('call-kid')).toBeVisible();
-  await expect(sheet.getByTestId('monitor-switch')).toBeAttached();
-  expect(await layoutProblems(page)).toEqual([]);
-  if (process.env.SHOTS) {
-    await page.waitForTimeout(500); // шторка доезжает
-    await page.screenshot({
-      path: `${process.env.SHOTS}/remote40-${test.info().project.name}.png`,
-    });
-  }
-  await sheet.getByTestId('rest-eat').click();
+  // «Позвать» — на телефоне «Мама зовёт!», здесь подтверждение.
+  await actions.getByTestId('call-kid').click();
+  await expect(page.getByText(/на телефоне «Мама зовёт!»/)).toBeVisible();
+
+  // Выключить экран с поводом — прямо в пульте; включить обратно.
+  await page.getByTestId('rest-eat').click();
   await expect(hero).toContainText('Экран выключен');
-  await page.keyboard.press('Escape');
   await hero.getByRole('button', { name: 'Включить' }).click();
   await expect(hero).not.toContainText('Экран выключен');
 
-  // Старый адрес из push «шумно» — сразу пульт этого ребёнка.
-  await page.goto(`/now?listen=${first}`);
-  await expect(page).toHaveURL(/\/routine\?listen=/);
-  await expect(page.getByTestId('remote-sheet')).toBeVisible();
-  await expect(page.getByTestId('now-hero')).toHaveAttribute('data-child', first!);
+  // Старые адреса из push — пульт нужного ребёнка; из «шумно» — «Слушать» подсвечена.
+  for (const old of [`/now?listen=${first}`, `/routine?listen=${first}`]) {
+    await page.goto(old);
+    await expect(page).toHaveURL(`/remote?listen=${first}`);
+    await expect(hero).toHaveAttribute('data-child', first!);
+    await expect(actions.getByTestId('monitor-listen')).toHaveClass(/accent/);
+  }
+  await page.goto(`/routine?child=${first}`);
+  await expect(page).toHaveURL(`/remote?child=${first}`);
+  await expect(hero).toHaveAttribute('data-child', first!);
+  await page.goto('/home');
+  await expect(page).toHaveURL('/remote');
+  // «Распорядок» — только «План», «Привычки», «Сон».
+  await page.goto('/routine');
+  await expect(page).toHaveURL('/routine');
+  await expect(page.getByText('Сегодня, по порядку')).toHaveCount(0);
+  await expect(page.locator('.mantine-SegmentedControl-root').first()).toHaveText(
+    /^План.*Привычки.*Сон$/,
+  );
 });
 
 test('поиск по названию в играх (этап 33)', async ({ page }) => {
