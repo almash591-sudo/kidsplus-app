@@ -14,11 +14,9 @@ import { api, errorMessage } from '../api';
 import { parentCalls } from '../calls/CallLayer';
 import { queryClient } from '../queries';
 
-export function MonitorCard({ childId }: { childId: string }) {
+/** Радионяня ребёнка: состояние, включить/выключить, «Слушать» — общий кэш для плитки и карточки. */
+export function useMonitor(childId: string) {
   const key = ['monitor', childId];
-  const [params] = useSearchParams();
-  // Из push «шумно»: эта карточка подсвечена.
-  const fromPush = params.get('listen') === childId;
   const state = useQuery({
     queryKey: key,
     queryFn: () => api.get<MonitorState>(`/parent/children/${childId}/monitor`),
@@ -36,6 +34,21 @@ export function MonitorCard({ childId }: { childId: string }) {
       void queryClient.invalidateQueries({ queryKey: key });
     },
   });
+  return { state, update, listen };
+}
+
+/** listenButton — своя кнопка «Слушать» (в «Пульте» она плиткой рядом с «Позвонить»). */
+export function MonitorCard({
+  childId,
+  listenButton = true,
+}: {
+  childId: string;
+  listenButton?: boolean;
+}) {
+  const [params] = useSearchParams();
+  // Из push «шумно»: эта карточка подсвечена.
+  const fromPush = params.get('listen') === childId;
+  const { state, update, listen } = useMonitor(childId);
   const s = state.data;
   if (!s) return null;
 
@@ -48,16 +61,18 @@ export function MonitorCard({ childId }: { childId: string }) {
           onChange={(e) => update.mutate({ on: e.currentTarget.checked })}
           data-testid="monitor-switch"
         />
-        <Button
-          size="xs"
-          color={fromPush ? 'orange' : undefined}
-          onClick={() => listen.mutate()}
-          loading={listen.isPending}
-          disabled={Boolean(s.listening)}
-          data-testid="monitor-listen"
-        >
-          {s.listening ? 'Слушаю' : 'Слушать'}
-        </Button>
+        {listenButton && (
+          <Button
+            size="xs"
+            color={fromPush ? 'orange' : undefined}
+            onClick={() => listen.mutate()}
+            loading={listen.isPending}
+            disabled={Boolean(s.listening)}
+            data-testid="monitor-listen"
+          >
+            {s.listening ? 'Слушаю' : 'Слушать'}
+          </Button>
+        )}
       </Group>
       {s.on && (
         <>

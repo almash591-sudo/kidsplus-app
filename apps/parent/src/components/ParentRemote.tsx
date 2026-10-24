@@ -1,5 +1,5 @@
-// «Пульт родителя» (этап 29): время подробно, «выключить экран» с поводом, «позвать», громкость,
-// журнал действий ребёнка.
+// «Пульт родителя» (этап 29): время подробно, «выключить экран» с поводом, громкость, журнал
+// действий ребёнка. Этап 47: всё это — прямо на вкладке «Пульт», «Позвать» — плиткой рядом со звонком.
 import {
   REST_LABELS,
   REST_REASONS,
@@ -52,8 +52,8 @@ const REST_ICON: Record<RestReason, string> = {
   rest: '👀',
 };
 
-/** «Выключить экран» с поводом, «позвать», громкость. */
-export function ScreenControls({
+/** «Выключить экран» с поводом; экран выключен или ночь — «Включить». */
+export function RestControls({
   now,
   act,
   busy,
@@ -62,7 +62,6 @@ export function ScreenControls({
   act: (body: ControlRequest) => void;
   busy: boolean;
 }) {
-  const [volume, setVolume] = useState(now.volume ?? 60);
   return (
     <Stack gap="xs" data-testid="screen-controls">
       {now.bedtime?.phase === 'night' && !now.rest && (
@@ -108,15 +107,21 @@ export function ScreenControls({
           </SimpleGrid>
         </div>
       )}
-      <Button
-        fullWidth
-        variant="light"
-        color="orange"
-        onClick={() => act({ action: 'call' })}
-        data-testid="call-kid"
-      >
-        📣 Позвать — на телефоне «Мама зовёт!»
-      </Button>
+    </Stack>
+  );
+}
+
+/** Громкость телефона ребёнка (киоск на Android). */
+export function VolumeControl({
+  now,
+  act,
+}: {
+  now: ChildNow;
+  act: (body: ControlRequest) => void;
+}) {
+  const [volume, setVolume] = useState(now.volume ?? 60);
+  return (
+    <Stack gap={4} data-testid="volume">
       <Group gap="sm" align="center" wrap="nowrap">
         <Text size="sm" fw={600}>
           🔊

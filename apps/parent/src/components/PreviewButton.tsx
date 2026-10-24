@@ -1,21 +1,14 @@
 // «Глазами ребёнка» (этап 16а): детское приложение под этим ребёнком — в окне размером с телефон
 // (на компьютере) или в новой вкладке (на телефоне). Прогресс там не записывается.
+// Этап 47: плитка в «Пульте» и кнопка в профиле ребёнка (значок-«глаз» в «Распорядке» не находили).
 import type { PairingCreated } from '@kidsplus/shared/api';
-import { ActionIcon, Button } from '@mantine/core';
+import { Button } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useState } from 'react';
 import { api, errorMessage } from '../api';
 
-export function PreviewButton({
-  childId,
-  fullWidth,
-  icon,
-}: {
-  childId: string;
-  fullWidth?: boolean;
-  /** Круглая кнопка-«глаз» в шапке «Распорядка» (этап 40). */
-  icon?: boolean;
-}) {
+/** Открыть детское приложение этого ребёнка; busy — пока сервер выдаёт адрес. */
+export function usePreview(childId: string) {
   const [busy, setBusy] = useState(false);
   const open = async () => {
     // Окно открываем сразу по нажатию (иначе браузер посчитает его всплывающим), адрес — потом.
@@ -32,39 +25,17 @@ export function PreviewButton({
       setBusy(false);
     }
   };
-  if (icon)
-    return (
-      <ActionIcon
-        size={40}
-        radius="xl"
-        variant="light"
-        loading={busy}
-        onClick={() => void open()}
-        data-testid="preview-child"
-        aria-label="Глазами ребёнка"
-        title="Глазами ребёнка"
-      >
-        <svg
-          width="22"
-          height="22"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
-        </svg>
-      </ActionIcon>
-    );
+  return { open: () => void open(), busy };
+}
+
+export function PreviewButton({ childId, fullWidth }: { childId: string; fullWidth?: boolean }) {
+  const { open, busy } = usePreview(childId);
   return (
     <Button
       variant="default"
       fullWidth={fullWidth}
       loading={busy}
-      onClick={() => void open()}
+      onClick={open}
       data-testid="preview-child"
     >
       👁 Глазами ребёнка

@@ -1,17 +1,14 @@
-// Карточка «Сейчас» (этап 40) — пульт одного ребёнка вверху «Распорядка»: что делает, большое
-// кольцо с минутами на сегодня, пауза и минуты одной кнопкой. Остальное (выключить экран с поводом,
-// «Позвать», громкость, радионяня) — в шторке «Пульт», чтобы карточка оставалась спокойной.
+// Карточка «Сейчас» (этап 40) — верх пульта ребёнка: что делает, большое кольцо с минутами на
+// сегодня, пауза и минуты одной кнопкой. Этап 47: остальное (звонок, «Позвать», «Слушать», выключить
+// экран, громкость) — не в шторке, а ниже на вкладке «Пульт».
 import type { Child } from '@kidsplus/shared/api';
 import type { ChildNow } from '@kidsplus/shared/schedule';
 import { REST_LABELS } from '@kidsplus/shared/schedule';
-import { Button, Card, Drawer, Group, Skeleton, Stack, Text } from '@mantine/core';
-import { useState } from 'react';
+import { Button, Card, Group, Skeleton, Stack, Text } from '@mantine/core';
 import { Link } from 'react-router';
 import { SUBJECT_LABELS } from '../lib/subjects';
 import { useChildNow } from '../queries';
 import { RING, Ring, secondsLeftToday, statusLine, subjectPart, useControl } from './KidBits';
-import { MonitorCard } from './MonitorCard';
-import { ScreenControls } from './ParentRemote';
 
 const CLOSED: Record<NonNullable<ChildNow['closed']>, string> = {
   limit: 'Время на сегодня вышло',
@@ -26,20 +23,9 @@ export const duration = (s: number) => {
   return m >= 60 ? `${Math.floor(m / 60)} ч ${String(m % 60).padStart(2, '0')} мин` : `${m} мин`;
 };
 
-export function NowHero({
-  child,
-  color,
-  sheet = false,
-}: {
-  child: Child;
-  color: string;
-  /** Открыть шторку сразу (из push радионяни). */
-  sheet?: boolean;
-}) {
+export function NowHero({ child, color }: { child: Child; color: string }) {
   const now = useChildNow(child.id);
   const control = useControl(child.id);
-  // Шторка из push открывается при монтировании: «Распорядок» пересоздаёт карточку по ключу.
-  const [open, setOpen] = useState(sheet);
   const d = now.data;
   if (!d) return <Skeleton height={300} radius="xl" />;
 
@@ -137,64 +123,43 @@ export function NowHero({
           </Group>
         )}
 
-        <Group gap={8} grow wrap="nowrap">
-          {d.mode === 'plan' && !d.closed && (
-            <Button
-              px={4}
-              size="md"
-              variant={d.paused ? 'filled' : 'light'}
-              onClick={() => act({ action: d.paused ? 'resume' : 'pause' })}
-              loading={control.isPending}
-              data-testid="hero-pause"
-            >
-              {d.paused ? 'Дальше' : 'Пауза'}
-            </Button>
-          )}
-          {canAdd && (
-            <Button
-              px={4}
-              size="md"
-              variant="light"
-              onClick={() => act({ action: 'add', minutes: 10 })}
-            >
-              +10
-            </Button>
-          )}
-          {canAdd && (
-            <Button
-              px={4}
-              size="md"
-              variant="light"
-              onClick={() => act({ action: 'add', minutes: 30 })}
-            >
-              +30
-            </Button>
-          )}
-          <Button
-            px={4}
-            size="md"
-            variant="default"
-            onClick={() => setOpen(true)}
-            data-testid="open-remote"
-          >
-            ⋯ Пульт
-          </Button>
-        </Group>
+        {d.mode === 'plan' && (!d.closed || canAdd) && (
+          <Group gap={8} grow wrap="nowrap">
+            {!d.closed && (
+              <Button
+                px={4}
+                size="md"
+                variant={d.paused ? 'filled' : 'light'}
+                onClick={() => act({ action: d.paused ? 'resume' : 'pause' })}
+                loading={control.isPending}
+                data-testid="hero-pause"
+              >
+                {d.paused ? 'Дальше' : 'Пауза'}
+              </Button>
+            )}
+            {canAdd && (
+              <Button
+                px={4}
+                size="md"
+                variant="light"
+                onClick={() => act({ action: 'add', minutes: 10 })}
+              >
+                +10
+              </Button>
+            )}
+            {canAdd && (
+              <Button
+                px={4}
+                size="md"
+                variant="light"
+                onClick={() => act({ action: 'add', minutes: 30 })}
+              >
+                +30
+              </Button>
+            )}
+          </Group>
+        )}
       </Stack>
-
-      <Drawer
-        opened={open}
-        onClose={() => setOpen(false)}
-        position="bottom"
-        size="auto"
-        title={`Пульт · ${child.nickname}`}
-        classNames={{ content: 'sheet', title: 'sheet-title' }}
-      >
-        <Stack gap="lg" pb="md" data-testid="remote-sheet">
-          <ScreenControls now={d} act={act} busy={control.isPending} />
-          <MonitorCard childId={child.id} />
-        </Stack>
-      </Drawer>
     </Card>
   );
 }
