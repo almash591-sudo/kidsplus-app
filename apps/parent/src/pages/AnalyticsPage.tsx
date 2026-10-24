@@ -23,6 +23,7 @@ import { AccuracyBars, TimeChart } from '../components/Charts';
 import { queryClient, useAnalytics, useChildren, useReports } from '../queries';
 import { useCurrentChild } from '../lib/currentChild';
 import { CountUp } from '../components/Chrome';
+import { Likes } from '../components/Likes';
 
 const pct = (s: { answers: number; firstTry: number }) => `${Math.round((rate(s) ?? 0) * 100)} %`;
 
@@ -311,6 +312,7 @@ export function AnalyticsPage() {
           advice={reports.data?.[0]?.advice?.summary ?? null}
         />
       )}
+      {childId && <Likes childId={childId} days={Number(days)} />}
       <Title order={3}>Недельные отчёты</Title>
       {reports.data && <Reports reports={reports.data} />}
     </Stack>

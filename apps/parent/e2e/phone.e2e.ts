@@ -322,3 +322,34 @@ test('сон: отбой и готовая сказка; придуманная 
   await page.getByTestId('sleep-save').click();
   await expect(page.getByTestId('sleep-save')).toBeDisabled();
 });
+
+test('«Что нравится» в «Прогрессе» (этап 44): любимое, бросает; не открытое — убрать и отменить', async ({
+  page,
+}) => {
+  await login(page);
+  // Убрать/вернуть — подменено: стенд общий для всех телефонов, его данные не трогаем.
+  const sent: { remove?: unknown[]; add?: unknown[] }[] = [];
+  await page.route('**/api/parent/children/*/items/bulk', async (route) => {
+    sent.push(route.request().postDataJSON());
+    await route.fulfill({ json: { added: 1, removed: 1 } });
+  });
+  await page.goto('/progress');
+  const likes = page.getByTestId('likes');
+  await expect(likes.getByTestId('likes-favorites')).toContainText('Кто живёт в лесу');
+  const dropped = likes.getByTestId('likes-dropped');
+  await expect(dropped).toContainText('Посчитай ягодки');
+  await expect(dropped).toContainText('обычно уходит');
+  const unopened = likes.getByTestId('likes-unopened');
+  await expect(unopened).toContainText('Найди пару');
+  await unopened.scrollIntoViewIfNeeded();
+  expect(await layoutProblems(page)).toEqual([]);
+  if (process.env.SHOTS)
+    await likes.screenshot({ path: `${process.env.SHOTS}/likes-${test.info().project.name}.png` });
+
+  await unopened.getByRole('button', { name: /^Убрать у (Зайки|Мишутки) — 1$/ }).click();
+  await expect(page.getByText(/: убрано 1$/)).toBeVisible();
+  await page.getByRole('button', { name: 'Отменить' }).click();
+  await expect.poll(() => sent.length).toBe(2);
+  expect(sent[0]).toEqual({ remove: [{ kind: 'interactive', refId: expect.any(String) }] });
+  expect(sent[1]).toEqual({ add: sent[0]!.remove });
+});

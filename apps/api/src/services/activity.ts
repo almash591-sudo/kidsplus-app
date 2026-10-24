@@ -135,6 +135,21 @@ export async function childActivity(
           `Прошёл игру ${q(gameTitle.get(p.interactiveId as string))}`.trim(),
         );
         break;
+      // Этап 44: открыл и ушёл, не пройдя.
+      case 'deck_exit':
+        add(
+          e.createdAt,
+          'deck',
+          `Вышел из карточек ${q(deckTitle.get(p.deckId as string))}${p.seen && p.cards ? ` на ${Number(p.seen)} из ${Number(p.cards)}` : ''}`.trim(),
+        );
+        break;
+      case 'interactive_exit':
+        add(
+          e.createdAt,
+          'game',
+          `Вышел из игры ${q(gameTitle.get(p.interactiveId as string))}`.trim(),
+        );
+        break;
       case 'app_hidden':
         add(e.createdAt, 'app', 'Свернул приложение');
         break;

@@ -12,6 +12,7 @@ import {
 import { QuizScreen } from '../quiz/QuizScreen';
 import { Icon } from '../ui/icons';
 import { CachedImg } from '../ui/CachedImg';
+import { fromPayload, useVisit, type From } from '../visit';
 
 /** Пока звучит слово, касания ждут, но не дольше этого (вдруг голос не сообщил о конце). */
 const SPEAK_WAIT_MS = 6000;
@@ -34,10 +35,14 @@ export function DeckScreen(props: {
   /** Погружение: без перевода, проверки и похвала — на языке набора. */
   immersion: boolean;
   phrasesEn: KidPhrases;
+  /** Урок «Сегодня» или сам выбрал (этап 44). */
+  from?: From;
   onDone: () => void;
   onExit: () => void;
 }) {
   const { cards, deckId, onDone, immersion } = props;
+  const about = { cards: cards.length, ...fromPayload(props.from) };
+  const seconds = useVisit(() => sendEvent({ type: 'deck_start', deckId, payload: about }));
   // Похвала в проверке — на английском, если погружение и набор английский.
   const checkPhrases = immersion && cards[0]?.word.lang === 'en' ? props.phrasesEn : props.phrases;
   const [index, setIndex] = useState(0);
@@ -84,8 +89,18 @@ export function DeckScreen(props: {
   }, [card, check, immersion]);
 
   const finish = () => {
-    sendEvent({ type: 'deck_complete', deckId, payload: { cards: cards.length } });
+    sendEvent({ type: 'deck_complete', deckId, payload: { ...about, seconds: seconds() } });
     onDone();
+  };
+
+  /** Ушёл, не долистав: сколько карточек видел и сколько секунд. */
+  const leave = () => {
+    sendEvent({
+      type: 'deck_exit',
+      deckId,
+      payload: { ...about, seen: index + 1, seconds: seconds() },
+    });
+    props.onExit();
   };
 
   const advanceFrom = (i: number) => {
@@ -131,7 +146,7 @@ export function DeckScreen(props: {
           setCheck(null);
           advanceFrom(index);
         }}
-        onExit={props.onExit}
+        onExit={leave}
       />
     );
   }
@@ -196,7 +211,7 @@ export function DeckScreen(props: {
         type="button"
         className="corner-button home"
         aria-label="Домой"
-        onClick={props.onExit}
+        onClick={leave}
         data-testid="go-home"
       >
         <Icon name="home" size={34} stroke={2.6} />

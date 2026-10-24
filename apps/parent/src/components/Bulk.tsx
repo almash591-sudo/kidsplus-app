@@ -22,13 +22,13 @@ export interface Assignable {
 type Owner = { childId: string; has: boolean } | null;
 
 /** Списки, которые меняются от назначения. */
-const refresh = () => {
-  for (const key of ['segments', 'decks', 'games', 'child-items'])
+export const refresh = () => {
+  for (const key of ['segments', 'decks', 'games', 'child-items', 'usage'])
     void queryClient.invalidateQueries({ queryKey: [key] });
 };
 
 /** Дать/убрать у одного ребёнка много пунктов одним запросом. */
-async function bulk(childId: string, body: ChildItemsBulkRequest) {
+export async function bulk(childId: string, body: ChildItemsBulkRequest) {
   return api.post<ChildItemsBulkResult>(`/parent/children/${childId}/items/bulk`, body);
 }
 

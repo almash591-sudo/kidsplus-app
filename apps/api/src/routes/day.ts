@@ -1,5 +1,5 @@
 import { schema } from '@kidsplus/db';
-import type { ChildAnalytics, WeeklyReport } from '@kidsplus/shared/analytics';
+import type { ChildAnalytics, ChildUsage, WeeklyReport } from '@kidsplus/shared/analytics';
 import type { KidItem, RepeatMode } from '@kidsplus/shared/api';
 import { restKey, restMap } from '@kidsplus/db/rest';
 import {
@@ -29,6 +29,7 @@ import type { Ctx } from '../context';
 import { HttpError, idFrom, notFound, parse } from '../lib/http';
 import { hashPassword, verifyDummy, verifyPassword } from '../lib/password';
 import { childAnalytics, weakRefs, withReview } from '@kidsplus/db/analytics';
+import { childUsage } from '@kidsplus/db/usage';
 import {
   applyControl,
   childMaterials,
@@ -564,6 +565,17 @@ export function dayRoutes(app: FastifyInstance, ctx: Ctx) {
       const childId = await ownChild(request.params);
       const { days } = parse(analyticsQuery, request.query);
       return childAnalytics(db, childId, ctx.now(), days);
+    },
+  );
+
+  /** Что нравится (этап 44): любимое, брошенное, назначенное и не открытое — без модели. */
+  app.get(
+    '/api/parent/children/:id/usage',
+    { preHandler: parentOnly },
+    async (request): Promise<ChildUsage> => {
+      const childId = await ownChild(request.params);
+      const { days } = parse(analyticsQuery, request.query);
+      return childUsage(db, childId, ctx.now(), days);
     },
   );
 

@@ -8,7 +8,7 @@ import type {
   Question,
   Segment,
 } from '@kidsplus/shared/api';
-import type { ChildAnalytics, WeeklyReport } from '@kidsplus/shared/analytics';
+import type { ChildAnalytics, ChildUsage, WeeklyReport } from '@kidsplus/shared/analytics';
 import type { ChildNow, Curriculum, Schedule } from '@kidsplus/shared/schedule';
 import { notifications } from '@mantine/notifications';
 import { QueryClient, useQuery } from '@tanstack/react-query';
@@ -45,6 +45,7 @@ export const keys = {
   pin: ['pin'] as const,
   analytics: (childId: string, days: number) => ['analytics', childId, days] as const,
   reports: (childId: string) => ['reports', childId] as const,
+  usage: (childId: string, days: number) => ['usage', childId, days] as const,
 };
 
 /** Текущий родитель; null — не вошёл. */
@@ -135,6 +136,14 @@ export const useAnalytics = (childId: string | null, days: number) =>
   useQuery({
     queryKey: keys.analytics(childId ?? '', days),
     queryFn: () => api.get<ChildAnalytics>(`/parent/children/${childId}/analytics?days=${days}`),
+    enabled: Boolean(childId),
+  });
+
+/** Что нравится (этап 44): любимое, брошенное, не открытое. */
+export const useUsage = (childId: string | null, days: number) =>
+  useQuery({
+    queryKey: keys.usage(childId ?? '', days),
+    queryFn: () => api.get<ChildUsage>(`/parent/children/${childId}/usage?days=${days}`),
     enabled: Boolean(childId),
   });
 
