@@ -11,9 +11,9 @@ const now = (o: Partial<ChildNow> = {}) =>
     online: true,
     activity: 'math',
     subjects: [
-      { subject: 'english', secondsLeft: 0, done: true },
-      { subject: 'math', secondsLeft: 600, done: false },
-      { subject: 'nature', secondsLeft: 1200, done: false },
+      { subject: 'english', secondsLeft: 0, done: true, progress: 1 },
+      { subject: 'math', secondsLeft: 600, done: false, progress: 0.5 },
+      { subject: 'nature', secondsLeft: 1200, done: false, progress: 0 },
     ],
     ...o,
   }) as ChildNow;

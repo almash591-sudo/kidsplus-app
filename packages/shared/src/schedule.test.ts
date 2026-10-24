@@ -77,6 +77,19 @@ describe('день ребёнка', () => {
     expect(activityLeft(after, 'free')).toBe(1200);
   });
 
+  it('кольцо: доля от минут предмета из расписания, у музыки — и по урокам (этап 44)', () => {
+    const ten = { ...on, minutesPerSubject: 10 };
+    const t = computeToday(day({ schedule: ten, used: { english: 300, math: 600 } }));
+    expect(t.subjects.map((s) => s.progress)).toEqual([0.5, 1, 0]);
+    // Музыка: за 2 из 3 уроков — две трети, даже если минут потрачено мало.
+    const music = computeToday(
+      day({ subjects: ['music'], used: { music: 120 }, lessons: { music: 2 } }),
+    );
+    expect(music.subjects[0]!.progress).toBeCloseTo(2 / 3);
+    const done = computeToday(day({ subjects: ['music'], lessons: { music: 3 } }));
+    expect(done.subjects[0]).toMatchObject({ done: true, progress: 1 });
+  });
+
   it('всё потрачено — «на сегодня всё»; родитель добавил минуты — можно ещё', () => {
     const used = { english: 1200, math: 1200, nature: 1200, free: 1200 };
     expect(computeToday(day({ used })).closed).toBe('limit');

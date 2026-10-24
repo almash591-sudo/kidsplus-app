@@ -163,7 +163,8 @@ export interface KidToday {
   mode: 'off' | 'plan';
   closed: DayClosed | null;
   paused: boolean;
-  subjects: { subject: Subject; secondsLeft: number; done: boolean }[];
+  /** progress — доля пройденного урока 0–1 для кольца: по минутам предмета, у музыки — и по урокам. */
+  subjects: { subject: Subject; secondsLeft: number; done: boolean; progress: number }[];
   /** Свободное время — после всех предметов дня. */
   free: { open: boolean; secondsLeft: number };
   /** До конца разрешённого окна, секунд (null — расписание выключено). */
@@ -308,7 +309,10 @@ export function computeToday(s: DayState): KidToday {
     const norm = LESSONS_PER_DAY[subject];
     const enough = norm !== undefined && (s.lessons?.[subject] ?? 0) >= norm;
     const left = enough ? 0 : Math.max(0, per - (s.used[subject] ?? 0));
-    return { subject, secondsLeft: left, done: left === 0 };
+    const byTime = per ? 1 - left / per : 1;
+    const byLessons = norm ? (s.lessons?.[subject] ?? 0) / norm : 0;
+    const progress = left === 0 ? 1 : Math.min(1, Math.max(byTime, byLessons));
+    return { subject, secondsLeft: left, done: left === 0, progress };
   });
   const freeLeft = Math.max(0, s.schedule.freeMinutes * 60 + s.extraSeconds - (s.used.free ?? 0));
   const lessonsDone = subjects.every((x) => x.done);

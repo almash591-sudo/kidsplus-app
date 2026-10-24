@@ -3071,9 +3071,9 @@ const planDay = (o: Record<string, unknown> = {}) => ({
   closed: null,
   paused: false,
   subjects: [
-    { subject: 'math', secondsLeft: 1200, done: false },
-    { subject: 'nature', secondsLeft: 1200, done: false },
-    { subject: 'english', secondsLeft: 0, done: true },
+    { subject: 'math', secondsLeft: 1200, done: false, progress: 0 },
+    { subject: 'nature', secondsLeft: 1200, done: false, progress: 0 },
+    { subject: 'english', secondsLeft: 0, done: true, progress: 1 },
   ],
   free: { open: false, secondsLeft: 1200 },
   windowSecondsLeft: 30000,
@@ -3139,7 +3139,7 @@ test.describe('расписание дня', () => {
 
   test('после всех предметов — свободное время с разделами', async ({ page, backend }) => {
     backend.today = planDay({
-      subjects: [{ subject: 'math', secondsLeft: 0, done: true }],
+      subjects: [{ subject: 'math', secondsLeft: 0, done: true, progress: 1 }],
       free: { open: true, secondsLeft: 1200 },
     });
     backend.items = [
@@ -4173,7 +4173,7 @@ test.describe('аудиотека', () => {
 
 test.describe('урок из одних видео', () => {
   test('«Разное», где только видео, открывается плеером', async ({ page, backend }) => {
-    backend.today = planDay({ subjects: [{ subject: 'other', secondsLeft: 1200, done: false }] });
+    backend.today = planDay({ subjects: [{ subject: 'other', secondsLeft: 1200, done: false, progress: 0 }] });
     backend.lessons = {
       other: [{ ...SEGMENTS[0]!, kind: 'segment', subject: 'other', questions: [] } as Item],
     };
