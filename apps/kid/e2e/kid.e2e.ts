@@ -1631,6 +1631,17 @@ async function shot(page: Page, name: string) {
   await page.screenshot({ path: `${process.env.SHOTS}/${name}-${test.info().project.name}.png` });
 }
 
+/** «Найди пару»: открыть все пары по порядку (карточки перемешаны — пара в data-pair). */
+async function solveMemory(page: Page) {
+  const cards = page.getByTestId('memory-card');
+  const pairs = await cards.evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.pair));
+  for (const p of new Set(pairs)) {
+    const [i, j] = pairs.flatMap((x, k) => (x === p ? [k] : []));
+    await cards.nth(i!).click();
+    await cards.nth(j!).click();
+  }
+}
+
 async function openGame(page: Page) {
   await gameMedia(page);
   await page.goto('/');
@@ -4312,14 +4323,13 @@ test.describe('без интернета', () => {
   });
 
   test('событие без сети копится и уходит, когда связь вернулась', async ({ page, backend }) => {
-    backend.items = [game(1, { kind: 'memory', imageIds: [CAT] })];
+    backend.items = [game(1, { kind: 'memory', imageIds: [CAT, LION] })];
     await gameMedia(page);
     await page.goto('/');
     await page.route('**/api/kid/events', (r) => r.abort('internetdisconnected'));
     await page.getByTestId('tile').first().click();
-    const cards = page.getByTestId('memory-card');
-    await cards.nth(0).click();
-    await cards.nth(1).click();
+    await expect(page.getByTestId('memory-card')).toHaveCount(4);
+    await solveMemory(page);
     await expect(page.getByTestId('game-finished')).toBeVisible({ timeout: 6000 });
     expect(backend.events.filter((e) => e.type === 'interactive_complete')).toHaveLength(0);
     expect(await page.evaluate(() => localStorage.getItem('kidsplus.outbox'))).toContain(
@@ -4427,11 +4437,9 @@ test.describe('наклейки', () => {
     page,
     backend,
   }) => {
-    backend.items = [game(1, { kind: 'memory', imageIds: [CAT] })];
+    backend.items = [game(1, { kind: 'memory', imageIds: [CAT, LION] })];
     await openGame(page);
-    const cards = page.getByTestId('memory-card');
-    await cards.nth(0).click();
-    await cards.nth(1).click();
+    await solveMemory(page);
     const award = page.getByTestId('sticker-award');
     await expect(award).toBeVisible({ timeout: 6000 });
     const emoji = (await award.getAttribute('data-sticker'))!;
