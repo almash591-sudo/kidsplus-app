@@ -3096,6 +3096,39 @@ test.describe('расписание дня', () => {
       .toContain('Привет! Вот твои занятия на сегодня.');
   });
 
+  test('«Сегодня»: кольцо — по доле с сервера; подписи не обрезаются и лёжа (этап 44)', async ({
+    page,
+    backend,
+  }) => {
+    // Пять предметов с самыми длинными подписями — самый тесный случай.
+    backend.today = planDay({
+      subjects: [
+        { subject: 'math', secondsLeft: 300, done: false, progress: 0.5 },
+        { subject: 'english', secondsLeft: 600, done: false, progress: 0 },
+        { subject: 'geography', secondsLeft: 600, done: false, progress: 0 },
+        { subject: 'chinese', secondsLeft: 600, done: false, progress: 0 },
+        { subject: 'nature', secondsLeft: 0, done: true, progress: 1 },
+      ],
+    });
+    await page.goto('/');
+    await expect(page.getByTestId('subject')).toHaveCount(5);
+    await expect(page.locator('[data-subject=math]')).toHaveAttribute('data-progress', '0.5');
+    await expect(page.locator('[data-subject=english]')).toHaveAttribute('data-progress', '0');
+    await page.waitForTimeout(800);
+    const clipped = await page.getByTestId('subject').evaluateAll((tiles) =>
+      tiles.flatMap((tile) => {
+        const label = tile.querySelector('.tile-label')!;
+        const range = document.createRange();
+        range.selectNodeContents(label);
+        const text = range.getBoundingClientRect();
+        const box = tile.getBoundingClientRect();
+        return text.left < box.left || text.right > box.right ? [label.textContent] : [];
+      }),
+    );
+    expect(clipped).toEqual([]);
+    await shot(page, 'today-five');
+  });
+
   test('урок по предмету: время идёт на сервере, вышло — похвала и снова «Сегодня»', async ({
     page,
     backend,

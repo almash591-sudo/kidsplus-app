@@ -257,6 +257,34 @@ body {
   filter: none;
 }
 
+/* «Сегодня» лёжа (этап 44): карточки в ряд узкие — кольцо сверху, подпись под ним, размер
+   подписи — по ширине карточки (раньше «Математика» обрезалась уже при трёх предметах). */
+@media (orientation: landscape) {
+  .tiles.today .tile.category[class] {
+    container-type: inline-size;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 8px;
+    text-align: center;
+  }
+
+  .tiles.today .lesson-text {
+    align-items: center;
+    max-width: 100%;
+  }
+
+  .tiles.today .tile-label {
+    font-size: clamp(12px, 11.5cqi, 24px);
+    overflow-wrap: anywhere;
+  }
+
+  .tiles.today .lesson-left {
+    font-size: clamp(12px, 9cqi, 16px);
+  }
+}
+
 .ring {
   position: relative;
   width: 76px;
