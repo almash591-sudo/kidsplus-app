@@ -219,6 +219,17 @@
   border-radius: inherit;
 }
 
+/* Стоя «Дальше» — внизу справа: место под ним, чтобы длинная часть не уходила под кнопку. */
+@media (orientation: portrait) {
+  .game.poem.listen {
+    padding-bottom: calc(max(16px, env(safe-area-inset-bottom)) + 92px);
+  }
+  /* Сцену уменьшает подбор подписи (useFitText), а не сжатие колонки. */
+  .game.poem.listen .poem-pic {
+    flex-shrink: 0;
+  }
+}
+
 /* Альбом: сцена слева, подпись и ответы справа; справа — место под «ушко» и «Дальше». */
 @media (orientation: landscape) {
   .game.poem {
