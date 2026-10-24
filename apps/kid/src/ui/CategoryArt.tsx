@@ -54,6 +54,24 @@ const ART: Record<Art, React.ReactNode> = {
     </>
   ),
   letters: <Glyph text="АБВ" size={19} />,
+  // Раскрытая книжка со звёздочкой: стихи и сказки.
+  poems: (
+    <>
+      <path d="M24 14c-5-3.5-11-4.5-19-3.5v26c8-1 14 0 19 3.5z" fill="var(--c)" />
+      <path d="M24 14c5-3.5 11-4.5 19-3.5v26c-8-1-14 0-19 3.5z" fill="var(--c)" />
+      <path
+        d="M9 16c4.5-.4 8 .3 11 2M9 22c4.5-.4 8 .3 11 2M9 28c4.5-.4 8 .3 11 2"
+        stroke="var(--c-tint)"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        fill="none"
+      />
+      <path
+        d="M33 13.5l1.6 3.3 3.6.5-2.6 2.5.6 3.6-3.2-1.7-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z"
+        fill="var(--c-tint)"
+      />
+    </>
+  ),
   music: (
     <>
       <path

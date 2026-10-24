@@ -169,6 +169,10 @@ body {
   --c: #e8590c;
   --c-shadow: rgb(232 89 12 / 0.35);
 }
+.tile.category.poems {
+  --c: #a3348f;
+  --c-shadow: rgb(163 52 143 / 0.35);
+}
 .tile.category.music {
   --c: #00a9bd;
   --c-shadow: rgb(0 169 189 / 0.35);
@@ -786,6 +790,23 @@ body {
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+}
+
+/* Совсем низкий экран (первый iPhone SE): десять разделов — четыре ряда по три над доком. */
+@media (orientation: portrait) and (max-height: 600px) {
+  .tiles.categories.many:not(.today) {
+    gap: 10px;
+  }
+
+  .tiles.categories.many:not(.today) .tile.category {
+    min-height: 64px;
+    padding: 8px;
+    border-radius: 18px;
+  }
+
+  .tiles.categories.many:not(.today) .tile-badge {
+    height: 46%;
   }
 }
 

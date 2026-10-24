@@ -9,7 +9,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       // Регистрация — в коде приложения (@kidsplus/shared/sw-register), с автообновлением.
       injectRegister: false,
-      // owl — кадры совёнка (этап 26), games — глиняная графика игр (этап 35): нужны и без интернета.
+      // owl — кадры совёнка (этап 26), games — глиняная графика игр (этап 35), poems — сцены стихов
+      // и сказок (этап 45): нужны и без интернета.
       includeAssets: [
         'favicon.svg',
         'apple-touch-icon.png',
@@ -17,6 +18,7 @@ export default defineConfig({
         'rest/*.webp',
         'habits/*.webp',
         'games/*.webp',
+        'poems/*.webp',
       ],
       manifest: {
         name: 'KidsPlus',
