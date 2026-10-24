@@ -471,6 +471,9 @@ export function Poem({ spec, phrases, onFinish }: GameProps<'poem'>) {
     return learnedNow.current >= groups ? POEM_LEARNED : POEM_PART_DONE;
   };
 
+  // Слушаем и повторяем за голосом — ребёнок не бездействует: подсказка «ушка» сама не
+  // вклинивается (она начинала часть заново, и начало звучало дважды). Выбирать ответ — с ней.
+  const voiceLed = step.kind === 'listen' || step.kind === 'repeat' || step.kind === 'recall';
   return (
     <div
       className={`game poem ${step.kind}`}
@@ -478,6 +481,7 @@ export function Poem({ spec, phrases, onFinish }: GameProps<'poem'>) {
       data-poem={spec.poem}
       data-step={step.kind}
       data-learned={learned}
+      data-no-idle={voiceLed || undefined}
       key={at}
     >
       {step.kind === 'listen' && <Listen poem={poem} onDone={next} />}
