@@ -36,14 +36,15 @@ const fakeFetch = (async (input: string | URL | Request) => {
 }) as typeof fetch;
 
 /** DEMO_NOW=2026-10-16T10:30:00+05:00 — часы стенда сдвинуты к этому моменту (и идут дальше). */
-const shift = process.env.DEMO_NOW ? Date.parse(process.env.DEMO_NOW) - Date.now() : 0;
+let shift = process.env.DEMO_NOW ? Date.parse(process.env.DEMO_NOW) - Date.now() : 0;
 const now = () => new Date(Date.now() + shift);
 
 async function main() {
   const { db } = await createTestDb();
+  const storage = new MemoryStorage();
   const app = await buildApp({
     db,
-    storage: new MemoryStorage(),
+    storage,
     config: {
       setupToken: SETUP,
       kidAppUrl: `http://localhost:${KID_PORT}`,
@@ -346,6 +347,38 @@ async function main() {
       .set({ createdAt: new Date(now().getTime() - 21 * 86_400_000) })
       .where(eq(schema.childItems.childId, childId));
 
+  // Промо-ролики (этап 48): DEMO_CLAY=<папка с <код эмодзи>.webp> — объёмные картинки вместо
+  // эмодзи, как у детей на проде с включёнными illustrations (этап 25).
+  if (process.env.DEMO_CLAY) {
+    const emojis = await db
+      .select()
+      .from(schema.mediaAssets)
+      .where(eq(schema.mediaAssets.source, 'twemoji'));
+    for (const e of emojis) {
+      const file = join(process.env.DEMO_CLAY, `${e.sourceRef}.webp`);
+      if (!existsSync(file)) continue;
+      const key = `images/clay/${e.sourceRef}.webp`;
+      const data = new Uint8Array(readFileSync(file));
+      await storage.put(key, data, 'image/webp');
+      const [clay] = await db
+        .insert(schema.mediaAssets)
+        .values({
+          kind: 'image',
+          source: 'generated',
+          sourceRef: `clay/${e.sourceRef}`,
+          storageKey: key,
+          mimeType: 'image/webp',
+          bytes: data.byteLength,
+        })
+        .returning();
+      await db
+        .update(schema.mediaAssets)
+        .set({ illustrationId: clay!.id })
+        .where(eq(schema.mediaAssets.id, e.id));
+    }
+    await db.update(schema.children).set({ illustrations: true });
+  }
+
   await app.listen({ port: API_PORT, host: '127.0.0.1' });
 
   // ── Раздача PWA: статика + /api через прокси; Secure у cookie снимается (http://localhost) ──
@@ -364,6 +397,14 @@ async function main() {
   };
   const serve = (dist: string) => async (q: IncomingMessage, r: ServerResponse) => {
     const path = (q.url ?? '/').split('?')[0]!;
+    // Промо-съёмка (этап 48): часы страницы виртуальные — DEMO_CLOCK=1 разрешает переводить
+    // за ними и часы стенда (/__demo/clock?at=<мс>), чтобы время занятий засчитывалось.
+    if (path === '/__demo/clock' && process.env.DEMO_CLOCK) {
+      const at = Number(new URL(q.url!, 'http://x').searchParams.get('at'));
+      if (Number.isFinite(at) && at > 0) shift = at - Date.now();
+      r.writeHead(200, { 'content-type': 'application/json' });
+      return r.end(JSON.stringify({ now: now().toISOString() }));
+    }
     if (path.startsWith('/api/')) {
       const chunks: Buffer[] = [];
       for await (const c of q) chunks.push(c as Buffer);
