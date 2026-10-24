@@ -111,6 +111,8 @@ const PHRASES_EN = {
  */
 const FAKE_SPEECH = `
   window.__spoken = [];
+  /** Договорённые фразы — по ним тесты ждут конца фразы, а не время. */
+  window.__ended = [];
   // Голоса как на Samsung: часть с подчёркиванием, появляются не сразу (voiceschanged).
   const VOICES = [
     { name: 'Samsung English', lang: 'en_US', localService: true },
@@ -123,7 +125,10 @@ const FAKE_SPEECH = `
     speaking: false,
     speak(u) {
       window.__spoken.push({ text: u.text, lang: u.lang, rate: u.rate, voice: u.voice ? u.voice.name : null });
-      setTimeout(() => u.onend && u.onend(), window.__speechMs || 50);
+      setTimeout(() => {
+        window.__ended.push(u.text);
+        u.onend && u.onend();
+      }, window.__speechMs || 50);
     },
     cancel() {},
     getVoices() { return loaded ? VOICES : []; },
@@ -4188,6 +4193,50 @@ test.describe('наклейки', () => {
     await got.click();
     await page.getByTestId('album-close').click();
     await expect(page.getByTestId('album')).toHaveCount(0);
+  });
+});
+
+test.describe('озвучка не обрывается', () => {
+  const slowSpeech = (page: Page, ms: number) =>
+    page.evaluate((v) => ((window as unknown as { __speechMs: number }).__speechMs = v), ms);
+
+  test('праздник ждёт, пока договорено имя наклейки', async ({ page, backend }) => {
+    backend.items = [game(1, { kind: 'drawing', stickerIds: [] })];
+    await openGame(page);
+    await slowSpeech(page, 4000);
+    await page.getByTestId('game-done').click();
+    await expect(page.getByTestId('game-finished')).toBeVisible();
+    await expect
+      .poll(async () => (await spoken(page)).map((s) => s.text).join('|'))
+      .toMatch(/Новая наклейка — /);
+    // Раньше экран уходил через 1,8 с — на полуслове.
+    await page.waitForTimeout(2000);
+    await expect(page.getByTestId('game-finished')).toBeVisible();
+    await expect(page.getByTestId('home')).toBeVisible({ timeout: 8000 });
+  });
+
+  test('альбом: касания подряд не перезапускают имя наклейки', async ({ page, backend }) => {
+    backend.items = [game(1, { kind: 'drawing', stickerIds: [] })];
+    await page.addInitScript(() =>
+      localStorage.setItem('kidsplus.stickers', JSON.stringify({ '🐱': 1 })),
+    );
+    await page.goto('/');
+    await page.getByTestId('album-open').click();
+    await slowSpeech(page, 4000);
+    const got = page.locator('[data-testid=album-cell][data-got=true]');
+    await expect(got).toHaveCount(1);
+    // Как палец малыша: шесть касаний подряд, без пауз.
+    for (let i = 0; i < 6; i++) await got.dispatchEvent('click');
+    const named = async () => (await spoken(page)).filter((s) => s.text === 'котёнок!').length;
+    await expect.poll(named).toBe(1);
+    // Договорил — следующее касание снова называет.
+    await expect
+      .poll(() => page.evaluate(() => (window as unknown as { __ended: string[] }).__ended), {
+        timeout: 8000,
+      })
+      .toContain('котёнок!');
+    await got.dispatchEvent('click');
+    await expect.poll(named).toBe(2);
   });
 });
 
