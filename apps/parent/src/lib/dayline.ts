@@ -1,11 +1,13 @@
 // Лента дня ребёнка (этап 33, «Распорядок»): дела утра, уроки плана, дела дня и вечера, отбой —
-// по времени, с отметкой «готово / сейчас / позже». Только расчёт, без интерфейса.
+// по времени, с отметкой «готово / сейчас / позже / не сегодня». Только расчёт, без интерфейса.
+// Этап 47: день закрыт (время вышло, завершён вами, выходной) или время дел прошло — не «позже».
 import type { ParentSleep } from '@kidsplus/shared/bedtime';
 import { slotAt, type HabitSlot, type ParentHabits } from '@kidsplus/shared/habits';
-import type { ChildNow, Schedule, Weekday } from '@kidsplus/shared/schedule';
+import type { ChildNow, DayClosed, Schedule, Weekday } from '@kidsplus/shared/schedule';
 import { SUBJECT_LABELS } from './subjects';
 
-export type DayState = 'done' | 'now' | 'later';
+/** missed — сегодня уже не будет: день закрыт или время прошло. */
+export type DayState = 'done' | 'now' | 'later' | 'missed';
 export interface DayItem {
   key: string;
   /** Минут от полуночи — для порядка. */
@@ -15,6 +17,8 @@ export interface DayItem {
   label: string;
   note: string;
   state: DayState;
+  /** Подпись отметки вместо обычной («пропущено» у дел, время которых прошло). */
+  stateLabel?: string;
   /** Какая вкладка «Распорядка» меняет эту строку. */
   tab: 'plan' | 'habits' | 'sleep';
 }
@@ -34,6 +38,14 @@ const SLOT_TITLE: Record<HabitSlot, string> = {
   day: 'Дела днём',
   evening: 'Вечерние дела',
 };
+/** Почему не пройденные уроки сегодня уже не будут. */
+const CLOSED_NOTE: Record<DayClosed, string> = {
+  ended: 'день завершён вами',
+  limit: 'время на сегодня вышло',
+  window: 'разрешённое время прошло',
+  day_off: 'сегодня занятий нет',
+};
+const SLOT_ORDER: HabitSlot[] = ['morning', 'day', 'evening'];
 const COMPANION: Record<string, string> = {
   story: 'сказка и колыбельная',
   lullaby: 'колыбельная',
@@ -57,6 +69,8 @@ export function dayLine(p: {
     const w = p.schedule?.windows[p.weekday] ?? null;
     const start = w ? toMin(w.from) : 9 * 60;
     const current = p.now.subjects.find((s) => !s.done);
+    // «Вне разрешённого времени» утром — уроки ещё впереди; вечером — уже нет.
+    const closed = p.now.closed === 'window' && w && p.minute < toMin(w.from) ? null : p.now.closed;
     p.now.subjects.forEach((s, i) => {
       const left = Math.ceil(s.secondsLeft / 60);
       out.push({
@@ -64,12 +78,14 @@ export function dayLine(p: {
         minute: start + i / 100,
         time: i === 0 && w ? w.from : null,
         label: SUBJECT_LABELS[s.subject],
-        note: s.done ? 'урок пройден' : `осталось ${left} мин`,
+        note: s.done ? 'урок пройден' : closed ? CLOSED_NOTE[closed] : `осталось ${left} мин`,
         state: s.done
           ? 'done'
-          : s === current && p.now!.online && p.now!.activity === s.subject
-            ? 'now'
-            : 'later',
+          : closed
+            ? 'missed'
+            : s === current && p.now!.online && p.now!.activity === s.subject
+              ? 'now'
+              : 'later',
         tab: 'plan',
       });
     });
@@ -87,13 +103,15 @@ export function dayLine(p: {
         .filter((t): t is string => Boolean(t))
         .sort();
       const done = list.filter((h) => p.habits!.marks[h.id]?.includes(today)).length;
+      const past = SLOT_ORDER.indexOf(slot) < SLOT_ORDER.indexOf(nowSlot);
       out.push({
         key: `habits-${slot}`,
         minute: times[0] ? toMin(times[0]) : SLOT_MINUTE[slot],
         time: times[0] ?? null,
         label: SLOT_TITLE[slot],
         note: `${list.map((h) => h.title.toLowerCase()).join(', ')} · ${done} из ${list.length}`,
-        state: done === list.length ? 'done' : slot === nowSlot ? 'now' : 'later',
+        state: done === list.length ? 'done' : slot === nowSlot ? 'now' : past ? 'missed' : 'later',
+        ...(past && done < list.length ? { stateLabel: 'пропущено' } : {}),
         tab: 'habits',
       });
     }

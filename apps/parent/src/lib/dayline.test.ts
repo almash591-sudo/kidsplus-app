@@ -86,4 +86,54 @@ describe('лента дня', () => {
     });
     expect(items.map((i) => [i.label, i.state])).toEqual([['Отбой', 'now']]);
   });
+
+  it('день закрыт (этап 47): не пройденные уроки — «не сегодня» с причиной, не «позже»', () => {
+    const at = (closed: ChildNow['closed'], minute: number) =>
+      dayLine({
+        now: now({ closed }),
+        schedule,
+        habits: undefined,
+        sleep: undefined,
+        weekday: 'mon',
+        minute,
+      })
+        .filter((i) => i.tab === 'plan')
+        .map((i) => [i.state, i.note]);
+    expect(at('limit', 15 * 60)).toEqual([
+      ['done', 'урок пройден'],
+      ['missed', 'время на сегодня вышло'],
+      ['missed', 'время на сегодня вышло'],
+    ]);
+    expect(at('ended', 12 * 60)[1]).toEqual(['missed', 'день завершён вами']);
+    expect(at('day_off', 12 * 60)[1]).toEqual(['missed', 'сегодня занятий нет']);
+    // Вне окна вечером — уже не будет; утром, до начала окна, — ещё впереди.
+    expect(at('window', 21 * 60)[1]).toEqual(['missed', 'разрешённое время прошло']);
+    const morning = at('window', 8 * 60)[1]!;
+    expect(morning[0]).not.toBe('missed');
+    expect(morning[1]).toBe('осталось 10 мин');
+  });
+
+  it('время дел прошло, а они не сделаны — «пропущено»; сделанные — «готово»', () => {
+    const items = dayLine({
+      now: undefined,
+      schedule,
+      habits: { ...habits, marks: { a: ['2026-10-19'] } },
+      sleep: undefined,
+      weekday: 'mon',
+      minute: 19 * 60,
+    });
+    expect(items.map((i) => [i.label, i.state, i.stateLabel])).toEqual([
+      ['Утренние дела', 'missed', 'пропущено'],
+      ['Вечерние дела', 'now', undefined],
+    ]);
+    const done = dayLine({
+      now: undefined,
+      schedule,
+      habits,
+      sleep: undefined,
+      weekday: 'mon',
+      minute: 19 * 60,
+    });
+    expect(done[0]!.state).toBe('done');
+  });
 });

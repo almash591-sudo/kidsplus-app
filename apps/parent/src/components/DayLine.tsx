@@ -14,6 +14,8 @@ const STATE = {
   done: { text: 'готово', color: 'teal' },
   now: { text: 'сейчас', color: 'blue' },
   later: { text: 'позже', color: 'dimmed' },
+  // Этап 47: день закрыт или время прошло — сегодня этого уже не будет.
+  missed: { text: 'не сегодня', color: 'dimmed' },
 } as const;
 const DOT: Record<DayItem['tab'], string> = {
   plan: '#ff9500',
@@ -79,7 +81,7 @@ export function DayLine({ childId }: { childId: string }) {
                 </Text>
               </Stack>
               <Text size="xs" fw={700} c={STATE[it.state].color}>
-                {STATE[it.state].text}
+                {it.stateLabel ?? STATE[it.state].text}
               </Text>
             </UnstyledButton>
           ))}
