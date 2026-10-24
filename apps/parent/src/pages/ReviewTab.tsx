@@ -13,6 +13,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { api, errorMessage } from '../api';
+import { usageLine } from '../lib/usage';
 import { quickApproval } from '../lib/moderation';
 import { keys, queryClient, useChildren } from '../queries';
 
@@ -244,9 +245,9 @@ export function ReviewTab() {
       {usage.data && (
         <Stack gap={4}>
           <Progress value={(usage.data.todayTokens / usage.data.dailyLimit) * 100} size="sm" />
-          <Text size="xs" c="dimmed">
-            Модель сегодня: {usage.data.todayTokens.toLocaleString('ru-RU')} из{' '}
-            {usage.data.dailyLimit.toLocaleString('ru-RU')} токенов
+          {/* Этап 47: долей лимита и короткими числами, а не «0 из 2 000 000 токенов». */}
+          <Text size="xs" c="dimmed" data-testid="llm-usage">
+            {usageLine(usage.data.todayTokens, usage.data.dailyLimit)}
           </Text>
         </Stack>
       )}
