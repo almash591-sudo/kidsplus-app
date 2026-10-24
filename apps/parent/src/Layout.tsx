@@ -7,7 +7,7 @@ import { CompactTitle, FetchBar, PageTransition } from './components/Chrome';
 
 /** Боковое меню (компьютер): главные разделы и всё из «Ещё». */
 const NAV = [
-  { to: '/home', label: 'Главная', icon: '🏠' },
+  { to: '/remote', label: 'Пульт', icon: '🎛' },
   { to: '/content', label: 'Контент', icon: '🎬' },
   { to: '/routine', label: 'Распорядок', icon: '📅' },
   { to: '/progress', label: 'Прогресс', icon: '📊' },
@@ -20,7 +20,13 @@ const NAV = [
 
 /** Вкладки внизу на телефоне — как в приложениях iPhone; остальное — в «Ещё» (меню). */
 const TABS = [
-  { to: '/home', label: 'Главная', icon: 'M4 11.5L12 5l8 6.5M6.5 10v9.5h11V10', also: [] },
+  // Этап 47: «Пульт» вместо «Главной» — значок пульта (корпус, кнопка, клавиши).
+  {
+    to: '/remote',
+    label: 'Пульт',
+    icon: 'M8 2.5h8a1.5 1.5 0 0 1 1.5 1.5v16a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 20V4A1.5 1.5 0 0 1 8 2.5zM12 9.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM10 13h4M10 16h4M10 19h4',
+    also: ['/home', '/now', '/child/'],
+  },
   {
     to: '/content',
     label: 'Контент',
@@ -32,7 +38,7 @@ const TABS = [
     to: '/routine',
     label: 'Распорядок',
     icon: 'M4 6h16v14H4zM4 10h16M9 3v4M15 3v4',
-    also: ['/plan', '/habits', '/sleep', '/now', '/child'],
+    also: ['/plan', '/habits', '/sleep'],
   },
   { to: '/progress', label: 'Прогресс', icon: 'M5 19V11M12 19V5M19 19v-6', also: ['/analytics'] },
   {

@@ -1,6 +1,8 @@
-// Главная кабинета (Кабинет 2.0, этап 40): то, что родитель открывает много раз в день.
-// «Нужно ваше внимание» — только когда есть что; по строке на ребёнка — чем занят, кольца уроков,
-// заряд, звонок (касание — его «Распорядок» с пультом); что доступно; новые снимки.
+// «Пульт» (этап 47; раньше «Главная», этап 40) — то, что родитель открывает много раз в день.
+// «Все»: «Нужно ваше внимание» — только когда есть что; по строке на ребёнка — чем занят, кольца
+// уроков, заряд, звонок; касание строки — пульт этого ребёнка. Выбран ребёнок (или он один) — его
+// пульт целиком, без шторки: время, звонок, «Позвать», «Слушать», «Глазами ребёнка», выключить
+// экран, громкость, радионяня, лента дня и журнал.
 import type { Child } from '@kidsplus/shared/api';
 import type { ModerationItem } from '@kidsplus/shared/moderation';
 import type { ParentCapture } from '@kidsplus/shared/captures';
@@ -19,7 +21,7 @@ import {
 } from '@mantine/core';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { api } from '../api';
 import { parentCalls } from '../calls/CallLayer';
 import { keys, useChildNow, useChildren, useMe, useSegments } from '../queries';
@@ -33,7 +35,12 @@ import {
   subjectPart,
   useControl,
 } from '../components/KidBits';
+import { DayLine } from '../components/DayLine';
 import { LibraryCard } from '../components/Library';
+import { MonitorCard } from '../components/MonitorCard';
+import { NowHero } from '../components/NowHero';
+import { ActivityLog, RestControls, VolumeControl } from '../components/ParentRemote';
+import { RemoteActions } from '../components/RemoteActions';
 import { setCurrentChild, useCurrentChildRaw } from '../lib/currentChild';
 import { phoneOf } from '../lib/names';
 
@@ -141,7 +148,7 @@ function Attention({ kids }: { kids: Child[] }) {
         color: '#ff3b30',
         icon: 'M3 7h16v10H3zM21 11v2M6 10v4',
         text: `${phoneOf(k)}: ${b.level} %`,
-        to: `/routine?child=${k.id}`,
+        to: `/remote?child=${k.id}`,
       });
     // Этап 34: телефон подряд не открывает видео — обычно нет связи с YouTube или выключен VPN.
     if (nows[i]?.videosDown)
@@ -159,7 +166,7 @@ function Attention({ kids }: { kids: Child[] }) {
         color: '#5856d6',
         icon: 'M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z',
         text: `${k.nickname}: в комнате было шумно`,
-        to: `/routine?listen=${k.id}`,
+        to: `/remote?listen=${k.id}`,
       });
   });
 
@@ -179,12 +186,11 @@ function Attention({ kids }: { kids: Child[] }) {
 }
 
 /**
- * Строка ребёнка (этап 40): аватар, что делает, кольца уроков, звонок. Касание — его «Распорядок»
- * с пультом. Пауза и «+10» прямо здесь — только пока ребёнок в приложении.
+ * Строка ребёнка (этап 40): аватар, что делает, кольца уроков, звонок. Касание — пульт этого
+ * ребёнка. Пауза и «+10» прямо здесь — только пока ребёнок в приложении.
  */
 function KidRow({ child, color }: { child: Child; color: string }) {
   const now = useChildNow(child.id);
-  const navigate = useNavigate();
   const control = useControl(child.id);
   const d = now.data;
   if (!d) return <Skeleton height={76} radius="xl" />;
@@ -195,7 +201,10 @@ function KidRow({ child, color }: { child: Child; color: string }) {
     <Card padding="sm" className="kid-row" data-testid="kid-card">
       <Group wrap="nowrap" gap="sm">
         <UnstyledButton
-          onClick={() => navigate(`/routine?child=${child.id}`)}
+          onClick={() => {
+            setCurrentChild(child.id);
+            window.scrollTo({ top: 0 });
+          }}
           aria-label={`Открыть: ${child.nickname}`}
           className="kid-row-main"
         >
@@ -336,11 +345,116 @@ function KidSwitch({ kids, value }: { kids: Child[]; value: string | null }) {
   );
 }
 
-export function HomePage() {
+/** Строки «Распорядка» и профиля — настройки, к которым идут из пульта. */
+const SETTINGS = [
+  {
+    to: '/routine?tab=plan',
+    label: 'План дня',
+    color: '#5856d6',
+    icon: 'M4 6h16v14H4zM4 10h16M9 3v4M15 3v4',
+  },
+  {
+    to: '/routine?tab=habits',
+    label: 'Привычки и награды',
+    color: '#ffcc00',
+    icon: 'M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6-4.5-4.2 6.1-.7z',
+  },
+  {
+    to: '/routine?tab=sleep',
+    label: 'Сон и сказки',
+    color: '#5856d6',
+    icon: 'M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z',
+  },
+];
+
+/** Пульт одного ребёнка целиком (этап 47). */
+function KidRemote({ child, kids, listen }: { child: Child; kids: Child[]; listen: boolean }) {
+  const now = useChildNow(child.id);
+  const control = useControl(child.id);
+  const d = now.data;
+  const loaded = d !== undefined;
+  // Из push «шумно» — сразу к плиткам, «Слушать» подсвечена.
+  useEffect(() => {
+    if (listen && loaded)
+      document
+        .querySelector('[data-testid=remote-actions]')
+        ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [listen, loaded]);
+  return (
+    <Stack gap="md" data-testid="kid-remote" data-child={child.id}>
+      <NowHero child={child} color={kidColor(kids, child.id)} />
+      <RemoteActions child={child} listenAccent={listen} />
+      {d && (
+        <Card>
+          <Stack gap="md">
+            <RestControls now={d} act={(b) => control.mutate(b)} busy={control.isPending} />
+            <VolumeControl key={child.id} now={d} act={(b) => control.mutate(b)} />
+          </Stack>
+        </Card>
+      )}
+      <Card padding="xs">
+        <MonitorCard childId={child.id} listenButton={false} />
+      </Card>
+      <DayLine childId={child.id} />
+      <Card>
+        <ActivityLog childId={child.id} />
+      </Card>
+      {d?.mode === 'plan' &&
+        (d.closed === 'ended' ? (
+          <Button
+            variant="light"
+            onClick={() => control.mutate({ action: 'reopen' })}
+            loading={control.isPending}
+          >
+            Снова открыть день
+          </Button>
+        ) : (
+          <Button
+            variant="subtle"
+            color="red"
+            onClick={() => control.mutate({ action: 'end' })}
+            loading={control.isPending}
+            data-testid="end-day"
+          >
+            Завершить на сегодня
+          </Button>
+        ))}
+      <Stack gap={6}>
+        <Text size="xs" fw={600} c="dimmed" tt="uppercase" px={16}>
+          Настроить
+        </Text>
+        <Card padding={0}>
+          <Stack gap={0} className="grouped" data-testid="remote-settings">
+            {[
+              ...SETTINGS,
+              {
+                to: `/child/${child.id}`,
+                label: `Профиль: ${child.nickname}`,
+                color: '#ff2d55',
+                icon: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20a8 8 0 0 1 16 0',
+              },
+            ].map((r) => (
+              <AttentionRow key={r.to} color={r.color} icon={r.icon} text={r.label} to={r.to} />
+            ))}
+          </Stack>
+        </Card>
+      </Stack>
+      <LibraryCard child={child} kids={kids} />
+    </Stack>
+  );
+}
+
+export function RemotePage() {
   const children = useChildren();
   const kids = children.data ?? [];
   const raw = useCurrentChildRaw();
-  const picked = kids.find((k) => k.id === raw) ?? null;
+  const [params] = useSearchParams();
+  // Ссылки из push и «Нужно ваше внимание»: ?child=… — пульт этого ребёнка, ?listen=… — и «Слушать».
+  const linked = params.get('listen') ?? params.get('child');
+  useEffect(() => {
+    if (linked && children.data?.some((k) => k.id === linked)) setCurrentChild(linked);
+  }, [linked, children.data]);
+  const picked = kids.find((k) => k.id === raw) ?? (kids.length === 1 ? kids[0]! : null);
   const shown = picked ? [picked] : kids;
   return (
     <Stack gap="md">
@@ -348,20 +462,26 @@ export function HomePage() {
         <Text size="xs" fw={600} c="dimmed" tt="uppercase">
           {today()}
         </Text>
-        <h1 className="page-title">Главная</h1>
+        <h1 className="page-title">Пульт</h1>
       </Stack>
       {kids.length > 1 && <KidSwitch kids={kids} value={picked?.id ?? null} />}
       {children.isPending && <Skeleton height={76} radius="xl" />}
-      <Attention kids={kids} />
-      {shown.length > 0 && (
-        <Stack gap={8}>
-          {shown.map((k) => (
-            <KidRow key={k.id} child={k} color={kidColor(kids, k.id)} />
-          ))}
-        </Stack>
-      )}
-      {(picked ?? (kids.length === 1 ? kids[0] : null)) && (
-        <LibraryCard child={(picked ?? kids[0])!} kids={kids} />
+      <Attention kids={shown} />
+      {picked ? (
+        <KidRemote
+          key={picked.id}
+          child={picked}
+          kids={kids}
+          listen={params.get('listen') === picked.id}
+        />
+      ) : (
+        shown.length > 0 && (
+          <Stack gap={8}>
+            {shown.map((k) => (
+              <KidRow key={k.id} child={k} color={kidColor(kids, k.id)} />
+            ))}
+          </Stack>
+        )
       )}
       {children.data && !kids.length && (
         <Card>
@@ -376,7 +496,7 @@ export function HomePage() {
           </Stack>
         </Card>
       )}
-      <RecentPhotos />
+      {!picked && <RecentPhotos />}
     </Stack>
   );
 }

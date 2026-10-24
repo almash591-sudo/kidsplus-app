@@ -1,9 +1,11 @@
 // Страница ребёнка (этап 33): всё про одного ребёнка в одном месте — сейчас, что доступно
 // (и «добавить то, что есть у …»), распорядок, профиль. Разделы открываются на этом ребёнке.
+// Этап 47: «Глазами ребёнка» — крупной кнопкой здесь же.
 import { Alert, Avatar, Card, Group, Loader, Stack, Text, UnstyledButton } from '@mantine/core';
 import { useEffect } from 'react';
 import { Link, useParams } from 'react-router';
 import { copyFrom, LibraryCard, useAssignables } from '../components/Library';
+import { PreviewButton } from '../components/PreviewButton';
 import { ageText } from '../lib/child';
 import { setCurrentChild } from '../lib/currentChild';
 import { allOf } from '../lib/names';
@@ -108,6 +110,7 @@ export function ChildPage() {
         </Stack>
       </Group>
 
+      <PreviewButton childId={child.id} fullWidth />
       <LibraryCard child={child} kids={kids} />
       {all && others.length > 0 && (
         <Group_
@@ -125,8 +128,8 @@ export function ChildPage() {
         title="Распорядок"
         rows={[
           {
-            to: `/routine?child=${child.id}`,
-            label: 'Сейчас и пульт',
+            to: `/remote?child=${child.id}`,
+            label: 'Пульт',
             color: '#007aff',
             icon: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2',
           },
