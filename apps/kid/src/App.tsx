@@ -196,7 +196,7 @@ export function App() {
       const playlist = { ...full, items: withoutPausedVideos(full.items) };
       reportVoicesOnce();
       // Нейроголос: фразы приложения озвучиваются на сервере заранее.
-      setServerVoice(playlist.serverVoice);
+      setServerVoice(playlist.serverVoice, playlist.voice ?? null);
       // Просмотр из кабинета — метка «Просмотр» на всех экранах (этап 16а).
       if (playlist.preview) document.documentElement.dataset.preview = '';
       else delete document.documentElement.dataset.preview;
@@ -429,6 +429,8 @@ export function App() {
       try {
         const items = withoutPausedVideos((await kidApi.lesson(subject)).items);
         if (!items.length) return void refreshToday();
+        // В уроке бывают материалы не из списка ребёнка («Повторить») — их задания тоже озвучиваем.
+        wantSpeech(appPhrases({ ...s.playlist, items }));
         stop.current = false;
         setState({
           screen: 'run',

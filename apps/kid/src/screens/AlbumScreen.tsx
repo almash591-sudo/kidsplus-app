@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { playSequence } from '../audio';
 import { fx } from '../fx';
 import { ru } from '../games/common';
+import { stickerName } from '../phrases';
 import { STICKERS, stickerCounts } from '../stickers';
 import { Icon } from '../ui/icons';
 
@@ -69,7 +70,7 @@ export function AlbumScreen({ onExit }: { onExit: () => void }) {
                   if (!n) return void fx.soft();
                   setPopped(s.emoji);
                   fx.sparkle();
-                  void playSequence([ru(`${s.name}!`)]);
+                  void playSequence([ru(stickerName(s.name))]);
                   setTimeout(() => setPopped((p) => (p === s.emoji ? null : p)), 700);
                 }}
               >

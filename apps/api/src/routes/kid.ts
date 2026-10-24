@@ -24,6 +24,7 @@ import type { Ctx } from '../context';
 import { notFound, parse } from '../lib/http';
 import { ensureTts, loadAssets, type TtsSettings } from '../services/media';
 import { buildKidItems, toSpeech } from '../services/kid-items';
+import { voiceKey } from '../services/voice';
 
 const { childItems, children, events, videoSegments, videoSources } = schema;
 
@@ -155,6 +156,7 @@ export function kidRoutes(app: FastifyInstance, ctx: Ctx) {
         phrases: await kidPhrases(db, ctx.config.tts, child.gender, 'ru', child.familyId),
         immersion: child.foreignImmersion,
         serverVoice: ctx.config.tts.providerId !== 'browser',
+        voice: voiceKey(ctx.config.tts),
         preview: request.device!.preview,
         baby: isBaby(child, ctx.now()),
         lullabies: await lullabies(child.familyId),

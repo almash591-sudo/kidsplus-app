@@ -1,6 +1,17 @@
 import type { KidPlaylist } from '@kidsplus/shared/api';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { appPhrases, CATEGORY_DONE, coloringTask, GREETING, tracePrompt } from './phrases';
+import {
+  appPhrases,
+  CATEGORY_DONE,
+  coloringTask,
+  countAnswer,
+  GREETING,
+  type Phrase,
+  stickerAgain,
+  stickerNew,
+  tracePrompt,
+} from './phrases';
+import { STICKERS } from './stickers';
 import { cachedSpeechUrl, resetSpeechCache, setServerVoice, wantSpeech } from './speechCache';
 
 const playlist = (items: KidPlaylist['items'], immersion = false): KidPlaylist => ({
@@ -78,6 +89,24 @@ describe('фразы приложения для нейроголоса', () => 
     expect(new Set(texts).size).toBe(texts.length);
   });
 
+  it('наклейки и задания всех уровней игры — тоже заранее', () => {
+    const texts = appPhrases(
+      playlist([
+        {
+          kind: 'interactive',
+          category: 'math',
+          id: 'g3',
+          spec: { kind: 'counting', max: 3, rounds: 2, imageIds: ['x'] },
+        },
+      ]),
+    ).map((p) => p.text);
+    const unicorn = STICKERS[0]!.name;
+    expect(texts).toEqual(expect.arrayContaining([stickerNew(unicorn), stickerAgain(unicorn)]));
+    // Родитель задал до трёх, а на 4-м уровне — до девяти.
+    expect(texts).toContain(countAnswer(3));
+    expect(texts).toContain(countAnswer(9));
+  });
+
   it('погружение: «Show me» на языке набора', () => {
     const texts = appPhrases(
       playlist(
@@ -143,6 +172,79 @@ describe('кэш нейроголоса', () => {
     const body = JSON.parse((fetch.mock.calls[1] as [string, RequestInit])[1].body as string);
     expect(body.phrases).toEqual([{ text: 'Пока', lang: 'ru' }]);
     expect(cachedSpeechUrl({ text: 'Пока', lang: 'ru', audioUrl: null })).toBe('/api/media/b');
+  });
+
+  it('сменился голос сервера — прежние ссылки забыты, фразы просятся заново', async () => {
+    vi.useFakeTimers();
+    setServerVoice(true, 'proxyapi|lily@elevenlabs/eleven-v3|0.85');
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json([{ text: 'Поймай рыбку', lang: 'ru', audioUrl: '/v3' }]))
+      .mockResolvedValueOnce(
+        Response.json([{ text: 'Поймай рыбку', lang: 'ru', audioUrl: '/v4' }]),
+      );
+    vi.stubGlobal('fetch', fetch);
+    const task = { text: 'Поймай рыбку', lang: 'ru' as const, audioUrl: null };
+    wantSpeech([task]);
+    await vi.advanceTimersByTimeAsync(400);
+    expect(cachedSpeechUrl(task)).toBe('/v3');
+
+    // Тот же голос при следующей загрузке — ссылка остаётся, сервер не спрашиваем.
+    setServerVoice(true, 'proxyapi|lily@elevenlabs/eleven-v3|0.85');
+    wantSpeech([task]);
+    await vi.advanceTimersByTimeAsync(400);
+    expect(fetch).toHaveBeenCalledTimes(1);
+
+    setServerVoice(true, 'proxyapi|lily@elevenlabs/eleven-v4|0.85');
+    expect(cachedSpeechUrl(task)).toBeNull();
+    wantSpeech([task]);
+    await vi.advanceTimersByTimeAsync(400);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(cachedSpeechUrl(task)).toBe('/v4');
+  });
+
+  it('много фраз — пачками по 300 с паузой; сервер занят — повтор позже', async () => {
+    vi.useFakeTimers();
+    setServerVoice(true);
+    const ready = (_url: string, init: RequestInit) =>
+      Promise.resolve(
+        Response.json(
+          (JSON.parse(init.body as string) as { phrases: Phrase[] }).phrases.map((p) => ({
+            ...p,
+            audioUrl: `/a/${p.text}`,
+          })),
+        ),
+      );
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 429 }))
+      .mockImplementation(ready);
+    vi.stubGlobal('fetch', fetch);
+    const phrases = Array.from({ length: 650 }, (_, i) => ({
+      text: `Фраза ${i}`,
+      lang: 'ru' as const,
+    }));
+    wantSpeech(phrases);
+    const sent = (call: number) =>
+      (
+        JSON.parse((fetch.mock.calls[call] as [string, RequestInit])[1].body as string) as {
+          phrases: Phrase[];
+        }
+      ).phrases.length;
+
+    await vi.advanceTimersByTimeAsync(400);
+    expect(fetch).toHaveBeenCalledTimes(1); // 429 — ничего не сохранено
+    expect(cachedSpeechUrl({ ...phrases[0]!, audioUrl: null })).toBeNull();
+    await vi.advanceTimersByTimeAsync(8000);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(sent(1)).toBe(300);
+    await vi.advanceTimersByTimeAsync(2500);
+    await vi.advanceTimersByTimeAsync(2500);
+    expect(fetch).toHaveBeenCalledTimes(4);
+    expect([sent(2), sent(3)]).toEqual([300, 50]);
+    expect(cachedSpeechUrl({ ...phrases[649]!, audioUrl: null })).toBe('/a/Фраза 649');
+    await vi.advanceTimersByTimeAsync(20_000);
+    expect(fetch).toHaveBeenCalledTimes(4);
   });
 
   it('без серверной озвучки ничего не запрашивает', async () => {

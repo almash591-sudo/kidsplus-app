@@ -20,6 +20,21 @@ export async function saveVoice(db: Pick<Db, 'insert'>, value: VoiceSettings) {
     .onConflictDoUpdate({ target: appSettings.key, set: { value, updatedAt: sql`now()` } });
 }
 
+/**
+ * Голос, которым сейчас озвучивает сервер: «proxyapi|lily@elevenlabs/eleven-v4|…|0.85».
+ * Меняется вместе с ключом кэша озвучки — по нему телефоны узнают, что прежние файлы устарели.
+ */
+export const voiceKey = (tts: TtsSettings): string | null =>
+  tts.providerId === 'browser'
+    ? null
+    : [
+        tts.providerId,
+        tts.voices.ru ?? '',
+        tts.voices.en ?? '',
+        tts.voices.zh ?? '',
+        tts.speed,
+      ].join('|');
+
 /** Применить голос к настройкам озвучки (меняет объект на месте — его читают все маршруты). */
 export function applyVoice(tts: TtsSettings, v: VoiceSettings) {
   if (tts.providerId === 'browser') return;

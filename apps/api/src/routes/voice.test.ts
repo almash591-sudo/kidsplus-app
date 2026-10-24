@@ -2,7 +2,17 @@ import { schema } from '@kidsplus/db';
 import type { VoiceInfo, VoicePreview } from '@kidsplus/shared/voice';
 import { eq } from 'drizzle-orm';
 import { afterEach, describe, expect, it } from 'vitest';
-import { makeApp, setupParent, SETUP_TOKEN, TEST_TTS, type TestApp } from '../test/helpers';
+import type { KidPlaylist } from '@kidsplus/shared/api';
+import {
+  createChild,
+  girl,
+  makeApp,
+  pairDevice,
+  setupParent,
+  SETUP_TOKEN,
+  TEST_TTS,
+  type TestApp,
+} from '../test/helpers';
 
 let t: TestApp;
 afterEach(() => t.close());
@@ -14,6 +24,24 @@ const start = async (providerId = TEST_TTS.providerId) => {
 };
 
 describe('голос озвучки', () => {
+  it('телефон узнаёт смену голоса: в списке занятий — голос и скорость сервера', async () => {
+    const parent = await start();
+    const phone = await pairDevice(t, parent, await createChild(t, parent, girl()));
+    const voice = async () =>
+      (await t.app.inject({ url: '/api/kid/playlist', cookies: phone })).json<KidPlaylist>().voice;
+    const before = await voice();
+    expect(before).toMatch(/^fake\|/);
+    await t.app.inject({
+      method: 'PUT',
+      url: '/api/parent/voice',
+      cookies: parent,
+      payload: { voice: 'Kore', speed: 1 },
+    });
+    const after = await voice();
+    expect(after).toContain('Kore');
+    expect(after).not.toBe(before);
+  });
+
   it('по умолчанию Aoede; выбор сохраняется и сразу действует на новую озвучку', async () => {
     const parent = await start();
     const get = async () =>

@@ -25,12 +25,14 @@ import {
   type RocketColor,
   type RocketPart,
 } from '@kidsplus/shared/games';
+import { MAX_LEVEL, specAtLevel } from '@kidsplus/shared/levels';
 import { SONGS } from '@kidsplus/shared/songs';
 import { NUMBERS, paint, PALETTE } from './games/common';
 import { SORTER } from './games/sorterShapes';
 import { PICTURES } from './games/pictures';
 import { TRACES } from './games/traceShapes';
 import { checkAnswer, checkPrompt } from './quiz/engine';
+import { STICKERS } from './stickers';
 
 export const CATEGORY_LABELS: Record<KidCategory, string> = {
   video: 'Видео',
@@ -794,7 +796,15 @@ export const VIDEOS_REST = 'Видео сейчас отдыхают. Давай
 export const REST_TODAY = 'Это уже пройдено сегодня! Выбери что-нибудь новое.';
 export const REST_LEARNED = 'Это ты уже знаешь! Давай что-нибудь новое.';
 
+/** Наклейка за задание (этап 17) и её имя в альбоме. */
+export const stickerNew = (name: string) => `Новая наклейка — ${name}!`;
+export const stickerAgain = (name: string) => `Ещё ${name}!`;
+export const stickerName = (name: string) => `${name}!`;
+
 export type Phrase = { text: string; lang: 'ru' | 'en' | 'zh' };
+
+const levelsOf = (spec: GameSpec) =>
+  Array.from({ length: MAX_LEVEL }, (_, i) => specAtLevel(spec, i + 1));
 
 /** Фразы приложения для этого списка ребёнка — чтобы озвучить их заранее. */
 export function appPhrases(playlist: KidPlaylist): Phrase[] {
@@ -844,10 +854,16 @@ export function appPhrases(playlist: KidPlaylist): Phrase[] {
     ...PALETTE.map((p) => p.name),
     ...NUMBERS.slice(1).flatMap((n) => [n, `${n}!`]),
   ]);
+  /** Нужное реже — в конце: сервер озвучивает пачками, первым — главное. */
+  const later = new Set<string>(
+    STICKERS.flatMap((s) => [stickerNew(s.name), stickerAgain(s.name), stickerName(s.name)]),
+  );
   const out: Phrase[] = [];
   for (const item of playlist.items) {
     if (item.kind === 'interactive') {
       gamePhrases(item.spec).forEach((t) => ru.add(t));
+      // Уровень ребёнка (этап 34) меняет задание (больше рыбок, другие цифры) — озвучиваем все.
+      for (const spec of levelsOf(item.spec)) gamePhrases(spec).forEach((t) => later.add(t));
       ru.add(GAME_INTRO[item.spec.kind]);
       for (const p of gameForeign(item.spec)) {
         if (p.lang === 'ru') ru.add(p.text);
@@ -873,7 +889,8 @@ export function appPhrases(playlist: KidPlaylist): Phrase[] {
     }
   }
   const seen = new Set<string>();
-  return [...[...ru].map((text) => ({ text, lang: 'ru' as const })), ...out].filter((p) => {
+  const rus = (texts: Set<string>) => [...texts].map((text) => ({ text, lang: 'ru' as const }));
+  return [...rus(ru), ...out, ...rus(later)].filter((p) => {
     const key = `${p.lang}|${p.text}`;
     if (seen.has(key)) return false;
     seen.add(key);
