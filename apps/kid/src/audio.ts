@@ -253,6 +253,9 @@ export async function whenQuiet(): Promise<void> {
   while (running) await running.done;
 }
 
+/** Голос сейчас говорит: ребёнок слушает — это не бездействие. */
+export const isSpeaking = () => running !== null;
+
 export function stopAudio() {
   generation++;
   running = null;

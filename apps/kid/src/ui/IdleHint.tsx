@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { isSpeaking } from '../audio';
 
 interface Hand {
   x: number;
@@ -48,7 +49,8 @@ export function IdleHint({
     };
     const tick = setInterval(() => {
       // Игра в движении (полёт идёт) — ребёнок занят, даже если палец просто держит экран.
-      if (document.querySelector('[data-no-idle]')) last = Date.now();
+      // Голос говорит — ребёнок слушает: подсказка не перебивает длинную сказку на полуслове.
+      if (document.querySelector('[data-no-idle]') || isSpeaking()) last = Date.now();
       if (document.hidden || shown >= max || Date.now() - last < wait) return;
       shown++;
       last = Date.now();
