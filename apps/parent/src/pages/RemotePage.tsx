@@ -42,6 +42,7 @@ import { NowHero } from '../components/NowHero';
 import { ActivityLog, RestControls, VolumeControl } from '../components/ParentRemote';
 import { RemoteActions } from '../components/RemoteActions';
 import { setCurrentChild, useCurrentChildRaw } from '../lib/currentChild';
+import { SUBJECT_LABELS } from '../lib/subjects';
 import { phoneOf } from '../lib/names';
 
 const today = () =>
@@ -221,18 +222,6 @@ function KidRow({ child, color }: { child: Child; color: string }) {
               {b ? ` · ${b.charging ? '⚡' : ''}${b.level} %` : ''}
             </Text>
           </Stack>
-          {d.mode === 'plan' && d.subjects.length > 0 && (
-            <Group gap={2} wrap="nowrap" aria-hidden="true">
-              {d.subjects.slice(0, 3).map((s) => (
-                <Ring
-                  key={s.subject}
-                  size={24}
-                  color={RING[s.subject] ?? '#007aff'}
-                  part={subjectPart(s)}
-                />
-              ))}
-            </Group>
-          )}
         </UnstyledButton>
         <ActionIcon
           size={40}
@@ -257,6 +246,21 @@ function KidRow({ child, color }: { child: Child; color: string }) {
           </svg>
         </ActionIcon>
       </Group>
+      {/* Этап 47: кольца с подписями — строкой под именем (без подписей было непонятно, что это). */}
+      {d.mode === 'plan' && d.subjects.length > 0 && (
+        <div className="kid-lessons" data-testid="kid-lessons">
+          {d.subjects.map((s) => (
+            <span key={s.subject} className="kid-lesson">
+              <Ring size={18} color={RING[s.subject] ?? '#007aff'} part={subjectPart(s)} />
+              <span>{SUBJECT_LABELS[s.subject].split(' ')[0]}</span>
+              <span className="kid-lesson-left">
+                {/* День закрыт — «осталось N мин» уже неправда; почему — в строке выше. */}
+                {s.done ? '✓' : d.closed ? '' : `${Math.ceil(s.secondsLeft / 60)} мин`}
+              </span>
+            </span>
+          ))}
+        </div>
+      )}
       {(live || d.paused) && (
         <Group gap={8} grow mt="sm" data-testid="kid-quick">
           <Button
