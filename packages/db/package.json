@@ -11,6 +11,7 @@
     "./day": "./src/day.ts",
     "./rest": "./src/rest.ts",
     "./analytics": "./src/analytics.ts",
+    "./usage": "./src/usage.ts",
     "./notify": "./src/notify.ts"
   },
   "scripts": {

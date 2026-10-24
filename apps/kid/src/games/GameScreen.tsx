@@ -60,6 +60,7 @@ import './games-more.css';
 import './games-older.css';
 import { GAME_INTRO } from '../phrases';
 import { IdleHint } from '../ui/IdleHint';
+import { fromPayload, useVisit, type From } from '../visit';
 import { Icon } from '../ui/icons';
 
 /** Глиняный фон экрана игры (этап 35) — по разделу; у игр со своей сценой фон свой. */
@@ -189,6 +190,8 @@ export function GameScreen(props: {
   phrases: KidPhrases;
   /** Уровень сложности ребёнка для этого вида игры (этап 34); нет — как задал родитель. */
   level?: number | undefined;
+  /** Урок «Сегодня» или сам выбрал (этап 44). */
+  from?: From;
   onDone: () => void;
   onExit: () => void;
 }) {
@@ -197,6 +200,10 @@ export function GameScreen(props: {
   const spec = useMemo(() => specAtLevel(props.spec, level), [props.spec, level]);
   const [finished, setFinished] = useState(false);
   const Game = GAMES[spec.kind] as ComponentType<GameProps<GameKind>>;
+  const about = { kind: spec.kind, level, ...fromPayload(props.from) };
+  const seconds = useVisit(() =>
+    sendEvent({ type: 'interactive_start', interactiveId: id, payload: about }),
+  );
 
   useEffect(() => {
     gameMistakes.reset();
@@ -247,7 +254,7 @@ export function GameScreen(props: {
             sendEvent({
               type: 'interactive_complete',
               interactiveId: id,
-              payload: { kind: spec.kind, mistakes: gameMistakes.get(), level },
+              payload: { ...about, mistakes: gameMistakes.get(), seconds: seconds() },
             });
             markDone(id);
             setFinished(true);
@@ -279,7 +286,14 @@ export function GameScreen(props: {
         aria-label="Домой"
         onClick={() => {
           // Ушёл, не пройдя, — дорожка уроков это запомнит и не будет звать сюда без конца.
-          if (!finished) markTried(id);
+          if (!finished) {
+            markTried(id);
+            sendEvent({
+              type: 'interactive_exit',
+              interactiveId: id,
+              payload: { ...about, seconds: seconds() },
+            });
+          }
           props.onExit();
         }}
         data-testid="go-home"

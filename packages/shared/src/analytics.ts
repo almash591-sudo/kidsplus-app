@@ -1,5 +1,6 @@
 // Аналитика (п. 9 ТЗ): сводки по ребёнку за период и недельный отчёт.
 import { z } from 'zod';
+import type { GameKind } from './games';
 import type { Subject } from './schedule';
 
 /** Слабое место: верно с первой попытки меньше этой доли (при достаточном числе ответов). */
@@ -89,3 +90,51 @@ export function ruleAdvice(a: ChildAnalytics, labels: Record<string, string>): s
     out.push(`Недоступно видео: ${a.video.unavailable.length} — замените в разделе «Видео».`);
   return out;
 }
+
+// ─── Что нравится (этап 44) ──────────────────────────────────────────────────
+
+export type UsageKind = 'segment' | 'deck' | 'interactive';
+
+export interface UsageItem {
+  kind: UsageKind;
+  id: string;
+  title: string;
+  /** Вид игры — у игр. */
+  gameKind: GameKind | null;
+  /** Открывал: начал смотреть видео, открыл карточки или игру. */
+  opened: number;
+  completed: number;
+  /** Ушёл сам, не пройдя (кнопка «домой»). */
+  left: number;
+  /** Сколько раз открыл сам, в разделе, а не в уроке «Сегодня». */
+  chosen: number;
+  /** Обычно уходит через столько секунд (медиана); null — не уходил или неизвестно. */
+  leftAfterSec: number | null;
+}
+
+/** Виды игр: что ребёнок выбирает и бросает (по всем играм этого вида). */
+export interface UsageKindStats {
+  kind: GameKind;
+  opened: number;
+  completed: number;
+  left: number;
+  chosen: number;
+}
+
+export interface ChildUsage {
+  days: number;
+  /** Любимое: сам выбирает и проходит. */
+  favorites: UsageItem[];
+  /** Бросает: открывал не меньше DROP_MIN_OPENS раз, прошёл меньше половины. */
+  dropped: UsageItem[];
+  /** Назначено давно, а за UNOPENED_DAYS дней ни разу не открыл. */
+  unopened: { kind: UsageKind; id: string; title: string; gameKind: GameKind | null }[];
+  kinds: UsageKindStats[];
+}
+
+export const DROP_MIN_OPENS = 3;
+export const UNOPENED_DAYS = 30;
+/** Назначенное недавно ещё не «не открывает». */
+export const UNOPENED_MIN_AGE_DAYS = 14;
+/** Сколько строк в «Любимом» и «Бросает». */
+export const USAGE_TOP = 5;

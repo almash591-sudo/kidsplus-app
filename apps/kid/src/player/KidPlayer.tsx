@@ -10,6 +10,7 @@ import { sendEvent } from '../api';
 import { allowLandscape } from '../kiosk';
 import { GUARD_INTERVAL_MS, shouldFinish } from './guard';
 import { Icon } from '../ui/icons';
+import { fromPayload, type From } from '../visit';
 
 export type ExitReason = 'complete' | 'exit' | 'error';
 
@@ -33,9 +34,12 @@ const CELEBRATE_MS = 1800;
  */
 export function KidPlayer({
   segment,
+  from,
   onExit,
 }: {
   segment: KidSegment;
+  /** Урок «Сегодня» или сам выбрал (этап 44); у экрана малыша — нет. */
+  from?: From;
   onExit: (reason: ExitReason) => void;
 }) {
   const container = useRef<HTMLDivElement>(null);
@@ -75,7 +79,7 @@ export function KidPlayer({
       sendEvent({
         type,
         segmentId: segment.id,
-        payload: { ...(at !== undefined ? { at } : {}), ...payload },
+        payload: { ...(at !== undefined ? { at } : {}), ...fromPayload(from), ...payload },
       });
 
       if (reason === 'complete') {
@@ -85,7 +89,7 @@ export function KidPlayer({
         onExitRef.current(reason);
       }
     },
-    [segment.id],
+    [segment.id, from],
   );
 
   useEffect(() => {
@@ -115,7 +119,11 @@ export function KidPlayer({
               setView('playing');
               if (!started.current) {
                 started.current = true;
-                sendEvent({ type: 'segment_start', segmentId: segment.id });
+                sendEvent({
+                  type: 'segment_start',
+                  segmentId: segment.id,
+                  payload: fromPayload(from),
+                });
               }
             } else if (state === YT_STATE.PAUSED) setView('paused');
             else if (state === YT_STATE.BUFFERING)
@@ -159,7 +167,7 @@ export function KidPlayer({
       destroyPlayer.current = null;
       player.current = null;
     };
-  }, [segment, finish]);
+  }, [segment, finish, from]);
 
   const play = () => {
     const p = player.current;

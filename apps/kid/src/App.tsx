@@ -665,6 +665,8 @@ export function App() {
     case 'run': {
       const { playlist, step } = state;
       const item = itemsOf(playlist.items, state.category)[step.index]!;
+      // Этап 44: урок «Сегодня» или сам выбрал — для «Что нравится» в «Прогрессе».
+      const from = state.lesson ? 'lesson' : 'free';
       if (item.kind === 'deck') {
         return (
           <DeckScreen
@@ -675,6 +677,7 @@ export function App() {
             phrases={playlist.phrases}
             immersion={playlist.immersion}
             phrasesEn={playlist.phrasesEn}
+            from={from}
             onDone={() => void advance()}
             onExit={goHome}
           />
@@ -692,6 +695,7 @@ export function App() {
                 ? (playlist.levels.byKind[item.spec.kind] ?? playlist.levels.start)
                 : undefined
             }
+            from={from}
             onDone={() => void advance()}
             onExit={goHome}
           />
@@ -710,7 +714,9 @@ export function App() {
           />
         );
       }
-      return <KidPlayer key={`${step.seq}-video`} segment={item} onExit={onVideoExit} />;
+      return (
+        <KidPlayer key={`${step.seq}-video`} segment={item} from={from} onExit={onVideoExit} />
+      );
     }
   }
 }

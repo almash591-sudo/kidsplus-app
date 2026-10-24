@@ -554,6 +554,11 @@ export const KID_EVENT_TYPES = [
   'quiz_complete',
   'deck_complete',
   'interactive_complete',
+  // Этап 44: открыл и ушёл, не пройдя, — для «Что нравится» в «Прогрессе».
+  'deck_start',
+  'deck_exit',
+  'interactive_start',
+  'interactive_exit',
 ] as const;
 
 /** Языки голосов синтеза речи на телефоне — для предупреждения родителю. Только коды языков. */
