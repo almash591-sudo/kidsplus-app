@@ -1,5 +1,6 @@
 import type { Game } from '@kidsplus/shared/api';
 import { GAME_KINDS, type GameKind, type GameSpec } from '@kidsplus/shared/games';
+import { poemOf } from '@kidsplus/shared/poems';
 import { SONGS } from '@kidsplus/shared/songs';
 import {
   ActionIcon,
@@ -115,6 +116,14 @@ export function gameSummary(spec: GameSpec): string {
       return `${{ colors: 'цвета и счёт', numbers: 'цифры до ' + spec.max, mixed: 'цвета и цифры до ' + spec.max }[spec.task]} · заданий: ${spec.rounds}`;
     case 'rocket':
       return `деталей: ${spec.parts}${spec.memory ? ' · по памяти' : ''} · ${{ numbers: 'цифры', sums: 'сложение', letters: 'буквы' }[spec.quiz]} до ${spec.max} · полётов: ${spec.rounds}`;
+    case 'poem': {
+      const steps = [
+        spec.repeat && 'учим наизусть',
+        spec.blanks && '«Договори словечко»',
+        spec.questions && 'вопросы',
+      ].filter(Boolean);
+      return `«${poemOf(spec.poem).title}»${steps.length ? ` · ${steps.join(', ')}` : ' · только послушать'}`;
+    }
     case 'differences':
       return `отличий: ${spec.count} · картинок: ${spec.rounds}${spec.hint ? ' · с лупой' : ''}`;
     case 'race':

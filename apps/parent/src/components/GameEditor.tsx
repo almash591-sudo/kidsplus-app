@@ -24,6 +24,14 @@ import {
   type GameSpec,
 } from '@kidsplus/shared/games';
 import { RIDDLE_SETS, SUDOKU_SETS, SYLLABLE_WORD_SETS } from '@kidsplus/shared/game-presets';
+import {
+  POEM_CODES,
+  poemAnnounce,
+  poemOf,
+  POEMS,
+  type PoemCode,
+  type PoemGenre,
+} from '@kidsplus/shared/poems';
 import { SONG_IDS, SONGS, type SongId } from '@kidsplus/shared/songs';
 import {
   ActionIcon,
@@ -36,6 +44,7 @@ import {
   NumberInput,
   SegmentedControl,
   Select,
+  Spoiler,
   Stack,
   Switch,
   Text,
@@ -268,7 +277,34 @@ const DEFAULTS: { [K in GameKind]: Extract<GameSpec, { kind: K }> } = {
     rounds: 2,
     hint: true,
   },
+  poem: {
+    kind: 'poem',
+    poem: 'petushok',
+    repeat: true,
+    blanks: true,
+    questions: true,
+    choices: 3,
+  },
 };
+
+/** Библиотека стихов и сказок (этап 45) — по жанрам, с возрастом. */
+const GENRES: [PoemGenre, string][] = [
+  ['nursery', 'Потешки'],
+  ['poem', 'Стихи'],
+  ['fable', 'Басни'],
+  ['tale', 'Сказки'],
+];
+const POEM_OPTIONS = GENRES.map(([genre, group]) => ({
+  group,
+  items: POEM_CODES.filter((c) => poemOf(c).genre === genre).map((c) => {
+    const p = poemOf(c);
+    return {
+      value: c,
+      label: `${p.title}${p.author ? ` — ${p.author}` : ''} (с ${p.fromAge} лет)`,
+    };
+  }),
+})).filter((g) => g.items.length);
+const POEM_TITLES = new Set(Object.values(POEMS).map((p) => p.title));
 
 const DIFF_SCENE_LABELS: Record<(typeof DIFF_SCENES)[number], string> = {
   meadow: 'Полянка',
@@ -2037,6 +2073,51 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
           </Text>
         </Stack>
       );
+    case 'poem': {
+      const p = poemOf(spec.poem);
+      return (
+        <Stack gap="xs">
+          <Select
+            label="Что учим"
+            allowDeselect={false}
+            value={spec.poem}
+            data={POEM_OPTIONS}
+            onChange={(v) => v && onChange({ ...spec, poem: v as PoemCode })}
+          />
+          <Text size="xs" c="dimmed">
+            {poemAnnounce(p)} Картинок: {p.parts.length}
+            {p.learn.length ? ` · наизусть — за ${p.learn.length} занят.` : ''}
+          </Text>
+          <Spoiler maxHeight={44} showLabel="Весь текст" hideLabel="Свернуть">
+            <Text size="sm" style={{ whiteSpace: 'pre-line' }}>
+              {p.parts.map((part) => part.lines.join('\n')).join('\n\n')}
+            </Text>
+          </Spoiler>
+          <Switch
+            label="Повторять за голосом — учим наизусть по частям"
+            checked={spec.repeat}
+            onChange={(e) => onChange({ ...spec, repeat: e.currentTarget.checked })}
+          />
+          <Switch
+            label="«Договори словечко»"
+            checked={spec.blanks}
+            onChange={(e) => onChange({ ...spec, blanks: e.currentTarget.checked })}
+          />
+          <Switch
+            label="Вопросы по смыслу"
+            checked={spec.questions}
+            onChange={(e) => onChange({ ...spec, questions: e.currentTarget.checked })}
+          />
+          <Choices value={spec.choices} onChange={(choices) => onChange({ ...spec, choices })} />
+          <Text size="xs" c="dimmed">
+            Ребёнок слушает под глиняные картинки, потом повторяет за голосом строчки — по части за
+            занятие (телефон помнит, что уже выучено). «Договори словечко»: голос замолкает перед
+            словом, ребёнок выбирает картинку. Выучено всё — «Расскажи вместе со мной»: голос
+            начинает строку, ребёнок продолжает. Сложность растёт сама: больше вариантов ответа.
+          </Text>
+        </Stack>
+      );
+    }
     case 'differences':
       return (
         <Stack gap="xs">
@@ -2180,6 +2261,15 @@ export function GameEditor({ game, onDone }: { game: Game | null; onDone: () => 
   });
   const why = problem(v);
   const spec = v.spec as GameSpec;
+  /** Стих (этап 45): раздел «Стихи и сказки» и название по произведению, если родитель не задал своё. */
+  const setSpec = (s: GameSpec) =>
+    setV((old) => {
+      if (s.kind !== 'poem') return { ...old, spec: s };
+      const title =
+        !old.title.trim() || POEM_TITLES.has(old.title) ? poemOf(s.poem).title : old.title;
+      const category = (old.spec as GameSpec).kind === 'poem' ? old.category : 'poems';
+      return { ...old, spec: s, title, category };
+    });
 
   return (
     <Stack>
@@ -2198,7 +2288,7 @@ export function GameEditor({ game, onDone }: { game: Game | null; onDone: () => 
           value: k,
           label: GAME_KINDS[k],
         }))}
-        onChange={(k) => k && k !== spec.kind && setV({ ...v, spec: DEFAULTS[k as GameKind] })}
+        onChange={(k) => k && k !== spec.kind && setSpec(DEFAULTS[k as GameKind])}
       />
       <Select
         label="Раздел у ребёнка"
@@ -2207,7 +2297,7 @@ export function GameEditor({ game, onDone }: { game: Game | null; onDone: () => 
         data={GAME_CATEGORIES.map((c) => ({ value: c, label: GAME_CATEGORY_LABELS[c] }))}
         onChange={(c) => c && setV({ ...v, category: c as GameCategory })}
       />
-      <SpecFields spec={spec} onChange={(s) => setV({ ...v, spec: s })} />
+      <SpecFields spec={spec} onChange={setSpec} />
       <Checkbox.Group
         label="Кому показывать"
         value={v.childIds}
