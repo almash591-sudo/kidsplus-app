@@ -8,6 +8,7 @@ import { readFileSync, existsSync, statSync } from 'node:fs';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { extname, join, resolve } from 'node:path';
 import { schema } from '@kidsplus/db';
+import { eq } from 'drizzle-orm';
 import { createTestDb } from '@kidsplus/db/testing';
 import { MemoryStorage } from '@kidsplus/providers';
 import { buildApp } from '../app';
@@ -300,16 +301,50 @@ async function main() {
           }),
         );
       }
+      // Этап 44, «Что нравится»: шарики выбирает сам и проходит, ягодки в уроке бросает,
+      // «Найди пару» не открывает.
+      const fox = segments.demofox0001!;
+      const game = (id: string, kind: string) => ({ interactiveId: id, kind });
       rows.push(
-        ev('segment_start'),
-        ev('segment_complete'),
-        ev('deck_complete'),
-        ev('interactive_complete'),
+        ev('segment_start', { segmentId: fox, payload: { from: 'lesson' } }),
+        ev('segment_complete', { segmentId: fox, payload: { from: 'lesson' } }),
+        ev('deck_start', { payload: { deckId: fruits, cards: 6, from: 'lesson' } }),
+        ev('deck_complete', { payload: { deckId: fruits, cards: 6, seconds: 110 } }),
         ev('quiz_complete'),
       );
+      if (rnd() < 0.8)
+        rows.push(
+          ev('interactive_start', {
+            payload: { ...game(balloons.body.id, 'balloons'), from: 'free' },
+          }),
+          ev('interactive_complete', {
+            payload: { ...game(balloons.body.id, 'balloons'), seconds: 70 },
+          }),
+        );
+      if (back <= 7)
+        rows.push(
+          ev('interactive_start', {
+            payload: { ...game(counting.body.id, 'counting'), from: 'lesson' },
+          }),
+          back % 4 === 0
+            ? ev('interactive_complete', { payload: { ...game(counting.body.id, 'counting') } })
+            : ev('interactive_exit', {
+                payload: {
+                  ...game(counting.body.id, 'counting'),
+                  seconds: Math.round(25 + rnd() * 50),
+                },
+              }),
+        );
       await db.insert(schema.events).values(rows);
     }
   }
+
+  // Материалы назначены «три недели назад» — иначе «Не открывает» их ещё не считает.
+  for (const childId of kids)
+    await db
+      .update(schema.childItems)
+      .set({ createdAt: new Date(now().getTime() - 21 * 86_400_000) })
+      .where(eq(schema.childItems.childId, childId));
 
   await app.listen({ port: API_PORT, host: '127.0.0.1' });
 
