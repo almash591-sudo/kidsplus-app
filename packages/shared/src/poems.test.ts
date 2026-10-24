@@ -55,6 +55,10 @@ describe('библиотека стихов и сказок', () => {
     expect(poemAnnounce(POEMS.petushok)).toBe('Потешка «Петушок, петушок».');
     expect(poemAnnounce(POEMS.strekoza)).toBe('Басня «Стрекоза и Муравей». Иван Крылов.');
     expect(poemAnnounce(POEMS.kolobok)).toBe('Русская народная сказка «Колобок».');
+    // Этап 46: авторская сказка и рассказ.
+    expect(poemAnnounce(POEMS.medvedi)).toBe('Сказка «Три медведя». Лев Толстой.');
+    expect(poemAnnounce(POEMS.zhelaniya)).toBe('Рассказ «Четыре желания». Константин Ушинский.');
+    expect(poemAnnounce(POEMS.ladushki)).toBe('Потешка «Ладушки».');
   });
 
   it('«Договори»: слово из ещё не начатой части ждёт, у сказки — все сразу', () => {
@@ -68,6 +72,10 @@ describe('библиотека стихов и сказок', () => {
     // Песенка колобка: «…я от бабушки» — когда дошли до третьей группы.
     expect(blanksFor(POEMS.kolobok, 1).map((b) => b.word)).not.toContain('бабушки');
     expect(blanksFor(POEMS.kolobok, 2).map((b) => b.word)).toContain('бабушки');
+    // «Курочка Ряба»: «…не золотое — простое» — когда учим утешение курочки.
+    expect(blanksFor(POEMS.ryaba, 1).map((b) => b.word)).not.toContain('простое');
+    expect(blanksFor(POEMS.ryaba, 2).map((b) => b.word)).toContain('простое');
+    expect(blanksFor(POEMS.zhelaniya, 0)).toHaveLength(POEMS.zhelaniya.blanks.length);
     // Ответ звучит под картинкой своей части.
     const birds = POEMS.osen.blanks.find((b) => b.word === 'птички')!;
     expect(blankPart(POEMS.osen, birds)).toBe(7);

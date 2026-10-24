@@ -1,7 +1,7 @@
 // Журнал действий ребёнка за день (этап 29): события телефона, звонки и снимки — одной лентой.
 import { schema, type Db } from '@kidsplus/db';
 import { loadSchedule } from '@kidsplus/db/day';
-import { POEMS, type Poem } from '@kidsplus/shared/poems';
+import { POEMS, type Poem, type PoemGenre } from '@kidsplus/shared/poems';
 import { localClock, type ActivityEntry } from '@kidsplus/shared/schedule';
 import { and, desc, eq, gte, inArray } from 'drizzle-orm';
 
@@ -21,6 +21,13 @@ const {
 
 const DAY_MS = 86_400_000;
 
+/** «Учил сказку…», «Послушал рассказ…»; потешка и стихотворение — «стих». */
+const POEM_WHAT: Partial<Record<PoemGenre, string>> = {
+  tale: 'сказку',
+  fable: 'басню',
+  story: 'рассказ',
+};
+
 /**
  * Стих или сказка (этап 45): что выучено — «Учил стих «Осень наступила»: часть 2 из 4»,
  * «Выучил наизусть…», «Рассказал вместе с голосом…». Не стих — null.
@@ -28,7 +35,7 @@ const DAY_MS = 86_400_000;
 function poemDone(p: Record<string, unknown>): string | null {
   const poem = (POEMS as Record<string, Poem>)[String(p.poem)];
   if (p.kind !== 'poem' || !poem) return null;
-  const what = poem.genre === 'tale' ? 'сказку' : poem.genre === 'fable' ? 'басню' : 'стих';
+  const what = POEM_WHAT[poem.genre] ?? 'стих';
   const title = `«${poem.title}»`;
   const parts = Number(p.parts) || 0;
   if (p.recall === true) return `Рассказал вместе с голосом ${what} ${title}`;

@@ -293,6 +293,7 @@ const GENRES: [PoemGenre, string][] = [
   ['poem', 'Стихи'],
   ['fable', 'Басни'],
   ['tale', 'Сказки'],
+  ['story', 'Рассказы'],
 ];
 const POEM_OPTIONS = GENRES.map(([genre, group]) => ({
   group,

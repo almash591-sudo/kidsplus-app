@@ -43,6 +43,9 @@ describe('занятие стихом', () => {
   it('рассказ без заучивания (Толстой): сразу «Договори» и вопросы по всему тексту', () => {
     const plan = poemPlan(spec({ poem: 'golubka' }), 0);
     expect(plan.map((x) => x.kind)).toEqual(['listen', 'blanks', 'questions']);
+    // Этап 46: «Три медведя» и рассказ Ушинского — тоже без заучивания.
+    expect(kinds(spec({ poem: 'medvedi' }), 0)).toEqual(['listen', 'blanks', 'questions']);
+    expect(kinds(spec({ poem: 'zhelaniya' }), 0)).toEqual(['listen', 'blanks', 'questions']);
   });
 
   it('вариантов ответа — сколько задано (уровень прибавляет)', () => {
