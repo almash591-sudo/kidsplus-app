@@ -234,12 +234,15 @@ test('«Пульт» (этап 47): всё на виду — звонок, «П�
     });
   }
 
-  // «Глазами ребёнка» — детское приложение этого ребёнка в отдельном окне.
+  // «Глазами ребёнка» — детское приложение этого ребёнка в отдельном окне: окно уходит на привязку
+  // по коду. Ждём сам запрос, а не загрузку: WebKit на Linux идёт на localhost по IPv6, а стенд
+  // слушает только 127.0.0.1.
+  const paired = page.context().waitForEvent('request', (r) => r.url().includes('/pair?code='));
   const [popup] = await Promise.all([
     page.waitForEvent('popup'),
     actions.getByTestId('preview-child').click(),
   ]);
-  await expect.poll(() => popup.url()).not.toBe('about:blank');
+  await paired;
   await popup.close();
 
   // Переключатель — пульт другого ребёнка.
