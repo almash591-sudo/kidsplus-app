@@ -69,6 +69,9 @@
   inset: 0;
   background: var(--bg);
   overflow: hidden;
+  /* Круги фона выходят за край: hidden можно прокрутить фокусом или scrollIntoView — экран
+     уезжает. clip не прокручивается ничем (старый Safari — hidden). */
+  overflow: clip;
   touch-action: none;
 }
 

@@ -9,7 +9,7 @@ import {
 } from '@kidsplus/shared/poems';
 import type { KidPhrases } from '@kidsplus/shared/api';
 import { withoutStress } from '@kidsplus/shared/voice';
-import { useEffect, useRef, useState } from 'react';
+import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { whenQuiet } from '../audio';
 import {
   POEM_BLANKS,
@@ -82,10 +82,78 @@ function Picture({ name, dim = false }: { name: string; dim?: boolean }) {
   );
 }
 
+/** Шрифт подписи не мельче — дальше пусть лучше переносится. */
+const MIN_FONT = 13;
+
+/**
+ * Длинная часть (басня, сказка — до семи строк): шрифт подписи мельче, пока сцена и подпись не
+ * встанут на экран и подпись не выйдет из-под «Дальше»; не хватило и мелкого — сцена ниже. Считаем в размерах раскладки — экран
+ * появляется с анимацией (scale), она замер не сбивает. Повернули телефон — подбираем заново.
+ */
+function useFitText(ref: RefObject<HTMLElement | null>, key: string) {
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const game = el?.closest<HTMLElement>('.game');
+    if (!el || !game) return;
+    const fits = () => {
+      const g = game.getBoundingClientRect();
+      const k = game.offsetHeight / g.height || 1;
+      const box = (e: Element) => {
+        const r = e.getBoundingClientRect();
+        return {
+          top: (r.top - g.top) * k,
+          bottom: (r.bottom - g.top) * k,
+          left: (r.left - g.left) * k,
+          right: (r.right - g.left) * k,
+        };
+      };
+      const css = getComputedStyle(game);
+      const top = parseFloat(css.paddingTop) - 1;
+      const bottom = game.clientHeight - parseFloat(css.paddingBottom) + 1;
+      for (const c of game.children) {
+        if (getComputedStyle(c).position === 'absolute') continue;
+        const b = box(c);
+        if (b.top < top || b.bottom > bottom) return false;
+      }
+      const next = game.querySelector('.poem-next');
+      if (!next) return true;
+      const t = box(el);
+      const n = box(next);
+      return t.right <= n.left || t.left >= n.right || t.bottom <= n.top - 6;
+    };
+    const fit = () => {
+      const pic = game.querySelector<HTMLElement>('.poem-pic');
+      el.style.fontSize = '';
+      if (pic) pic.style.maxHeight = '';
+      let size = parseFloat(getComputedStyle(el).fontSize);
+      const full = pic?.offsetHeight ?? 0;
+      const font = (min: number) => {
+        while (size > min && !fits()) el.style.fontSize = `${--size}px`;
+      };
+      const scene = (share: number) => {
+        for (let h = (pic?.offsetHeight ?? 0) - 8; pic && h >= full * share && !fits(); h -= 8)
+          pic.style.maxHeight = `${h}px`;
+      };
+      // Ребёнку важнее сцена, маме — читаемая подпись: уступают по очереди.
+      font(16);
+      scene(0.7);
+      font(MIN_FONT);
+      scene(0.5);
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(game);
+    void document.fonts?.ready.then(fit);
+    return () => ro.disconnect();
+  }, [ref, key]);
+}
+
 /** Строки под картинкой — для тех, кто уже читает, и для мамы рядом. */
 function Caption({ lines, turn = false }: { lines: readonly string[]; turn?: boolean }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useFitText(ref, lines.join('\n'));
   return (
-    <div className={turn ? 'poem-text turn' : 'poem-text'} data-testid="poem-text">
+    <div ref={ref} className={turn ? 'poem-text turn' : 'poem-text'} data-testid="poem-text">
       {lines.map((l, i) => (
         <p key={i}>{withoutStress(l)}</p>
       ))}

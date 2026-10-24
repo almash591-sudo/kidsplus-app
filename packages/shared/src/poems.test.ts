@@ -53,6 +53,8 @@ describe('библиотека стихов и сказок', () => {
     expect(poemAnnounce(POEMS.osen)).toBe('Стихотворение «Осень наступила». Алексей Плещеев.');
     expect(poemAnnounce(POEMS.repka)).toBe('Русская народная сказка «Репка».');
     expect(poemAnnounce(POEMS.petushok)).toBe('Потешка «Петушок, петушок».');
+    expect(poemAnnounce(POEMS.strekoza)).toBe('Басня «Стрекоза и Муравей». Иван Крылов.');
+    expect(poemAnnounce(POEMS.kolobok)).toBe('Русская народная сказка «Колобок».');
   });
 
   it('«Договори»: слово из ещё не начатой части ждёт, у сказки — все сразу', () => {
@@ -60,6 +62,12 @@ describe('библиотека стихов и сказок', () => {
     expect(blanksFor(POEMS.osen, 1).map((b) => b.word)).toEqual(['цветы', 'кусты', 'травка']);
     expect(blanksFor(POEMS.osen, 4)).toHaveLength(POEMS.osen.blanks.length);
     expect(blanksFor(POEMS.repka, 0)).toHaveLength(POEMS.repka.blanks.length);
+    // Рассказ без заучивания — все сразу; у басни — слово за выученными строками тоже сразу.
+    expect(blanksFor(POEMS.golubka, 0)).toHaveLength(POEMS.golubka.blanks.length);
+    expect(blanksFor(POEMS.strekoza, 0).map((b) => b.word)).toEqual(['Стрекоза', 'попляши']);
+    // Песенка колобка: «…я от бабушки» — когда дошли до третьей группы.
+    expect(blanksFor(POEMS.kolobok, 1).map((b) => b.word)).not.toContain('бабушки');
+    expect(blanksFor(POEMS.kolobok, 2).map((b) => b.word)).toContain('бабушки');
     // Ответ звучит под картинкой своей части.
     const birds = POEMS.osen.blanks.find((b) => b.word === 'птички')!;
     expect(blankPart(POEMS.osen, birds)).toBe(7);

@@ -1509,8 +1509,9 @@ test.describe('карточки: проверки и стрелки', () => {
     page,
     backend,
   }) => {
+    // Слово звучит 2,5 с — все касания успевают попасть в него и под нагрузкой (700 мс не хватало).
     await page.addInitScript(
-      () => ((window as unknown as { __speechMs: number }).__speechMs = 700),
+      () => ((window as unknown as { __speechMs: number }).__speechMs = 2500),
     );
     backend.items = [deckOf(3)];
     await page.goto('/');
@@ -2992,6 +2993,56 @@ test.describe('новые игры', () => {
     expect(said).toContain('Расскажи вместе со мной! Я начну, а ты продолжай.');
     expect(said.some((x) => ['Петушок…', 'Масляна…', 'Что ты…'].includes(x))).toBe(true);
     expect(said).not.toContain('Повторяй за мной!');
+  });
+
+  test('длинная часть басни (этап 45): сцена и семь строк на экране, подпись не под «Дальше»', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [
+      game(
+        1,
+        { kind: 'poem', poem: 'strekoza', repeat: true, blanks: true, questions: true, choices: 3 },
+        'poems',
+      ),
+      game(2, { kind: 'balloons', count: 5, target: null }),
+    ];
+    await gameMedia(page);
+    await page.goto('/');
+    await page.locator('[data-category=poems]').click();
+    // Голос «говорит» долго — части листаем сами, до самой длинной («Кумушка, мне странно это…»).
+    await slowSpeech(page, 8000);
+    await page.getByTestId('tile').first().click();
+    const g = page.getByTestId('game-poem');
+    for (let i = 2; i <= 5; i++) {
+      await g.getByTestId('poem-next').click();
+      await expect(g.locator('.poem-pic')).toHaveAttribute('data-picture', `fable-${i}`);
+    }
+    await expect(g.getByTestId('poem-text')).toContainText('голову вскружило');
+    await page.waitForTimeout(600);
+    const box = await page.evaluate(() => {
+      const r = (q: string) => document.querySelector(q)!.getBoundingClientRect();
+      const [pic, text, next] = [r('.poem-pic'), r('[data-testid=poem-text]'), r('.poem-next')];
+      return {
+        pic,
+        text,
+        next,
+        h: innerHeight,
+        font: parseFloat(
+          getComputedStyle(document.querySelector('[data-testid=poem-text]')!).fontSize,
+        ),
+        scrolled: document.querySelector('.game-screen')!.scrollTop,
+      };
+    });
+    expect(box.scrolled).toBe(0);
+    expect(box.pic.top).toBeGreaterThanOrEqual(0);
+    expect(box.pic.height).toBeGreaterThan(box.h * 0.2);
+    expect(box.text.bottom).toBeLessThanOrEqual(box.h);
+    expect(box.font).toBeGreaterThanOrEqual(13);
+    // Подпись не заходит под «Дальше» (лёжа кнопка — справа от неё).
+    const under = box.text.right > box.next.left && box.text.left < box.next.right;
+    if (under) expect(box.text.bottom).toBeLessThanOrEqual(box.next.top);
+    await shot(page, 'poem-long');
   });
 
   test('гонки (этап 43): светофор, ворота с ответом (сначала не те), обгон и финиш', async ({
