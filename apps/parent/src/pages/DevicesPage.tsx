@@ -26,6 +26,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { LANGUAGE_LABELS } from '../lib/child';
 import { modals } from '../lib/modals';
+import { phoneOf } from '../lib/names';
 import { keys, queryClient, useChildren, useDecks, useDevices } from '../queries';
 
 const dateTime = (iso: string) =>
@@ -193,7 +194,7 @@ function PairingFlow({
   devices: Device[];
   onDone: () => void;
 }) {
-  const [name, setName] = useState(`Телефон ${child.nickname}`);
+  const [name, setName] = useState(phoneOf(child));
   const [pairing, setPairing] = useState<
     (PairingCreated & { qr: string; knownIds: Set<string> }) | null
   >(null);

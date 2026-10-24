@@ -6,6 +6,7 @@ import { Link, useParams } from 'react-router';
 import { copyFrom, LibraryCard, useAssignables } from '../components/Library';
 import { ageText } from '../lib/child';
 import { setCurrentChild } from '../lib/currentChild';
+import { allOf } from '../lib/names';
 import { useChildNow, useChildren } from '../queries';
 
 type Row = {
@@ -112,7 +113,7 @@ export function ChildPage() {
         <Group_
           title="Скопировать"
           rows={others.map((o) => ({
-            label: `Всё, что есть у ${o.nickname}`,
+            label: allOf(o),
             value: 'чего нет',
             color: '#34c759',
             icon: 'M8 8h11v11H8zM5 16V5h11',

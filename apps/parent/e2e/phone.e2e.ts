@@ -123,7 +123,7 @@ test('массовые действия (этап 33): выбрать все в�
   await login(page);
   await page.goto('/content?tab=videos');
   const chips = page.getByTestId('owner-chips');
-  await chips.getByRole('button', { name: /^Есть у Зайка/ }).click();
+  await chips.getByRole('button', { name: /^Есть у Зайки/ }).click();
   await page.getByTestId('bulk-select').click();
   await page.getByRole('button', { name: 'Выбрать все' }).click();
   const bar = page.getByTestId('bulk-bar');
@@ -132,12 +132,12 @@ test('массовые действия (этап 33): выбрать все в�
   if (process.env.SHOTS)
     await page.screenshot({ path: `${process.env.SHOTS}/bulk-${test.info().project.name}.png` });
   await bar.getByRole('button', { name: 'Зайка' }).click();
-  await page.getByRole('menuitem', { name: 'Убрать у Зайка' }).click();
+  await page.getByRole('menuitem', { name: 'Убрать у Зайки' }).click();
   await expect(page.getByText(/Зайка: убрано \d+ видео/)).toBeVisible();
-  await expect(chips.getByRole('button', { name: /^Нет у Зайка · \d+/ })).toBeVisible();
+  await expect(chips.getByRole('button', { name: /^Нет у Зайки · \d+/ })).toBeVisible();
   // Передумали — всё вернулось.
   await page.getByRole('button', { name: 'Отменить' }).click();
-  await expect(chips.getByRole('button', { name: /^Нет у Зайка/ })).toHaveCount(0);
+  await expect(chips.getByRole('button', { name: /^Нет у Зайки/ })).toHaveCount(0);
 
   // Имя у набора карточек: касание — скрыть у ребёнка, ещё раз — вернуть.
   await page.goto('/content?tab=decks');
@@ -163,11 +163,11 @@ test('кабинет вокруг ребёнка (этап 33): переключ
   if (process.env.SHOTS)
     await page.screenshot({ path: `${process.env.SHOTS}/home33-${test.info().project.name}.png` });
 
-  // Видео ребёнка — «Контент» уже с фильтром «Есть у Зайка».
+  // Видео ребёнка — «Контент» уже с фильтром «Есть у Зайки».
   await lib.getByRole('link', { name: /Видео/ }).click();
   await expect(page).toHaveURL(/tab=videos&owner=/);
   await expect(
-    page.getByTestId('owner-chips').getByRole('button', { name: /^Есть у Зайка/ }),
+    page.getByTestId('owner-chips').getByRole('button', { name: /^Есть у Зайки/ }),
   ).toHaveClass(/on/);
 
   // Строка ребёнка — его «Распорядок» с карточкой «Сейчас»; оттуда — профиль. Выбор общий.
@@ -178,8 +178,8 @@ test('кабинет вокруг ребёнка (этап 33): переключ
   await page.getByRole('link', { name: 'Профиль ›' }).click();
   await expect(page.getByTestId('child-page')).toContainText('Зайка');
   expect(await layoutProblems(page)).toEqual([]);
-  await page.getByRole('button', { name: /Всё, что есть у Мишутка/ }).click();
-  await expect(page.getByText(/Зайка: добавлено|У Зайка уже есть/)).toBeVisible();
+  await page.getByRole('button', { name: /Всё, что есть у Мишутки/ }).click();
+  await expect(page.getByText(/Зайка: добавлено|У Зайки уже есть/)).toBeVisible();
   await page.getByRole('link', { name: /Привычки и награды/ }).click();
   await expect(page).toHaveURL(/\/routine\?tab=habits/);
   await expect(page.getByRole('tab', { name: 'Зайка' })).toHaveAttribute('aria-selected', 'true');

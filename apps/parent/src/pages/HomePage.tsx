@@ -35,6 +35,7 @@ import {
 } from '../components/KidBits';
 import { LibraryCard } from '../components/Library';
 import { setCurrentChild, useCurrentChildRaw } from '../lib/currentChild';
+import { phoneOf } from '../lib/names';
 
 const today = () =>
   new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -139,7 +140,7 @@ function Attention({ kids }: { kids: Child[] }) {
         key: `battery-${k.id}`,
         color: '#ff3b30',
         icon: 'M3 7h16v10H3zM21 11v2M6 10v4',
-        text: `Телефон ${k.nickname}: ${b.level} %`,
+        text: `${phoneOf(k)}: ${b.level} %`,
         to: `/routine?child=${k.id}`,
       });
     // Этап 34: телефон подряд не открывает видео — обычно нет связи с YouTube или выключен VPN.
@@ -148,7 +149,7 @@ function Attention({ kids }: { kids: Child[] }) {
         key: `videos-${k.id}`,
         color: '#ff9500',
         icon: 'M4 5h16v14H4zM4 4l16 16',
-        text: `Телефон ${k.nickname}: видео не открываются — проверьте интернет и VPN`,
+        text: `${phoneOf(k)}: видео не открываются — проверьте интернет и VPN`,
         to: `/child/${k.id}`,
       });
     const noise = monitors[i]?.lastNoiseAt;

@@ -4206,7 +4206,9 @@ test.describe('аудиотека', () => {
 
 test.describe('урок из одних видео', () => {
   test('«Разное», где только видео, открывается плеером', async ({ page, backend }) => {
-    backend.today = planDay({ subjects: [{ subject: 'other', secondsLeft: 1200, done: false, progress: 0 }] });
+    backend.today = planDay({
+      subjects: [{ subject: 'other', secondsLeft: 1200, done: false, progress: 0 }],
+    });
     backend.lessons = {
       other: [{ ...SEGMENTS[0]!, kind: 'segment', subject: 'other', questions: [] } as Item],
     };

@@ -1,10 +1,11 @@
 // Массовые действия в «Контенте» (этап 33): фильтры «есть у / нет у», предмет, режим выбора,
 // нижняя панель «Дать / Убрать» с отменой и кнопки-имена у каждого пункта.
-import type { ChildItemsBulkRequest, ChildItemsBulkResult } from '@kidsplus/shared/api';
+import type { Child, ChildItemsBulkRequest, ChildItemsBulkResult } from '@kidsplus/shared/api';
 import { Button, Group, Menu, Portal, Text, TextInput } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useMemo, useState } from 'react';
 import { api, errorMessage } from '../api';
+import { cap, giveLabel, hasLabel, uNick, type Nick } from '../lib/names';
 import { queryClient, useChildren } from '../queries';
 
 export type ItemKind = 'segment' | 'deck' | 'interactive';
@@ -47,10 +48,11 @@ const word = (n: number, kind: ItemKind) => {
 export async function assignMany(
   kind: ItemKind,
   childId: string,
-  childName: string,
+  nick: Nick,
   ids: string[],
   give: boolean,
 ) {
+  const u = uNick(nick);
   const refs = ids.map((refId) => ({ kind, refId }));
   try {
     const r = await bulk(childId, give ? { add: refs } : { remove: refs });
@@ -65,11 +67,15 @@ export async function assignMany(
           <Text size="sm">
             {n === 0
               ? give
-                ? `У ${childName} это уже было`
-                : `У ${childName} этого не было`
+                ? u
+                  ? `${cap(u)} это уже было`
+                  : `${nick.nickname}: это уже было`
+                : u
+                  ? `${cap(u)} этого не было`
+                  : `${nick.nickname}: этого не было`
               : give
-                ? `${childName}: добавлено ${word(n, kind)}`
-                : `${childName}: убрано ${word(n, kind)}`}
+                ? `${nick.nickname}: добавлено ${word(n, kind)}`
+                : `${nick.nickname}: убрано ${word(n, kind)}`}
           </Text>
           {n > 0 && (
             <Button
@@ -195,7 +201,7 @@ export function BulkFilters<T extends Assignable>({
                   className={on ? 'on' : ''}
                   onClick={() => b.setOwner(on ? null : { childId: c.id, has })}
                 >
-                  {has ? 'Есть у' : 'Нет у'} {c.nickname} · {n}
+                  {hasLabel(c, has)} · {n}
                 </button>
               );
             }),
@@ -266,9 +272,9 @@ export function BulkBar<T extends Assignable>({
   const [busy, setBusy] = useState(false);
   if (!b.selecting) return null;
   const ids = [...b.selected];
-  const run = async (childId: string, name: string, give: boolean) => {
+  const run = async (c: Child, give: boolean) => {
     setBusy(true);
-    await assignMany(kind, childId, name, ids, give);
+    await assignMany(kind, c.id, c, ids, give);
     setBusy(false);
     b.stop();
   };
@@ -288,11 +294,9 @@ export function BulkBar<T extends Assignable>({
                 </Button>
               </Menu.Target>
               <Menu.Dropdown>
-                <Menu.Item onClick={() => void run(c.id, c.nickname, true)}>
-                  Дать {c.nickname}
-                </Menu.Item>
-                <Menu.Item color="red" onClick={() => void run(c.id, c.nickname, false)}>
-                  Убрать у {c.nickname}
+                <Menu.Item onClick={() => void run(c, true)}>{giveLabel(c, true)}</Menu.Item>
+                <Menu.Item color="red" onClick={() => void run(c, false)}>
+                  {giveLabel(c, false)}
                 </Menu.Item>
               </Menu.Dropdown>
             </Menu>
@@ -320,7 +324,7 @@ export function KidPills({ kind, item }: { kind: ItemKind; item: Assignable }) {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              void assignMany(kind, c.id, c.nickname, [item.id], !on);
+              void assignMany(kind, c.id, c, [item.id], !on);
             }}
           >
             {on ? '✓ ' : ''}

@@ -5,6 +5,7 @@ import { Card, Stack, Text, UnstyledButton } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { Link } from 'react-router';
 import { api, errorMessage } from '../api';
+import { copiedText, hasMore } from '../lib/names';
 import { queryClient, useDecks, useGames, useSegments } from '../queries';
 import { ownerLink, type ItemKind } from './Bulk';
 
@@ -65,9 +66,7 @@ export async function copyFrom(
     for (const key of ['segments', 'decks', 'games', 'child-items'])
       void queryClient.invalidateQueries({ queryKey: [key] });
     notifications.show({
-      message: r.added
-        ? `${to.nickname}: добавлено ${r.added} — то, что было у ${from.nickname}`
-        : `У ${to.nickname} уже есть всё, что у ${from.nickname}`,
+      message: copiedText(from, to, r.added),
     });
   } catch (err) {
     notifications.show({ color: 'red', message: errorMessage(err) });
@@ -147,7 +146,7 @@ export function LibraryCard({ child, kids }: { child: Child; kids: Child[] }) {
             onClick={() => void copyFrom(all, r.richer!.from, child, [r.tab])}
           >
             <span style={{ flex: 1 }}>
-              {r.label}: мало. У {r.richer!.from.nickname} есть ещё {r.richer!.missing}.
+              {r.label}: мало. {hasMore(r.richer!.from)} {r.richer!.missing}.
             </span>
             <b>Добавить</b>
           </UnstyledButton>
