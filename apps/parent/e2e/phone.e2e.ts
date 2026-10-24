@@ -281,6 +281,26 @@ test('«Пульт» (этап 47): всё на виду — звонок, «П�
   );
 });
 
+test('точность (этап 47): уроки подписаны, завершённый день — «не сегодня», а не «позже»', async ({
+  page,
+}) => {
+  await login(page);
+  // «Все»: под именем — уроки с названием и остатком, а не безымянные кольца.
+  const lessons = page.getByTestId('kid-lessons').first();
+  await expect(lessons).toContainText(/Английский|Китайский|Математика/);
+  expect(await layoutProblems(page)).toEqual([]);
+
+  // «Завершить на сегодня» — не пройденные уроки в ленте «не сегодня» с причиной.
+  await page.getByTestId('kid-switch').getByRole('tab').nth(1).click();
+  await page.getByTestId('end-day').click();
+  const day = page.getByTestId('dayline');
+  const missed = day.locator('[data-state=missed]');
+  await expect(missed.first()).toContainText('день завершён вами');
+  await expect(missed.first()).toContainText('не сегодня');
+  await page.getByRole('button', { name: 'Снова открыть день' }).click();
+  await expect(page.getByTestId('end-day')).toBeVisible();
+});
+
 test('навигация (этап 47): боковое меню — все разделы, переключатель детей — один на кабинет', async ({
   page,
 }) => {

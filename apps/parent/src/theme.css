@@ -1049,3 +1049,23 @@ a.attention-row:active {
 .side-link {
   border-radius: 10px;
 }
+
+/* Уроки ребёнка в строке «Пульта» (этап 47): кольцо, предмет, сколько осталось. */
+.kid-lessons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 8px;
+  padding-left: 58px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.kid-lesson {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.kid-lesson-left {
+  color: var(--app-muted);
+  font-weight: 500;
+}
