@@ -26,6 +26,7 @@ import {
   type RocketPart,
 } from '@kidsplus/shared/games';
 import { MAX_LEVEL, specAtLevel } from '@kidsplus/shared/levels';
+import { lineStart, partSpeech, poemAnnounce, poemOf, type PoemCode } from '@kidsplus/shared/poems';
 import { SONGS } from '@kidsplus/shared/songs';
 import { NUMBERS, paint, PALETTE } from './games/common';
 import { SORTER } from './games/sorterShapes';
@@ -43,6 +44,7 @@ export const CATEGORY_LABELS: Record<KidCategory, string> = {
   nature: 'Природа',
   music: 'Музыка',
   letters: 'Буквы',
+  poems: 'Стихи и сказки',
   games: 'Игры',
   other: 'Разное',
 };
@@ -492,6 +494,34 @@ export const diffPhrases = () => [
   ...LEFT.slice(1).map((_, i) => diffLeft(i + 1)),
 ];
 
+// ─── Этап 45: стихи и сказки ───
+export const POEM_INTRO = 'Послушай и повторяй за мной!';
+export const POEM_REPEAT = 'Повторяй за мной!';
+export const POEM_YOUR_TURN = 'Теперь ты!';
+export const POEM_TOGETHER = 'А теперь всё вместе!';
+export const POEM_RECALL = 'Расскажи вместе со мной! Я начну, а ты продолжай.';
+export const POEM_BLANKS = 'Договори словечко!';
+export const POEM_QUESTIONS = 'А теперь вопросы!';
+export const POEM_PART_DONE = 'Молодец! Эту часть выучили.';
+export const POEM_LEARNED = 'Ура! Выучили всё до конца!';
+/** Голос замолкает перед словом: «Петушок, петушок, золотой…» */
+export const poemCue = (cue: string) => `${cue.replace(/[,—\s]+$/u, '')}…`;
+/** Верный ответ на вопрос: «В тёплые края!» */
+export const poemAnswer = (word: string) => `${word[0]!.toUpperCase()}${word.slice(1)}!`;
+/** Всё, что может прозвучать в стихе или сказке. */
+export function poemPhrases(code: PoemCode): string[] {
+  const p = poemOf(code);
+  return [
+    poemAnnounce(p),
+    ...[POEM_REPEAT, POEM_YOUR_TURN, POEM_TOGETHER, POEM_RECALL, POEM_BLANKS, POEM_QUESTIONS],
+    ...[POEM_PART_DONE, POEM_LEARNED],
+    ...p.parts.flatMap((part) => partSpeech(part)),
+    ...p.learn.flat().flatMap((line) => [line, lineStart(line)]),
+    ...p.blanks.map((b) => poemCue(b.cue)),
+    ...p.questions.flatMap((q) => [q.text, poemAnswer(q.answer[0])]),
+  ];
+}
+
 /** Как играть — для игр без своего задания и для «ушка», если задание ещё не звучало. */
 export const GAME_INTRO: Record<GameKind, string> = {
   drawing: 'Рисуй пальчиком! Краски — внизу.',
@@ -548,6 +578,7 @@ export const GAME_INTRO: Record<GameKind, string> = {
   rocket: ROCKET_PROMPT,
   race: RACE_PROMPT,
   differences: DIFF_PROMPT,
+  poem: POEM_INTRO,
 };
 
 /** Подсказки на экранах выбора — для тех, кто не читает. */
@@ -714,6 +745,8 @@ export function gamePhrases(spec: GameSpec): string[] {
       return racePhrases(spec.quiz);
     case 'differences':
       return diffPhrases();
+    case 'poem':
+      return poemPhrases(spec.poem);
     case 'drawing':
     case 'puzzle':
     case 'memory':

@@ -114,6 +114,19 @@ function shakeLastTap() {
   );
 }
 
+/** Что игра добавляет к событию «пройдена» (этап 45: какой стих и какую часть выучили). */
+export type GameReport = Record<string, string | number | boolean>;
+let report: GameReport = {};
+export const gameReport = {
+  set: (r: GameReport) => (report = r),
+  /** Забрать и очистить. */
+  take: () => {
+    const r = report;
+    report = {};
+    return r;
+  },
+};
+
 /** Ошибки в текущей игре (этап 34): по ним сервер ведёт уровень сложности. */
 let mistakes = 0;
 export const gameMistakes = {

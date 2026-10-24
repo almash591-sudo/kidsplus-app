@@ -597,6 +597,11 @@ button {
   box-shadow: 0 6px 0 #9a3412;
 }
 
+.tile.category.poems {
+  background: #a3348f;
+  box-shadow: 0 6px 0 #6b1f5e;
+}
+
 .tile.category.music {
   background: #0891b2;
   box-shadow: 0 6px 0 #155e75;

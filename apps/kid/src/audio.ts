@@ -245,6 +245,14 @@ export function playSequence(items: (Speech | null)[]): Promise<void> {
   return start(items);
 }
 
+/**
+ * Дождаться тишины: что бы ни звучало сейчас, — до конца. Стих (этап 45) идёт дальше, только
+ * когда договорено и то, что ребёнок попросил повторить «ушком».
+ */
+export async function whenQuiet(): Promise<void> {
+  while (running) await running.done;
+}
+
 export function stopAudio() {
   generation++;
   running = null;

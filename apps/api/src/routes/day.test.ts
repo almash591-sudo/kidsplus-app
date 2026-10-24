@@ -559,4 +559,33 @@ describe('пульт родителя (этап 29)', () => {
     });
     expect(kid.statusCode).not.toBe(200);
   });
+
+  it('журнал: стих — какую часть учил, выучил ли наизусть (этап 45)', async () => {
+    const game = await addGame('Осень', 'poems');
+    const done = (payload: object) =>
+      t.app.inject({
+        method: 'POST',
+        url: '/api/kid/events',
+        cookies: device,
+        payload: {
+          type: 'interactive_complete',
+          interactiveId: game,
+          payload: { kind: 'poem', poem: 'osen', parts: 4, ...payload },
+        },
+      });
+    await done({ part: 2, learned: false, recall: false });
+    t.advance(60_000);
+    await done({ part: 4, learned: true, recall: false });
+    t.advance(60_000);
+    await done({ part: 4, learned: true, recall: true });
+    const log = await get<{ entries: { text: string }[] }>(
+      `/api/parent/children/${child}/activity`,
+      parent,
+    );
+    expect(log.entries.map((e) => e.text)).toEqual([
+      'Рассказал вместе с голосом стих «Осень наступила»',
+      'Выучил наизусть стих «Осень наступила»',
+      'Учил стих «Осень наступила»: часть 2 из 4',
+    ]);
+  });
 });

@@ -1,4 +1,5 @@
 import { mediaUrl } from '@kidsplus/shared/api';
+import { poemOf } from '@kidsplus/shared/poems';
 import type { GameKind, GameSpec } from '@kidsplus/shared/games';
 import { PictureSvg } from './Coloring';
 import { PALETTE } from './common';
@@ -61,6 +62,7 @@ export const ICON: Record<GameKind, string> = {
   rocket: '🚀',
   race: '🏎️',
   differences: '🔍',
+  poem: '📖',
 };
 
 /** Глиняный значок игры (этап 35): квадратная картинка с прозрачным фоном, вписывается без растяжения. */
@@ -117,6 +119,17 @@ export function GameTile({ spec }: { spec: GameSpec }) {
       picture.regions.map((r) => [r.id, PALETTE.find((p) => p.id === r.target)!.hex]),
     );
     return <PictureSvg picture={picture} fills={fills} />;
+  }
+  // Стих или сказка (этап 45): обложка — первая сцена.
+  if (spec.kind === 'poem') {
+    return (
+      <span className="game-tile poem-tile">
+        <img src={`/poems/${poemOf(spec.poem).parts[0]!.picture}.webp`} alt="" draggable={false} />
+        <span className="game-badge">
+          <GameIcon kind="poem" />
+        </span>
+      </span>
+    );
   }
   if (spec.kind === 'puzzle') {
     return (

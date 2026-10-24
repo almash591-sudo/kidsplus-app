@@ -32,6 +32,7 @@ export const CATEGORY_SHORT: Record<KidCategory, string> = {
   nature: 'Природа',
   music: 'Музыка',
   letters: 'Буквы',
+  poems: 'Стихи',
   games: 'Игры',
   other: 'Разное',
 };

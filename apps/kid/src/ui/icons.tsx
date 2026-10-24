@@ -13,6 +13,8 @@ const PATHS = {
     'M9 18V6l10-2v12M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM19 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM9 10l10-2',
   letters:
     'M4 19L8.5 5h1L14 19M5.8 14h6.4M15 19V8h3.5a2.8 2.8 0 0 1 0 5.6H15M15 13.6h4a2.7 2.7 0 0 1 0 5.4h-4',
+  poems:
+    'M12 6.5C10 5 7.5 4.5 4 5v13c3.5-.5 6 0 8 1.5 2-1.5 4.5-2 8-1.5V5c-3.5-.5-6 0-8 1.5zM12 6.5v13',
   games:
     'M6.5 9h11a3.5 3.5 0 0 1 3.4 4.3l-.5 2a2.6 2.6 0 0 1-4.5 1.1L14.5 15h-5l-1.4 1.4a2.6 2.6 0 0 1-4.5-1.1l-.5-2A3.5 3.5 0 0 1 6.5 9zM8 11v3M6.5 12.5h3M16 12h.01M17.5 13.5h.01',
   geography:
@@ -81,6 +83,7 @@ export const CATEGORY_ICON: Record<KidCategory, IconName> = {
   nature: 'nature',
   music: 'music',
   letters: 'letters',
+  poems: 'poems',
   games: 'games',
   other: 'other',
 };

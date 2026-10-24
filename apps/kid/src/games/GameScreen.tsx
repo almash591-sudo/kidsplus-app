@@ -8,7 +8,15 @@ import { markDone, markTried } from '../progress';
 import { Celebrate } from '../Celebrate';
 import { Balloons } from './Balloons';
 import { Coloring } from './Coloring';
-import { gameLock, gameMistakes, repeatCurrentTask, say, setTask, type GameProps } from './common';
+import {
+  gameLock,
+  gameMistakes,
+  gameReport,
+  repeatCurrentTask,
+  say,
+  setTask,
+  type GameProps,
+} from './common';
 import { Clock } from './Clock';
 import { Counting } from './Counting';
 import { Robot } from './Robot';
@@ -44,6 +52,7 @@ import { Dive } from './Dive';
 import { Race } from './Race';
 import { Rocket } from './Rocket';
 import { Dots } from './Dots';
+import { Poem } from './Poem';
 import { Tangram } from './Tangram';
 import { SyllableWord, Word } from './Word';
 import { Beats } from './music/Beats';
@@ -101,6 +110,7 @@ const OWN_SCENE: GameKind[] = [
   'rocket',
   'race',
   'differences',
+  'poem',
 ];
 export const backdropOf = (kind: GameKind): Backdrop | undefined =>
   OWN_SCENE.includes(kind)
@@ -120,6 +130,8 @@ const OWL_INSIDE: readonly GameKind[] = [
   'differences',
   // Загадки (этап 41): совёнок загадывает посреди экрана.
   'riddle',
+  // Стих (этап 45): совёнок читает и слушает ребёнка.
+  'poem',
 ];
 
 /** Игры без своего задания: как играть — звучит при входе. */
@@ -181,6 +193,7 @@ const GAMES: { [K in GameKind]: ComponentType<GameProps<K>> } = {
   rocket: Rocket,
   race: Race,
   differences: Differences,
+  poem: Poem,
 };
 
 /** Экран игры: сама игра, кнопка «домой», в конце — звёздочка и следующий пункт. */
@@ -207,6 +220,7 @@ export function GameScreen(props: {
 
   useEffect(() => {
     gameMistakes.reset();
+    gameReport.take();
     return () => {
       stopAudio();
       gameLock.reset();
@@ -248,7 +262,12 @@ export function GameScreen(props: {
             sendEvent({
               type: 'interactive_complete',
               interactiveId: id,
-              payload: { ...about, mistakes: gameMistakes.get(), seconds: seconds() },
+              payload: {
+                ...about,
+                ...gameReport.take(),
+                mistakes: gameMistakes.get(),
+                seconds: seconds(),
+              },
             });
             markDone(id);
             setFinished(true);

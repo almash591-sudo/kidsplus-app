@@ -260,6 +260,40 @@ test('поиск по названию в играх (этап 33)', async ({ pa
   await expect(page.getByText('Показано: 1')).toBeVisible();
 });
 
+test('стих в конструкторе игр (этап 45): раздел и название по произведению, весь текст', async ({
+  page,
+}) => {
+  await login(page);
+  await page.goto('/content?tab=games');
+  await page.getByRole('button', { name: '+ Игра' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('combobox', { name: 'Вид игры' }).click();
+  await page.getByRole('option', { name: 'Стих или сказка' }).click();
+  // Раздел «Стихи и сказки» и название — сами.
+  await expect(dialog.getByRole('combobox', { name: 'Раздел у ребёнка' })).toHaveValue(
+    'Стихи и сказки',
+  );
+  const title = dialog.getByRole('textbox', { name: 'Название (видите только вы)' });
+  await expect(title).toHaveValue('Петушок, петушок');
+  await dialog.getByRole('combobox', { name: 'Что учим' }).click();
+  await page.getByRole('option', { name: /Осень наступила/ }).click();
+  await expect(title).toHaveValue('Осень наступила');
+  await expect(dialog.getByText('Стихотворение «Осень наступила». Алексей Плещеев.')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Весь текст' }).click();
+  await expect(dialog.getByText(/Птички улетели/)).toBeVisible();
+  expect(await layoutProblems(page)).toEqual([]);
+  await dialog.getByRole('button', { name: 'Сохранить' }).click();
+  await expect(dialog).toHaveCount(0);
+  const row = page.locator('.attention-row').filter({ hasText: 'Осень наступила' });
+  await expect(row).toContainText('Стих или сказка · Стихи и сказки · «Осень наступила» · учим');
+
+  // Уборка за собой: стенд общий для тестов.
+  await row.getByRole('button', { name: 'Действия' }).click();
+  await page.getByRole('menuitem', { name: 'Удалить' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Удалить' }).click();
+  await expect(row).toHaveCount(0);
+});
+
 test('привычки: готовое и своё дело, отметка за ребёнка, награда за звёзды', async ({ page }) => {
   await login(page);
   await page.goto('/habits');
