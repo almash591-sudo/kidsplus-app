@@ -1851,6 +1851,24 @@ test.describe('игры', () => {
     });
   });
 
+  test('открыл сам и ушёл домой — события с «сам» и секундами (этап 44)', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [game(1, { kind: 'balloons', count: 5 })];
+    await openGame(page);
+    await expect
+      .poll(() => backend.events.find((e) => e.type === 'interactive_start')?.payload)
+      .toMatchObject({ kind: 'balloons', from: 'free' });
+    await page.getByTestId('go-home').click();
+    await expect.poll(() => backend.events.map((e) => e.type)).toContain('interactive_exit');
+    const exit = backend.events.find((e) => e.type === 'interactive_exit')!;
+    expect(exit.payload).toMatchObject({ kind: 'balloons', from: 'free' });
+    expect(typeof exit.payload?.seconds).toBe('number');
+    // Открытие — одно, хотя StrictMode монтирует экран дважды.
+    expect(backend.events.filter((e) => e.type === 'interactive_start')).toHaveLength(1);
+  });
+
   test('уровень сложности (этап 34): игра открывается на уровне ребёнка', async ({
     page,
     backend,
@@ -3151,6 +3169,18 @@ test.describe('расписание дня', () => {
     await expect
       .poll(async () => (await spoken(page)).map((s) => s.text))
       .toContain('Молодец, на сегодня этот урок закончен.');
+  });
+
+  test('игра в уроке — открытие с пометкой «урок» (этап 44)', async ({ page, backend }) => {
+    backend.today = planDay();
+    backend.lessons = { math: [game(1, { kind: 'balloons', count: 3 }, 'math')] };
+    await gameMedia(page);
+    await page.goto('/');
+    await page.locator('[data-subject=math]').click();
+    await expect(page.getByTestId('game')).toBeVisible();
+    await expect
+      .poll(() => backend.events.find((e) => e.type === 'interactive_start')?.payload)
+      .toMatchObject({ kind: 'balloons', from: 'lesson' });
   });
 
   test('урок идёт по кругу, пока время не вышло', async ({ page, backend }) => {
