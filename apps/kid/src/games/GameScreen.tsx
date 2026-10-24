@@ -227,12 +227,6 @@ export function GameScreen(props: {
     if (!repeatCurrentTask()) void say(GAME_INTRO[spec.kind]);
   };
 
-  useEffect(() => {
-    if (!finished) return;
-    const t = setTimeout(onDone, 1800);
-    return () => clearTimeout(t);
-  }, [finished, onDone]);
-
   return (
     <div
       className={lock === 'none' ? 'game-screen' : `game-screen kp-${lock}`}
@@ -245,7 +239,7 @@ export function GameScreen(props: {
       onPointerMoveCapture={(e) => e.buttons && trail(e.clientX, e.clientY)}
     >
       {finished ? (
-        <Celebrate testId="game-finished" />
+        <Celebrate testId="game-finished" onDone={onDone} />
       ) : (
         <Game
           spec={spec}
