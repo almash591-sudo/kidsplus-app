@@ -7,7 +7,18 @@ import type { Phrase } from './phrases';
 
 /** Ссылки на озвученные фразы — переживают перезапуск: без сети файлы берутся из кэша (этап 15г). */
 const STORE = 'kidsplus.speech';
+/** Голос, которым озвучены сохранённые ссылки. */
+const VOICE_STORE = 'kidsplus.speech.voice';
 const urls = new Map<string, string>(loadUrls());
+let voiceNow = storedVoice();
+
+function storedVoice(): string | null {
+  try {
+    return localStorage.getItem(VOICE_STORE);
+  } catch {
+    return null;
+  }
+}
 
 function loadUrls(): [string, string][] {
   try {
@@ -30,12 +41,36 @@ let timer: ReturnType<typeof setTimeout> | null = null;
 let rechecks = 0;
 const MAX_RECHECKS = 6;
 const BATCH = 300;
+/**
+ * Следующая пачка — не сразу: у сервера не больше 30 запросов в минуту, а телефоны семьи
+ * выходят в сеть с одного адреса. После смены голоса фраз — сотни, пачек несколько.
+ */
+const NEXT_BATCH_MS = 2500;
+const RECHECK_MS = 8000;
+/** Уже отправлены серверу в этом круге — ждут озвучки; сначала шлём ещё не отправленные. */
+const asked = new Set<string>();
 
 const key = (p: Phrase) => `${p.lang}|${p.text.trim()}`;
 
-/** Включается по плейлисту: только если сервер озвучивает сам. */
-export function setServerVoice(on: boolean) {
+/**
+ * Включается по плейлисту: только если сервер озвучивает сам. Голос сервера сменился (новая
+ * модель, другой голос в кабинете) — сохранённые ссылки ведут на прежнюю озвучку: забываем их,
+ * и фразы запрашиваются заново. Иначе задания игр звучали бы прежним голосом всегда.
+ */
+export function setServerVoice(on: boolean, voice: string | null = null) {
   enabled = on;
+  if (!on || !voice || voiceNow === voice) return;
+  voiceNow = voice;
+  urls.clear();
+  queued.clear();
+  asked.clear();
+  rechecks = 0;
+  saveUrls();
+  try {
+    localStorage.setItem(VOICE_STORE, voice);
+  } catch {
+    // хранилище недоступно — при следующем запуске спросим заново
+  }
 }
 
 /** Ссылка на нейроголос, если сервер уже озвучил фразу. */
@@ -60,7 +95,15 @@ function schedule(ms: number) {
 }
 
 async function flush() {
-  const batch = [...queued.values()].slice(0, BATCH);
+  let fresh = [...queued.keys()].filter((k) => !asked.has(k));
+  if (!fresh.length) {
+    // Круг пройден — переспрашиваем всё, что ещё не готово.
+    asked.clear();
+    fresh = [...queued.keys()];
+  }
+  const keys = fresh.slice(0, BATCH);
+  keys.forEach((k) => asked.add(k));
+  const batch = keys.map((k) => queued.get(k)!);
   try {
     const res = await fetch(`${API_PREFIX}/kid/speech`, {
       method: 'POST',
@@ -68,33 +111,40 @@ async function flush() {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ phrases: batch }),
     });
-    if (!res.ok) return;
+    if (!res.ok) throw new Error(String(res.status));
     const result = (await res.json()) as Speech[];
     for (const s of result) {
       if (!s.audioUrl) continue;
       urls.set(key(s), s.audioUrl);
       queued.delete(key(s));
+      asked.delete(key(s));
       // Файл — в кэш заранее, чтобы звучал и без сети.
       warmMedia([s.audioUrl]);
     }
     saveUrls();
   } catch {
-    // нет сети — фразы скажет голос телефона
+    // Нет сети или сервер занят — фразы пока скажет голос телефона; попробуем позже.
+    keys.forEach((k) => asked.delete(k));
+    if (rechecks++ < MAX_RECHECKS) schedule(RECHECK_MS);
     return;
   }
-  // Готово не всё — сервер озвучивает; переспросим чуть позже (и следующую пачку).
-  if (queued.size && rechecks++ < MAX_RECHECKS) schedule(8000);
+  // Ещё не всё отправлено — следующая пачка; отправлено, но не готово — переспросим позже.
+  if ([...queued.keys()].some((k) => !asked.has(k))) schedule(NEXT_BATCH_MS);
+  else if (queued.size && rechecks++ < MAX_RECHECKS) schedule(RECHECK_MS);
 }
 
 /** Для тестов. */
 export function resetSpeechCache() {
   urls.clear();
+  voiceNow = null;
   try {
     localStorage.removeItem(STORE);
+    localStorage.removeItem(VOICE_STORE);
   } catch {
     // нет хранилища
   }
   queued.clear();
+  asked.clear();
   rechecks = 0;
   if (timer) clearTimeout(timer);
   timer = null;

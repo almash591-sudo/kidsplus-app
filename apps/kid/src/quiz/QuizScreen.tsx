@@ -1,4 +1,4 @@
-import type { KidPhrases, QuizSettings } from '@kidsplus/shared/api';
+import type { KidPhrases, QuizSettings, Speech } from '@kidsplus/shared/api';
 import { useEffect, useRef, useState } from 'react';
 import { sendEvent } from '../api';
 import { Celebrate } from '../Celebrate';
@@ -29,7 +29,6 @@ const eventRef = (source: QuizSource, q?: QuizItem) =>
 
 /** Сколько показывать «правильно», если фраза похвалы ещё не озвучена. */
 const PRAISE_FALLBACK_MS = 1200;
-const DONE_MS = 1800;
 
 const now = () => Date.now();
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -51,7 +50,8 @@ export function QuizScreen(props: {
   const { source, settings, phrases, onDone } = props;
   const [queue] = useState(() => pickQuestions(props.questions, props.count ?? settings.questions));
   const [index, setIndex] = useState(0);
-  const [done, setDone] = useState(false);
+  /** Все ответы даны: праздник с фразой «Молодец!» (null — фразы нет). */
+  const [done, setDone] = useState<{ say: Speech | null } | null>(null);
   const alive = useRef(true);
 
   useEffect(() => {
@@ -62,13 +62,11 @@ export function QuizScreen(props: {
     };
   }, []);
 
-  const onCorrect = async () => {
+  const onCorrect = () => {
     if (index + 1 < queue.length) return setIndex(index + 1);
-    setDone(true);
+    // «Молодец!» и наклейку говорит праздник — по очереди, не перебивая друг друга.
+    setDone({ say: vary('done', phrases.done) ?? null });
     sendEvent({ type: 'quiz_complete', ...eventRef(source), payload: { questions: queue.length } });
-    const phrase = vary('done', phrases.done);
-    await Promise.all([phrase ? playSpeech(phrase) : null, sleep(DONE_MS)]);
-    if (alive.current) onDone();
   };
 
   const question = queue[index];
@@ -77,7 +75,7 @@ export function QuizScreen(props: {
   return (
     <div className="quiz-screen" data-testid="quiz">
       {done ? (
-        <Celebrate testId="quiz-done" />
+        <Celebrate testId="quiz-done" say={done.say} onDone={() => alive.current && onDone()} />
       ) : (
         <QuestionRound
           key={index}
@@ -85,7 +83,7 @@ export function QuizScreen(props: {
           question={question}
           optionCount={settings.options}
           phrases={phrases}
-          onCorrect={() => void onCorrect()}
+          onCorrect={onCorrect}
         />
       )}
       <button
