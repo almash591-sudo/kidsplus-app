@@ -3050,6 +3050,56 @@ test.describe('новые игры', () => {
       await shot(page, c.shot);
     });
 
+  test('сказка (этап 46): пока голос читает, подсказка «ушка» не начинает часть заново', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [
+      game(
+        1,
+        { kind: 'poem', poem: 'medvedi', repeat: true, blanks: true, questions: true, choices: 2 },
+        'poems',
+      ),
+      game(2, { kind: 'balloons', count: 5, target: null }),
+    ];
+    await gameMedia(page);
+    await page.clock.install();
+    await page.goto('/');
+    await page.locator('[data-category=poems]').click();
+    // Объявление и первая часть — по 4 с: вместе дольше, чем ждёт подсказка (6 с).
+    await slowSpeech(page, 4000);
+    await page.getByTestId('tile').first().click();
+    const g = page.getByTestId('game-poem');
+    await expect(g).toHaveAttribute('data-step', 'listen');
+    await page.clock.runFor(20_000);
+    const said = (await spoken(page)).map((s) => s.text);
+    expect(said.filter((t) => t.includes('Три медведя')).length).toBe(1);
+    expect(said.filter((t) => t.includes('Одна девочка ушла из дома')).length).toBe(1);
+  });
+
+  test('незнакомый стих (сервер новее телефона) не ломает список: остальное на месте', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [
+      game(
+        1,
+        { kind: 'poem', poem: 'from-the-future', repeat: true, blanks: true, questions: true },
+        'poems',
+      ),
+      game(
+        2,
+        { kind: 'poem', poem: 'ladushki', repeat: true, blanks: true, questions: true },
+        'poems',
+      ),
+      game(3, { kind: 'balloons', count: 5, target: null }),
+    ];
+    await gameMedia(page);
+    await page.goto('/');
+    await page.locator('[data-category=poems]').click();
+    await expect(page.getByTestId('tile')).toHaveCount(1);
+  });
+
   test('гонки (этап 43): светофор, ворота с ответом (сначала не те), обгон и финиш', async ({
     page,
     backend,
