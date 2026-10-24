@@ -281,6 +281,85 @@ test('«Пульт» (этап 47): всё на виду — звонок, «П�
   );
 });
 
+test('навигация (этап 47): боковое меню — все разделы, переключатель детей — один на кабинет', async ({
+  page,
+}) => {
+  await login(page);
+  // Компьютер: в боковом меню то же, что во вкладках и в «Ещё».
+  const phone = page.viewportSize()!;
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const side = page.getByTestId('side-nav');
+  await expect(side).toBeVisible();
+  for (const label of [
+    'Пульт',
+    'Контент',
+    'Распорядок',
+    'Прогресс',
+    'Дети',
+    'Мамин голос',
+    'Фото и видео',
+    'Звонки',
+    'Устройства',
+    'Аккаунт и оформление',
+  ])
+    await expect(side.getByRole('link', { name: label, exact: true })).toBeVisible();
+  await side.getByRole('link', { name: 'Мамин голос' }).click();
+  await expect(page).toHaveURL(/\/mom-voice/);
+  await expect(side.getByRole('link', { name: 'Мамин голос' })).toHaveAttribute(
+    'data-active',
+    'true',
+  );
+  if (process.env.SHOTS)
+    await page.screenshot({ path: `${process.env.SHOTS}/side-${test.info().project.name}.png` });
+  await page.setViewportSize(phone);
+
+  // Один переключатель: выбрали ребёнка в «Прогрессе» — он же в «Пульте» и в «Распорядке».
+  await page.goto('/progress');
+  const sw = page.getByTestId('kid-switch');
+  await sw.getByRole('tab', { name: 'Мишутка' }).click();
+  await expect(sw.getByRole('tab', { name: 'Мишутка' })).toHaveAttribute('aria-selected', 'true');
+  for (const url of ['/remote', '/routine?tab=habits']) {
+    await page.goto(url);
+    await expect(
+      page.getByTestId('kid-switch').getByRole('tab', { name: 'Мишутка' }),
+    ).toHaveAttribute('aria-selected', 'true');
+  }
+});
+
+test('«Дети» (этап 47): касание — профиль; там «Изменить», телефон и «Удалить»', async ({
+  page,
+}) => {
+  await login(page);
+  await page.goto('/children');
+  await page.getByRole('button', { name: 'Добавить ребёнка' }).click();
+  await page.getByLabel('Прозвище').fill('Ёжик');
+  const save = page.locator('.mantine-Modal-content').getByRole('button', { name: 'Сохранить' });
+  await save.scrollIntoViewIfNeeded();
+  await save.click();
+  const list = page.getByTestId('children-list');
+  await expect(list).toContainText('Ёжик');
+  expect(await layoutProblems(page)).toEqual([]);
+
+  await list.getByRole('link', { name: /Ёжик/ }).last().click();
+  const child = page.getByTestId('child-page');
+  await expect(child).toContainText('Ёжик');
+  await expect(child).toContainText('не привязан');
+  // «Изменить» — то же окно профиля, что в «Детях».
+  await child.getByRole('button', { name: 'Изменить' }).click();
+  const sheet = page.locator('.mantine-Modal-content');
+  await expect(sheet).toContainText('Профиль ребёнка');
+  await expect(sheet.getByLabel('Прозвище')).toHaveValue('Ёжик');
+  await page.keyboard.press('Escape');
+  await expect(sheet).toBeHidden();
+  expect(await layoutProblems(page)).toEqual([]);
+
+  // «Удалить профиль» — подтверждение, потом список детей без него.
+  await child.getByTestId('child-delete').click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Удалить' }).click();
+  await expect(page).toHaveURL(/\/children$/);
+  await expect(page.getByTestId('children-list')).not.toContainText('Ёжик');
+});
+
 test('поиск по названию в играх (этап 33)', async ({ page }) => {
   await login(page);
   await page.goto('/content?tab=games');

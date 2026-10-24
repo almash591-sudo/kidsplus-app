@@ -26,7 +26,6 @@ import {
   Group,
   MultiSelect,
   NumberInput,
-  SegmentedControl,
   Select,
   Stack,
   Switch,
@@ -44,13 +43,13 @@ import { SUBJECT_LABELS } from '../lib/subjects';
 import {
   keys,
   queryClient,
-  useChildren,
   useCurricula,
   useDecks,
   useGames,
   useSchedule,
   useSegments,
 } from '../queries';
+import { KidSwitch } from '../components/KidSwitch';
 import { useCurrentChild } from '../lib/currentChild';
 
 const DAY_LABELS: Record<Weekday, string> = {
@@ -852,20 +851,12 @@ function ScheduleOverview({ childId }: { childId: string }) {
 
 /** «Учебный план» (п. 6.1 ТЗ): расписание дня и план на период для каждого ребёнка. */
 export function PlanPage() {
-  const children = useChildren();
   // Этап 33: выбранный ребёнок — общий на весь кабинет.
-  const [childId, setPicked] = useCurrentChild();
+  const [childId] = useCurrentChild();
   return (
     <Stack maw={820}>
       <h1 className="page-title">План</h1>
-      {children.data && children.data.length > 1 && (
-        <SegmentedControl
-          className="child-picker"
-          value={childId ?? ''}
-          data={children.data.map((c) => ({ value: c.id, label: c.nickname }))}
-          onChange={setPicked}
-        />
-      )}
+      <KidSwitch />
       {childId && (
         <>
           <ScheduleOverview key={`s-${childId}`} childId={childId} />

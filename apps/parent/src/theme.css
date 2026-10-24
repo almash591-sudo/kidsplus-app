@@ -523,7 +523,7 @@ img.video-thumb.contain {
   color: #ffb340;
 }
 
-/* Переключатель детей на «Главной». */
+/* Переключатель детей (этап 47 — один на весь кабинет): аватарка и прозвище. */
 .kid-switch {
   display: flex;
   gap: 8px;
@@ -536,7 +536,7 @@ img.video-thumb.contain {
   align-items: center;
   gap: 6px;
   height: 36px;
-  padding: 0 14px 0 6px;
+  padding: 0 14px 0 4px;
   border: 0;
   border-radius: 999px;
   background: var(--app-card);
@@ -553,20 +553,13 @@ img.video-thumb.contain {
   background: var(--mantine-primary-color-filled);
   color: #fff;
 }
-.kid-switch .dot {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  font-size: 12px;
-  background: #fff;
+.kid-switch button > span {
+  display: flex;
+}
+.kid-switch button.on .mantine-Avatar-placeholder {
+  background: #fff !important;
 }
 
-/* «Распорядок»: внутри вкладок ребёнок выбирается сверху — свой переключатель страницы прячем. */
-.embedded-page .child-picker {
-  display: none;
-}
 .day-dot {
   flex: none;
   width: 10px;
@@ -1027,12 +1020,6 @@ a.attention-row:active {
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
 }
-.kid-switch.sticky button {
-  padding-left: 4px;
-}
-.kid-switch.sticky button.on .mantine-Avatar-placeholder {
-  background: #fff !important;
-}
 
 /* Строка ребёнка на «Главной». */
 .kid-row {
@@ -1056,4 +1043,9 @@ a.attention-row:active {
   width: 12px;
   height: 12px;
   border: 2px solid var(--app-card);
+}
+
+/* Боковое меню на компьютере (этап 47): плитки значков, как в «Ещё». */
+.side-link {
+  border-radius: 10px;
 }

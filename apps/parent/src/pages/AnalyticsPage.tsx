@@ -20,7 +20,8 @@ import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api } from '../api';
 import { AccuracyBars, TimeChart } from '../components/Charts';
-import { queryClient, useAnalytics, useChildren, useReports } from '../queries';
+import { queryClient, useAnalytics, useReports } from '../queries';
+import { KidSwitch } from '../components/KidSwitch';
 import { useCurrentChild } from '../lib/currentChild';
 import { CountUp } from '../components/Chrome';
 import { Likes } from '../components/Likes';
@@ -278,9 +279,8 @@ function Reports({ reports }: { reports: WeeklyReport[] }) {
 
 /** «Аналитика» (п. 9 ТЗ): время, точность, что повторить, недельные отчёты. */
 export function AnalyticsPage() {
-  const children = useChildren();
   // Этап 33: выбранный ребёнок — общий на весь кабинет.
-  const [childId, setPicked] = useCurrentChild();
+  const [childId] = useCurrentChild();
   const [days, setDays] = useState('7');
   const analytics = useAnalytics(childId, Number(days));
   const reports = useReports(childId);
@@ -288,14 +288,7 @@ export function AnalyticsPage() {
   return (
     <Stack maw={980}>
       <h1 className="page-title">Прогресс</h1>
-      {children.data && children.data.length > 1 && (
-        <SegmentedControl
-          fullWidth
-          value={childId ?? ''}
-          data={children.data.map((c) => ({ value: c.id, label: c.nickname }))}
-          onChange={setPicked}
-        />
-      )}
+      <KidSwitch />
       <SegmentedControl
         fullWidth
         value={days}
