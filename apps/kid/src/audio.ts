@@ -207,25 +207,47 @@ function say(s: Speech): Promise<void> {
     .catch(() => {});
 }
 
-/** Произносит фразу и ждёт окончания (или остановки). */
-export function playSpeech(s: Speech): Promise<void> {
-  generation++;
+/**
+ * Что звучит сейчас. Тот же запрос, пока звучит, не начинается заново: ребёнок жмёт на
+ * картинку без остановки, и слово рвалось на первом слоге («ди-ди-диджей»). Теперь оно
+ * договаривается, а следующее касание после конца — снова говорит.
+ */
+let running: { key: string; done: Promise<void> } | null = null;
+const keyOf = (items: readonly (Speech | null)[]) =>
+  items.flatMap((s) => (s ? [`${s.lang}|${s.text}`] : [])).join('\n');
+
+function start(items: readonly (Speech | null)[]): Promise<void> {
+  const key = keyOf(items);
+  if (key && running?.key === key) return running.done;
+  const mine = ++generation;
   interrupt();
-  return say(s);
+  const done = (async () => {
+    for (const s of items) {
+      if (generation !== mine) return;
+      if (s) await say(s);
+    }
+  })();
+  const entry = { key, done };
+  running = entry;
+  void done.finally(() => {
+    if (running === entry) running = null;
+  });
+  return done;
+}
+
+/** Произносит фразу и ждёт окончания (или остановки). Другая фраза прерывает текущую. */
+export function playSpeech(s: Speech): Promise<void> {
+  return start([s]);
 }
 
 /** Последовательно: например, слово, затем перевод. Прерывается stopAudio/playSpeech. */
-export async function playSequence(items: (Speech | null)[]) {
-  const mine = ++generation;
-  interrupt();
-  for (const s of items) {
-    if (generation !== mine) return;
-    if (s) await say(s);
-  }
+export function playSequence(items: (Speech | null)[]): Promise<void> {
+  return start(items);
 }
 
 export function stopAudio() {
   generation++;
+  running = null;
   interrupt();
 }
 
