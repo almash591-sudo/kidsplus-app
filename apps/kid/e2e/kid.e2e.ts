@@ -2751,19 +2751,37 @@ test.describe('новые игры', () => {
       JSON.parse((await g.getAttribute('data-swimmers', { timeout: 1000 })) ?? '[]');
     const sub = async () =>
       ((await g.getAttribute('data-sub', { timeout: 1000 })) ?? '0,0').split(',').map(Number);
-    // Автопилот: палец ведёт батискаф к ближайшей нужной рыбке (сначала один раз — к чужой).
+    /** Расстояние от рыбки до пути батискафа (отрезок от `a` до `b`). */
+    const offPath = (p: Fish, a: { x: number; y: number }, b: { x: number; y: number }) => {
+      const [dx, dy] = [b.x - a.x, b.y - a.y];
+      const t = Math.max(
+        0,
+        Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy || 1)),
+      );
+      return Math.hypot(p.x - a.x - t * dx, p.y - a.y - t * dy);
+    };
+    const finished = () => backend.events.some((e) => e.type === 'interactive_complete');
+    // Автопилот: палец ведёт батискаф к ближайшей нужной рыбке (сначала один раз — к чужой,
+    // и только если по пути нет нужных: иначе раунды проходятся без ошибки).
     let wrongDone = false;
-    for (let i = 0; i < 1500; i++) {
-      // Игра кончилась — поле пропало (между проверками тоже может).
+    for (let i = 0; i < 1500 && !finished(); i++) {
+      // Чтение поля под нагрузкой бывает дольше секунды — пробуем снова, конец игры — по событию.
       const now = await Promise.all([sub(), swimmers()]).catch(() => null);
-      if (!now) break;
+      if (!now) continue;
       const [[sx, sy], fish] = now;
+      const at = { x: sx!, y: sy! };
       const all = fish.filter((f) => !f.jelly && f.x > 20 && f.x < view.width - 10);
+      const good = all.filter((f) => f.good);
       const want = all
         .filter((f) => f.good === wrongDone)
+        .map((f) => ({ ...f, x: f.x - 25 }))
+        .filter((f) => wrongDone || good.every((o) => offPath(o, at, f) > 70))
         .sort((a, b) => Math.hypot(a.x - sx!, a.y - sy!) - Math.hypot(b.x - sx!, b.y - sy!))[0];
-      if (want) await page.mouse.move(want.x - 25, want.y);
-      if (!wrongDone && (await spoken(page)).some((x) => /^Это .+ рыбка.$/.test(x.text)))
+      if (want) await page.mouse.move(want.x, want.y);
+      if (
+        !wrongDone &&
+        (await spoken(page)).some((x) => /^Это (.+ рыбка|цифра .+)\.$/.test(x.text))
+      )
         wrongDone = true;
       if (i === 25) await shot(page, 'dive');
       if (i === 200) await shot(page, 'dive-2');
