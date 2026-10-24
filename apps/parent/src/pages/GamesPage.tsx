@@ -118,7 +118,7 @@ export function gameSummary(spec: GameSpec): string {
       return `деталей: ${spec.parts}${spec.memory ? ' · по памяти' : ''} · ${{ numbers: 'цифры', sums: 'сложение', letters: 'буквы' }[spec.quiz]} до ${spec.max} · полётов: ${spec.rounds}`;
     case 'poem': {
       const steps = [
-        spec.repeat && 'учим наизусть',
+        spec.repeat && poemOf(spec.poem).learn.length && 'учим наизусть',
         spec.blanks && '«Договори словечко»',
         spec.questions && 'вопросы',
       ].filter(Boolean);

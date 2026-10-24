@@ -2095,7 +2095,9 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
           </Spoiler>
           <Switch
             label="Повторять за голосом — учим наизусть по частям"
-            checked={spec.repeat}
+            description={p.learn.length ? undefined : 'Это рассказ: наизусть не учим'}
+            disabled={!p.learn.length}
+            checked={spec.repeat && p.learn.length > 0}
             onChange={(e) => onChange({ ...spec, repeat: e.currentTarget.checked })}
           />
           <Switch
