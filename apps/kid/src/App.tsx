@@ -21,6 +21,7 @@ import { onMonitorEvent, useMonitor } from './monitor/state';
 import { CameraButton, GalleryScreen } from './camera/GalleryScreen';
 import { fx } from './fx';
 import { appPhrases, CATEGORY_DONE, LESSON_DONE, VIDEOS_REST } from './phrases';
+import { knownGames } from './knownGames';
 import { pauseVideos, withoutPausedVideos } from './videoPause';
 import { playlistMedia, warmMedia } from './offline';
 import { setServerVoice, wantSpeech } from './speechCache';
@@ -193,7 +194,7 @@ export function App() {
         kidApi.today().catch(() => currentToday.current),
       ]);
       // Видео не открывались — полчаса без них (этап 34).
-      const playlist = { ...full, items: withoutPausedVideos(full.items) };
+      const playlist = { ...full, items: withoutPausedVideos(knownGames(full.items)) };
       reportVoicesOnce();
       // Нейроголос: фразы приложения озвучиваются на сервере заранее.
       setServerVoice(playlist.serverVoice, playlist.voice ?? null);
@@ -427,7 +428,7 @@ export function App() {
       const s = current.current;
       if (s.screen !== 'today') return;
       try {
-        const items = withoutPausedVideos((await kidApi.lesson(subject)).items);
+        const items = withoutPausedVideos(knownGames((await kidApi.lesson(subject)).items));
         if (!items.length) return void refreshToday();
         // В уроке бывают материалы не из списка ребёнка («Повторить») — их задания тоже озвучиваем.
         wantSpeech(appPhrases({ ...s.playlist, items }));
