@@ -36,19 +36,19 @@ export const POSTERS = {
   demohedge01: ['1f994', '#fbe2c7', '#f0b47c'],
 };
 
-/** Заставки 480×270 (JPEG) по id видео; без папки с картинками — пусто. */
+/** Заставки 1280×720 (JPEG) по id видео; без папки с картинками — пусто. */
 export async function posters(browser, clay = process.env.DEMO_CLAY) {
   const out = new Map();
   if (!clay) return out;
-  const page = await browser.newPage({ viewport: { width: 480, height: 270 } });
+  const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   for (const [id, [code, a, b]] of Object.entries(POSTERS)) {
     const file = join(clay, `${code}.webp`);
     if (!existsSync(file)) continue;
     const img = `data:image/webp;base64,${readFileSync(file).toString('base64')}`;
     await page.setContent(
-      `<body style="margin:0;width:480px;height:270px;display:grid;place-items:center;
+      `<body style="margin:0;width:1280px;height:720px;display:grid;place-items:center;
         background:radial-gradient(90% 120% at 50% 40%, ${a}, ${b})">
-        <img src="${img}" style="height:230px;filter:drop-shadow(0 14px 18px rgb(0 0 0/.22))"></body>`,
+        <img src="${img}" style="height:600px;filter:drop-shadow(0 36px 48px rgb(0 0 0/.22))"></body>`,
     );
     await page.locator('img').evaluate((i) => i.decode());
     out.set(id, await page.screenshot({ type: 'jpeg', quality: 90 }));
@@ -58,27 +58,60 @@ export async function posters(browser, clay = process.env.DEMO_CLAY) {
 }
 
 /**
- * Плеер YouTube у родителя на съёмке: заставка с кнопкой «play», ничего не играет
- * (иначе — чёрный прямоугольник и «Не удалось загрузить плеер YouTube»).
+ * Плеер YouTube на съёмке: вместо видео — заставка (у родителя с кнопкой «play»), иначе —
+ * чёрный прямоугольник и «Не удалось загрузить плеер YouTube». «Играет» по часам страницы:
+ * время идёт от start, на end — ENDED, как у настоящего плеера; заставка медленно наплывает.
  */
 const PLAYER_STUB = `window.YT = { Player: class {
   constructor(el, o) {
+    this.o = o; this.state = 5; this.t = o.playerVars?.start ?? 0;
     const d = document.createElement('div');
-    d.style.cssText = 'width:100%;height:100%;display:grid;place-items:center;' +
-      'background:#ddd center/cover url(https://i.ytimg.com/vi/' + o.videoId + '/hqdefault.jpg)';
-    d.innerHTML = '<svg width="68" height="68" viewBox="0 0 68 68"><circle cx="34" cy="34" r="34" ' +
-      'fill="rgb(0 0 0/.5)"/><path d="M27 21l22 13-22 13z" fill="#fff"/></svg>';
+    d.style.cssText = 'position:relative;width:100%;height:100%;display:grid;place-items:center;' +
+      'overflow:hidden;background:#000';
+    d.innerHTML = '<img src="https://i.ytimg.com/vi/' + o.videoId + '/hqdefault.jpg" ' +
+      'style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain">' +
+      '<svg width="68" height="68" viewBox="0 0 68 68" style="position:relative"><circle cx="34" ' +
+      'cy="34" r="34" fill="rgb(0 0 0/.5)"/><path d="M27 21l22 13-22 13z" fill="#fff"/></svg>';
     el.replaceWith(d);
+    this.d = d;
     setTimeout(() => o.events?.onReady?.({ target: this }), 0);
   }
-  playVideo() {} pauseVideo() {} seekTo() {} destroy() {}
-  getCurrentTime() { return 0; } getDuration() { return 0; } getPlayerState() { return 5; }
+  emit(s) { this.state = s; this.o.events?.onStateChange?.({ data: s, target: this }); }
+  playVideo() {
+    if (this.state === 1) return;
+    this.at = Date.now();
+    this.d.querySelector('svg').style.display = 'none';
+    this.zoom ??= this.d.querySelector('img').animate([{ transform: 'scale(1)' },
+      { transform: 'scale(1.08)' }], { duration: 9000, direction: 'alternate', iterations: Infinity,
+      easing: 'ease-in-out' });
+    this.zoom.play();
+    this.emit(1);
+    this.arm();
+  }
+  arm() {
+    clearTimeout(this.tm);
+    const end = this.o.playerVars?.end;
+    if (end && this.state === 1)
+      this.tm = setTimeout(() => { this.t = end; this.emit(0); }, (end - this.getCurrentTime()) * 1000);
+  }
+  pauseVideo() {
+    if (this.state !== 1) return;
+    this.t = this.getCurrentTime();
+    clearTimeout(this.tm);
+    this.zoom?.pause();
+    this.emit(2);
+  }
+  seekTo(s) { this.t = s; this.at = Date.now(); this.arm(); }
+  getCurrentTime() { return this.state === 1 ? this.t + (Date.now() - this.at) / 1000 : this.t; }
+  getDuration() { return this.o.playerVars?.end ?? 0; }
+  getPlayerState() { return this.state; }
+  destroy() { clearTimeout(this.tm); }
 } };
 window.onYouTubeIframeAPIReady?.();`;
 
 /**
  * Телефон: iPhone 390×844, ×3 — экран 1170×2532, хватает на наезд камеры в монтаже.
- * art — заставки видео (posters), player — заглушка плеера у родителя.
+ * art — заставки видео (posters), player — заглушка плеера YouTube.
  */
 export async function phone(browser, time, { art = new Map(), player = false } = {}) {
   const ctx = await browser.newContext({
@@ -251,9 +284,13 @@ export class Cam {
   }
 
   async shot() {
+    // Без clip CDP отдаёт кадр в CSS-пикселях (390×844); с clip и scale — в пикселях экрана.
+    // Координаты clip — от начала документа: берём, куда сейчас прокручено.
+    const { cssVisualViewport: v } = await this.cdp.send('Page.getLayoutMetrics');
     const { data } = await this.cdp.send('Page.captureScreenshot', {
       format: 'jpeg',
       quality: 92,
+      clip: { x: v.pageX, y: v.pageY, width: v.clientWidth, height: v.clientHeight, scale: 3 },
     });
     writeFileSync(join(this.dir, `${String(++this.frame).padStart(6, '0')}.jpg`), data, 'base64');
   }
