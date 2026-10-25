@@ -1,0 +1,76 @@
+{
+  "voices": {
+    "narrator": "george@elevenlabs/eleven-v4",
+    "owl": "lily@elevenlabs/eleven-v4"
+  },
+  "gain": {
+    "owl": -3
+  },
+  "lines": [
+    {
+      "id": "n-hook",
+      "voice": "narrator",
+      "text": "Три часа мультиков подряд… а в голове — пусто."
+    },
+    {
+      "id": "n-lesson",
+      "voice": "narrator",
+      "text": "В Кидс Плюс мультик — часть урока."
+    },
+    {
+      "id": "n-cards",
+      "voice": "narrator",
+      "text": "Сначала карточки: картинка и слово вслух."
+    },
+    {
+      "id": "o-bear",
+      "voice": "owl",
+      "text": "Медведь!"
+    },
+    {
+      "id": "n-video",
+      "voice": "narrator",
+      "text": "Потом мультик о том же — три минуты, а не три часа."
+    },
+    {
+      "id": "n-quiz",
+      "voice": "narrator",
+      "text": "А после — вопрос по мультику."
+    },
+    {
+      "id": "o-ask",
+      "voice": "owl",
+      "text": "Кто спит зимой?"
+    },
+    {
+      "id": "o-yes",
+      "voice": "owl",
+      "text": "Правильно, медведь!"
+    },
+    {
+      "id": "n-see",
+      "voice": "narrator",
+      "text": "Вы видите, сколько ответов — верно с первого раза."
+    },
+    {
+      "id": "n-repeat",
+      "voice": "narrator",
+      "text": "Что не запомнилось — само встанет в ближайшие уроки."
+    },
+    {
+      "id": "n-plan",
+      "voice": "narrator",
+      "text": "А каждую неделю — новая тема, по возрасту ребёнка."
+    },
+    {
+      "id": "n-trust",
+      "voice": "narrator",
+      "text": "Кидс Плюс. Смотрит меньше — знает больше."
+    },
+    {
+      "id": "n-cta",
+      "voice": "narrator",
+      "text": "Напишите в директ: «Хочу подключить»."
+    }
+  ]
+}
