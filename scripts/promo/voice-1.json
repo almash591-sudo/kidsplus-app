@@ -1,0 +1,114 @@
+{
+  "voices": {
+    "narrator": "matilda@elevenlabs/eleven-v4",
+    "owl": "lily@elevenlabs/eleven-v4"
+  },
+  "gain": { "owl": -3 },
+  "lines": [
+    {
+      "id": "n-hook",
+      "voice": "narrator",
+      "text": "Включили мультик на пять минут… а прошёл час."
+    },
+    {
+      "id": "n-brand",
+      "voice": "narrator",
+      "text": "Кидс Плюс — экран, который сам знает меру."
+    },
+    {
+      "id": "n-today",
+      "voice": "narrator",
+      "text": "Ребёнок видит только сегодняшний день."
+    },
+    {
+      "id": "n-watch",
+      "voice": "narrator",
+      "text": "Сначала смотрит и слушает…"
+    },
+    {
+      "id": "n-answer",
+      "voice": "narrator",
+      "text": "…потом отвечает сам."
+    },
+    {
+      "id": "n-reward",
+      "voice": "narrator",
+      "text": "Награда — за знания, а не за часы у экрана."
+    },
+    {
+      "id": "n-done",
+      "voice": "narrator",
+      "text": "Три урока по десять минут — и готово."
+    },
+    {
+      "id": "n-free",
+      "voice": "narrator",
+      "text": "Потом — свободное время. Тоже по таймеру."
+    },
+    {
+      "id": "n-over",
+      "voice": "narrator",
+      "text": "Время вышло — и телефон сам скажет:"
+    },
+    {
+      "id": "n-calm",
+      "voice": "narrator",
+      "text": "Без слёз и уговоров."
+    },
+    {
+      "id": "n-parent",
+      "voice": "narrator",
+      "text": "А мама всё видит — даже с работы."
+    },
+    {
+      "id": "n-tools",
+      "voice": "narrator",
+      "text": "Позвонить, позвать, послушать комнату."
+    },
+    {
+      "id": "n-plus",
+      "voice": "narrator",
+      "text": "Ещё десять минут — одним касанием…"
+    },
+    {
+      "id": "n-extra",
+      "voice": "narrator",
+      "text": "…и у ребёнка они сразу появились."
+    },
+    {
+      "id": "n-trust",
+      "voice": "narrator",
+      "text": "Кидс Плюс. Экран, которому можно доверить ребёнка."
+    },
+    {
+      "id": "n-cta",
+      "voice": "narrator",
+      "text": "Напишите в директ: «Хочу подключить»."
+    },
+    {
+      "id": "o-bear",
+      "voice": "owl",
+      "text": "Медведь."
+    },
+    {
+      "id": "o-ask",
+      "voice": "owl",
+      "text": "Где лиса?"
+    },
+    {
+      "id": "o-fox",
+      "voice": "owl",
+      "text": "Это лиса."
+    },
+    {
+      "id": "o-great",
+      "voice": "owl",
+      "text": "Отлично, ты всё правильно ответила!"
+    },
+    {
+      "id": "o-over",
+      "voice": "owl",
+      "text": "На сегодня всё! Ты молодец. До завтра!"
+    }
+  ]
+}
