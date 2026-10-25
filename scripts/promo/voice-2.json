@@ -1,0 +1,74 @@
+{
+  "voices": {
+    "narrator": "matilda@elevenlabs/eleven-v4",
+    "owl": "lily@elevenlabs/eleven-v4"
+  },
+  "gain": { "owl": -3 },
+  "lines": [
+    {
+      "id": "n-hook",
+      "voice": "narrator",
+      "text": "Пять минут назад были мультики… а теперь — вот это."
+    },
+    {
+      "id": "n-none",
+      "voice": "narrator",
+      "text": "В Кидс Плюс нет ленты, поиска и рекомендаций."
+    },
+    {
+      "id": "n-only",
+      "voice": "narrator",
+      "text": "Только мультики, которые выбрали вы."
+    },
+    {
+      "id": "n-link",
+      "voice": "narrator",
+      "text": "Нашли хороший мультик — вставьте ссылку."
+    },
+    {
+      "id": "n-ai",
+      "voice": "narrator",
+      "text": "ИИ посмотрит его целиком…"
+    },
+    {
+      "id": "n-age",
+      "voice": "narrator",
+      "text": "…скажет, для какого возраста и что может напугать."
+    },
+    {
+      "id": "n-part",
+      "voice": "narrator",
+      "text": "И выберет полезный кусок — с вопросами после просмотра."
+    },
+    {
+      "id": "o-ask",
+      "voice": "owl",
+      "text": "Где ёжик?"
+    },
+    {
+      "id": "n-approve",
+      "voice": "narrator",
+      "text": "Одобрили — и мультик уже у ребёнка."
+    },
+    {
+      "id": "n-kiosk",
+      "voice": "narrator",
+      "text": "На телефоне — киоск: из приложения не выйти."
+    },
+    {
+      "id": "n-name",
+      "voice": "narrator",
+      "text": "А вместо имени — прозвище. Настоящее имя мы не храним."
+    },
+    {
+      "id": "n-trust",
+      "voice": "narrator",
+      "text": "Кидс Плюс. Только то, что выбрали вы."
+    },
+    {
+      "id": "n-cta",
+      "voice": "narrator",
+      "text": "Напишите в директ: «Хочу подключить»."
+    }
+  ]
+}
