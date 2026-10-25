@@ -12,6 +12,7 @@ import { eq } from 'drizzle-orm';
 import { createTestDb } from '@kidsplus/db/testing';
 import { MemoryStorage } from '@kidsplus/providers';
 import { buildApp } from '../app';
+import { DEMO_REVIEWS, demoReport } from './review';
 
 const API_PORT = Number(process.env.DEMO_API_PORT ?? 3999);
 const PARENT_PORT = Number(process.env.DEMO_PARENT_PORT ?? 4800);
@@ -28,6 +29,7 @@ const TITLES: Record<string, string> = {
   demonum0001: 'Считаем до пяти',
   demoafrica1: 'Животные Африки',
   demomusic01: 'Музыкальные инструменты',
+  ...Object.fromEntries(Object.entries(DEMO_REVIEWS).map(([id, r]) => [id, r.title])),
 };
 const fakeFetch = (async (input: string | URL | Request) => {
   const url = new URL(String(input instanceof Request ? input.url : input));
@@ -261,7 +263,14 @@ async function main() {
       if (back > 7 && rnd() < 0.15) continue; // выходной
       // День — без сдвига на час: сразу после полуночи «сегодня минус час» — уже вчера.
       const date = localDate(new Date(now().getTime() - back * 86_400_000));
-      // Сегодня: китайский пройден, математика — наполовину.
+      // Сегодня: китайский пройден, математика — наполовину. DEMO_FREE=1 (промо-съёмка): уроки
+      // уже пройдены, открыто свободное время.
+      if (back === 0 && process.env.DEMO_FREE) {
+        await db
+          .insert(schema.dayUsage)
+          .values(subjects.map((activity) => ({ childId, date, activity, seconds: 600 })));
+        continue;
+      }
       if (back === 0) {
         await db.insert(schema.dayUsage).values([
           { childId, date, activity: 'chinese', seconds: 600 },
@@ -377,6 +386,40 @@ async function main() {
         .where(eq(schema.mediaAssets.id, e.id));
     }
     await db.update(schema.children).set({ illustrations: true });
+  }
+
+  // Промо-съёмка (DEMO_CLOCK=1): видео из DEMO_REVIEWS «смотрит ИИ» несколько секунд по часам
+  // стенда, потом в «Проверке» — готовый отчёт, как от worker.
+  if (process.env.DEMO_CLOCK) {
+    const seen = new Map<string, number>();
+    const review = async () => {
+      const queued = await db
+        .select()
+        .from(schema.moderationItems)
+        .where(eq(schema.moderationItems.status, 'queued'));
+      for (const item of queued) {
+        const demo = DEMO_REVIEWS[item.externalId];
+        if (!demo) continue;
+        const first = seen.get(item.id) ?? now().getTime();
+        seen.set(item.id, first);
+        if (now().getTime() - first < 6000) continue;
+        const report = await demoReport(demo.analysis, emoji);
+        await db
+          .update(schema.moderationItems)
+          .set({
+            status: 'ready',
+            report: report as unknown as Record<string, unknown>,
+            metadata: {
+              ...item.metadata,
+              durationSec: demo.durationSec,
+              thumbnailUrl: `https://i.ytimg.com/vi/${item.externalId}/hqdefault.jpg`,
+            },
+            updatedAt: new Date(),
+          })
+          .where(eq(schema.moderationItems.id, item.id));
+      }
+    };
+    setInterval(() => void review().catch((e: Error) => console.warn('проверка:', e.message)), 500);
   }
 
   await app.listen({ port: API_PORT, host: '127.0.0.1' });

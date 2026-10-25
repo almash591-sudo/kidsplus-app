@@ -289,3 +289,171 @@ body {
   border: 8px solid var(--gold);
   background: rgb(201 161 87 / 0.25);
 }
+
+/* Ролик №2: лента «обычного» видеоприложения — мультики, потом кликбейт */
+.phone .screen .feed {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #0f0f12;
+}
+.feed-head {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 270px;
+  padding: 44px 70px 0;
+  background: #0f0f12;
+  color: #f1f1f4;
+  font: 700 44px/1 Onest;
+}
+.feed-head .bar {
+  display: flex;
+  justify-content: space-between;
+}
+.feed-head .search {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  height: 104px;
+  margin: 42px -30px 0;
+  padding: 0 36px;
+  border-radius: 52px;
+  background: #23242b;
+  color: #7c7f8c;
+  font: 500 44px/1 Onest;
+}
+.feed-head .search::before {
+  content: '';
+  width: 34px;
+  height: 34px;
+  border: 7px solid #7c7f8c;
+  border-radius: 50%;
+}
+.feed-list {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 270px;
+}
+.feed-card {
+  height: 880px;
+}
+.feed-thumb {
+  position: relative;
+  height: 658px;
+  overflow: hidden;
+}
+.phone .screen .feed-thumb img {
+  inset: auto;
+  left: 345px;
+  top: 69px;
+  width: 520px;
+  height: 520px;
+  object-fit: contain;
+  filter: drop-shadow(0 30px 40px rgb(0 0 0 / 0.25));
+}
+.phone .screen .feed-thumb.bait img {
+  left: 60px;
+  top: 110px;
+  width: 460px;
+  height: 460px;
+  filter: saturate(1.6) contrast(1.25) drop-shadow(0 0 40px rgb(0 0 0 / 0.6));
+}
+.feed-thumb .loop {
+  position: absolute;
+  left: 30px;
+  top: 80px;
+  width: 520px;
+  height: 520px;
+  border: 16px solid #ff1f1f;
+  border-radius: 50%;
+}
+.feed-thumb .say {
+  position: absolute;
+  right: 40px;
+  top: 90px;
+  width: 560px;
+  color: #ffe600;
+  font: 900 104px/1 Onest;
+  text-align: center;
+  white-space: pre-line;
+  -webkit-text-stroke: 12px #000;
+  paint-order: stroke fill;
+  transform: rotate(-6deg);
+}
+.feed-thumb .dur {
+  position: absolute;
+  right: 26px;
+  bottom: 26px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  background: rgb(0 0 0 / 0.8);
+  color: #fff;
+  font: 700 36px/1 Onest;
+}
+.feed-meta {
+  display: flex;
+  gap: 32px;
+  padding: 40px 44px 0;
+}
+.feed-meta .ava {
+  flex: none;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+}
+.feed-meta .lines {
+  flex: 1;
+}
+.feed-meta i {
+  display: block;
+  height: 36px;
+  margin: 8px 0 26px;
+  border-radius: 18px;
+  background: #34353d;
+}
+/* Тревога: красное свечение за телефоном и «!» */
+.glow {
+  position: absolute;
+  left: 40px;
+  top: 500px;
+  width: 1000px;
+  height: 1500px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(255 50 50 / 0.55), transparent);
+}
+.warn {
+  position: absolute;
+  left: 800px;
+  top: 540px;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #ffb020;
+  box-shadow: 0 20px 50px rgb(255 176 32 / 0.45);
+  color: #fff;
+  font: 900 100px/1 Onest;
+}
+
+/* Крупный план: телефон растворяется под титром */
+.phones {
+  -webkit-mask-image: linear-gradient(transparent 420px, #000 560px);
+  mask-image: linear-gradient(transparent 420px, #000 560px);
+}
+/* Рамка вокруг места на экране */
+.mark {
+  position: absolute;
+  border: 8px solid var(--gold);
+  box-shadow:
+    0 0 0 6px rgb(201 161 87 / 0.25),
+    0 16px 40px rgb(185 138 67 / 0.35);
+}
+.chip svg {
+  width: 40px;
+  height: 40px;
+  color: var(--gold-deep);
+}

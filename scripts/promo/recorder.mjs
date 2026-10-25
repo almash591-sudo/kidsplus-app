@@ -4,7 +4,7 @@
 // таймеры, requestAnimationFrame (canvas-игры) и CSS-анимации (через document.getAnimations)
 // идут в «виртуальном» времени. Поэтому кадры ровные, без рывков, как бы медленно ни работал
 // компьютер. Сеть (запросы к api) — настоящая; между кадрами её можно подождать.
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -23,8 +23,64 @@ export const DEMO = { email: 'demo@example.com', password: 'demo-password-123' }
 /** Куда складывать кадры и ролики (в .gitignore). */
 export const OUT = resolve(process.env.PROMO_OUT ?? join(ROOT, '.promo'));
 
-/** Телефон: iPhone 390×844, ×3 — экран 1170×2532, хватает на наезд камеры в монтаже. */
-export async function phone(browser, time) {
+/**
+ * Заставки видео демо-стенда: объёмная картинка (DEMO_CLAY) на цветном фоне — вместо превью
+ * YouTube, которых в роликах нет.
+ */
+export const POSTERS = {
+  demofox0001: ['1f98a', '#cfe8d8', '#9fcfb2'],
+  democolor01: ['1f308', '#dfe5ff', '#b7c3f5'],
+  demonum0001: ['1f353', '#ffe0da', '#f7b3a6'],
+  demoafrica1: ['1f992', '#fbe9c4', '#ecc77f'],
+  demomusic01: ['1f941', '#eadcf7', '#c9b0e8'],
+  demohedge01: ['1f994', '#fbe2c7', '#f0b47c'],
+};
+
+/** Заставки 480×270 (JPEG) по id видео; без папки с картинками — пусто. */
+export async function posters(browser, clay = process.env.DEMO_CLAY) {
+  const out = new Map();
+  if (!clay) return out;
+  const page = await browser.newPage({ viewport: { width: 480, height: 270 } });
+  for (const [id, [code, a, b]] of Object.entries(POSTERS)) {
+    const file = join(clay, `${code}.webp`);
+    if (!existsSync(file)) continue;
+    const img = `data:image/webp;base64,${readFileSync(file).toString('base64')}`;
+    await page.setContent(
+      `<body style="margin:0;width:480px;height:270px;display:grid;place-items:center;
+        background:radial-gradient(90% 120% at 50% 40%, ${a}, ${b})">
+        <img src="${img}" style="height:230px;filter:drop-shadow(0 14px 18px rgb(0 0 0/.22))"></body>`,
+    );
+    await page.locator('img').evaluate((i) => i.decode());
+    out.set(id, await page.screenshot({ type: 'jpeg', quality: 90 }));
+  }
+  await page.close();
+  return out;
+}
+
+/**
+ * Плеер YouTube у родителя на съёмке: заставка с кнопкой «play», ничего не играет
+ * (иначе — чёрный прямоугольник и «Не удалось загрузить плеер YouTube»).
+ */
+const PLAYER_STUB = `window.YT = { Player: class {
+  constructor(el, o) {
+    const d = document.createElement('div');
+    d.style.cssText = 'width:100%;height:100%;display:grid;place-items:center;' +
+      'background:#ddd center/cover url(https://i.ytimg.com/vi/' + o.videoId + '/hqdefault.jpg)';
+    d.innerHTML = '<svg width="68" height="68" viewBox="0 0 68 68"><circle cx="34" cy="34" r="34" ' +
+      'fill="rgb(0 0 0/.5)"/><path d="M27 21l22 13-22 13z" fill="#fff"/></svg>';
+    el.replaceWith(d);
+    setTimeout(() => o.events?.onReady?.({ target: this }), 0);
+  }
+  playVideo() {} pauseVideo() {} seekTo() {} destroy() {}
+  getCurrentTime() { return 0; } getDuration() { return 0; } getPlayerState() { return 5; }
+} };
+window.onYouTubeIframeAPIReady?.();`;
+
+/**
+ * Телефон: iPhone 390×844, ×3 — экран 1170×2532, хватает на наезд камеры в монтаже.
+ * art — заставки видео (posters), player — заглушка плеера у родителя.
+ */
+export async function phone(browser, time, { art = new Map(), player = false } = {}) {
   const ctx = await browser.newContext({
     viewport: { width: 390, height: 844 },
     deviceScaleFactor: 3,
@@ -34,10 +90,16 @@ export async function phone(browser, time) {
     timezoneId: 'Europe/Moscow',
     colorScheme: 'light',
   });
-  // Чужих видео в роликах нет: YouTube на съёмке не грузится.
-  await ctx.route(/youtube\.com|youtube-nocookie\.com|ytimg\.com|googlevideo\.com/, (r) =>
-    r.abort(),
-  );
+  // Чужих видео в роликах нет: YouTube на съёмке не грузится, превью — свои заставки.
+  await ctx.route(/youtube\.com|youtube-nocookie\.com|ytimg\.com|googlevideo\.com/, (r) => {
+    const url = r.request().url();
+    const poster = /ytimg\.com\/vi\/([\w-]{11})\//.exec(url)?.[1];
+    if (poster && art.has(poster))
+      return r.fulfill({ contentType: 'image/jpeg', body: art.get(poster) });
+    if (player && url === 'https://www.youtube.com/iframe_api')
+      return r.fulfill({ contentType: 'text/javascript', body: PLAYER_STUB });
+    return r.abort();
+  });
   await ctx.addInitScript(quietSpeech);
   await ctx.clock.install({ time });
   return ctx;
@@ -217,6 +279,29 @@ export class Cam {
   /** Подождать настоящее время (ответ api), часы страницы стоят. */
   async settle(ms = 400) {
     await this.page.waitForTimeout(ms);
+  }
+
+  /** Плавно прокрутить страницу к y (px) за sec секунд — по кадру за шаг. */
+  async scroll(y, sec) {
+    const top = () => this.page.evaluate(() => document.scrollingElement.scrollTop);
+    const from = await top();
+    const n = Math.max(1, Math.round(sec * FPS));
+    for (let i = 1; i <= n; i++) {
+      const k = i / n;
+      const at = from + (y - from) * (k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2);
+      await this.page.evaluate((v) => (document.scrollingElement.scrollTop = v), at);
+      if (this.dir) await this.rec(1 / FPS);
+      else await this.skip(1 / FPS);
+    }
+  }
+
+  /** Набрать текст в поле, по букве (cps — букв в секунду). */
+  async type(text, cps = 16) {
+    for (const ch of text) {
+      await this.page.keyboard.insertText(ch);
+      if (this.dir) await this.rec(1 / cps);
+      else await this.skip(1 / cps);
+    }
   }
 
   /** Касание пальцем: кружок появляется, через пару кадров — нажатие. */
