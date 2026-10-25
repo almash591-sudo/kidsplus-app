@@ -82,6 +82,9 @@ export function clipUrl(name, sec, { from = 0, speed = 1 } = {}) {
   return `/clips/${name}/${String(n).padStart(6, '0')}.jpg`;
 }
 
+/** Фраза озвучки ролика: { text, voice, sec } — sec без тишины в конце (меряет render.mjs). */
+export const line = (id) => window.VOICE[id];
+
 /** Что сказал голос в клипе: [{ sec, lang, text }] (по meta.json съёмки). */
 export function said(name, part = '') {
   return window.CLIPS[name].said
@@ -258,10 +261,14 @@ export class Bubbles {
   }
 }
 
-/** Ролик: build(stage) → render(t). Возвращает то, что зовёт render.mjs. */
+/**
+ * Ролик: build(stage) → render(t) или { render, voice } — с озвучкой [{ at, id }] (фразы из
+ * voice-N.json). Возвращает то, что зовёт render.mjs.
+ */
 export async function mount(video) {
   const stage = document.getElementById('stage');
-  const render = await video.build(stage);
+  const built = await video.build(stage);
+  const render = typeof built === 'function' ? built : built.render;
   await Promise.all(
     ['800 74px Onest', '700 40px Onest', '500 40px Onest', '600 40px Onest', '800 48px Nunito']
       .concat(['italic 600 80px Playfair', '600 112px Playfair'])
@@ -269,6 +276,7 @@ export async function mount(video) {
   );
   return {
     duration: video.duration,
+    voice: built.voice ?? [],
     async render(t) {
       pending.length = 0;
       render(t);

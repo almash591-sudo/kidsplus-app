@@ -1,5 +1,6 @@
 // Ролик №1 «Мультик на 5 минут» (этап 48): 60 с, 1080×1920, клипы снимает capture-1.mjs.
-// Время сцен считается от реплик голоса в meta.json — пересъёмка не сбивает монтаж.
+// Сцены встают под фразы озвучки (voice-1.json) и реплики голоса в meta.json — пересъёмка
+// и переозвучка не сбивают монтаж.
 import {
   Bubbles,
   Captions,
@@ -8,6 +9,7 @@ import {
   ease,
   el,
   keys,
+  line,
   logo,
   Phone,
   pop,
@@ -16,7 +18,6 @@ import {
   setSrc,
   shotAt,
   style,
-  voiceOver,
 } from './stage.js';
 
 function clockText(sec) {
@@ -33,33 +34,60 @@ const LAP = 2 * Math.PI * 252;
 
 /** Касание «+10» в «Пульте»: секунда клипа (палец на кнопке) и место на экране. */
 const PLUS10 = { sec: 2.5, u: 0.29, v: 0.522 };
+const DURATION = 60;
 
 export default {
-  duration: 60,
+  duration: DURATION,
   async build(stage) {
-    // ── Сцены: где на ролике и с какой секунды клипа ──
+    // ── Куски клипов: с какой секунды и где в них голос приложения ──
     const lesson = said('1-lesson');
     const ask = lesson.findIndex((s) => s.text.startsWith('Где'));
     const quizFrom = lesson[ask].sec - 0.5;
-    const answered = lesson.find((s, i) => i > ask && s.text.startsWith('Это ')).sec + 1.1;
-    const stickFrom = said('1-lesson', 'Отлично')[0].sec - 0.6;
+    const fox = lesson.find((s, i) => i > ask && s.text.startsWith('Это ')).sec;
+    const great = said('1-lesson', 'Отлично')[0].sec;
+    const stickFrom = great - 0.6;
     const doneFrom = said('1-done').at(-1).sec - 2.2;
     const memFrom = said('1-free', 'Открывай')[0].sec + 1.2;
-    const overFrom = said('1-dayover', 'На сегодня всё')[0].sec - 1.8;
+    const bedtime = said('1-dayover', 'На сегодня всё')[0].sec;
+    const overFrom = bedtime - 1;
 
-    const TODAY = 6.6;
+    // ── Озвучка и сцены: диктор и совёнок по очереди, сцены встают под фразы ──
+    const voice = [];
+    /** Фраза id с момента at; возвращает, когда она кончится. */
+    const say = (id, at) => {
+      voice.push({ at, id });
+      return at + line(id).sec;
+    };
+    const brandAt = say('n-hook', 0.05) + 0.15;
+    const TODAY = say('n-brand', brandAt) + 0.05;
+    const watchAt = say('n-today', TODAY + 0.15) + 0.2;
+    let end = say('n-watch', watchAt);
     const LESSON = TODAY + clipSec('1-today');
-    const QUIZ = LESSON + 4.2;
-    const STICK = QUIZ + answered - quizFrom;
+    // «Медведь» — как звучит карточка в уроке: с её секунды в клипе.
+    end = say('o-bear', Math.max(end + 0.1, LESSON + said('1-lesson', 'медведь')[0].sec));
+    const QUIZ = end + 0.15;
+    const answerAt = say('o-ask', QUIZ + lesson[ask].sec - quizFrom) + 0.15;
+    say('n-answer', answerAt);
+    say('o-fox', QUIZ + fox - quizFrom);
+    const STICK = QUIZ + fox + 1.1 - quizFrom;
+    end = say('o-great', STICK + great - stickFrom);
     const DONE = STICK + 3.8;
-    const FREE = DONE + 3.6;
-    const FREE2 = FREE + 3.6;
-    const DAYOVER = FREE2 + 5;
-    const PARENT = DAYOVER + 5.6;
-    const TOOLS = PARENT + 3.6;
-    const BOTH = TOOLS + 3.4;
-    const TAP = BOTH + 1.6;
-    const CTA = TAP + 3.4;
+    const doneAt = say('n-reward', end + 0.15) + 0.2;
+    const FREE = say('n-done', doneAt) - 0.05;
+    const FREE2 = FREE + 3;
+    const overAt = say('n-free', FREE + 0.2) + 0.2;
+    const byeAt = say('n-over', overAt) + 0.15;
+    const DAYOVER = byeAt - (bedtime - overFrom);
+    const PARENT = say('n-calm', say('o-over', byeAt) + 0.15) + 0.05;
+    const TOOLS = say('n-parent', PARENT + 0.2) + 0.1;
+    const BOTH = say('n-tools', TOOLS + 0.1) + 0.05;
+    end = say('n-plus', BOTH + 0.15);
+    // Касание «+10» — на словах «одним касанием», после паузы во фразе.
+    const TAP = BOTH + 0.15 + 2;
+    const extraAt = Math.max(end + 0.15, TAP + 0.6);
+    const CTA = say('n-extra', extraAt) + 0.1;
+    end = say('n-cta', say('n-trust', CTA + 0.3) + 0.2);
+    if (end > DURATION - 0.8) throw new Error(`озвучка не влезает: ${end.toFixed(2)} с`);
 
     // ── Ночь: часы «5 минут» убегают в час ──
     const night = el(stage, 'div', 'layer night');
@@ -79,7 +107,7 @@ export default {
         { from: -0.6, to: 9, text: 'Включили мультик\n*на 5 минут*…', cls: 'light center' },
       ]),
       new Captions(night, [
-        { from: 1.9, to: 9, text: '…а прошёл *час?*', cls: 'light center', top: 1330 },
+        { from: 2.15, to: 9, text: '…а прошёл *час?*', cls: 'light center', top: 1330 },
       ]),
     ];
 
@@ -159,19 +187,25 @@ export default {
     style(cta, { top: '1270px' });
 
     const caps = new Captions(day, [
-      { from: 3.5, to: TODAY - 0.2, text: 'Экран, который\n*сам знает меру*', cls: 'center' },
-      { from: TODAY + 0.3, to: LESSON - 0.1, text: 'Ребёнок видит *только сегодняшний день*' },
-      { from: LESSON, to: QUIZ - 0.1, text: 'Сначала *смотрит* и слушает…' },
-      { from: QUIZ, to: STICK - 0.1, text: '…потом *отвечает* сам' },
-      { from: STICK, to: DONE - 0.1, text: 'Награда — *за знания*, а не за часы у экрана' },
-      { from: DONE, to: FREE - 0.1, text: 'Три урока по 10 минут — *готово!*' },
-      { from: FREE, to: DAYOVER - 0.1, text: 'Потом *свободное время* — тоже по таймеру' },
-      { from: DAYOVER, to: PARENT - 0.1, text: 'Время вышло — *без слёз и уговоров*' },
+      // Титры — вместе с фразами диктора («Кидс Плюс —» звучит до первого).
+      {
+        from: brandAt + 1.2,
+        to: TODAY - 0.2,
+        text: 'Экран, который\n*сам знает меру*',
+        cls: 'center',
+      },
+      { from: TODAY + 0.1, to: watchAt - 0.1, text: 'Ребёнок видит *только сегодняшний день*' },
+      { from: watchAt - 0.1, to: answerAt - 0.1, text: 'Сначала *смотрит* и слушает…' },
+      { from: answerAt - 0.1, to: STICK - 0.1, text: '…потом *отвечает* сам' },
+      { from: STICK, to: doneAt - 0.1, text: 'Награда — *за знания*, а не за часы у экрана' },
+      { from: doneAt - 0.1, to: FREE - 0.1, text: 'Три урока по 10 минут — *готово!*' },
+      { from: FREE, to: overAt - 0.1, text: 'Потом *свободное время* — тоже по таймеру' },
+      { from: overAt - 0.1, to: PARENT - 0.1, text: 'Время вышло — *без слёз и уговоров*' },
       { from: PARENT + 0.2, to: TOOLS - 0.1, text: 'Мама *всё видит* — даже с работы' },
       { from: TOOLS, to: BOTH - 0.1, text: 'Позвонить, позвать, *послушать комнату*' },
-      { from: BOTH, to: TAP + 0.3, text: 'Ещё 10 минут — *одним касанием*' },
-      { from: TAP + 0.4, to: CTA - 0.1, text: '…и у ребёнка они *сразу* появились' },
-      { from: CTA + 0.2, to: 61, text: 'Экран, которому *можно доверить* ребёнка', cls: 'center' },
+      { from: BOTH, to: extraAt - 0.2, text: 'Ещё 10 минут — *одним касанием*' },
+      { from: extraAt - 0.1, to: CTA - 0.1, text: '…и у ребёнка они *сразу* появились' },
+      { from: CTA + 1.4, to: 61, text: 'Экран, которому *можно доверить* ребёнка', cls: 'center' },
     ]);
 
     const kidShots = [
@@ -187,13 +221,12 @@ export default {
     ];
     const parentShots = [{ at: TAP - PLUS10.sec, clip: '1-parent' }];
 
-    // Голос приложения — облачком; «Здорово получилось» совёнок и так говорит на экране.
-    const voice = new Bubbles(
+    // Фразы совёнка — ещё и облачком.
+    const bubbles = new Bubbles(
       day,
-      voiceOver(kidShots.slice(0, -1), PARENT, (v) => /Здорово/.test(v.text)).map((b) => ({
-        ...b,
-        text: b.text.replace(' Смотрим дальше.', ''),
-      })),
+      voice
+        .filter((v) => line(v.id).voice === 'owl')
+        .map((v) => ({ from: v.at, to: v.at + line(v.id).sec + 0.5, text: line(v.id).text })),
     );
 
     // Камера: {s, u, v, px, py} — точку экрана (u, v) ставим в точку кадра (px, py).
@@ -224,7 +257,7 @@ export default {
       { t: CTA + 0.5, ...LEFT, py: 2900 },
     ];
 
-    return (t) => {
+    const render = (t) => {
       // Ночь
       const k = prog(t, 0.4, 2.8);
       const elapsed = (3720 * (Math.exp(4 * k) - 1)) / (Math.exp(4) - 1);
@@ -281,7 +314,8 @@ export default {
       pop(cta, t, CTA + 1.5, Infinity, { pre: `scale(${pulse})`, dy: 60 });
 
       caps.render(t);
-      voice.render(t);
+      bubbles.render(t);
     };
+    return { render, voice };
   },
 };
