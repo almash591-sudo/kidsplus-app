@@ -297,9 +297,10 @@ async function main() {
         ...extra,
       });
       const rows: (typeof schema.events.$inferInsert)[] = [];
-      for (const [, ref] of quizRefs) {
+      for (const [subject, ref] of quizRefs) {
         if (rnd() < 0.4) continue;
-        const firstTry = rnd() < 0.78 + (13 - back) * 0.012;
+        // Китайский даётся труднее: в «Прогрессе» его карточки — в «Повторить».
+        const firstTry = rnd() < (subject === 'chinese' ? 0.4 : 0.78 + (13 - back) * 0.012);
         rows.push(
           ev('quiz_answer', {
             segmentId: ref.segmentId ?? null,
