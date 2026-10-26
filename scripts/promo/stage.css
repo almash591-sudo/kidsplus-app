@@ -583,3 +583,12 @@ body {
 .level i.on {
   background: var(--coral);
 }
+/* №5: вопрос на экране ноутбука */
+.ask {
+  position: absolute;
+  font:
+    600 230px/1 Playfair,
+    serif;
+  color: #fff;
+  text-shadow: 0 8px 24px rgb(40 70 140 / 0.35);
+}

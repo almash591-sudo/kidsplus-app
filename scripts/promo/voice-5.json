@@ -1,0 +1,56 @@
+{
+  "voices": {
+    "narrator": "george@elevenlabs/eleven-v4",
+    "owl": "lily@elevenlabs/eleven-v4"
+  },
+  "gain": {
+    "owl": -3
+  },
+  "lines": [
+    {
+      "id": "n-hook",
+      "voice": "narrator",
+      "text": "Вы на работе. А чем сейчас занят ребёнок?"
+    },
+    {
+      "id": "n-live",
+      "voice": "narrator",
+      "text": "Откройте «Пульт»: Зайка на английском, учит фрукты."
+    },
+    {
+      "id": "n-log",
+      "voice": "narrator",
+      "text": "И весь день по порядку: что посмотрел, на что ответил."
+    },
+    {
+      "id": "n-call",
+      "voice": "narrator",
+      "text": "Пора отвлечься? Одно касание — и совёнок позовёт."
+    },
+    {
+      "id": "o-call",
+      "voice": "owl",
+      "text": "Тебя зовут! Беги скорей!"
+    },
+    {
+      "id": "n-rest",
+      "voice": "narrator",
+      "text": "Обед? Экран выключится, а совёнок сам объяснит почему."
+    },
+    {
+      "id": "o-eat",
+      "voice": "owl",
+      "text": "Совёнок пошёл кушать — и тебе пора! Приятного аппетита!"
+    },
+    {
+      "id": "n-trust",
+      "voice": "narrator",
+      "text": "Кидс Плюс. Спокойно — даже на работе."
+    },
+    {
+      "id": "n-cta",
+      "voice": "narrator",
+      "text": "Напишите в директ: «Хочу подключить»."
+    }
+  ]
+}
