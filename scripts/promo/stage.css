@@ -530,3 +530,56 @@ body {
   border-radius: 50%;
   background: var(--cream);
 }
+
+/* Ролик №4: подпись игры — значок с плитки и название */
+.tag {
+  position: absolute;
+  left: 540px;
+  top: 500px;
+  display: inline-flex;
+  align-items: center;
+  gap: 18px;
+  padding: 12px 36px 12px 12px;
+  border-radius: 999px;
+  background: var(--paper);
+  box-shadow: 0 14px 40px rgb(23 26 36 / 0.16);
+  font: 700 44px/1 Onest;
+  white-space: nowrap;
+}
+.tag img {
+  width: 76px;
+  height: 76px;
+  border-radius: 22px;
+  object-fit: cover;
+}
+/* «35 видов игр» */
+.count {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 120px;
+  text-align: center;
+}
+.count b {
+  display: block;
+  font:
+    600 300px/1 Playfair,
+    serif;
+  font-variant-numeric: lining-nums tabular-nums;
+  color: var(--gold-deep);
+}
+.count span {
+  display: block;
+  font: 800 72px/1.1 Onest;
+  letter-spacing: -0.015em;
+}
+/* Уровень игры: точки загораются */
+.level i {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--line);
+}
+.level i.on {
+  background: var(--coral);
+}
