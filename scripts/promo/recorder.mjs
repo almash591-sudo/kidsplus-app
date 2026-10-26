@@ -213,7 +213,10 @@ const TAP_CSS = `
   box-shadow:0 0 0 3px rgb(23 26 36/.35),0 6px 18px rgb(0 0 0/.25);
   animation:promo-tap .7s cubic-bezier(.22,1,.36,1) forwards}
 @keyframes promo-tap{0%{transform:scale(.4);opacity:0}15%{transform:scale(1);opacity:1}
-  60%{transform:scale(.85);opacity:.9}100%{transform:scale(1.5);opacity:0}}`;
+  60%{transform:scale(.85);opacity:.9}100%{transform:scale(1.5);opacity:0}}
+.promo-finger{position:fixed;z-index:2147483647;width:58px;height:58px;margin:-29px 0 0 -29px;
+  border-radius:50%;pointer-events:none;background:rgb(255 255 255/.5);
+  box-shadow:0 0 0 3px rgb(23 26 36/.3),0 6px 18px rgb(0 0 0/.25)}`;
 
 /** Время стенда (DEMO_CLOCK=1): мс, до которых его уже перевели. */
 let serverAt = 0;
@@ -341,9 +344,9 @@ export class Cam {
     }
   }
 
-  /** Касание пальцем: кружок появляется, через пару кадров — нажатие. */
+  /** Касание пальцем: кружок появляется, через пару кадров — нажатие. target — элемент или { x, y }. */
   async tap(target, { lead = 0.2, after = 0.5 } = {}) {
-    const box = await target.boundingBox();
+    const box = 'x' in target ? { ...target, width: 0, height: 0 } : await target.boundingBox();
     if (!box) throw new Error('tap: элемент не виден');
     const x = box.x + box.width / 2;
     const y = box.y + box.height / 2;
@@ -364,6 +367,55 @@ export class Cam {
     await this.settle(150);
     if (this.dir) await this.rec(after);
     else await this.skip(after);
+  }
+
+  /** Один кадр: снять или промотать. */
+  async tick(n = 1) {
+    if (this.dir) await this.rec(n / FPS);
+    else await this.skip(n / FPS);
+  }
+
+  /** Палец прижат в (x, y): кружок идёт за ним (move), пока палец не поднят (up). */
+  async down(x, y) {
+    await this.move(x, y);
+    await this.page.mouse.down();
+  }
+
+  async move(x, y) {
+    await this.page.mouse.move(x, y);
+    await this.page.evaluate(
+      ([x, y]) => {
+        let d = document.querySelector('.promo-finger');
+        if (!d) {
+          d = document.createElement('div');
+          d.className = 'promo-finger';
+          document.body.append(d);
+        }
+        d.style.left = `${x}px`;
+        d.style.top = `${y}px`;
+      },
+      [x, y],
+    );
+  }
+
+  async up() {
+    await this.page.mouse.up();
+    await this.page.evaluate(() => document.querySelector('.promo-finger')?.remove());
+  }
+
+  /** Перетащить пальцем из from в to за sec секунд, по кадру за шаг. */
+  async drag(from, to, sec = 0.6) {
+    await this.down(from.x, from.y);
+    await this.tick(2);
+    const n = Math.max(2, Math.round(sec * FPS));
+    for (let i = 1; i <= n; i++) {
+      const k = i / n;
+      const e = k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2;
+      await this.move(from.x + (to.x - from.x) * e, from.y + (to.y - from.y) * e);
+      await this.tick();
+    }
+    await this.tick(2);
+    await this.up();
   }
 }
 
