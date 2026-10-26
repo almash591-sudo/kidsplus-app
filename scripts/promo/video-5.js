@@ -17,7 +17,7 @@ import {
   style,
 } from './stage.js';
 
-const DURATION = 36;
+const DURATION = 35.5;
 
 /** Рамка вокруг места [u0, v0, u1, v1] экрана телефона в положении p. */
 function frameOn(e, p, [u0, v0, u1, v1]) {
