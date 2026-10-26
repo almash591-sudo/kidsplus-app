@@ -1,0 +1,76 @@
+{
+  "voices": {
+    "narrator": "george@elevenlabs/eleven-v4",
+    "owl": "lily@elevenlabs/eleven-v4"
+  },
+  "gain": {
+    "owl": -3
+  },
+  "lines": [
+    {
+      "id": "n-hook",
+      "voice": "narrator",
+      "text": "Это не мультик. Это игры, которые учат."
+    },
+    {
+      "id": "n-math",
+      "voice": "narrator",
+      "text": "Счёт и цифры."
+    },
+    {
+      "id": "n-mind",
+      "voice": "narrator",
+      "text": "Память и внимание."
+    },
+    {
+      "id": "n-ear",
+      "voice": "narrator",
+      "text": "Слух."
+    },
+    {
+      "id": "n-read",
+      "voice": "narrator",
+      "text": "Чтение."
+    },
+    {
+      "id": "n-logic",
+      "voice": "narrator",
+      "text": "И логика."
+    },
+    {
+      "id": "n-voice",
+      "voice": "narrator",
+      "text": "Каждое задание совёнок объясняет голосом — читать не нужно."
+    },
+    {
+      "id": "n-level",
+      "voice": "narrator",
+      "text": "Получается — игра сама становится сложнее."
+    },
+    {
+      "id": "n-count",
+      "voice": "narrator",
+      "text": "Тридцать пять видов игр. Без рекламы и без покупок."
+    },
+    {
+      "id": "n-sticker",
+      "voice": "narrator",
+      "text": "А за каждую пройденную игру — наклейка в альбом."
+    },
+    {
+      "id": "o-sticker",
+      "voice": "owl",
+      "text": "Ура! Новая наклейка!"
+    },
+    {
+      "id": "n-trust",
+      "voice": "narrator",
+      "text": "Кидс Плюс. Играет — и учится."
+    },
+    {
+      "id": "n-cta",
+      "voice": "narrator",
+      "text": "Напишите в директ: «Хочу подключить»."
+    }
+  ]
+}

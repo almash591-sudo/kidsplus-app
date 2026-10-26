@@ -105,6 +105,8 @@ const TYPES = {
 const DIRS = [
   ['/promo/', join(ROOT, 'scripts/promo')],
   ['/landing/', join(ROOT, 'apps/landing')],
+  // Значки игр — как на плитках детского приложения.
+  ['/games/', join(ROOT, 'apps/kid/public/games')],
   ['/clips/', join(OUT, 'clips')],
 ];
 
