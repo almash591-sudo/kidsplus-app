@@ -3,6 +3,7 @@
 import { z } from 'zod';
 import { POEM_CODES } from './poems';
 import { SONG_IDS } from './songs';
+import { SOUND_LETTERS, soundProblem, syllablesIn, wordScheme } from './sounds';
 
 const uuid = z.uuid();
 const phrase = z.string().trim().min(1).max(200);
@@ -109,6 +110,9 @@ const picWord = z.object({
 });
 const choices = z.number().int().min(2).max(4);
 const letterRounds = z.number().int().min(2).max(12);
+const plainWord = z.string().regex(/^[А-ЯЁ]{2,10}$/u, 'слово заглавными, 2–10 букв');
+/** Эмодзи-картинка из одной или нескольких эмодзи («🍄🍄🍄»). */
+const emojis = z.string().min(1).max(24);
 
 /** Картинки «Найди отличия» (этап 43). */
 export const DIFF_SCENES = ['meadow', 'forest', 'sea', 'space'] as const;
@@ -381,6 +385,89 @@ export const gameSpec = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('readWord'),
     words: z.array(picWord).min(2).max(30),
+    choices,
+    rounds: letterRounds,
+  }),
+  // ─── Буквы: звуки и чтение (этап 49) ───
+  /** Сколько слогов: картинка и слово голосом — выбрать, сколько раз хлопнуть (1–4). */
+  z.object({
+    kind: z.literal('syllableCount'),
+    words: z
+      .array(
+        picWord.refine((w) => syllablesIn(w.word) >= 1 && syllablesIn(w.word) <= 4, {
+          message: 'в слове 1–4 слога',
+        }),
+      )
+      .min(2)
+      .max(30),
+    choices,
+    rounds: letterRounds,
+  }),
+  /** Где звук: в начале, в середине или в конце слова; слова — где буква и звук совпадают. */
+  z
+    .object({
+      kind: z.literal('soundPlace'),
+      sound: z.enum(SOUND_LETTERS),
+      words: z.array(picWord).min(2).max(30),
+      rounds: letterRounds,
+    })
+    .superRefine((g, ctx) =>
+      g.words.forEach((w, i) => {
+        const problem = soundProblem(w.word, g.sound);
+        if (problem)
+          ctx.addIssue({ code: 'custom', path: ['words', i], message: `${w.word}: ${problem}` });
+      }),
+    ),
+  /** Звуковая схема: картинка и слово голосом — выбрать схему из красных и синих фишек. */
+  z.object({
+    kind: z.literal('wordScheme'),
+    words: z
+      .array(
+        picWord.refine((w) => (wordScheme(w.word)?.length ?? 9) <= 6, {
+          message: 'до 6 букв, без мягких звуков и букв Е, Ё, Ю, Я, Й, Ь, Ч, Щ',
+        }),
+      )
+      .min(2)
+      .max(30),
+    choices,
+    rounds: letterRounds,
+  }),
+  /** Какое слово: картинка — выбрать её слово среди похожих (СОК, СОН, СОМ). */
+  z.object({
+    kind: z.literal('pickWord'),
+    items: z
+      .array(
+        z
+          .object({
+            emoji: z.string().min(1).max(16),
+            word: plainWord,
+            similar: z.array(plainWord).min(1).max(3),
+          })
+          .refine((i) => !i.similar.includes(i.word), { message: 'похожее слово — само слово' }),
+      )
+      .min(2)
+      .max(40),
+    choices,
+    rounds: letterRounds,
+  }),
+  /** Прочитай фразу: «ДВА ГРИБА» — выбрать картинку среди похожих (🍄🍄 или 🍄🍄🍄). */
+  z.object({
+    kind: z.literal('readPhrase'),
+    items: z
+      .array(
+        z
+          .object({
+            text: z
+              .string()
+              .max(32)
+              .regex(/^[А-ЯЁ]{1,10}( [А-ЯЁ]{1,10}){1,3}$/u, 'фраза заглавными, 2–4 слова'),
+            emoji: emojis,
+            similar: z.array(emojis).min(1).max(3),
+          })
+          .refine((i) => !i.similar.includes(i.emoji), { message: 'похожая картинка — сам ответ' }),
+      )
+      .min(2)
+      .max(40),
     choices,
     rounds: letterRounds,
   }),
@@ -694,6 +781,11 @@ export const GAME_KINDS: Record<GameKind, string> = {
   syllable: 'Найди слог',
   firstLetter: 'С какой буквы?',
   readWord: 'Прочитай слово',
+  syllableCount: 'Сколько слогов?',
+  soundPlace: 'Где звук?',
+  wordScheme: 'Звуковая схема',
+  pickWord: 'Какое слово?',
+  readPhrase: 'Прочитай фразу',
   clock: 'Который час?',
   shop: 'Магазин',
   robot: 'Совёнок-робот',
@@ -771,6 +863,11 @@ export function gameImageIds(g: GameSpec): string[] {
     case 'syllable':
     case 'firstLetter':
     case 'readWord':
+    case 'syllableCount':
+    case 'soundPlace':
+    case 'wordScheme':
+    case 'pickWord':
+    case 'readPhrase':
     case 'dots':
     case 'tangram':
     case 'colorNumbers':

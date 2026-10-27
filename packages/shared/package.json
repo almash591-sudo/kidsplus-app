@@ -36,7 +36,8 @@
     "./call-client": "./src/call-client.ts",
     "./monitor": "./src/monitor.ts",
     "./moderation": "./src/moderation.ts",
-    "./sw-register": "./src/sw-register.ts"
+    "./sw-register": "./src/sw-register.ts",
+    "./sounds": "./src/sounds.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
