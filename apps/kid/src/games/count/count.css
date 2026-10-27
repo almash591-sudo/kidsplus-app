@@ -24,6 +24,13 @@
   }
 }
 
+/* Четыре варианта стоя — квадратом 2 × 2, а не «три и один». */
+@media (orientation: portrait) {
+  .cnt-options.n4 {
+    max-width: calc(2 * min(22vw, 15vh) + 14px);
+  }
+}
+
 .cnt-option {
   width: min(22vw, 15vh);
   height: min(22vw, 15vh);

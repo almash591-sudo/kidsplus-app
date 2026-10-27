@@ -320,7 +320,13 @@ export function CountGame({ spec, phrases, onFinish }: GameProps<Kind>) {
         <Board view={r.view} answer={r.answer} solved={solved} />
       </div>
       <div
-        className={spec.kind === 'compareSign' ? 'cnt-options signs' : 'cnt-options'}
+        className={[
+          'cnt-options',
+          spec.kind === 'compareSign' && 'signs',
+          r.options.length === 4 && 'n4',
+        ]
+          .filter(Boolean)
+          .join(' ')}
         key={round}
       >
         {r.options.map((o, i) => (
