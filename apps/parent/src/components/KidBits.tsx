@@ -119,6 +119,8 @@ export function KidAvatar({
 export function statusLine(d: ChildNow) {
   if (d.rest) return 'Экран выключен';
   if (d.bedtime?.phase === 'night') return 'Ночь — спит';
+  if ((d.eyeBreak?.current?.secondsLeft ?? 0) > 0)
+    return d.eyeBreak!.current!.ask === 'asked' ? 'Перерыв · просит ещё' : 'Перерыв для глаз';
   if (d.paused) return 'Пауза';
   if (d.closed) return 'На сегодня всё';
   if (!d.online) return 'Не в приложении';
