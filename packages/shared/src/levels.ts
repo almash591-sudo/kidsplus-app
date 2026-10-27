@@ -106,6 +106,37 @@ export function specAtLevel(spec: GameSpec, level: number): GameSpec {
     // «Где звук?»: мест всегда три — растёт только число раундов.
     case 'soundPlace':
       return { ...spec, rounds: clamp(spec.rounds + 2 * up, 2, 12) };
+    // Счёт (этап 49): больше вариантов и раундов; со второго шага — без точек и все виды соседей.
+    case 'numberHouse':
+      return {
+        ...spec,
+        dots: spec.dots && up < 2,
+        choices: clamp(spec.choices + up, 2, 4),
+        rounds: clamp(spec.rounds + up, 2, 12),
+      };
+    case 'numberNeighbors':
+      return {
+        ...spec,
+        modes: up >= 2 ? ['gap', 'before', 'after'] : spec.modes,
+        choices: clamp(spec.choices + up, 2, 4),
+        rounds: clamp(spec.rounds + up, 2, 12),
+      };
+    case 'compareSign':
+      return {
+        ...spec,
+        max: clamp(spec.max + 3 * up, 3, 20),
+        equal: true,
+        dots: spec.dots && up < 2,
+        rounds: clamp(spec.rounds + up, 2, 12),
+      };
+    // Задачи: со второго шага — без предметов, только запись «3 + 2 = ?».
+    case 'wordProblem':
+      return {
+        ...spec,
+        scene: spec.scene && up < 2,
+        choices: clamp(spec.choices + up, 2, 4),
+        rounds: clamp(spec.rounds + up, 2, 12),
+      };
     case 'clock':
       return {
         ...spec,
