@@ -5,10 +5,6 @@
 set -u
 pkg=$1
 shift
-# Загрузка с зеркала Azure встаёт намертво посреди пакета. С таймаутом apt обрывает её через 30 с
-# и берёт следующее зеркало из списка раннера (/etc/apt/apt-mirrors.txt) — без ожидания 7 минут.
-printf 'Acquire::http::Timeout "30";\nAcquire::https::Timeout "30";\nAcquire::Retries "3";\n' |
-  sudo tee /etc/apt/apt.conf.d/99kidsplus-timeout >/dev/null
 for i in 1 2 3; do
   timeout -k 10 420 pnpm --filter "$pkg" exec playwright install --with-deps "$@" && exit 0
   echo "::warning::установка Playwright не удалась (попытка $i), повторяю"
@@ -16,5 +12,9 @@ for i in 1 2 3; do
   sudo pkill -9 -x dpkg || true
   sleep 5
   sudo dpkg --configure -a || true
+  # Зеркало Azure бывает медленным (~50 КБ/с: 114 МБ пакетов WebKit за 7 мин не успеть). Повтор —
+  # с archive.ubuntu.com из того же списка зеркал; скачанное уже лежит в кэше apt.
+  sudo sed -i '/azure\.archive\.ubuntu\.com/d' /etc/apt/apt-mirrors.txt 2>/dev/null &&
+    echo "зеркала apt: $(tr '\n' ' ' </etc/apt/apt-mirrors.txt)"
 done
 exit 1
