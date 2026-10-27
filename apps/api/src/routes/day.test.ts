@@ -615,3 +615,79 @@ describe('пульт родителя (этап 29)', () => {
     expect(log.entries.map((e) => e.text)).toEqual(['Послушал рассказ «Четыре желания»']);
   });
 });
+
+describe('перерыв для глаз (этап 50)', () => {
+  const eyeBreak = (action: 'start' | 'ask') => post<KidToday>('/api/kid/eye-break', { action });
+  const setBreak = async (every: number | null, rest = 15) => {
+    const res = await t.app.inject({
+      method: 'PUT',
+      url: `/api/parent/children/${child}`,
+      cookies: parent,
+      payload: { ...girl({ gender: 'f' }), eyeBreakEvery: every, eyeBreakRest: rest },
+    });
+    expect(res.statusCode).toBe(200);
+  };
+
+  it('выключен — телефон ничего не начинает', async () => {
+    expect((await get<KidToday>('/api/kid/today')).eyeBreak).toBeNull();
+    expect((await eyeBreak('start')).eyeBreak).toBeNull();
+  });
+
+  it('начало, просьба «ещё», ответ родителя; второй раз перерыв не продлевается', async () => {
+    await setBreak(15, 10);
+    expect((await get<KidToday>('/api/kid/today')).eyeBreak).toEqual({
+      every: 15,
+      rest: 10,
+      current: null,
+    });
+    const started = (await eyeBreak('start')).eyeBreak!.current!;
+    expect(started).toEqual({ id: t.clock.now.toISOString(), secondsLeft: 600, ask: null });
+    t.advance(60_000);
+    // Повторное «началось» (перезапуск телефона) не сдвигает конец.
+    expect((await eyeBreak('start')).eyeBreak!.current).toMatchObject({
+      id: started.id,
+      secondsLeft: 540,
+    });
+
+    expect((await eyeBreak('ask')).eyeBreak!.current!.ask).toBe('asked');
+    expect((await control({ action: 'eyeBreak', allow: false })).eyeBreak!.current!.ask).toBe('no');
+    // Отказ — перерыв идёт дальше; второй раз спросить нельзя.
+    expect((await eyeBreak('ask')).eyeBreak!.current).toMatchObject({
+      ask: 'no',
+      secondsLeft: 540,
+    });
+
+    t.advance(10 * 60_000);
+    expect((await get<KidToday>('/api/kid/today')).eyeBreak!.current!.secondsLeft).toBe(0);
+    // Перерыв кончился: ответ родителя уже ничего не меняет, следующий — новый.
+    await control({ action: 'eyeBreak', allow: true });
+    expect((await get<KidToday>('/api/kid/today')).eyeBreak!.current!.ask).toBe('no');
+    const next = (await eyeBreak('start')).eyeBreak!.current!;
+    expect(next).toEqual({ id: t.clock.now.toISOString(), secondsLeft: 600, ask: null });
+
+    // «Разрешить» снимает перерыв сразу — и без просьбы (кнопка «Снять перерыв»).
+    expect((await control({ action: 'eyeBreak', allow: true })).eyeBreak!.current).toMatchObject({
+      id: next.id,
+      secondsLeft: 0,
+      ask: 'yes',
+    });
+  });
+
+  it('настройка: от 5 до 60 минут; старый кабинет без поля перерыв не выключает', async () => {
+    await setBreak(15);
+    const bad = await t.app.inject({
+      method: 'PUT',
+      url: `/api/parent/children/${child}`,
+      cookies: parent,
+      payload: { ...girl({ gender: 'f' }), eyeBreakEvery: 2 },
+    });
+    expect(bad.statusCode).toBe(400);
+    const old = await t.app.inject({
+      method: 'PUT',
+      url: `/api/parent/children/${child}`,
+      cookies: parent,
+      payload: { ...girl({ gender: 'f' }), nickname: 'Мишутка' },
+    });
+    expect(old.json()).toMatchObject({ nickname: 'Мишутка', eyeBreakEvery: 15, eyeBreakRest: 15 });
+  });
+});

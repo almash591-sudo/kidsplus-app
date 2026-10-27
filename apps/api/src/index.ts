@@ -68,9 +68,10 @@ process.once('SIGINT', () => void shutdown('SIGINT'));
 await app.listen({ host: env.HOST, port: env.PORT });
 
 // «Телефон не на связи» (этап 15д) — в подписках тех, кто получает «телефон садится».
-void addPushKindOnce(db, 'offline', 'battery').catch((err: unknown) =>
-  app.log.error({ err }, 'push: новый вид уведомлений'),
-);
+void addPushKindOnce(db, 'offline', 'battery')
+  // «Перерыв для глаз: просит ещё» (этап 50) — тем, кто получает звонки.
+  .then(() => addPushKindOnce(db, 'eye_break', 'call'))
+  .catch((err: unknown) => app.log.error({ err }, 'push: новый вид уведомлений'));
 
 // Серверная озвучка включена или сменился голос — старое ставится в очередь (в фоне, один раз).
 void backfillTts(db, tts)

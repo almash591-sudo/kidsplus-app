@@ -20,13 +20,34 @@ import { MonitorScreen } from './monitor/MonitorScreen';
 import { onMonitorEvent, useMonitor } from './monitor/state';
 import { CameraButton, GalleryScreen } from './camera/GalleryScreen';
 import { fx } from './fx';
-import { appPhrases, CATEGORY_DONE, LESSON_DONE, VIDEOS_REST } from './phrases';
+import {
+  appPhrases,
+  BREAK_ASK_FAILED,
+  BREAK_ASKED,
+  BREAK_END,
+  BREAK_NO,
+  BREAK_YES,
+  CATEGORY_DONE,
+  LESSON_DONE,
+  QUIZ_FIRST,
+  VIDEOS_REST,
+} from './phrases';
+import {
+  addScreen,
+  finish,
+  OVERDUE_MS,
+  screenTime,
+  syncBreak,
+  type LocalBreak,
+  type ScreenTime,
+} from './eyeBreak';
 import { knownGames } from './knownGames';
 import { pauseVideos, withoutPausedVideos } from './videoPause';
+import { quizDue } from './quizDue';
 import { playlistMedia, warmMedia } from './offline';
 import { setServerVoice, wantSpeech } from './speechCache';
 import { ru } from './games/common';
-import { KidPlayer, type ExitReason } from './player/KidPlayer';
+import { KidPlayer, type ExitReason, type Watched } from './player/KidPlayer';
 import { GameScreen } from './games/GameScreen';
 import { fromKidQuestion } from './quiz/engine';
 import { QuizScreen } from './quiz/QuizScreen';
@@ -35,6 +56,7 @@ import { CategoryScreen, HomeScreen } from './screens/HomeScreen';
 import { isLessonPath } from './screens/LessonPath';
 import { PairScreen } from './screens/PairScreen';
 import { calledStore, RestScreen } from './screens/RestScreen';
+import { BreakScreen } from './screens/BreakScreen';
 import { bedtimeStore, NightScreen, OPEN_HABITS_EVENT } from './screens/NightScreen';
 import { inAndroidWebView, setVolume } from './kiosk';
 import { owlBus } from './owl/bus';
@@ -49,7 +71,16 @@ import {
 
 /** Где ребёнок в списке раздела: пункт и этап (видео → его квиз). */
 /** seq — номер шага по порядку: урок идёт по кругу, и тот же пункт должен начаться заново. */
-type Step = { index: number; phase: 'video' | 'quiz' | 'deck' | 'game'; seq: number };
+/** late — ушёл с видео после половины: вопросы всё равно, совёнок объясняет (этап 50). */
+type Step = {
+  index: number;
+  phase: 'video' | 'quiz' | 'deck' | 'game';
+  seq: number;
+  late?: boolean;
+};
+
+/** Досмотрел больше этой доли — «Домой» ведёт не домой, а к вопросам (этап 50). */
+const QUIZ_AFTER = 0.5;
 
 /**
  * category — выбранный раздел (null — экран разделов или раздел всего один).
@@ -66,6 +97,8 @@ type State =
       category: KidCategory | null;
       step: Step;
       lesson: Subject | null;
+      /** Вопросы, не пройденные до перезапуска (этап 50): после них — сюда, в меню. */
+      restored?: KidPlaylist;
     }
   | { screen: 'offline' };
 
@@ -112,6 +145,22 @@ function itemOf(s: State) {
   if (!item) return null;
   const kind = item.kind === 'segment' && s.step.phase === 'quiz' ? 'segment' : item.kind;
   return { kind, id: item.id } as const;
+}
+
+type Run = Extract<State, { screen: 'run' }>;
+
+/** Минуты экрана набрались — пора отдыхать (этап 50). */
+const isDue = (s: ScreenTime, t: KidToday | null) =>
+  Boolean(t?.eyeBreak && !s.brk && s.used >= t.eyeBreak.every * 60);
+
+/** Из занятия — в меню: урок — на «Сегодня», раздел — к его пунктам. */
+function menuOf(s: Run, isPlan: boolean): State {
+  if (s.restored)
+    return isPlan
+      ? { screen: 'today', playlist: s.restored }
+      : { screen: 'home', playlist: s.restored, category: null };
+  if (s.lesson) return { screen: 'today', playlist: s.playlist };
+  return { screen: 'home', playlist: s.playlist, category: s.category };
 }
 
 /** Следующий пункт: урок идёт по кругу; в разделе после последнего — к пунктам раздела. */
@@ -171,6 +220,12 @@ export function App() {
   /** Видео подряд не открылись — дальше не перебираем: скорее всего, нет связи с YouTube. */
   const videoErrors = useRef(0);
   const currentToday = useRef(today);
+  /** Перерыв для глаз (этап 50): минуты у экрана — в ref (отсчёт раз в 5 с не перерисовывает). */
+  const eye = useRef<ScreenTime>(screenTime.get());
+  const [eyeRest, setEyeRest] = useState<LocalBreak | null>(() => screenTime.get().brk);
+  /** Набралось: soon — после текущего пункта, now — сразу (длинная игра без конца). */
+  const [breakDue, setBreakDue] = useState<'soon' | 'now' | null>(null);
+  const watchingRef = useRef(false);
   useEffect(() => {
     current.current = state;
     currentToday.current = today;
@@ -206,8 +261,19 @@ export function App() {
       warmMedia(playlistMedia(playlist));
       setToday(day);
       // Во время занятия список не подменяем — обновится, когда ребёнок вернётся.
+      const due = playlist.baby ? null : quizDue.get();
       setState((s) => {
         if (s.screen === 'run') return s;
+        // Вопросы после видео не пройдены (приложение закрывали) — сначала они (этап 50).
+        if (due)
+          return {
+            screen: 'run',
+            playlist: { ...playlist, items: [due.item] },
+            category: null,
+            step: { index: 0, phase: 'quiz', seq: 0, late: true },
+            lesson: due.lesson,
+            restored: playlist,
+          };
         if (plan(day))
           return s.screen === 'home' ? { ...s, playlist } : { screen: 'today', playlist };
         return { screen: 'home', playlist, category: s.screen === 'home' ? s.category : null };
@@ -310,7 +376,7 @@ export function App() {
     try {
       const r = await kidApi.heartbeat({
         activity:
-          cameraOpen.current || inCallRef.current || monitorRef.current
+          cameraOpen.current || inCallRef.current || monitorRef.current || eye.current.brk
             ? null
             : activityOf(s, currentToday.current),
         active: document.visibilityState === 'visible',
@@ -364,15 +430,104 @@ export function App() {
     return () => es.close();
   }, [paired, refreshToday]);
 
+  // ─── Перерыв для глаз (этап 50) ───
+  const putEye = useCallback((s: ScreenTime) => {
+    eye.current = s;
+    screenTime.set(s);
+    setEyeRest(s.brk);
+  }, []);
+  // Отсчёт экрана: раз в 5 с, пока ребёнок смотрит (не звонок, не ночь, не аудиотека…).
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const t = currentToday.current;
+      if (!t?.eyeBreak || !watchingRef.current || document.visibilityState !== 'visible') return;
+      const s = addScreen(eye.current, Date.now(), t.eyeBreak.rest);
+      eye.current = s;
+      screenTime.set(s);
+      if (!isDue(s, t)) return;
+      setBreakDue(s.used * 1000 - t.eyeBreak.every * 60_000 >= OVERDUE_MS ? 'now' : 'soon');
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
+  // Ответ сервера: родитель разрешил или отказал, перерыв кончился, перерыв после перезапуска.
+  useEffect(() => {
+    if (!paired || !today) return;
+    const { next, news } = syncBreak(eye.current, today.eyeBreak ?? null, Date.now());
+    putEye(next);
+    if (!isDue(next, today)) setBreakDue(null);
+    if (news === 'no') void playSequence([ru(BREAK_NO)]);
+    if (news === 'yes' || news === 'end') {
+      void playSequence([ru(news === 'yes' ? BREAK_YES : BREAK_END)]);
+      void load();
+    }
+  }, [paired, today, putEye, load]);
+  // Отдых по часам телефона — и без связи.
+  useEffect(() => {
+    if (!eyeRest) return;
+    const timer = setTimeout(
+      () => {
+        putEye(finish(eye.current, Date.now()));
+        setBreakDue(null);
+        void playSequence([ru(BREAK_END)]);
+        void load();
+      },
+      Math.max(0, eyeRest.until - Date.now()),
+    );
+    return () => clearTimeout(timer);
+  }, [eyeRest, putEye, load]);
+  // Ответ родителя приходит живым каналом; канал оборвался (VPN) — сами спрашиваем раз в 20 с.
+  const resting = eyeRest !== null;
+  useEffect(() => {
+    if (!paired || !resting) return;
+    const timer = setInterval(() => void refreshToday(), 20_000);
+    return () => clearInterval(timer);
+  }, [paired, resting, refreshToday]);
+  /** Время экрана вышло: из занятия — в меню, совёнок объявляет отдых; сервер запоминает. */
+  const startBreak = useCallback(async () => {
+    const t = currentToday.current?.eyeBreak;
+    if (!t || eye.current.brk) return;
+    setBreakDue(null);
+    const s = current.current;
+    if (s.screen === 'run') {
+      stop.current = false;
+      setState(menuOf(s, plan(currentToday.current)));
+    }
+    const now = Date.now();
+    putEye({
+      ...eye.current,
+      brk: { id: `local-${now}`, until: now + t.rest * 60_000, ask: null },
+    });
+    try {
+      setToday(await kidApi.eyeBreak('start'));
+    } catch {
+      // без связи — отдых по часам телефона, спросить родителей не получится
+    }
+  }, [putEye]);
+  /** «Очень хочется ещё» — совёнок спрашивает родителей (один раз за перерыв). */
+  const askMore = useCallback(async () => {
+    const b = eye.current.brk;
+    if (!b || b.ask) return;
+    fx.tap();
+    putEye({ ...eye.current, brk: { ...b, ask: 'asked' } });
+    let asked = false;
+    try {
+      const t = await kidApi.eyeBreak('ask');
+      const cur = t.eyeBreak?.current;
+      asked = Boolean(cur && cur.id === eye.current.brk?.id && cur.ask);
+      setToday(t);
+    } catch {
+      // нет связи — не спросили
+    }
+    if (!asked && eye.current.brk)
+      putEye({ ...eye.current, brk: { ...eye.current.brk, ask: 'no' } });
+    void playSequence([ru(asked ? BREAK_ASKED : BREAK_ASK_FAILED)]);
+  }, [putEye]);
+
   /** Назад: из урока — на «Сегодня», из раздела — к пунктам раздела. */
   const goHome = useCallback(() => {
     fx.whoosh();
     stop.current = false;
-    setState((s) => {
-      if (s.screen !== 'run') return s;
-      if (s.lesson) return { screen: 'today', playlist: s.playlist };
-      return { screen: 'home', playlist: s.playlist, category: s.category };
-    });
+    setState((s) => (s.screen === 'run' ? menuOf(s, plan(currentToday.current)) : s));
     void load();
   }, [load]);
 
@@ -380,6 +535,14 @@ export function App() {
   const advance = useCallback(async () => {
     const s = current.current;
     if (s.screen !== 'run') return;
+    quizDue.clear();
+    // Восстановленные вопросы пройдены или пора отдохнуть глазкам — в меню, не к следующему пункту.
+    if (s.restored || isDue(eye.current, currentToday.current)) {
+      fx.whoosh();
+      setState(menuOf(s, plan(currentToday.current)));
+      void load();
+      return;
+    }
     // В конце пункта спрашиваем сервер, не вышло ли время (а не ждём очередного сигнала).
     if (plan(currentToday.current) && (await beat())) {
       stop.current = false;
@@ -398,9 +561,22 @@ export function App() {
     setState(nextStep);
   }, [load, beat]);
 
-  /** Досмотрел и есть вопросы — квиз; иначе (нет вопросов, видео недоступно) — дальше по списку. */
+  /**
+   * Досмотрел и есть вопросы — квиз; иначе (нет вопросов, видео недоступно) — дальше по списку.
+   * «Домой» после половины видео — тоже вопросы: без них домой не уйти (этап 50).
+   */
   const onVideoExit = useCallback(
-    (reason: ExitReason) => {
+    (reason: ExitReason, watched: Watched) => {
+      const s = current.current;
+      if (s.screen !== 'run') return;
+      const item = itemsOf(s.playlist.items, s.category)[s.step.index];
+      const quiz = item?.kind === 'segment' && item.questions.length > 0 ? item : null;
+      const late = reason === 'exit' && watched >= QUIZ_AFTER;
+      if (quiz && (reason === 'complete' || late)) {
+        quizDue.set(quiz, s.lesson);
+        setState({ ...s, step: { ...s.step, phase: 'quiz', late } });
+        return;
+      }
       if (reason === 'exit') return goHome();
       videoErrors.current = reason === 'error' ? videoErrors.current + 1 : 0;
       if (videoErrors.current >= 2) {
@@ -409,13 +585,6 @@ export function App() {
         pauseVideos();
         void playSequence([ru(VIDEOS_REST)]);
         return goHome();
-      }
-      const s = current.current;
-      if (s.screen !== 'run') return;
-      const item = itemsOf(s.playlist.items, s.category)[s.step.index];
-      if (reason === 'complete' && item?.kind === 'segment' && item.questions.length) {
-        setState({ ...s, step: { ...s.step, phase: 'quiz' } });
-        return;
       }
       void advance();
     },
@@ -471,6 +640,39 @@ export function App() {
   );
   // Живой совёнок (этап 32) — только в меню: не на уроке, не на паузе и не ночью.
   const owl = <LiveOwl evening={bedtime?.phase === 'soon' || new Date().getHours() >= 19} />;
+  // Перерыв для глаз (этап 50): «у экрана» — меню, занятия, камера, альбом, дела. Не считаются
+  // звонок, радионяня, ночь, «выключить экран», пауза и конец дня, аудиотека, малыш и просмотр.
+  const shown = state.screen === 'today' || state.screen === 'home' || state.screen === 'run';
+  const dayOff = Boolean(
+    isPlan &&
+    today &&
+    (today.paused || today.closed === 'ended' || (today.closed && state.screen !== 'run')),
+  );
+  const watching = Boolean(
+    paired &&
+    shown &&
+    today?.eyeBreak &&
+    !eyeRest &&
+    !state.playlist.baby &&
+    !state.playlist.preview &&
+    !inCall &&
+    !monitor.on &&
+    !parentMenu &&
+    bedtime?.phase !== 'night' &&
+    !today.rest &&
+    camera !== 'audio' &&
+    camera !== 'calls' &&
+    !dayOff,
+  );
+  useEffect(() => {
+    watchingRef.current = watching;
+  });
+  // Набралось — отдых в меню сразу, а в занятии — когда пункт кончится (или слишком затянулся).
+  useEffect(() => {
+    if (!breakDue || !watching) return;
+    if (state.screen === 'run' && breakDue === 'soon') return;
+    void startBreak();
+  }, [breakDue, watching, state.screen, startBreak]);
   // Звонок — поверх всего: входящий видно и посреди урока, и ночью.
   if (inCall && callView) return <CallOverlay view={callView} me={callMe()!} />;
   // Радионяня: ночной экран поверх всего, кроме обычного звонка.
@@ -496,6 +698,19 @@ export function App() {
     return (
       <>
         <RestScreen reason={today.rest} />
+        <ParentCorner onUnlock={() => setParentMenu(true)} />
+      </>
+    );
+  // Перерыв для глаз — поверх меню и занятий; звонок, ночь и «выключить экран» — выше.
+  if (paired && eyeRest)
+    return (
+      <>
+        <BreakScreen
+          until={eyeRest.until}
+          restMin={today?.eyeBreak?.rest ?? 15}
+          ask={eyeRest.ask}
+          onAsk={() => void askMore()}
+        />
         <ParentCorner onUnlock={() => setParentMenu(true)} />
       </>
     );
@@ -712,8 +927,8 @@ export function App() {
             questions={item.questions.map(fromKidQuestion)}
             settings={playlist.quiz}
             phrases={playlist.phrases}
+            intro={step.late ? ru(QUIZ_FIRST) : undefined}
             onDone={() => void advance()}
-            onExit={goHome}
           />
         );
       }

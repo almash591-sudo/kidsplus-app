@@ -52,6 +52,77 @@ const REST_ICON: Record<RestReason, string> = {
   rest: '👀',
 };
 
+/** Идёт перерыв для глаз (этап 50): до скольких и просит ли ребёнок ещё; null — не идёт. */
+export function eyeBreakOf(now: ChildNow) {
+  const cur = now.eyeBreak?.current;
+  if (!now.eyeBreak || !cur || cur.secondsLeft <= 0) return null;
+  const until = new Date(Date.now() + cur.secondsLeft * 1000).toLocaleTimeString('ru-RU', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  return { until, asked: cur.ask === 'asked', every: now.eyeBreak.every };
+}
+
+/**
+ * Перерыв для глаз: ребёнок попросил ещё — «Разрешить» (ещё столько же минут) или «Пусть
+ * отдохнёт» (совёнок скажет); не просил — «Снять перерыв».
+ */
+export function EyeBreakControls({
+  now,
+  act,
+  busy,
+}: {
+  now: ChildNow;
+  act: (body: ControlRequest) => void;
+  busy: boolean;
+}) {
+  const b = eyeBreakOf(now);
+  if (!b) return null;
+  return (
+    <Alert color={b.asked ? 'orange' : 'teal'} data-testid="eye-break-alert">
+      <Stack gap="xs">
+        <Text size="sm">
+          👀 Перерыв для глаз — до <b>{b.until}</b>
+          {b.asked && ', просит ещё посмотреть'}
+        </Text>
+        <Group gap="xs">
+          {b.asked ? (
+            <>
+              <Button
+                size="xs"
+                onClick={() => act({ action: 'eyeBreak', allow: true })}
+                loading={busy}
+                data-testid="eye-break-allow"
+              >
+                Разрешить {b.every} мин
+              </Button>
+              <Button
+                size="xs"
+                variant="light"
+                onClick={() => act({ action: 'eyeBreak', allow: false })}
+                loading={busy}
+                data-testid="eye-break-deny"
+              >
+                Пусть отдохнёт
+              </Button>
+            </>
+          ) : (
+            <Button
+              size="xs"
+              variant="light"
+              onClick={() => act({ action: 'eyeBreak', allow: true })}
+              loading={busy}
+              data-testid="eye-break-allow"
+            >
+              Снять перерыв
+            </Button>
+          )}
+        </Group>
+      </Stack>
+    </Alert>
+  );
+}
+
 /** «Выключить экран» с поводом; экран выключен или ночь — «Включить». */
 export function RestControls({
   now,
@@ -64,6 +135,7 @@ export function RestControls({
 }) {
   return (
     <Stack gap="xs" data-testid="screen-controls">
+      {!now.rest && <EyeBreakControls now={now} act={act} busy={busy} />}
       {now.bedtime?.phase === 'night' && !now.rest && (
         <Alert color="indigo" data-testid="bedtime-night">
           <Group justify="space-between" wrap="wrap" gap="xs">

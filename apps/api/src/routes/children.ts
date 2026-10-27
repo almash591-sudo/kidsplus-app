@@ -21,6 +21,8 @@ export const toChild = (c: typeof children.$inferSelect): Child => ({
   foreignImmersion: c.foreignImmersion,
   illustrations: c.illustrations,
   repeatMode: c.repeatMode as RepeatMode,
+  eyeBreakEvery: c.eyeBreakEvery,
+  eyeBreakRest: c.eyeBreakRest,
   createdAt: c.createdAt.toISOString(),
 });
 
@@ -60,9 +62,13 @@ export function childrenRoutes(app: FastifyInstance, ctx: Ctx) {
 
   app.put('/api/parent/children/:id', { preHandler }, async (request): Promise<Child> => {
     const id = idFrom(request.params);
+    const input = parseChild(request.body);
+    // Старый кабинет (из кэша) не знает о перерыве — не выключать его молча при правке прозвища.
+    const knows =
+      typeof request.body === 'object' && request.body !== null && 'eyeBreakEvery' in request.body;
     const [row] = await db
       .update(children)
-      .set(parseChild(request.body))
+      .set(knows ? input : { ...input, eyeBreakEvery: undefined, eyeBreakRest: undefined })
       .where(eq(children.id, id))
       .returning();
     if (!row) throw notFound('ребёнок не найден');

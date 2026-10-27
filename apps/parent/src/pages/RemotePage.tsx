@@ -39,7 +39,13 @@ import { KidSwitch } from '../components/KidSwitch';
 import { LibraryCard } from '../components/Library';
 import { MonitorCard } from '../components/MonitorCard';
 import { NowHero } from '../components/NowHero';
-import { ActivityLog, RestControls, VolumeControl } from '../components/ParentRemote';
+import {
+  ActivityLog,
+  EyeBreakControls,
+  eyeBreakOf,
+  RestControls,
+  VolumeControl,
+} from '../components/ParentRemote';
 import { RemoteActions } from '../components/RemoteActions';
 import { setCurrentChild, useCurrentChildRaw } from '../lib/currentChild';
 import { SUBJECT_LABELS } from '../lib/subjects';
@@ -160,6 +166,16 @@ function Attention({ kids }: { kids: Child[] }) {
         text: `${phoneOf(k)}: видео не открываются — проверьте интернет и VPN`,
         to: `/child/${k.id}`,
       });
+    // Этап 50: на перерыве для глаз ребёнок просит ещё — ответить в его пульте.
+    const now = nows[i];
+    if (now && eyeBreakOf(now)?.asked)
+      rows.push({
+        key: `eye-${k.id}`,
+        color: '#ff9500',
+        icon: 'M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+        text: `${k.nickname}: просит ещё посмотреть`,
+        to: `/remote?child=${k.id}`,
+      });
     const noise = monitors[i]?.lastNoiseAt;
     if (noise && clock - new Date(noise).getTime() < 30 * 60_000)
       rows.push({
@@ -259,6 +275,11 @@ function KidRow({ child, color }: { child: Child; color: string }) {
               </span>
             </span>
           ))}
+        </div>
+      )}
+      {eyeBreakOf(d)?.asked && (
+        <div style={{ marginTop: 'var(--mantine-spacing-sm)' }}>
+          <EyeBreakControls now={d} act={(b) => control.mutate(b)} busy={control.isPending} />
         </div>
       )}
       {(live || d.paused) && (
