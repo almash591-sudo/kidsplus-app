@@ -12,5 +12,9 @@ for i in 1 2 3; do
   sudo pkill -9 -x dpkg || true
   sleep 5
   sudo dpkg --configure -a || true
+  # Зеркало Azure бывает медленным (~50 КБ/с: 114 МБ пакетов WebKit за 7 мин не успеть). Повтор —
+  # с archive.ubuntu.com из того же списка зеркал; скачанное уже лежит в кэше apt.
+  sudo sed -i '/azure\.archive\.ubuntu\.com/d' /etc/apt/apt-mirrors.txt 2>/dev/null &&
+    echo "зеркала apt: $(tr '\n' ' ' </etc/apt/apt-mirrors.txt)"
 done
 exit 1

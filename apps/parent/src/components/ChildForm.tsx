@@ -1,4 +1,5 @@
 // Профиль ребёнка — форма и окно (этап 47: открываются и из «Детей», и со страницы ребёнка).
+import { EYE_BREAK_EVERY, EYE_BREAK_REST } from '@kidsplus/shared/schedule';
 import {
   LANGUAGES,
   quizDefaults,
@@ -85,6 +86,8 @@ export function ChildForm({ child, onDone }: { child: Child | null; onDone: () =
           foreignImmersion: child.foreignImmersion,
           illustrations: child.illustrations,
           repeatMode: child.repeatMode,
+          eyeBreakEvery: child.eyeBreakEvery,
+          eyeBreakRest: child.eyeBreakRest,
         }
       : {
           nickname: '',
@@ -97,6 +100,8 @@ export function ChildForm({ child, onDone }: { child: Child | null; onDone: () =
           foreignImmersion: false,
           illustrations: true,
           repeatMode: 'weekly',
+          eyeBreakEvery: null,
+          eyeBreakRest: 15,
         },
     validate: {
       nickname: (v) => (v.trim() ? null : 'укажите прозвище'),
@@ -185,6 +190,12 @@ export function ChildForm({ child, onDone }: { child: Child | null; onDone: () =
             { value: 'free', label: 'Без ограничений' },
           ]}
         />
+        <EyeBreakFields
+          every={form.values.eyeBreakEvery ?? null}
+          rest={form.values.eyeBreakRest ?? 15}
+          onEvery={(v) => form.setFieldValue('eyeBreakEvery', v)}
+          onRest={(v) => form.setFieldValue('eyeBreakRest', v)}
+        />
         <QuizSettingsFields
           birthYear={form.values.birthYear}
           birthMonth={form.values.birthMonth}
@@ -198,6 +209,60 @@ export function ChildForm({ child, onDone }: { child: Child | null; onDone: () =
         </Button>
       </Stack>
     </form>
+  );
+}
+
+/**
+ * Перерыв для глаз (этап 50): после N минут у экрана совёнок объявляет отдых; ребёнок может
+ * попросить ещё — придёт уведомление, ответить можно в «Пульте».
+ */
+function EyeBreakFields(p: {
+  every: number | null;
+  rest: number;
+  onEvery: (v: number | null) => void;
+  onRest: (v: number) => void;
+}) {
+  // Значение не из списка (задано раньше) — показываем его тоже.
+  const opts = (list: readonly number[], v: number) =>
+    [...new Set([...list, v])]
+      .sort((a, b) => a - b)
+      .map((n) => ({ value: String(n), label: `${n}` }));
+  return (
+    <Stack gap="xs" data-testid="eye-break-settings">
+      <Checkbox
+        label="Перерыв для глаз"
+        description="Совёнок объяснит, что глазкам нужно отдохнуть, и позовёт подвигаться. Очень хочется ещё — спросит у вас"
+        checked={p.every !== null}
+        onChange={(e) => p.onEvery(e.currentTarget.checked ? 15 : null)}
+        data-testid="eye-break-on"
+      />
+      {p.every !== null && (
+        <Group grow align="flex-start">
+          <div>
+            <Text size="xs" c="dimmed" mb={4}>
+              Минут у экрана
+            </Text>
+            <SegmentedControl
+              fullWidth
+              value={String(p.every)}
+              onChange={(v) => p.onEvery(Number(v))}
+              data={opts(EYE_BREAK_EVERY, p.every)}
+            />
+          </div>
+          <div>
+            <Text size="xs" c="dimmed" mb={4}>
+              Минут отдыха
+            </Text>
+            <SegmentedControl
+              fullWidth
+              value={String(p.rest)}
+              onChange={(v) => p.onRest(Number(v))}
+              data={opts(EYE_BREAK_REST, p.rest)}
+            />
+          </div>
+        </Group>
+      )}
+    </Stack>
   );
 }
 

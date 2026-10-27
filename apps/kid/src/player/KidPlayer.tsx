@@ -13,6 +13,8 @@ import { Icon } from '../ui/icons';
 import { fromPayload, type From } from '../visit';
 
 export type ExitReason = 'complete' | 'exit' | 'error';
+/** Какую долю фрагмента ребёнок досмотрел, 0–1 (этап 50: вышел после половины — всё равно вопросы). */
+export type Watched = number;
 
 /**
  * tap-video — наша кнопка не смогла запустить видео (Safari на iPhone: первое нажатие должно
@@ -40,7 +42,7 @@ export function KidPlayer({
   segment: KidSegment;
   /** Урок «Сегодня» или сам выбрал (этап 44); у экрана малыша — нет. */
   from?: From;
-  onExit: (reason: ExitReason) => void;
+  onExit: (reason: ExitReason, watched: Watched) => void;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const player = useRef<YTPlayer | null>(null);
@@ -65,7 +67,15 @@ export function KidPlayer({
     (reason: ExitReason, payload?: Record<string, number | string>) => {
       if (done.current) return;
       done.current = true;
-      const at = player.current ? Math.round(player.current.getCurrentTime()) : undefined;
+      const time = player.current?.getCurrentTime();
+      const at = time !== undefined ? Math.round(time) : undefined;
+      const length = segment.endSec - segment.startSec;
+      const watched =
+        reason === 'complete'
+          ? 1
+          : time !== undefined && length > 0
+            ? Math.min(1, Math.max(0, (time - segment.startSec) / length))
+            : 0;
       destroyPlayer.current?.();
       destroyPlayer.current = null;
       player.current = null;
@@ -84,12 +94,12 @@ export function KidPlayer({
 
       if (reason === 'complete') {
         setView('finished');
-        setTimeout(() => onExitRef.current('complete'), CELEBRATE_MS);
+        setTimeout(() => onExitRef.current('complete', 1), CELEBRATE_MS);
       } else {
-        onExitRef.current(reason);
+        onExitRef.current(reason, watched);
       }
     },
-    [segment.id, from],
+    [segment.id, segment.startSec, segment.endSec, from],
   );
 
   useEffect(() => {

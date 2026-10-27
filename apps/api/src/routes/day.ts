@@ -7,6 +7,7 @@ import {
   controlRequest,
   curriculumDraftRequest,
   curriculumInput,
+  eyeBreakRequest,
   heartbeatRequest,
   scheduleInput,
   SUBJECTS,
@@ -33,6 +34,7 @@ import { childUsage } from '@kidsplus/db/usage';
 import {
   applyControl,
   childMaterials,
+  eyeBreakAction,
   lessonRefs,
   loadDay,
   loadSchedule,
@@ -119,6 +121,24 @@ export function dayRoutes(app: FastifyInstance, ctx: Ctx) {
         if (first) void notifyParents(db, ctx.push?.sender ?? null, pushMessages.dayDone(childId));
       }
       return { ...day.today, stop: activityLeft(day.today, beat.activity) <= 0 };
+    },
+  );
+
+  /**
+   * Перерыв для глаз (этап 50): время экрана вышло — перерыв начался; ребёнок просит ещё — push
+   * родителю один раз за перерыв. Просмотр из кабинета ничего не меняет у ребёнка.
+   */
+  app.post(
+    '/api/kid/eye-break',
+    { preHandler: deviceOnly, config: { rateLimit: { max: 20, timeWindow: '1 minute' } } },
+    async (request): Promise<KidToday> => {
+      const { action } = parse(eyeBreakRequest, request.body);
+      const { childId, preview } = request.device!;
+      if (!preview) {
+        const { asked } = await eyeBreakAction(db, childId, ctx.now(), action);
+        if (asked) void notifyParents(db, ctx.push?.sender ?? null, pushMessages.eyeBreak(childId));
+      }
+      return (await loadDay(db, childId, ctx.now())).today;
     },
   );
 

@@ -17,13 +17,15 @@ import {
   SUBJECTS,
   type Activity,
   type ControlRequest,
+  type EyeBreak,
+  type EyeBreakAsk,
   type KidToday,
   type LocalClock,
   type Schedule,
   type Subject,
   type TopicItem,
 } from '@kidsplus/shared/schedule';
-import { and, desc, eq, gt, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 
 /** Ссылка на материал: фрагмент видео, набор карточек или игра. */
 export interface ItemRef {
@@ -218,7 +220,15 @@ export async function loadDay(db: Db, childId: string, now: Date): Promise<Day> 
     ? Math.max(0, Math.floor((control.openUntil.getTime() - now.getTime()) / 1000))
     : 0;
   const [child] = await db
-    .select({ volume: children.volume, rest: children.rest })
+    .select({
+      volume: children.volume,
+      rest: children.rest,
+      eyeBreakEvery: children.eyeBreakEvery,
+      eyeBreakRest: children.eyeBreakRest,
+      eyeBreakAt: children.eyeBreakAt,
+      eyeBreakUntil: children.eyeBreakUntil,
+      eyeBreakAsk: children.eyeBreakAsk,
+    })
     .from(children)
     .where(eq(children.id, childId));
   const rest = (child?.rest ?? null) as KidToday['rest'];
@@ -246,8 +256,76 @@ export async function loadDay(db: Db, childId: string, now: Date): Promise<Day> 
         : null,
     volume: child?.volume ?? null,
     bedtime,
+    eyeBreak: child ? eyeBreakNow(child, now) : null,
   };
   return { schedule, clock, today, pool, curriculum, control, used };
+}
+
+/** Перерыв для глаз (этап 50) на момент now: настройки ребёнка и текущий перерыв. */
+export function eyeBreakNow(
+  c: {
+    eyeBreakEvery: number | null;
+    eyeBreakRest: number;
+    eyeBreakAt: Date | null;
+    eyeBreakUntil: Date | null;
+    eyeBreakAsk: string | null;
+  },
+  now: Date,
+): EyeBreak | null {
+  if (c.eyeBreakEvery === null) return null;
+  const current =
+    c.eyeBreakAt && c.eyeBreakUntil
+      ? {
+          id: c.eyeBreakAt.toISOString(),
+          secondsLeft: Math.max(0, Math.ceil((c.eyeBreakUntil.getTime() - now.getTime()) / 1000)),
+          ask: (c.eyeBreakAsk ?? null) as EyeBreakAsk | null,
+        }
+      : null;
+  return { every: c.eyeBreakEvery, rest: c.eyeBreakRest, current };
+}
+
+/**
+ * Телефон: время экрана вышло — перерыв начинается (если уже не идёт); ребёнок просит ещё —
+ * просьба запоминается один раз за перерыв. Возвращает, ушла ли просьба впервые (push родителю).
+ */
+export async function eyeBreakAction(
+  db: Db,
+  childId: string,
+  now: Date,
+  action: 'start' | 'ask',
+): Promise<{ asked: boolean }> {
+  const [c] = await db
+    .select({
+      every: children.eyeBreakEvery,
+      rest: children.eyeBreakRest,
+      until: children.eyeBreakUntil,
+    })
+    .from(children)
+    .where(eq(children.id, childId));
+  if (!c || c.every === null) return { asked: false };
+  const active = c.until !== null && c.until.getTime() > now.getTime();
+  if (action === 'start') {
+    if (!active)
+      await db
+        .update(children)
+        .set({
+          eyeBreakAt: now,
+          eyeBreakUntil: new Date(now.getTime() + c.rest * 60_000),
+          eyeBreakAsk: null,
+        })
+        .where(eq(children.id, childId));
+    return { asked: false };
+  }
+  if (!active) return { asked: false };
+  // Условное обновление: две просьбы подряд не пришлют push дважды.
+  const first = await db
+    .update(children)
+    .set({ eyeBreakAsk: 'asked' })
+    .where(
+      and(eq(children.id, childId), isNull(children.eyeBreakAsk), gt(children.eyeBreakUntil, now)),
+    )
+    .returning({ id: children.id });
+  return { asked: first.length > 0 };
 }
 
 /** Сигнал телефона: засчитать время с прошлого сигнала и запомнить, что на экране. */
@@ -332,6 +410,15 @@ export async function applyControl(db: Db, childId: string, now: Date, action: C
       // Громкость — свойство телефона, а не дня.
       await db.update(children).set({ volume: action.level }).where(eq(children.id, childId));
       return;
+    case 'eyeBreak': {
+      // Только идущий перерыв: «разрешить» снимает его, «пусть отдохнёт» — ответ на просьбу.
+      const active = and(eq(children.id, childId), gt(children.eyeBreakUntil, now));
+      await db
+        .update(children)
+        .set(action.allow ? { eyeBreakUntil: now, eyeBreakAsk: 'yes' } : { eyeBreakAsk: 'no' })
+        .where(active);
+      return;
+    }
     case 'add': {
       const add = action.minutes * 60;
       set.extraSeconds = (day.control?.extraSeconds ?? 0) + add;

@@ -281,6 +281,77 @@ test('«Пульт» (этап 47): всё на виду — звонок, «П�
   );
 });
 
+test('перерыв для глаз (этап 50): включить в профиле; ребёнок просит ещё — ответ в «Пульте»', async ({
+  page,
+  playwright,
+}) => {
+  await login(page);
+  await page.goto('/children');
+  await page.getByRole('button', { name: 'Добавить ребёнка' }).click();
+  const sheet = page.locator('.mantine-Modal-content');
+  await page.getByLabel('Прозвище').fill('Бельчонок');
+  await sheet.getByLabel('Перерыв для глаз').check();
+  await expect(sheet.getByTestId('eye-break-settings')).toContainText('Минут у экрана');
+  expect(await layoutProblems(page)).toEqual([]);
+  const save = sheet.getByRole('button', { name: 'Сохранить' });
+  await save.scrollIntoViewIfNeeded();
+  await save.click();
+  await expect(sheet).toBeHidden();
+  const kids = (await (await page.request.get('/api/parent/children')).json()) as {
+    id: string;
+    nickname: string;
+    eyeBreakEvery: number | null;
+    eyeBreakRest: number;
+  }[];
+  const kid = kids.find((k) => k.nickname === 'Бельчонок')!;
+  expect(kid).toMatchObject({ eyeBreakEvery: 15, eyeBreakRest: 15 });
+
+  // Телефон ребёнка: привязан по коду, 15 минут прошли — перерыв, ребёнок просит ещё.
+  const { code } = (await (
+    await page.request.post('/api/parent/pairings', {
+      data: { childId: kid.id, deviceName: 'Телефон Бельчонка' },
+    })
+  ).json()) as { code: string };
+  const phone = await playwright.request.newContext({ baseURL: test.info().project.use.baseURL });
+  expect((await phone.post('/api/kid/pair', { data: { code } })).status()).toBe(204);
+  expect((await phone.post('/api/kid/eye-break', { data: { action: 'start' } })).ok()).toBe(true);
+  expect((await phone.post('/api/kid/eye-break', { data: { action: 'ask' } })).ok()).toBe(true);
+  const onPhone = async () =>
+    (
+      (await (await phone.get('/api/kid/today')).json()) as {
+        eyeBreak: { current: { secondsLeft: number; ask: string | null } | null };
+      }
+    ).eyeBreak.current;
+
+  // «Все»: в «Нужно ваше внимание» и в строке ребёнка — сразу ответить.
+  await page.goto('/remote');
+  const row = page.getByTestId('kid-card').filter({ hasText: 'Бельчонок' });
+  await expect(row).toContainText('Перерыв · просит ещё');
+  await expect(row.getByTestId('eye-break-allow')).toContainText('Разрешить 15 мин');
+  expect(await layoutProblems(page)).toEqual([]);
+  await page.getByTestId('attention').getByText('Бельчонок: просит ещё посмотреть').click();
+  await expect(page).toHaveURL(new RegExp(`/remote\\?child=${kid.id}`));
+  const alert = page.getByTestId('kid-remote').getByTestId('eye-break-alert');
+  await expect(alert).toContainText('просит ещё посмотреть');
+
+  // «Пусть отдохнёт» — на телефоне совёнок скажет; перерыв идёт дальше, его можно снять.
+  await alert.getByTestId('eye-break-deny').click();
+  await expect(alert).not.toContainText('просит ещё');
+  await expect(alert.getByTestId('eye-break-allow')).toHaveText('Снять перерыв');
+  expect(await onPhone()).toMatchObject({ ask: 'no' });
+  expect(await layoutProblems(page)).toEqual([]);
+  await alert.getByTestId('eye-break-allow').click();
+  await expect(page.getByTestId('eye-break-alert')).toHaveCount(0);
+  expect(await onPhone()).toMatchObject({ secondsLeft: 0, ask: 'yes' });
+  await phone.dispose();
+
+  // Профиль-помощник больше не нужен.
+  await page.goto(`/child/${kid.id}`);
+  await page.getByTestId('child-page').getByTestId('child-delete').click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Удалить' }).click();
+  await expect(page).toHaveURL(/\/children$/);
+});
+
 test('точность (этап 47): уроки подписаны, завершённый день — «не сегодня», а не «позже»', async ({
   page,
 }) => {

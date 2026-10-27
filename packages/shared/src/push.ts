@@ -12,6 +12,7 @@ export const PUSH_KINDS = [
   'call',
   'noise',
   'offline',
+  'eye_break',
 ] as const;
 export type PushKind = (typeof PUSH_KINDS)[number];
 
@@ -25,6 +26,7 @@ export const PUSH_KIND_LABELS: Record<PushKind, string> = {
   call: 'Входящий звонок',
   noise: 'Радионяня: в комнате шумно',
   offline: 'Телефон ребёнка долго не на связи',
+  eye_break: 'Перерыв для глаз: ребёнок просит ещё',
 };
 
 export const pushSubscription = z.object({
@@ -108,6 +110,14 @@ export const pushMessages = {
     kind: 'offline',
     title: 'Телефон снова на связи',
     body: 'Телефон {child} снова на связи.',
+    url: `/remote?child=${childId}`,
+    childId,
+  }),
+  /** Перерыв для глаз (этап 50): ребёнок просит ещё — ответить можно в «Пульте». */
+  eyeBreak: (childId: string): PushMessage => ({
+    kind: 'eye_break',
+    title: 'Перерыв для глаз',
+    body: '{child} просит ещё посмотреть. Разрешить или пусть отдохнёт?',
     url: `/remote?child=${childId}`,
     childId,
   }),

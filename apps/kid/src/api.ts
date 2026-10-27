@@ -34,6 +34,8 @@ export const kidApi = {
   reportVoices: (langs: string[]) => request<void>('POST', '/kid/voices', { langs }),
   today: () => request<KidToday>('GET', '/kid/today'),
   heartbeat: (beat: HeartbeatRequest) => request<HeartbeatResponse>('POST', '/kid/heartbeat', beat),
+  /** Перерыв для глаз (этап 50): начался или ребёнок просит ещё. */
+  eyeBreak: (action: 'start' | 'ask') => request<KidToday>('POST', '/kid/eye-break', { action }),
   lesson: (subject: Subject) => request<{ items: KidItem[] }>('GET', `/kid/lesson/${subject}`),
   battery: (b: BatteryReport) => request<void>('POST', '/kid/battery', b),
   captureToday: () => request<CaptureToday>('GET', '/kid/captures/today'),
