@@ -4421,6 +4421,123 @@ test.describe('буквы', () => {
   });
 });
 
+test.describe('счёт к школе', () => {
+  test('«Математика»: «Счёт» — дорожкой сверху, другие игры — под ней; четыре игры до конца', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(90_000);
+    backend.items = [
+      game(1, { kind: 'clock', half: false, choices: 3, rounds: 2 }, 'math'),
+      game(2, { kind: 'numberHouse', numbers: [5, 6], dots: true, choices: 3, rounds: 2 }, 'math'),
+      game(
+        3,
+        {
+          kind: 'numberNeighbors',
+          from: 10,
+          to: 20,
+          modes: ['gap', 'before', 'after'],
+          choices: 4,
+          rounds: 2,
+        },
+        'math',
+      ),
+      game(4, { kind: 'compareSign', max: 10, equal: true, dots: true, rounds: 2 }, 'math'),
+      game(
+        5,
+        {
+          kind: 'wordProblem',
+          problems: [
+            {
+              emoji: '🍎',
+              a: 3,
+              op: 'plus',
+              b: 2,
+              text: 'У ёжика три яблока. Ему дали ещё два. Сколько стало?',
+            },
+            {
+              emoji: '🎈',
+              a: 5,
+              op: 'minus',
+              b: 2,
+              text: 'Было пять шариков. Два улетели. Сколько осталось?',
+            },
+          ],
+          scene: true,
+          choices: 4,
+          rounds: 2,
+        },
+        'math',
+      ),
+    ];
+    await page.goto('/');
+    const path = page.getByTestId('lesson-path');
+    await expect(path).toBeVisible();
+    await expect(path.getByTestId('tile')).toHaveCount(4);
+    // Часы — плиткой под дорожкой.
+    await expect(page.getByTestId('tile')).toHaveCount(5);
+    await shot(page, 'count-path');
+    const field = page.getByTestId('game-count');
+    const { width, height } = page.viewportSize()!;
+    const boards = ['count-house', 'count-row', 'count-compare', 'count-problem'];
+    for (const [i, board] of boards.entries()) {
+      await path.getByTestId('tile').nth(i).click();
+      await expect(field).toBeVisible();
+      await expect(page.getByTestId(board)).toBeVisible();
+      for (let round = 0; round < 2; round++) {
+        // Доска и варианты целиком в экране — и лёжа, и на маленьком iPhone.
+        const options = page.getByTestId('count-choice');
+        await expect(options.first()).toBeVisible();
+        for (const el of [page.getByTestId(board), ...(await options.all())]) {
+          const box = (await el.boundingBox())!;
+          expect(box.x).toBeGreaterThanOrEqual(0);
+          expect(box.x + box.width).toBeLessThanOrEqual(width + 1);
+          expect(box.y + box.height).toBeLessThanOrEqual(height + 1);
+        }
+        if (round === 0) await shot(page, board);
+        const answer = (await field.getAttribute('data-answer'))!;
+        const option = page.locator(`[data-testid=count-choice][data-value="${answer}"]`);
+        await option.click();
+        await expect(option).toHaveClass(/picked/);
+        if (round === 0)
+          await expect(page.locator('.cnt-option.picked')).toHaveCount(0, { timeout: 6000 });
+      }
+      await expect(path).toBeVisible({ timeout: 8000 });
+      await expect(path.getByTestId('tile').nth(i)).toHaveAttribute('data-done', 'true');
+    }
+    const said = (await spoken(page)).map((s) => s.text);
+    expect(said).toContain('В домике два окошка. Вместе они — как число на крыше.');
+    expect(said).toContain('Сколько в пустом окошке?');
+    expect(said).toContain('Какой знак поставим?');
+    expect(
+      said.some((t) => t.startsWith('У ёжика три яблока') || t.startsWith('Было пять шариков')),
+    ).toBe(true);
+  });
+
+  test('ошибка — вариант гаснет, совёнок повторяет вопрос', async ({ page, backend }) => {
+    backend.items = [
+      game(1, { kind: 'compareSign', max: 10, equal: false, dots: false, rounds: 2 }, 'math'),
+    ];
+    await page.goto('/');
+    await page.getByTestId('tile').first().click();
+    const field = page.getByTestId('game-count');
+    await expect(field).toBeVisible();
+    const answer = (await field.getAttribute('data-answer'))!;
+    const wrong = page.locator(
+      `[data-testid=count-choice][data-value="${answer === '<' ? '>' : '<'}"]`,
+    );
+    const before = (await spoken(page)).filter((s) => s.text === 'Какой знак поставим?').length;
+    await wrong.click();
+    await expect(wrong).toHaveClass(/off/);
+    await expect
+      .poll(
+        async () => (await spoken(page)).filter((s) => s.text === 'Какой знак поставим?').length,
+      )
+      .toBeGreaterThan(before);
+    await expect(field).toHaveAttribute('data-answer', answer);
+  });
+});
+
 test.describe('без интернета', () => {
   test('картинки занятий скачиваются заранее и показываются без сети', async ({
     page,

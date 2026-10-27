@@ -22,6 +22,7 @@
     "./poems": "./src/poems.ts",
     "./audio": "./src/audio.ts",
     "./letters-lessons": "./src/letters-lessons.ts",
+    "./math-lessons": "./src/math-lessons.ts",
     "./schedule": "./src/schedule.ts",
     "./habits": "./src/habits.ts",
     "./bedtime": "./src/bedtime.ts",

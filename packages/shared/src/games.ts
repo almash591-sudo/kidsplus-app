@@ -114,6 +114,27 @@ const plainWord = z.string().regex(/^[А-ЯЁ]{2,10}$/u, 'слово загла�
 /** Эмодзи-картинка из одной или нескольких эмодзи («🍄🍄🍄»). */
 const emojis = z.string().min(1).max(24);
 
+// ─── Счёт (этап 49) ───
+/** «Соседи числа»: пропуск в середине ряда, число перед и число после. */
+export const NEIGHBOR_MODES = ['gap', 'before', 'after'] as const;
+export type NeighborMode = (typeof NEIGHBOR_MODES)[number];
+/** Задача: условие читает совёнок (числа — словами), на экране a предметов и ещё b (или b уходят). */
+const wordProblem = z
+  .object({
+    text: phrase,
+    emoji: z.string().min(1).max(8),
+    a: z.number().int().min(1).max(10),
+    op: z.enum(['plus', 'minus']),
+    b: z.number().int().min(1).max(10),
+  })
+  .refine((p) => (p.op === 'plus' ? p.a + p.b <= 10 : p.a >= p.b), {
+    message: 'ответ от 0 до 10',
+  });
+export type WordProblem = z.infer<typeof wordProblem>;
+/** Ответ задачи. */
+export const problemAnswer = (p: Pick<WordProblem, 'a' | 'op' | 'b'>) =>
+  p.op === 'plus' ? p.a + p.b : p.a - p.b;
+
 /** Картинки «Найди отличия» (этап 43). */
 export const DIFF_SCENES = ['meadow', 'forest', 'sea', 'space'] as const;
 export type DiffScene = (typeof DIFF_SCENES)[number];
@@ -471,6 +492,50 @@ export const gameSpec = z.discriminatedUnion('kind', [
     choices,
     rounds: letterRounds,
   }),
+  // ─── Счёт: подготовка к школе (этап 49) ───
+  /** Домик числа: на крыше число, в одном окошке его часть — найти другую (состав числа). */
+  z.object({
+    kind: z.literal('numberHouse'),
+    numbers: z.array(z.number().int().min(2).max(10)).min(1).max(9),
+    /** В окошках точки, как на кубике, — можно посчитать. */
+    dots: z.boolean().default(true),
+    choices,
+    rounds: letterRounds,
+  }),
+  /** Соседи числа: пропуск в ряду (12 ▢ 14), число перед и после — в пределах from…to. */
+  z
+    .object({
+      kind: z.literal('numberNeighbors'),
+      from: z.number().int().min(1).max(18),
+      to: z.number().int().min(2).max(20),
+      modes: z
+        .array(z.enum(NEIGHBOR_MODES))
+        .min(1)
+        .max(3)
+        .refine((m) => new Set(m).size === m.length, { message: 'режимы не повторяются' }),
+      choices,
+      rounds: letterRounds,
+    })
+    .refine((g) => g.to - g.from >= 2, { message: 'нужно хотя бы три числа подряд' }),
+  /** Больше, меньше, равно: между двумя числами до max поставить знак. */
+  z.object({
+    kind: z.literal('compareSign'),
+    max: z.number().int().min(3).max(20),
+    /** Бывают одинаковые числа — нужен знак «=». */
+    equal: z.boolean().default(true),
+    /** Под числами точки (только до 10) — можно посчитать. */
+    dots: z.boolean().default(false),
+    rounds: letterRounds,
+  }),
+  /** Задачи: совёнок читает условие, на экране — предметы; ответ от 0 до 10. */
+  z.object({
+    kind: z.literal('wordProblem'),
+    problems: z.array(wordProblem).min(1).max(20),
+    /** Показывать предметы; без них — только запись «3 + 2 = ?». */
+    scene: z.boolean().default(true),
+    choices,
+    rounds: letterRounds,
+  }),
   // ─── Счёт и логика (этап 34) ───
   /** Который час: звучит время — найти часы со стрелками; half — и «половина пятого». */
   z.object({
@@ -786,6 +851,10 @@ export const GAME_KINDS: Record<GameKind, string> = {
   wordScheme: 'Звуковая схема',
   pickWord: 'Какое слово?',
   readPhrase: 'Прочитай фразу',
+  numberHouse: 'Домик числа',
+  numberNeighbors: 'Соседи числа',
+  compareSign: 'Больше, меньше, равно',
+  wordProblem: 'Задачи',
   clock: 'Который час?',
   shop: 'Магазин',
   robot: 'Совёнок-робот',
@@ -868,6 +937,10 @@ export function gameImageIds(g: GameSpec): string[] {
     case 'wordScheme':
     case 'pickWord':
     case 'readPhrase':
+    case 'numberHouse':
+    case 'numberNeighbors':
+    case 'compareSign':
+    case 'wordProblem':
     case 'dots':
     case 'tangram':
     case 'colorNumbers':

@@ -15,6 +15,7 @@ import {
   FLASHLIGHT_SCENES,
   GAME_KINDS,
   MOLE_SPEEDS,
+  NEIGHBOR_MODES,
   PATTERNS,
   PIANO_MODES,
   SORTER_SHAPES,
@@ -22,6 +23,7 @@ import {
   TRACE_SHAPES,
   type GameKind,
   type GameSpec,
+  type NeighborMode,
 } from '@kidsplus/shared/games';
 import { RIDDLE_SETS, SUDOKU_SETS, SYLLABLE_WORD_SETS } from '@kidsplus/shared/game-presets';
 import {
@@ -62,7 +64,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { keys, queryClient, useChildren } from '../queries';
-import { problem } from '../lib/game';
+import { problem, wordProblemOf } from '../lib/game';
 import { ImageSlot } from './ImagePicker';
 import { PIANO_MODE_LABELS } from '../pages/GamesPage';
 import { SUBJECT_LABELS as GAME_CATEGORY_LABELS } from '../lib/subjects';
@@ -293,6 +295,38 @@ const DEFAULTS: { [K in GameKind]: Extract<GameSpec, { kind: K }> } = {
     choices: 3,
     rounds: 5,
   },
+  numberHouse: { kind: 'numberHouse', numbers: [3, 4, 5], dots: true, choices: 3, rounds: 6 },
+  numberNeighbors: {
+    kind: 'numberNeighbors',
+    from: 1,
+    to: 10,
+    modes: ['gap'],
+    choices: 3,
+    rounds: 6,
+  },
+  compareSign: { kind: 'compareSign', max: 5, equal: true, dots: true, rounds: 6 },
+  wordProblem: {
+    kind: 'wordProblem',
+    problems: [
+      {
+        emoji: '🍎',
+        a: 2,
+        op: 'plus',
+        b: 1,
+        text: 'У ёжика два яблока. Ему дали ещё одно. Сколько стало?',
+      },
+      {
+        emoji: '🎈',
+        a: 3,
+        op: 'minus',
+        b: 1,
+        text: 'Было три шарика. Один улетел. Сколько осталось?',
+      },
+    ],
+    scene: true,
+    choices: 3,
+    rounds: 4,
+  },
   clock: { kind: 'clock', half: false, choices: 3, rounds: 4 },
   shop: { kind: 'shop', imageIds: [], max: 5, coins: [1], rounds: 4 },
   robot: { kind: 'robot', size: 4, steps: 3, rocks: false, rounds: 3 },
@@ -367,6 +401,18 @@ const DIFF_SCENE_LABELS: Record<(typeof DIFF_SCENES)[number], string> = {
   forest: 'Лес',
   sea: 'Море',
   space: 'Космос',
+};
+
+/** Числа на крыше «Домика числа» (этап 49). */
+const HOUSE_NUMBERS = ['2', '3', '4', '5', '6', '7', '8', '9', '10'] as const;
+const HOUSE_LABELS = Object.fromEntries(HOUSE_NUMBERS.map((n) => [n, n])) as Record<
+  (typeof HOUSE_NUMBERS)[number],
+  string
+>;
+const NEIGHBOR_LABELS: Record<NeighborMode, string> = {
+  gap: 'Пропуск в ряду (4 ▢ 6)',
+  before: 'Число перед',
+  after: 'Число после',
 };
 
 /** Число из NumberInput (пустое поле — минимум). */
@@ -1573,6 +1619,106 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
               return { text, emoji, similar };
             }}
             onChange={(items) => onChange({ ...spec, items })}
+          />
+          <Group grow>
+            <Choices value={spec.choices} onChange={(choices) => onChange({ ...spec, choices })} />
+            <MusicRounds value={spec.rounds} onChange={(rounds) => onChange({ ...spec, rounds })} />
+          </Group>
+        </Stack>
+      );
+    // ─── Этап 49: счёт к школе ───
+    case 'numberHouse':
+      return (
+        <Stack gap="xs">
+          <PickChips
+            label="Числа на крыше — дети ищут их состав"
+            all={HOUSE_NUMBERS}
+            labels={HOUSE_LABELS}
+            value={HOUSE_NUMBERS.filter((n) => spec.numbers.includes(Number(n)))}
+            onChange={(v) => onChange({ ...spec, numbers: v.map(Number) })}
+          />
+          <Checkbox
+            label="В окошках точки — можно посчитать"
+            checked={spec.dots}
+            onChange={(e) => onChange({ ...spec, dots: e.currentTarget.checked })}
+          />
+          <Group grow>
+            <Choices value={spec.choices} onChange={(choices) => onChange({ ...spec, choices })} />
+            <MusicRounds value={spec.rounds} onChange={(rounds) => onChange({ ...spec, rounds })} />
+          </Group>
+        </Stack>
+      );
+    case 'numberNeighbors':
+      return (
+        <Stack gap="xs">
+          <Group grow>
+            <NumberInput
+              label="Числа от"
+              min={1}
+              max={18}
+              value={spec.from}
+              onChange={(v) => onChange({ ...spec, from: num(v, 1) })}
+            />
+            <NumberInput
+              label="до"
+              min={3}
+              max={20}
+              value={spec.to}
+              onChange={(v) => onChange({ ...spec, to: num(v, 3) })}
+            />
+          </Group>
+          <PickChips
+            label="Что спрашивать"
+            all={NEIGHBOR_MODES}
+            labels={NEIGHBOR_LABELS}
+            value={spec.modes}
+            onChange={(modes) => onChange({ ...spec, modes })}
+          />
+          <Group grow>
+            <Choices value={spec.choices} onChange={(choices) => onChange({ ...spec, choices })} />
+            <MusicRounds value={spec.rounds} onChange={(rounds) => onChange({ ...spec, rounds })} />
+          </Group>
+        </Stack>
+      );
+    case 'compareSign':
+      return (
+        <Stack gap="xs">
+          <NumberInput
+            label="Числа до"
+            min={3}
+            max={20}
+            value={spec.max}
+            onChange={(v) => onChange({ ...spec, max: num(v, 3) })}
+          />
+          <Checkbox
+            label="Бывают одинаковые числа — знак «=»"
+            checked={spec.equal}
+            onChange={(e) => onChange({ ...spec, equal: e.currentTarget.checked })}
+          />
+          <Checkbox
+            label="Под числами точки (только до 10)"
+            checked={spec.dots}
+            disabled={spec.max > 10}
+            onChange={(e) => onChange({ ...spec, dots: e.currentTarget.checked })}
+          />
+          <MusicRounds value={spec.rounds} onChange={(rounds) => onChange({ ...spec, rounds })} />
+        </Stack>
+      );
+    case 'wordProblem':
+      return (
+        <Stack gap="xs">
+          <LinesInput
+            key={spec.kind}
+            label="По одной в строке: эмодзи, пример и условие, числа словами («🍎 2 + 1: У ёжика два яблока. Ему дали ещё одно. Сколько стало?»)"
+            value={spec.problems}
+            format={(p) => `${p.emoji} ${p.a} ${p.op === 'plus' ? '+' : '-'} ${p.b}: ${p.text}`}
+            parse={wordProblemOf}
+            onChange={(problems) => onChange({ ...spec, problems })}
+          />
+          <Checkbox
+            label="Показывать предметы (без них — только пример «2 + 1 = ?»)"
+            checked={spec.scene}
+            onChange={(e) => onChange({ ...spec, scene: e.currentTarget.checked })}
           />
           <Group grow>
             <Choices value={spec.choices} onChange={(choices) => onChange({ ...spec, choices })} />

@@ -1,5 +1,10 @@
 import type { GameInput } from '@kidsplus/shared/api';
-import { gameSpec, SYLLABLE_WORD_RE } from '@kidsplus/shared/games';
+import {
+  gameSpec,
+  problemAnswer,
+  SYLLABLE_WORD_RE,
+  type WordProblem,
+} from '@kidsplus/shared/games';
 
 /** Понятная причина, почему игру нельзя сохранить. */
 export function problem(v: GameInput): string | null {
@@ -97,9 +102,51 @@ export function problem(v: GameInput): string | null {
         return `Мало похожих для ${spec.choices} вариантов — добавьте похожие или строки.`;
       break;
     }
+    case 'numberHouse':
+      if (!spec.numbers.length) return 'Выберите хотя бы одно число на крыше.';
+      break;
+    case 'numberNeighbors':
+      if (spec.to - spec.from < 2) return 'Нужно хотя бы три числа подряд: «до» больше «от» на 2.';
+      if (!spec.modes.length) return 'Выберите, что спрашивать.';
+      break;
+    case 'wordProblem':
+      if (!spec.problems.length) return 'Добавьте задачу.';
+      break;
     default:
       break;
   }
   if (spec.kind === 'arithmetic' && !spec.ops.length) return 'Выберите сложение или вычитание.';
   return gameSpec.safeParse(spec).success ? null : 'Проверьте параметры игры.';
+}
+
+/**
+ * Строка задачи (этап 49): «🍎 2 + 1: У ёжика два яблока…» → задача; строка — что не так.
+ * Числа в условии — словами: совёнок читает его вслух, а «2 яблока» легко прочитать не так.
+ */
+export function wordProblemOf(line: string): WordProblem | string {
+  const m = /^(\S+)\s+(\d{1,2})\s*([+\-−–])\s*(\d{1,2})\s*:\s*(.+)$/u.exec(line.trim());
+  if (!m) return 'нужно «эмодзи 2 + 1: условие»';
+  const [, emoji, a, sign, b, text] = m as unknown as [
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+  ];
+  if ([...emoji].length > 4 || emoji.length > 8) return 'одна эмодзи-картинка';
+  const p = {
+    emoji,
+    a: Number(a),
+    op: sign === '+' ? 'plus' : 'minus',
+    b: Number(b),
+    text,
+  } as const;
+  if (p.a < 1 || p.a > 10 || p.b < 1 || p.b > 10) return 'числа от 1 до 10';
+  const answer = problemAnswer(p);
+  if (answer < 0 || answer > 10) return 'ответ — от 0 до 10';
+  if (/\d/u.test(text)) return 'числа в условии — словами: «два яблока»';
+  if (text.length > 200) return 'условие — до 200 знаков';
+  if (!text.endsWith('?')) return 'условие кончается вопросом';
+  return p;
 }

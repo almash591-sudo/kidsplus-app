@@ -13,6 +13,7 @@ import type {
 } from '@kidsplus/shared/games';
 import {
   BUILDER_BLOCKS,
+  problemAnswer,
   DIVE_FISH,
   FISHING_LETTERS,
   ROCKET_COLORS,
@@ -194,6 +195,21 @@ export const schemeIs = (word: string, chips: readonly ('v' | 'c')[]) =>
   `${low(word)}: ${chips.map((c) => (c === 'v' ? 'гласный' : 'согласный')).join(', ')}!`;
 export const PICK_WORD = 'Найди слово к картинке.';
 export const READ_PHRASE = 'Прочитай и найди картинку.';
+
+// Счёт: подготовка к школе (этап 49). Ответ закрепляем общими фразами чисел («семь», «семь!»):
+// они озвучены у всех, а задание — короткими целыми фразами, чтобы звучало естественно.
+export const NUMBER_HOUSE_INTRO = 'В домике два окошка. Вместе они — как число на крыше.';
+export const houseRoof = (n: number) => `На крыше — ${NUMBERS[n]}.`;
+export const houseWindow = (n: number) => `В окошке — ${NUMBERS[n]}.`;
+export const HOUSE_ASK = 'Сколько в пустом окошке?';
+export const NEIGHBORS_INTRO = 'Числа стоят по порядку — как когда считаем.';
+export const NEIGHBOR_GAP = 'Какое число пропало?';
+export const neighborBefore = (n: number) => `Какое число стоит перед числом ${NUMBERS[n]}?`;
+export const neighborAfter = (n: number) => `Какое число стоит после числа ${NUMBERS[n]}?`;
+export const COMPARE_SIGN_INTRO = 'Знак — как клювик: он всегда открыт к большему числу.';
+export const COMPARE_SIGN_ASK = 'Какой знак поставим?';
+export const SIGN_EQUAL = 'Числа одинаковые — значит, равно!';
+export const WORD_PROBLEM_INTRO = 'Послушай задачу и найди ответ.';
 
 // ─── Счёт и логика (этап 34) ───
 const HOURS = [
@@ -587,6 +603,10 @@ export const GAME_INTRO: Record<GameKind, string> = {
   wordScheme: WORD_SCHEME_INTRO,
   pickWord: PICK_WORD,
   readPhrase: READ_PHRASE,
+  numberHouse: NUMBER_HOUSE_INTRO,
+  numberNeighbors: NEIGHBORS_INTRO,
+  compareSign: COMPARE_SIGN_INTRO,
+  wordProblem: WORD_PROBLEM_INTRO,
   clock: CLOCK_PROMPT,
   shop: SHOP_PROMPT,
   robot: ROBOT_PROMPT,
@@ -729,6 +749,38 @@ export function gamePhrases(spec: GameSpec): string[] {
       return [PICK_WORD, ...spec.items.map((i) => sayWord(i.word))];
     case 'readPhrase':
       return [READ_PHRASE, ...spec.items.map((i) => sayWord(i.text))];
+    case 'numberHouse': {
+      const max = Math.max(...spec.numbers);
+      return [
+        NUMBER_HOUSE_INTRO,
+        HOUSE_ASK,
+        PLUS,
+        WILL_BE,
+        ...spec.numbers.map(houseRoof),
+        ...Array.from({ length: max - 1 }, (_, i) => houseWindow(i + 1)),
+      ];
+    }
+    case 'numberNeighbors': {
+      const { from, to, modes } = spec;
+      const span = (lo: number, hi: number) =>
+        Array.from({ length: hi - lo + 1 }, (_, i) => lo + i);
+      return [
+        NEIGHBORS_INTRO,
+        ...(modes.includes('gap') ? [NEIGHBOR_GAP] : []),
+        ...(modes.includes('before') ? span(from + 1, to).map(neighborBefore) : []),
+        ...(modes.includes('after') ? span(from, to - 1).map(neighborAfter) : []),
+      ];
+    }
+    case 'compareSign':
+      return [COMPARE_SIGN_INTRO, COMPARE_SIGN_ASK, MORE_THAN, LESS_THAN, SIGN_EQUAL];
+    case 'wordProblem':
+      return [
+        WORD_PROBLEM_INTRO,
+        PLUS,
+        MINUS,
+        WILL_BE,
+        ...spec.problems.flatMap((p) => [p.text, `${NUMBERS[problemAnswer(p)]}!`]),
+      ];
     // Уровни (этап 34) могут включить половины и цены до 10 — озвучиваем всё заранее.
     case 'clock':
       return [

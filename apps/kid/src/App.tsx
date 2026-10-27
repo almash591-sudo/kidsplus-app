@@ -4,7 +4,14 @@ import { startAutoUpdate } from '@kidsplus/shared/app-update';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { kidApi, NotPairedError } from './api';
 import { playSequence, speechLanguages } from './audio';
-import { categoriesOf, itemsOf, needsCategoryPick, restingIn } from './categories';
+import {
+  categoriesOf,
+  isPathItem,
+  itemsOf,
+  needsCategoryPick,
+  pathLength,
+  restingIn,
+} from './categories';
 import { useBattery } from './battery';
 import { BabyScreen } from './baby/BabyScreen';
 import { AlbumButton, AlbumScreen } from './screens/AlbumScreen';
@@ -53,7 +60,6 @@ import { fromKidQuestion } from './quiz/engine';
 import { QuizScreen } from './quiz/QuizScreen';
 import { DeckScreen } from './screens/DeckScreen';
 import { CategoryScreen, HomeScreen } from './screens/HomeScreen';
-import { isLessonPath } from './screens/LessonPath';
 import { PairScreen } from './screens/PairScreen';
 import { calledStore, RestScreen } from './screens/RestScreen';
 import { BreakScreen } from './screens/BreakScreen';
@@ -141,7 +147,7 @@ function activityOf(s: State, today: KidToday | null): Activity {
 /** Что на экране — для «Управление сейчас» в кабинете. */
 function itemOf(s: State) {
   if (s.screen !== 'run') return null;
-  const item = itemsOf(s.playlist.items, s.category)[s.step.index];
+  const item = itemsOf(s.playlist.items, s.category, Boolean(s.lesson))[s.step.index];
   if (!item) return null;
   const kind = item.kind === 'segment' && s.step.phase === 'quiz' ? 'segment' : item.kind;
   return { kind, id: item.id } as const;
@@ -166,13 +172,13 @@ function menuOf(s: Run, isPlan: boolean): State {
 /** Следующий пункт: урок идёт по кругу; в разделе после последнего — к пунктам раздела. */
 function nextStep(s: State): State {
   if (s.screen !== 'run') return s;
-  const items = itemsOf(s.playlist.items, s.category);
+  const items = itemsOf(s.playlist.items, s.category, Boolean(s.lesson));
   const i = s.lesson ? (s.step.index + 1) % items.length : s.step.index + 1;
   const next = items[i];
   // Дорожка уроков: после урока — назад на дорожку, к новой звёздочке.
-  const path = !s.lesson && isLessonPath(items);
+  const path = !s.lesson && isPathItem(items[s.step.index]);
   // Этап 34: подряд — только новое; дошли до пройденного — обратно в меню.
-  const resting = next && !s.lesson && restingIn(items, next);
+  const resting = next && !s.lesson && restingIn(items.slice(pathLength(items)), next);
   return next && !path && !resting
     ? { ...s, step: { index: i, phase: firstPhase(next), seq: s.step.seq + 1 } }
     : { screen: 'home', playlist: s.playlist, category: s.category };
@@ -569,7 +575,7 @@ export function App() {
     (reason: ExitReason, watched: Watched) => {
       const s = current.current;
       if (s.screen !== 'run') return;
-      const item = itemsOf(s.playlist.items, s.category)[s.step.index];
+      const item = itemsOf(s.playlist.items, s.category, Boolean(s.lesson))[s.step.index];
       const quiz = item?.kind === 'segment' && item.questions.length > 0 ? item : null;
       const late = reason === 'exit' && watched >= QUIZ_AFTER;
       if (quiz && (reason === 'complete' || late)) {
@@ -882,7 +888,7 @@ export function App() {
     }
     case 'run': {
       const { playlist, step } = state;
-      const item = itemsOf(playlist.items, state.category)[step.index]!;
+      const item = itemsOf(playlist.items, state.category, Boolean(state.lesson))[step.index]!;
       // Этап 44: урок «Сегодня» или сам выбрал — для «Что нравится» в «Прогрессе».
       const from = state.lesson ? 'lesson' : 'free';
       if (item.kind === 'deck') {

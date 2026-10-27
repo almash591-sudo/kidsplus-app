@@ -110,6 +110,14 @@ export function gameSummary(spec: GameSpec): string {
       return `${spec.items.map((i) => i.word.toLowerCase()).join(', ')} · раундов: ${spec.rounds}`;
     case 'readPhrase':
       return `${spec.items.map((i) => i.text.toLowerCase()).join(', ')} · раундов: ${spec.rounds}`;
+    case 'numberHouse':
+      return `состав чисел ${spec.numbers.join(', ')} · раундов: ${spec.rounds}`;
+    case 'numberNeighbors':
+      return `числа ${spec.from}–${spec.to} · раундов: ${spec.rounds}`;
+    case 'compareSign':
+      return `числа до ${spec.max}${spec.equal ? ' · и «=»' : ''} · раундов: ${spec.rounds}`;
+    case 'wordProblem':
+      return `задач: ${spec.problems.length} · раундов: ${spec.rounds}`;
     case 'clock':
       return `${spec.half ? 'часы и половины' : 'целые часы'} · раундов: ${spec.rounds}`;
     case 'shop':

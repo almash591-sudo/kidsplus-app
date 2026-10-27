@@ -56,6 +56,7 @@ import { Poem } from './Poem';
 import { Tangram } from './Tangram';
 import { SyllableWord, Word } from './Word';
 import { Beats } from './music/Beats';
+import { CountGame } from './count/CountGame';
 import { LetterGame } from './letters/LetterGame';
 import { MusicChoice } from './music/Choice';
 import { Piano } from './music/Piano';
@@ -110,7 +111,22 @@ const BACKDROPS: [Backdrop, GameKind[]][] = [
       'tracing',
     ],
   ],
-  ['math', ['counting', 'arithmetic', 'compare', 'size', 'clock', 'shop', 'pattern']],
+  [
+    'math',
+    [
+      'counting',
+      'arithmetic',
+      'compare',
+      'size',
+      'clock',
+      'shop',
+      'pattern',
+      'numberHouse',
+      'numberNeighbors',
+      'compareSign',
+      'wordProblem',
+    ],
+  ],
   ['cosmos', ['space']],
 ];
 const OWN_SCENE: GameKind[] = [
@@ -197,6 +213,10 @@ const GAMES: { [K in GameKind]: ComponentType<GameProps<K>> } = {
   wordScheme: LetterGame as ComponentType<GameProps<'wordScheme'>>,
   pickWord: LetterGame as ComponentType<GameProps<'pickWord'>>,
   readPhrase: LetterGame as ComponentType<GameProps<'readPhrase'>>,
+  numberHouse: CountGame as ComponentType<GameProps<'numberHouse'>>,
+  numberNeighbors: CountGame as ComponentType<GameProps<'numberNeighbors'>>,
+  compareSign: CountGame as ComponentType<GameProps<'compareSign'>>,
+  wordProblem: CountGame as ComponentType<GameProps<'wordProblem'>>,
   clock: Clock,
   shop: Shop,
   robot: Robot,
