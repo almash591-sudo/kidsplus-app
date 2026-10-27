@@ -882,6 +882,19 @@ export const OWL_YAWN = 'А-а-ах… Что-то я устал. Скоро с�
 
 /** Видео подряд не открываются (этап 34) — на полчаса без видео. */
 export const VIDEOS_REST = 'Видео сейчас отдыхают. Давай поиграем в игры или посмотрим карточки!';
+/** Вопросы после видео обязательны (этап 50): вышел посреди мультика — сначала вопросы. */
+export const QUIZ_FIRST = 'Сначала ответим на вопросы про мультик!';
+
+/** Перерыв для глаз (этап 50): совёнок объясняет, зовёт подвигаться и может спросить родителей. */
+export const BREAK_START =
+  'Глазки устали смотреть на экран. Пусть отдохнут! Попрыгай, побегай, посмотри в окошко. Я позову, когда можно.';
+export const BREAK_HINT = 'Очень хочется ещё? Нажми на кнопку — я спрошу у мамы и папы.';
+export const BREAK_ASKED = 'Я спросил у мамы и папы. Подождём, что скажут!';
+export const BREAK_YES = 'Разрешили! Можно ещё немножко.';
+export const BREAK_NO = 'Сказали: пусть глазки отдохнут. Отдыхаем!';
+export const BREAK_END = 'Глазки отдохнули! Можно играть дальше.';
+export const BREAK_ASK_FAILED = 'Не получилось спросить. Отдохнём немножко!';
+
 /** Пройденное отдыхает (этап 34): касание бледной плитки. */
 export const REST_TODAY = 'Это уже пройдено сегодня! Выбери что-нибудь новое.';
 export const REST_LEARNED = 'Это ты уже знаешь! Давай что-нибудь новое.';
@@ -934,6 +947,14 @@ export function appPhrases(playlist: KidPlaylist): Phrase[] {
     ...OWL_TAP,
     OWL_YAWN,
     VIDEOS_REST,
+    QUIZ_FIRST,
+    BREAK_START,
+    BREAK_HINT,
+    BREAK_ASKED,
+    BREAK_YES,
+    BREAK_NO,
+    BREAK_END,
+    BREAK_ASK_FAILED,
     REST_TODAY,
     REST_LEARNED,
     CAMERA_ENOUGH,

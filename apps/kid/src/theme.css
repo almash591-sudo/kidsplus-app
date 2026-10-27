@@ -1102,6 +1102,43 @@ html[data-preview]::after {
   line-height: 1.2;
 }
 
+/* Перерыв для глаз (этап 50): круг заполняется, пока идёт отдых; кнопка «спросить». */
+.eye-break-ring {
+  width: 96px;
+  height: 96px;
+  transform: rotate(-90deg);
+}
+
+.eye-break-track,
+.eye-break-fill {
+  fill: none;
+  stroke-width: 10;
+}
+
+.eye-break-track {
+  stroke: rgb(255 255 255 / 0.7);
+}
+
+.eye-break-fill {
+  stroke: #34c759;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear;
+}
+
+.eye-break-ask {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  color: #fff;
+}
+
+.eye-break-asked {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  opacity: 0.75;
+}
+
 @keyframes rest-breathe {
   50% {
     transform: scale(1.03, 0.97);

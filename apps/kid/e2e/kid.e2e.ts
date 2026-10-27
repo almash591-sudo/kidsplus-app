@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test as base, type Page } from '@playwright/test';
 import type { KidBedtime } from '@kidsplus/shared/bedtime';
 import type { KidHabit, KidHabits } from '@kidsplus/shared/habits';
+import type { EyeBreak } from '@kidsplus/shared/schedule';
 import {
   callStatus,
   type CallEvent,
@@ -40,6 +41,8 @@ type Item = Record<string, unknown> & { kind: string; id: string };
 
 interface Backend {
   paired: boolean;
+  /** Перерыв для глаз (этап 50): что телефон просил у сервера. */
+  eyeBreaks?: ('start' | 'ask')[];
   /** Уровни сложности игр (этап 34). */
   levels?: { start: number; byKind: Record<string, number> };
   /** Аудиотека: треки «детям». */
@@ -374,6 +377,17 @@ async function mockBackend(page: Page, backend: Backend) {
         return route.fulfill({ status: 204 });
       case '/api/kid/today':
         return route.fulfill({ json: backend.today ?? OFF_TODAY });
+      case '/api/kid/eye-break': {
+        // Как сервер: начать — если не идёт; «ещё» — один раз за перерыв.
+        const { action } = route.request().postDataJSON() as { action: 'start' | 'ask' };
+        (backend.eyeBreaks ??= []).push(action);
+        const today = (backend.today ??= { ...OFF_TODAY });
+        const eb = today.eyeBreak as EyeBreak | null | undefined;
+        if (eb && action === 'start' && !eb.current?.secondsLeft)
+          eb.current = { id: `b${backend.eyeBreaks.length}`, secondsLeft: eb.rest * 60, ask: null };
+        if (eb?.current && action === 'ask' && !eb.current.ask) eb.current.ask = 'asked';
+        return route.fulfill({ json: today });
+      }
       case '/api/kid/audio':
         return route.fulfill({ json: backend.audio ?? [] });
       case '/api/kid/habits':
@@ -4794,5 +4808,150 @@ test.describe('картинки не растягиваются (этап 35)', 
     await page.waitForTimeout(900);
     await check('deck');
     expect(bad).toEqual([]);
+  });
+});
+
+// ─── Этап 50: вопросы после видео обязательны, перерыв для глаз ──────────────
+
+test.describe('вопросы после видео обязательны (этап 50)', () => {
+  test('после видео «Домой» нет; ушёл после половины — сначала вопросы, и после перезапуска', async ({
+    page,
+    backend,
+  }) => {
+    withQuiz(backend, 4, 1);
+    await startFirst(page);
+    // Фрагмент 30–150 с: досмотрел до 100-й — больше половины.
+    await page.evaluate(() => ((window as unknown as { __yt: { time: number } }).__yt.time = 100));
+    await page.getByTestId('go-home').click();
+    await expect(page.getByTestId('quiz')).toBeVisible();
+    await expect(page.getByTestId('go-home')).toHaveCount(0);
+    await answering(page);
+    expect((await spoken(page)).map((s) => s.text)).toContain(
+      'Сначала ответим на вопросы про мультик!',
+    );
+
+    // Закрыли приложение посреди вопросов — при открытии снова они, «Домой» нет.
+    await page.reload();
+    await expect(page.getByTestId('quiz')).toBeVisible();
+    await expect(page.getByTestId('go-home')).toHaveCount(0);
+    await answering(page);
+    await correct(page).dispatchEvent('pointerdown');
+    await expect(page.getByTestId('quiz-done')).toBeVisible();
+    // Ответил — в меню, а не к следующему видео.
+    await expect(page.getByTestId('tile').first()).toBeVisible({ timeout: 6000 });
+    await page.reload();
+    await expect(page.getByTestId('tile').first()).toBeVisible();
+    await expect(page.getByTestId('quiz')).toHaveCount(0);
+  });
+
+  test('ушёл в начале видео — домой без вопросов', async ({ page, backend }) => {
+    withQuiz(backend, 4, 1);
+    await startFirst(page);
+    await page.evaluate(() => ((window as unknown as { __yt: { time: number } }).__yt.time = 50));
+    await page.getByTestId('go-home').click();
+    await expect(page.getByTestId('tile').first()).toBeVisible();
+    await expect(page.getByTestId('quiz')).toHaveCount(0);
+  });
+});
+
+test.describe('перерыв для глаз (этап 50)', () => {
+  const eyeToday = (backend: Backend) => {
+    const eyeBreak: EyeBreak = { every: 15, rest: 15, current: null };
+    backend.today = { ...OFF_TODAY, eyeBreak };
+    return eyeBreak;
+  };
+  const said = async (page: Page) => (await spoken(page)).map((s) => s.text);
+  /** Сколько секунд у экрана уже набралось (минуты отсчёта прогонять долго; сам счёт — в юнит-тестах). */
+  const seedScreen = (page: Page, used: number) =>
+    page.addInitScript((u) => {
+      if (!localStorage.getItem('kp-eye-break'))
+        localStorage.setItem(
+          'kp-eye-break',
+          JSON.stringify({ used: u, at: Date.now(), brk: null, ended: null }),
+        );
+    }, used);
+
+  test('15 минут у экрана — совёнок объявляет отдых; попросил ещё — родитель разрешил', async ({
+    page,
+    backend,
+  }) => {
+    await page.clock.install({ time: new Date('2026-10-18T10:00:00') });
+    const eb = eyeToday(backend);
+    await seedScreen(page, 880);
+    await page.goto('/');
+    await expect(page.getByTestId('tile').first()).toBeVisible();
+    await page.clock.runFor(10_000);
+    await expect(page.getByTestId('eye-break')).toHaveCount(0);
+    await page.clock.runFor(15_000);
+    await expect(page.getByTestId('eye-break')).toBeVisible();
+    expect(backend.eyeBreaks).toEqual(['start']);
+    await expect
+      .poll(() => said(page))
+      .toContain('Очень хочется ещё? Нажми на кнопку — я спрошу у мамы и папы.');
+
+    await page.getByTestId('eye-break-ask').click();
+    await expect(page.getByTestId('eye-break-asked')).toHaveAttribute('data-ask', 'asked');
+    expect(backend.eyeBreaks).toEqual(['start', 'ask']);
+    await expect.poll(() => said(page)).toContain('Я спросил у мамы и папы. Подождём, что скажут!');
+
+    // Родитель разрешил в «Пульте» — телефон узнаёт и без живого канала.
+    eb.current = { ...eb.current!, secondsLeft: 0, ask: 'yes' };
+    await page.clock.runFor(21_000);
+    await expect(page.getByTestId('eye-break')).toHaveCount(0);
+    await expect(page.getByTestId('tile').first()).toBeVisible();
+    await expect.poll(() => said(page)).toContain('Разрешили! Можно ещё немножко.');
+    // Разрешили — снова 15 минут, перерыв не возвращается сразу.
+    await page.clock.runFor(60_000);
+    await expect(page.getByTestId('eye-break')).toHaveCount(0);
+  });
+
+  test('в мультике — отдых после него, не посреди; отказ родителя; время вышло — играть дальше', async ({
+    page,
+    backend,
+  }) => {
+    await page.clock.install({ time: new Date('2026-10-18T10:00:00') });
+    const eb = eyeToday(backend);
+    await seedScreen(page, 880);
+    await startFirst(page);
+    await page.clock.runFor(60_000);
+    // Посреди мультика не прерываем.
+    await expect(page.getByTestId('pause')).toBeVisible();
+    await expect(page.getByTestId('eye-break')).toHaveCount(0);
+    await page.evaluate(() =>
+      (window as unknown as { __yt: { set(s: number): void } }).__yt.set(0),
+    );
+    await page.clock.runFor(5_000);
+    await expect(page.getByTestId('eye-break')).toBeVisible();
+    // Следующее видео не началось.
+    await expect(page.locator('iframe')).toHaveCount(0);
+
+    await page.getByTestId('eye-break-ask').click();
+    await expect(page.getByTestId('eye-break-asked')).toHaveAttribute('data-ask', 'asked');
+    eb.current = { ...eb.current!, ask: 'no' };
+    await page.clock.runFor(21_000);
+    await expect(page.getByTestId('eye-break-asked')).toHaveAttribute('data-ask', 'no');
+    await expect.poll(() => said(page)).toContain('Сказали: пусть глазки отдохнут. Отдыхаем!');
+
+    // Перезапуск посреди отдыха — перерыв на месте.
+    await page.reload();
+    await expect(page.getByTestId('eye-break')).toBeVisible();
+    await expect(page.getByTestId('eye-break-ask')).toHaveCount(0);
+
+    eb.current = { ...eb.current!, secondsLeft: 0 };
+    await page.clock.runFor(21_000);
+    await expect(page.getByTestId('eye-break')).toHaveCount(0);
+    await expect.poll(() => said(page)).toContain('Глазки отдохнули! Можно играть дальше.');
+    expect(backend.eyeBreaks).toEqual(['start', 'ask']);
+  });
+
+  test('выключен — перерыва нет, сколько ни смотри', async ({ page, backend }) => {
+    await page.clock.install({ time: new Date('2026-10-18T10:00:00') });
+    backend.today = { ...OFF_TODAY, eyeBreak: null };
+    await seedScreen(page, 5000);
+    await page.goto('/');
+    await expect(page.getByTestId('tile').first()).toBeVisible();
+    await page.clock.runFor(30_000);
+    await expect(page.getByTestId('eye-break')).toHaveCount(0);
+    expect(backend.eyeBreaks).toBeUndefined();
   });
 });

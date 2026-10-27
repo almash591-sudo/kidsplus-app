@@ -44,8 +44,11 @@ export function QuizScreen(props: {
   /** Сколько верных ответов нужно; по умолчанию — из настроек ребёнка. */
   count?: number;
   phrases: KidPhrases;
+  /** Сказать перед первым вопросом (этап 50: «Сначала ответим на вопросы!»). */
+  intro?: Speech;
   onDone: () => void;
-  onExit: () => void;
+  /** Нет — нет и «Домой» (этап 50: вопросы после видео обязательны). */
+  onExit?: () => void;
 }) {
   const { source, settings, phrases, onDone } = props;
   const [queue] = useState(() => pickQuestions(props.questions, props.count ?? settings.questions));
@@ -83,18 +86,21 @@ export function QuizScreen(props: {
           question={question}
           optionCount={settings.options}
           phrases={phrases}
+          intro={index === 0 ? props.intro : undefined}
           onCorrect={onCorrect}
         />
       )}
-      <button
-        type="button"
-        className="corner-button home"
-        aria-label="Домой"
-        onClick={props.onExit}
-        data-testid="go-home"
-      >
-        <Icon name="home" size={34} stroke={2.6} />
-      </button>
+      {props.onExit && (
+        <button
+          type="button"
+          className="corner-button home"
+          aria-label="Домой"
+          onClick={props.onExit}
+          data-testid="go-home"
+        >
+          <Icon name="home" size={34} stroke={2.6} />
+        </button>
+      )}
       <div className="quiz-progress" aria-hidden="true">
         {queue.map((_, i) => (
           <span key={i} className={i < index || done ? 'star on' : 'star'}>
@@ -119,6 +125,7 @@ function QuestionRound(props: {
   question: QuizItem;
   optionCount: number;
   phrases: KidPhrases;
+  intro?: Speech;
   onCorrect: () => void;
 }) {
   const { question, phrases } = props;
@@ -127,13 +134,18 @@ function QuestionRound(props: {
   const [faded, setFaded] = useState<ReadonlySet<string>>(new Set());
   const [chosen, setChosen] = useState<string | null>(null);
   const shownAt = useRef(0);
+  const introduced = useRef(false);
   const attempts = useRef(0);
   const wrongTaps = useRef<number[]>([]);
   const alive = useRef(true);
 
   /** Озвучить вопрос; открыть ответы не раньше окончания звука и не раньше MIN_LOCK_MS. */
   const ask = async () => {
-    await Promise.all([playSequence(question.prompt), sleep(MIN_LOCK_MS)]);
+    // Вступление — только перед первым показом вопроса, не при повторе.
+    const say =
+      props.intro && !introduced.current ? [props.intro, ...question.prompt] : question.prompt;
+    introduced.current = true;
+    await Promise.all([playSequence(say), sleep(MIN_LOCK_MS)]);
     if (alive.current) setPhase('answering');
   };
 
