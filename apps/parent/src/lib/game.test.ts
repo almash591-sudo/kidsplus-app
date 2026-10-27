@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { GameSpec } from '@kidsplus/shared/games';
 import { problem, wordProblemOf } from './game';
 
 const img = '00000000-0000-4000-8000-000000000001';
@@ -156,14 +157,14 @@ describe('игры «Счёт» в кабинете (этап 49)', () => {
         spec: { kind: 'numberHouse', numbers: [], dots: true, choices: 3, rounds: 6 },
       }),
     ).toMatch(/число на крыше/);
-    const nb = {
+    const nb: Extract<GameSpec, { kind: 'numberNeighbors' }> = {
       kind: 'numberNeighbors',
       from: 1,
       to: 10,
       modes: ['gap'],
       choices: 3,
       rounds: 6,
-    } as const;
+    };
     expect(problem({ ...base, spec: nb })).toBeNull();
     expect(problem({ ...base, spec: { ...nb, from: 9 } })).toMatch(/три числа подряд/);
     expect(problem({ ...base, spec: { ...nb, modes: [] } })).toMatch(/что спрашивать/);
@@ -193,7 +194,13 @@ describe('игры «Счёт» в кабинете (этап 49)', () => {
   });
 
   it('задачи без строк — нельзя, с задачей — можно', () => {
-    const spec = { kind: 'wordProblem', problems: [], scene: true, choices: 3, rounds: 4 } as const;
+    const spec: Extract<GameSpec, { kind: 'wordProblem' }> = {
+      kind: 'wordProblem',
+      problems: [],
+      scene: true,
+      choices: 3,
+      rounds: 4,
+    };
     expect(problem({ ...base, spec })).toMatch(/Добавьте задачу/);
     const p = wordProblemOf('🍎 2 + 1: Два и ещё одно. Сколько стало?');
     if (typeof p === 'string') throw new Error(p);
