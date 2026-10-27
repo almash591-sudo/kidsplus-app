@@ -71,7 +71,8 @@ jobs:
   # Сквозные тесты детского сценария (Playwright, эмуляция Galaxy S20+).
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # Тесты ~17 мин и установка браузеров до 3 × 7 мин, когда зеркало apt медленное.
+    timeout-minutes: 40
     env:
       COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
       CI: 'true'
@@ -116,7 +117,8 @@ jobs:
   # Детское приложение на iPhone (этап 27): Safari-движок WebKit, iPhone 15 и iPhone SE.
   e2e-iphone:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # Тесты ~17 мин и установка браузеров до 3 × 7 мин, когда зеркало apt медленное.
+    timeout-minutes: 40
     env:
       COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
       CI: 'true'
@@ -161,7 +163,8 @@ jobs:
   # Кабинет на телефонах (этап 24): Safari-движок с экранами iPhone и узкий Android, демо-стенд на PGlite.
   e2e-phone:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # Тесты ~17 мин и установка браузеров до 3 × 7 мин, когда зеркало apt медленное.
+    timeout-minutes: 40
     env:
       COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
       CI: 'true'
