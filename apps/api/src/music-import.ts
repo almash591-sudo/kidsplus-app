@@ -5,6 +5,8 @@
 // игра узнаётся по названию) и назначает их детям по возрасту: младше MUSIC_OLD_FROM_AGE лет —
 // уроки малышей, остальным — уроки дошкольников; в конец списка ребёнка, по порядку дорожки.
 // Владелец решил: уроки включаются детям сразу, родитель может скрыть любой в кабинете.
+// Этап 49 (звуки и чтение): только семье владельца; уроки на слух — между ещё не пройденными,
+// чтение — в конец дорожки.
 import type { GameSpec } from '@kidsplus/shared/games';
 import { LETTER_LESSONS } from '@kidsplus/shared/letters-lessons';
 import {
@@ -17,9 +19,16 @@ import {
 export interface LessonCatalog {
   category: string;
   oldFromAge: number;
-  lessons: { age: 'young' | 'old'; title: string; spec: GameSpec }[];
+  lessons: { age: 'young' | 'old'; title: string; spec: GameSpec; spread?: boolean }[];
   /** Не в конец дорожки, а равномерно между уже назначенными уроками раздела. */
   spread?: boolean;
+  /**
+   * Уроки с пометкой spread — равномерно между ещё не пройденными уроками раздела (после
+   * последнего пройденного), остальные — в конец дорожки. Только при первом назначении.
+   */
+  ahead?: boolean;
+  /** Только детям семьи владельца (families.is_admin): в семьях родственников уроки выбирают сами. */
+  ownerOnly?: boolean;
 }
 
 export const MUSIC_CATALOG: LessonCatalog = {
@@ -38,7 +47,15 @@ export const MUSIC_FUN_CATALOG: LessonCatalog = {
 export const LETTERS_CATALOG: LessonCatalog = {
   category: 'letters',
   oldFromAge: 4,
-  lessons: LETTER_LESSONS,
+  lessons: LETTER_LESSONS.slice(0, 40),
+};
+/** Звуки и чтение (этап 49, уроки 41–60) — дошкольникам семьи владельца. */
+export const LETTERS_SCHOOL_CATALOG: LessonCatalog = {
+  category: 'letters',
+  oldFromAge: 4,
+  lessons: LETTER_LESSONS.slice(40),
+  ahead: true,
+  ownerOnly: true,
 };
 
 /** Текст скрипта для `node -` в контейнере api; commit — сохранить, иначе откатить. */
@@ -48,6 +65,7 @@ export function musicImportScript(commit: boolean, catalog: LessonCatalog = MUSI
     title: l.title,
     kind: l.spec.kind,
     params: l.spec,
+    spread: Boolean(l.spread),
   }));
   return `const { Client } = require('/app/node_modules/pg');
 const LESSONS = ${JSON.stringify(lessons)};
@@ -55,6 +73,8 @@ const OLD_FROM = ${catalog.oldFromAge};
 const CATEGORY = ${JSON.stringify(catalog.category)};
 const DRY = ${!commit};
 const SPREAD = ${Boolean(catalog.spread)};
+const AHEAD = ${Boolean(catalog.ahead)};
+const OWNER_ONLY = ${Boolean(catalog.ownerOnly)};
 const done = (async () => {
   const c = new Client({ connectionString: process.env.DATABASE_URL });
   await c.connect();
@@ -71,7 +91,9 @@ const done = (async () => {
     created++;
   }
   const now = new Date();
-  const kids = (await c.query('select id, birth_year, birth_month from children order by created_at')).rows;
+  const kids = (await c.query(
+    'select c.id, c.birth_year, c.birth_month from children c join families f on f.id = c.family_id where $1::boolean is false or f.is_admin order by c.created_at',
+    [OWNER_ONLY])).rows;
   for (const k of kids) {
     let age = now.getFullYear() - k.birth_year;
     if (now.getMonth() + 1 < k.birth_month) age--;
@@ -84,27 +106,42 @@ const done = (async () => {
         [k.id, ids[l.title], ++pos]);
       added += r.rowCount;
     }
-    if (SPREAD) {
-      // Новые уроки — равномерно между остальными уроками раздела (порядок дорожки — по position).
-      const mine = new Set(LESSONS.filter((x) => x.age === group).map((x) => ids[x.title]));
+    let note = '';
+    if (SPREAD || (AHEAD && added > 0)) {
+      // Порядок дорожки — по position; новые уроки встают на места уроков раздела.
+      const mine = new Map(LESSONS.filter((x) => x.age === group).map((x) => [ids[x.title], x]));
       const rows = (await c.query(
         "select ci.id, ci.interactive_id, ci.position from child_items ci join interactives i on i.id = ci.interactive_id where ci.child_id = $1 and i.category = $2 order by ci.position",
         [k.id, CATEGORY])).rows;
       const rest = rows.filter((r) => !mine.has(r.interactive_id));
-      const fun = rows.filter((r) => mine.has(r.interactive_id));
       const order = [];
-      let f = 0;
-      rest.forEach((r, i) => {
-        order.push(r);
-        // После каждого (rest/fun)-го упражнения — весёлый урок.
-        while (f < fun.length && (f + 1) * rest.length <= (i + 1) * fun.length) order.push(fun[f++]);
-      });
-      while (f < fun.length) order.push(fun[f++]);
+      // Новые уроки — равномерно между others: после каждого (others/news)-го.
+      const mix = (others, news) => {
+        let f = 0;
+        others.forEach((r, i) => {
+          order.push(r);
+          while (f < news.length && (f + 1) * others.length <= (i + 1) * news.length) order.push(news[f++]);
+        });
+        while (f < news.length) order.push(news[f++]);
+      };
+      if (SPREAD) mix(rest, rows.filter((r) => mine.has(r.interactive_id)));
+      else {
+        // Пройденные остаются как есть; уроки на слух — между непройденными; чтение — в конец.
+        const done = new Set((await c.query(
+          "select distinct payload->>'interactiveId' as id from events where child_id = $1 and type = 'interactive_complete'",
+          [k.id])).rows.map((r) => r.id));
+        let last = -1;
+        rest.forEach((r, i) => { if (done.has(String(r.interactive_id))) last = i; });
+        order.push(...rest.slice(0, last + 1));
+        mix(rest.slice(last + 1), rows.filter((r) => mine.has(r.interactive_id) && mine.get(r.interactive_id).spread));
+        order.push(...rows.filter((r) => mine.has(r.interactive_id) && !mine.get(r.interactive_id).spread));
+        note = 'пройдено ' + (last + 1) + ', впереди ' + (rest.length - last - 1);
+      }
       const positions = rows.map((r) => r.position).sort((a, b) => a - b);
       for (let i = 0; i < order.length; i++)
         await c.query('update child_items set position = $1 where id = $2', [positions[i], order[i].id]);
     }
-    console.log('ребёнок', String(k.id).slice(0, 8), 'возраст', age, 'уроки', group, 'назначено', added);
+    console.log('ребёнок', String(k.id).slice(0, 8), 'возраст', age, 'уроки', group, 'назначено', added, note);
   }
   console.log('уроков', LESSONS.length, 'создано игр', created, DRY ? '(холостой прогон, откат)' : '(сохранено)');
   await c.query(DRY ? 'rollback' : 'commit');

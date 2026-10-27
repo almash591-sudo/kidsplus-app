@@ -96,3 +96,52 @@ describe('конструктор игр: почему нельзя сохран�
     expect(problem({ ...base, spec: { kind: 'melody', bells: 3, start: 2, goal: 5 } })).toBeNull();
   });
 });
+
+describe('этап 49: звуки и чтение', () => {
+  const base = { title: 'Буквы', childIds: [] };
+  const words = [
+    { emoji: '🧃', word: 'СОК' },
+    { emoji: '🦊', word: 'ЛИСА' },
+  ];
+
+  it('слов с картинкой — хотя бы 2; слово с мягким звуком не пройдёт', () => {
+    expect(
+      problem({
+        ...base,
+        spec: { kind: 'soundPlace', sound: 'С', words: words.slice(0, 1), rounds: 5 },
+      }),
+    ).toMatch(/2 слова/);
+    expect(
+      problem({ ...base, spec: { kind: 'soundPlace', sound: 'С', words, rounds: 5 } }),
+    ).toBeNull();
+    expect(
+      problem({ ...base, spec: { kind: 'soundPlace', sound: 'Л', words, rounds: 5 } }),
+    ).toMatch(/Проверьте/);
+  });
+
+  it('«Какое слово?» и «Прочитай фразу»: вариантов должно хватить', () => {
+    const items = [
+      { emoji: '🧃', word: 'СОК', similar: ['СОН'] },
+      { emoji: '🐱', word: 'КОТ', similar: ['КИТ'] },
+    ];
+    expect(
+      problem({ ...base, spec: { kind: 'pickWord', items, choices: 3, rounds: 5 } }),
+    ).toBeNull();
+    expect(problem({ ...base, spec: { kind: 'pickWord', items, choices: 4, rounds: 5 } })).toMatch(
+      /Мало похожих для 4/,
+    );
+    const phrases = [
+      { text: 'ДВА ГРИБА', emoji: '🍄🍄', similar: ['🍄'] },
+      { text: 'КОТ И МЯЧ', emoji: '🐱⚽', similar: ['🐶⚽', '🐱🎈'] },
+    ];
+    expect(
+      problem({ ...base, spec: { kind: 'readPhrase', items: phrases, choices: 3, rounds: 5 } }),
+    ).toBeNull();
+    expect(
+      problem({
+        ...base,
+        spec: { kind: 'readPhrase', items: phrases.slice(0, 1), choices: 2, rounds: 5 },
+      }),
+    ).toMatch(/2 строки/);
+  });
+});

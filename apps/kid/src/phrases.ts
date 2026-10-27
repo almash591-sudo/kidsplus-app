@@ -28,6 +28,7 @@ import {
 import { MAX_LEVEL, specAtLevel } from '@kidsplus/shared/levels';
 import { lineStart, partSpeech, poemAnnounce, poemOf, type PoemCode } from '@kidsplus/shared/poems';
 import { SONGS } from '@kidsplus/shared/songs';
+import { soundPlace, syllablesIn, wordScheme } from '@kidsplus/shared/sounds';
 import { NUMBERS, paint, PALETTE } from './games/common';
 import { SORTER } from './games/sorterShapes';
 import { PICTURES } from './games/pictures';
@@ -173,6 +174,26 @@ export const firstLetterAsk = (word: string) => `С какой буквы нач
 export const firstLetterIs = (word: string) => `${low(word)} — на букву ${word[0]}!`;
 export const READ_WORD = 'Прочитай слово и найди картинку.';
 export const sayWord = (word: string) => `${low(word)}!`;
+
+// Звуки и чтение (этап 49). Звук тянем буквой три раза — «ссс», «ммм»: так его слышно,
+// а не название буквы «эс».
+const sound = (l: string) => low(l).repeat(3);
+const SYLLABLE_NUMS = ['', 'один слог', 'два слога', 'три слога', 'четыре слога'];
+export const SYLLABLE_COUNT_INTRO = 'Хлопай на каждый слог и найди, сколько раз хлопнул.';
+export const syllablesAsk = (word: string) => `Сколько слогов в слове ${low(word)}? Похлопай!`;
+export const syllablesAre = (word: string, n: number) => `${low(word)} — ${SYLLABLE_NUMS[n]}!`;
+export const SOUND_PLACE_INTRO = 'Слушай слово. Где звук: в начале, в середине или в конце?';
+export const soundAsk = (letter: string, word: string) =>
+  `Где звук ${sound(letter)} в слове ${low(word)}?`;
+const PLACE_NAMES = { start: 'в начале', middle: 'в середине', end: 'в конце' } as const;
+export const soundIs = (letter: string, word: string, place: keyof typeof PLACE_NAMES) =>
+  `${low(word)} — звук ${sound(letter)} ${PLACE_NAMES[place]}!`;
+export const WORD_SCHEME_INTRO = 'Красная фишка — гласный звук, синяя — согласный.';
+export const schemeAsk = (word: string) => `Найди схему слова ${low(word)}.`;
+export const schemeIs = (word: string, chips: readonly ('v' | 'c')[]) =>
+  `${low(word)}: ${chips.map((c) => (c === 'v' ? 'гласный' : 'согласный')).join(', ')}!`;
+export const PICK_WORD = 'Найди слово к картинке.';
+export const READ_PHRASE = 'Прочитай и найди картинку.';
 
 // ─── Счёт и логика (этап 34) ───
 const HOURS = [
@@ -561,6 +582,11 @@ export const GAME_INTRO: Record<GameKind, string> = {
   syllable: 'Найди слог, который я называю.',
   firstLetter: 'С какой буквы начинается слово?',
   readWord: READ_WORD,
+  syllableCount: SYLLABLE_COUNT_INTRO,
+  soundPlace: SOUND_PLACE_INTRO,
+  wordScheme: WORD_SCHEME_INTRO,
+  pickWord: PICK_WORD,
+  readPhrase: READ_PHRASE,
   clock: CLOCK_PROMPT,
   shop: SHOP_PROMPT,
   robot: ROBOT_PROMPT,
@@ -672,6 +698,37 @@ export function gamePhrases(spec: GameSpec): string[] {
       return spec.words.flatMap((w) => [firstLetterAsk(w.word), firstLetterIs(w.word)]);
     case 'readWord':
       return [READ_WORD, ...spec.words.map((w) => sayWord(w.word))];
+    case 'syllableCount':
+      return [
+        SYLLABLE_COUNT_INTRO,
+        ...spec.words.flatMap((w) => [
+          syllablesAsk(w.word),
+          syllablesAre(w.word, syllablesIn(w.word)),
+        ]),
+      ];
+    case 'soundPlace':
+      return [
+        SOUND_PLACE_INTRO,
+        ...spec.words.flatMap((w) => {
+          const place = soundPlace(w.word, spec.sound);
+          return [
+            soundAsk(spec.sound, w.word),
+            ...(place ? [soundIs(spec.sound, w.word, place)] : []),
+          ];
+        }),
+      ];
+    case 'wordScheme':
+      return [
+        WORD_SCHEME_INTRO,
+        ...spec.words.flatMap((w) => [
+          schemeAsk(w.word),
+          schemeIs(w.word, wordScheme(w.word) ?? []),
+        ]),
+      ];
+    case 'pickWord':
+      return [PICK_WORD, ...spec.items.map((i) => sayWord(i.word))];
+    case 'readPhrase':
+      return [READ_PHRASE, ...spec.items.map((i) => sayWord(i.text))];
     // Уровни (этап 34) могут включить половины и цены до 10 — озвучиваем всё заранее.
     case 'clock':
       return [

@@ -94,11 +94,18 @@ export function specAtLevel(spec: GameSpec, level: number): GameSpec {
     case 'syllable':
     case 'firstLetter':
     case 'readWord':
+    case 'syllableCount':
+    case 'wordScheme':
+    case 'pickWord':
+    case 'readPhrase':
       return {
         ...spec,
         choices: clamp(spec.choices + up, 2, 4),
         rounds: clamp(spec.rounds + 2 * up, 2, 12),
       };
+    // «Где звук?»: мест всегда три — растёт только число раундов.
+    case 'soundPlace':
+      return { ...spec, rounds: clamp(spec.rounds + 2 * up, 2, 12) };
     case 'clock':
       return {
         ...spec,

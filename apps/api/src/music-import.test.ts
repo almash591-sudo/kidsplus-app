@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { LETTERS_CATALOG, MUSIC_FUN_CATALOG, musicImportScript } from './music-import';
+import { LETTER_LESSONS } from '@kidsplus/shared/letters-lessons';
+import {
+  LETTERS_CATALOG,
+  LETTERS_SCHOOL_CATALOG,
+  MUSIC_FUN_CATALOG,
+  musicImportScript,
+} from './music-import';
 import { createChild, girl, makeApp, setupParent, SETUP_TOKEN, type TestApp } from './test/helpers';
 
 interface Pg {
@@ -132,5 +138,59 @@ describe('импорт уроков музыки', () => {
     expect(await count('select count(*) as n from child_items where child_id = $1', [small])).toBe(
       0,
     );
+  });
+
+  it('звуки и чтение: только семье владельца, на слух — между непройденными, чтение — в конец', async () => {
+    const parent = await setupParent(t);
+    const year = new Date().getFullYear();
+    const small = await createChild(t, parent, girl({ nickname: 'Зайка', birthYear: year - 2 }));
+    const big = await createChild(t, parent, girl({ nickname: 'Солнышко', birthYear: year - 6 }));
+    const other = await createChild(t, parent, girl({ nickname: 'Мишутка', birthYear: year - 6 }));
+    const fam = (await pg.query("insert into families (name) values ('Родственники') returning id"))
+      .rows[0]!.id;
+    await pg.query('update children set family_id = $1 where id = $2', [fam, other]);
+    await run(true, LETTERS_CATALOG);
+    // Пройдены уроки 1–9 и 12: 10 и 11 пропущены, но остаются позади.
+    const done = [1, 2, 3, 4, 5, 6, 7, 8, 9, 12].map((n) => LETTER_LESSONS[n - 1]!.title);
+    await pg.query(
+      `insert into events (child_id, type, payload)
+       select $1, 'interactive_complete', jsonb_build_object('interactiveId', id::text)
+       from interactives where title = any($2)`,
+      [big, done],
+    );
+
+    const log = await run(true, LETTERS_SCHOOL_CATALOG);
+    expect(log.some((l) => l.includes('пройдено 12, впереди 28'))).toBe(true);
+    expect(await count("select count(*) as n from interactives where category = 'letters'")).toBe(
+      60,
+    );
+    const titles = async (id: string) =>
+      (
+        await pg.query(
+          `select i.title from child_items c join interactives i on i.id = c.interactive_id
+           where c.child_id = $1 order by c.position`,
+          [id],
+        )
+      ).rows.map((r) => r.title as string);
+    const list = await titles(big);
+    const all = LETTER_LESSONS.map((l) => l.title);
+    expect(list).toHaveLength(60);
+    expect(list.slice(0, 12)).toEqual(all.slice(0, 12));
+    const middle = list.slice(12, 52);
+    const isNew = (x: string) => all.indexOf(x) >= 40;
+    expect(middle.filter((x) => !isNew(x))).toEqual(all.slice(12, 40));
+    expect(middle.filter(isNew)).toEqual(all.slice(40, 52));
+    expect(LETTER_LESSONS.slice(40, 52).every((l) => l.spread)).toBe(true);
+    // Между непройденными — не подряд и с самого начала, а не одной кучей в конце.
+    expect(middle.findIndex(isNew)).toBeLessThan(4);
+    middle.forEach((x, i) => i > 0 && expect(isNew(x) && isNew(middle[i - 1]!)).toBe(false));
+    expect(list.slice(52)).toEqual(all.slice(52));
+
+    expect(await titles(small)).toEqual([]);
+    // Семья родственников: уроки 1–40 у неё были, новые не назначены.
+    expect(await titles(other)).toEqual(all.slice(0, 40));
+
+    await run(true, LETTERS_SCHOOL_CATALOG);
+    expect(await titles(big)).toEqual(list);
   });
 });
