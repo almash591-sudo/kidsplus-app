@@ -6,9 +6,10 @@
 // уроки малышей, остальным — уроки дошкольников; в конец списка ребёнка, по порядку дорожки.
 // Владелец решил: уроки включаются детям сразу, родитель может скрыть любой в кабинете.
 // Этап 49 (звуки и чтение): только семье владельца; уроки на слух — между ещё не пройденными,
-// чтение — в конец дорожки.
+// чтение — в конец дорожки. «Счёт» (этап 49) — тоже только семье владельца, дорожкой в «Математике».
 import type { GameSpec } from '@kidsplus/shared/games';
 import { LETTER_LESSONS } from '@kidsplus/shared/letters-lessons';
+import { MATH_LESSONS } from '@kidsplus/shared/math-lessons';
 import {
   MUSIC_FUN_LESSONS,
   MUSIC_LESSONS,
@@ -55,6 +56,14 @@ export const LETTERS_SCHOOL_CATALOG: LessonCatalog = {
   oldFromAge: 4,
   lessons: LETTER_LESSONS.slice(40),
   ahead: true,
+  ownerOnly: true,
+};
+
+/** Счёт к школе (этап 49) — дошкольникам семьи владельца, в конец, по порядку дорожки. */
+export const MATH_COUNT_CATALOG: LessonCatalog = {
+  category: 'math',
+  oldFromAge: 4,
+  lessons: MATH_LESSONS,
   ownerOnly: true,
 };
 

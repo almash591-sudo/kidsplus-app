@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { LETTER_LESSONS } from '@kidsplus/shared/letters-lessons';
+import { MATH_LESSONS } from '@kidsplus/shared/math-lessons';
 import {
   LETTERS_CATALOG,
   LETTERS_SCHOOL_CATALOG,
+  MATH_COUNT_CATALOG,
   MUSIC_FUN_CATALOG,
   musicImportScript,
 } from './music-import';
@@ -192,5 +194,37 @@ describe('импорт уроков музыки', () => {
 
     await run(true, LETTERS_SCHOOL_CATALOG);
     expect(await titles(big)).toEqual(list);
+  });
+
+  it('«Счёт»: 20 уроков в «Математике» только старшему семьи владельца, по порядку, без дублей', async () => {
+    const parent = await setupParent(t);
+    const year = new Date().getFullYear();
+    const small = await createChild(t, parent, girl({ nickname: 'Зайка', birthYear: year - 2 }));
+    const big = await createChild(t, parent, girl({ nickname: 'Солнышко', birthYear: year - 6 }));
+    const other = await createChild(t, parent, girl({ nickname: 'Мишутка', birthYear: year - 6 }));
+    const fam = (await pg.query("insert into families (name) values ('Родственники') returning id"))
+      .rows[0]!.id;
+    await pg.query('update children set family_id = $1 where id = $2', [fam, other]);
+    await run(true, LETTERS_CATALOG);
+    await run(true, MATH_COUNT_CATALOG);
+    expect(await count("select count(*) as n from interactives where category = 'math'")).toBe(20);
+    const math = async (id: string) =>
+      (
+        await pg.query(
+          `select i.title, i.kind from child_items c join interactives i on i.id = c.interactive_id
+           where c.child_id = $1 and i.category = 'math' order by c.position`,
+          [id],
+        )
+      ).rows.map((r) => r.title as string);
+    expect(await math(big)).toEqual(MATH_LESSONS.map((l) => l.title));
+    expect(await math(small)).toEqual([]);
+    expect(await math(other)).toEqual([]);
+    // Буквы остались на своих местах — «Счёт» добавлен в конец.
+    expect(await count('select count(*) as n from child_items where child_id = $1', [big])).toBe(
+      60,
+    );
+    await run(true, MATH_COUNT_CATALOG);
+    expect(await count("select count(*) as n from interactives where category = 'math'")).toBe(20);
+    expect(await math(big)).toHaveLength(20);
   });
 });
