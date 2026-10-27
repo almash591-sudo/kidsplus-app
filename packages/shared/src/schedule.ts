@@ -159,6 +159,28 @@ export const REST_LABELS: Record<RestReason, string> = {
   rest: 'Глазкам отдых',
 };
 
+/**
+ * Перерыв для глаз (этап 50): после `every` минут у экрана — `rest` минут отдыха. Время экрана
+ * считает телефон; начало перерыва, просьбу «ещё» и ответ родителя хранит сервер.
+ */
+export const EYE_BREAK_EVERY = [10, 15, 20, 30] as const;
+export const EYE_BREAK_REST = [5, 10, 15, 20] as const;
+export type EyeBreakAsk = 'asked' | 'yes' | 'no';
+
+export interface EyeBreak {
+  every: number;
+  rest: number;
+  /** Текущий или последний перерыв; null — ещё не было. */
+  current: {
+    /** Начало (ISO): по нему телефон узнаёт свой перерыв. */
+    id: string;
+    /** До конца, секунд; 0 — закончился или родитель разрешил продолжить. */
+    secondsLeft: number;
+    /** Ребёнок попросил ещё (asked) и ответ родителя (yes — разрешил, no — пусть отдохнёт). */
+    ask: EyeBreakAsk | null;
+  } | null;
+}
+
 export interface KidToday {
   /** off — расписание выключено (разделы на выбор, как раньше). */
   mode: 'off' | 'plan';
@@ -178,6 +200,8 @@ export interface KidToday {
   volume: number | null;
   /** «Пора спать» (этап 31): скоро отбой или ночь; null — день. */
   bedtime: BedtimeNow | null;
+  /** Перерыв для глаз (этап 50); null — выключен у ребёнка. */
+  eyeBreak: EyeBreak | null;
 }
 
 /** Чем занят ребёнок: предмет урока, свободное время или экран «Сегодня». */
@@ -211,8 +235,14 @@ export const controlRequest = z.discriminatedUnion('action', [
   z.object({ action: z.literal('wake') }),
   z.object({ action: z.literal('call') }),
   z.object({ action: z.literal('volume'), level: z.number().int().min(0).max(100) }),
+  /** Перерыв для глаз: allow — снять (разрешить ещё), нет — «пусть отдохнёт». */
+  z.object({ action: z.literal('eyeBreak'), allow: z.boolean() }),
 ]);
 export type ControlRequest = z.infer<typeof controlRequest>;
+
+/** Телефон: перерыв начался (время экрана вышло) или ребёнок просит ещё. */
+export const eyeBreakRequest = z.object({ action: z.enum(['start', 'ask']) });
+export type EyeBreakRequest = z.infer<typeof eyeBreakRequest>;
 
 /** «Управление сейчас»: день ребёнка и что на экране. */
 export interface ChildNow extends KidToday {
@@ -331,6 +361,7 @@ export function computeToday(s: DayState): KidToday {
       calledAt: null,
       volume: null,
       bedtime: null,
+      eyeBreak: null,
     };
 
   const w = s.schedule.windows[s.clock.weekday];
@@ -357,6 +388,7 @@ export function computeToday(s: DayState): KidToday {
     calledAt: null,
     volume: null,
     bedtime: null,
+    eyeBreak: null,
   };
 }
 

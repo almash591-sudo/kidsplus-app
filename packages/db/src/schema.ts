@@ -126,10 +126,23 @@ export const children = pgTable(
     rest: text(),
     /** Повтор пройденного (этап 34): weekly | never | free. */
     repeatMode: text().notNull().default('weekly'),
+    /** Перерыв для глаз (этап 50): минут экрана до перерыва; null — выключен. */
+    eyeBreakEvery: integer(),
+    /** Минут отдыха в перерыве. */
+    eyeBreakRest: integer().notNull().default(15),
+    /** Текущий или последний перерыв: начало, конец (родитель разрешил — раньше), просьба. */
+    eyeBreakAt: timestamp({ withTimezone: true }),
+    eyeBreakUntil: timestamp({ withTimezone: true }),
+    /** asked — ребёнок попросил ещё; yes / no — ответ родителя. */
+    eyeBreakAsk: text(),
     createdAt: createdAt(),
   },
   (t) => [
     check('children_birth_month', sql`${t.birthMonth} between 1 and 12`),
+    check(
+      'children_eye_break',
+      sql`(${t.eyeBreakEvery} is null or ${t.eyeBreakEvery} between 5 and 60) and ${t.eyeBreakRest} between 1 and 60`,
+    ),
     check(
       'children_quiz_options',
       sql`${t.quizOptions} is null or ${t.quizOptions} between 2 and 4`,

@@ -71,6 +71,18 @@ describe('глазами ребёнка', () => {
       payload: { level: 10, charging: false },
     });
     expect(battery.statusCode).toBe(204);
+
+    // Перерыв для глаз (этап 50) у ребёнка не начинается из-за просмотра.
+    await t.db.update(schema.children).set({ eyeBreakEvery: 15 });
+    const pause = await t.app.inject({
+      method: 'POST',
+      url: '/api/kid/eye-break',
+      cookies: view,
+      payload: { action: 'start' },
+    });
+    expect(pause.statusCode).toBe(200);
+    const [row] = await t.db.select().from(schema.children);
+    expect(row!.eyeBreakAt).toBeNull();
   });
 
   it('через 2 часа доступ закрывается сам', async () => {

@@ -135,6 +135,28 @@ describe('push-уведомления', () => {
     expect(sent.filter((s) => s.payload.kind === 'video')).toHaveLength(1);
   });
 
+  it('перерыв для глаз: «просит ещё» — один раз за перерыв, без имени (этап 50)', async () => {
+    await subscribe({ ...SUB, kinds: ['eye_break'] });
+    const device = await pairDevice(t, parent, child);
+    await t.db.update(schema.children).set({ eyeBreakEvery: 15 });
+    const kid = (action: string) =>
+      t.app.inject({
+        method: 'POST',
+        url: '/api/kid/eye-break',
+        cookies: device,
+        payload: { action },
+      });
+    await kid('ask'); // перерыва ещё нет — просить не о чем
+    await kid('start');
+    await kid('ask');
+    await kid('ask');
+    await flush();
+    const asks = sent.filter((s) => s.payload.kind === 'eye_break');
+    expect(asks).toHaveLength(1);
+    expect(asks[0]!.payload).toMatchObject({ childId: child, url: `/remote?child=${child}` });
+    expect(JSON.stringify(asks[0]!.payload)).not.toContain('Зайка');
+  });
+
   it('виды, которые родитель выключил, не приходят', async () => {
     await subscribe({ ...SUB, kinds: ['weekly'] });
     const device = await pairDevice(t, parent, child);

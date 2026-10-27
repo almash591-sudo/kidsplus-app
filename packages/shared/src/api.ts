@@ -103,6 +103,12 @@ export const childInput = z.object({
    * (3 раза) — неделю; never — выученное больше не предлагается; free — без ограничений.
    */
   repeatMode: z.enum(REPEAT_MODES).default('weekly'),
+  /**
+   * Перерыв для глаз (этап 50): через сколько минут у экрана — отдых; null — выключен.
+   * Сколько минут отдыхать — eyeBreakRest.
+   */
+  eyeBreakEvery: z.number().int().min(5).max(60).nullable().default(null),
+  eyeBreakRest: z.number().int().min(1).max(60).default(15),
 });
 export type ChildInput = z.input<typeof childInput>;
 
