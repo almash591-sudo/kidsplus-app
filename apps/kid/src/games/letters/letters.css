@@ -85,11 +85,13 @@
   font-size: min(10vw, 6.5vh);
 }
 
-/* Схемы — столбиком: длинные слова не помещаются в ряд. */
-.letters.soundPlace .letters-options,
-.letters.wordScheme .letters-options {
-  flex-direction: column;
-  align-items: center;
+/* Схемы — столбиком: длинные слова не помещаются в ряд; лёжа — в ряд, по высоте не влезут. */
+@media (orientation: portrait) {
+  .letters.soundPlace .letters-options,
+  .letters.wordScheme .letters-options {
+    flex-direction: column;
+    align-items: center;
+  }
 }
 
 .letters-option.scheme {

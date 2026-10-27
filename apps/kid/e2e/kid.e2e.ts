@@ -4296,6 +4296,115 @@ test.describe('буквы', () => {
     expect(said.some((t) => t.startsWith('Найди букву '))).toBe(true);
     expect(said).toContain('Прочитай слово и найди картинку.');
   });
+
+  test('звуки и чтение: слоги, место звука, схема, слово и фраза — всё в экране', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(90_000);
+    backend.items = [
+      game(
+        1,
+        {
+          kind: 'syllableCount',
+          words: [
+            { emoji: '🐱', word: 'КОТ' },
+            { emoji: '🌙', word: 'ЛУНА' },
+            { emoji: '🚀', word: 'РАКЕТА' },
+          ],
+          choices: 4,
+          rounds: 2,
+        },
+        'letters',
+      ),
+      game(
+        2,
+        {
+          kind: 'soundPlace',
+          sound: 'С',
+          words: [
+            { emoji: '🧃', word: 'СОК' },
+            { emoji: '🦊', word: 'ЛИСА' },
+            { emoji: '👃', word: 'НОС' },
+          ],
+          rounds: 2,
+        },
+        'letters',
+      ),
+      game(
+        3,
+        {
+          kind: 'wordScheme',
+          words: [
+            { emoji: '👒', word: 'ПАНАМА' },
+            { emoji: '🦆', word: 'УТКА' },
+          ],
+          choices: 4,
+          rounds: 2,
+        },
+        'letters',
+      ),
+      game(
+        4,
+        {
+          kind: 'pickWord',
+          items: [
+            { emoji: '🐱', word: 'КОТ', similar: ['КИТ', 'РОТ', 'КРОТ'] },
+            { emoji: '🧃', word: 'СОК', similar: ['СОН', 'СОМ', 'СУК'] },
+          ],
+          choices: 4,
+          rounds: 2,
+        },
+        'letters',
+      ),
+      game(
+        5,
+        {
+          kind: 'readPhrase',
+          items: [
+            { text: 'ДВА ГРИБА', emoji: '🍄🍄', similar: ['🍄🍄🍄', '🍄', '🍄🍄🍄🍄'] },
+            { text: 'КОТ СПИТ НА ДИВАНЕ', emoji: '🐱🛋️', similar: ['🐶🛋️', '🐱🛏️', '🐱⚽'] },
+          ],
+          choices: 4,
+          rounds: 2,
+        },
+        'letters',
+      ),
+    ];
+    await page.goto('/');
+    await expect(page.getByTestId('lesson-path')).toBeVisible();
+    const field = page.getByTestId('game-letters');
+    const { width, height } = page.viewportSize()!;
+    for (const [i, name] of ['count', 'sound', 'scheme', 'pick', 'phrase'].entries()) {
+      await page.getByTestId('tile').nth(i).click();
+      await expect(field).toBeVisible();
+      for (let round = 0; round < 2; round++) {
+        // Варианты целиком в экране: ни схема, ни фраза не уезжают за край.
+        const options = page.getByTestId('letters-option');
+        await expect(options.first()).toBeVisible();
+        for (const box of await options.evaluateAll((els) =>
+          els.map((el) => el.getBoundingClientRect().toJSON() as DOMRect),
+        )) {
+          expect(box.left).toBeGreaterThanOrEqual(0);
+          expect(box.right).toBeLessThanOrEqual(width);
+          expect(box.bottom).toBeLessThanOrEqual(height);
+        }
+        if (round === 0) await shot(page, `letters-${name}`);
+        const answer = (await field.getAttribute('data-answer'))!;
+        const option = page.locator(`[data-testid=letters-option][data-value="${answer}"]`);
+        await option.click();
+        await expect(option).toHaveClass(/picked/);
+        if (round === 0)
+          await expect(page.locator('.letters-option.picked')).toHaveCount(0, { timeout: 5000 });
+      }
+      await expect(page.getByTestId('lesson-path')).toBeVisible({ timeout: 8000 });
+    }
+    const said = (await spoken(page)).map((s) => s.text);
+    expect(said).toContain('Хлопай на каждый слог и найди, сколько раз хлопнул.');
+    expect(said.some((t) => /^Где звук ссс в слове (сок|лиса|нос)\?$/.test(t))).toBe(true);
+    expect(said).toContain('Найди слово к картинке.');
+    expect(said).toContain('Прочитай и найди картинку.');
+  });
 });
 
 test.describe('без интернета', () => {
