@@ -79,6 +79,24 @@ export function problem(v: GameInput): string | null {
     case 'tangram':
       if (!spec.figures.length) return 'Выберите фигуру.';
       break;
+    case 'syllableCount':
+    case 'soundPlace':
+    case 'wordScheme':
+      if (spec.words.length < 2) return 'Нужно хотя бы 2 слова с картинкой.';
+      break;
+    case 'pickWord':
+    case 'readPhrase': {
+      if (spec.items.length < 2) return 'Нужно хотя бы 2 строки.';
+      // Обманки — сначала похожие, потом ответы других строк: вариантов должно хватить.
+      const rows =
+        spec.kind === 'pickWord'
+          ? spec.items.map((i) => [i.word, ...i.similar])
+          : spec.items.map((i) => [i.emoji, ...i.similar]);
+      const answers = rows.map((r) => r[0]!);
+      if (rows.some((r) => new Set([...answers, ...r]).size < spec.choices))
+        return `Мало похожих для ${spec.choices} вариантов — добавьте похожие или строки.`;
+      break;
+    }
     default:
       break;
   }

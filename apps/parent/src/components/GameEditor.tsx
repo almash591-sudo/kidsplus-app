@@ -34,6 +34,13 @@ import {
 } from '@kidsplus/shared/poems';
 import { SONG_IDS, SONGS, type SongId } from '@kidsplus/shared/songs';
 import {
+  SOUND_LETTERS,
+  soundProblem,
+  syllablesIn,
+  wordScheme,
+  type SoundLetter,
+} from '@kidsplus/shared/sounds';
+import {
   ActionIcon,
   Alert,
   Button,
@@ -52,7 +59,7 @@ import {
   TextInput,
 } from '@mantine/core';
 import { useMutation } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { keys, queryClient, useChildren } from '../queries';
 import { problem } from '../lib/game';
@@ -236,6 +243,54 @@ const DEFAULTS: { [K in GameKind]: Extract<GameSpec, { kind: K }> } = {
       { emoji: '🏠', word: 'ДОМ' },
     ],
     choices: 2,
+    rounds: 5,
+  },
+  syllableCount: {
+    kind: 'syllableCount',
+    words: [
+      { emoji: '🐱', word: 'КОТ' },
+      { emoji: '🌙', word: 'ЛУНА' },
+      { emoji: '🚀', word: 'РАКЕТА' },
+    ],
+    choices: 3,
+    rounds: 5,
+  },
+  soundPlace: {
+    kind: 'soundPlace',
+    sound: 'С',
+    words: [
+      { emoji: '🧃', word: 'СОК' },
+      { emoji: '🦊', word: 'ЛИСА' },
+      { emoji: '👃', word: 'НОС' },
+    ],
+    rounds: 5,
+  },
+  wordScheme: {
+    kind: 'wordScheme',
+    words: [
+      { emoji: '🐱', word: 'КОТ' },
+      { emoji: '🦆', word: 'УТКА' },
+      { emoji: '🌙', word: 'ЛУНА' },
+    ],
+    choices: 3,
+    rounds: 5,
+  },
+  pickWord: {
+    kind: 'pickWord',
+    items: [
+      { emoji: '🐱', word: 'КОТ', similar: ['КИТ', 'РОТ'] },
+      { emoji: '🧃', word: 'СОК', similar: ['СОН', 'СОМ'] },
+    ],
+    choices: 3,
+    rounds: 5,
+  },
+  readPhrase: {
+    kind: 'readPhrase',
+    items: [
+      { text: 'ДВА ГРИБА', emoji: '🍄🍄', similar: ['🍄🍄🍄', '🍄'] },
+      { text: 'КОТ И МЯЧ', emoji: '🐱⚽', similar: ['🐱🎈', '🐶⚽'] },
+    ],
+    choices: 3,
     rounds: 5,
   },
   clock: { kind: 'clock', half: false, choices: 3, rounds: 4 },
@@ -1386,6 +1441,145 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
           </Group>
         </Stack>
       );
+    // ─── Этап 49: звуки и чтение ───
+    case 'syllableCount':
+      return (
+        <Stack gap="xs">
+          <LinesInput
+            key={spec.kind}
+            label="Слова с картинкой — по одному в строке: эмодзи и слово («🐱 КОТ»)"
+            value={spec.words}
+            format={(w) => `${w.emoji} ${w.word}`}
+            parse={(line) => {
+              const w = picWordOf(line);
+              if (typeof w === 'string') return w;
+              const n = syllablesIn(w.word);
+              return n >= 1 && n <= 4 ? w : 'нужно слово из 1–4 слогов';
+            }}
+            onChange={(words) => onChange({ ...spec, words })}
+          />
+          <Group grow>
+            <Choices value={spec.choices} onChange={(choices) => onChange({ ...spec, choices })} />
+            <MusicRounds value={spec.rounds} onChange={(rounds) => onChange({ ...spec, rounds })} />
+          </Group>
+        </Stack>
+      );
+    case 'soundPlace':
+      return (
+        <Stack gap="xs">
+          <Select
+            label="Звук"
+            description="Только звуки, которые можно протянуть: «ссс», «ммм»"
+            data={[...SOUND_LETTERS]}
+            value={spec.sound}
+            allowDeselect={false}
+            onChange={(v) => v && onChange({ ...spec, sound: v as SoundLetter })}
+          />
+          <LinesInput
+            key={spec.kind}
+            label="Слова с картинкой — эмодзи и слово; звук в начале, в середине или в конце"
+            value={spec.words}
+            format={(w) => `${w.emoji} ${w.word}`}
+            parse={(line) => {
+              const w = picWordOf(line);
+              return typeof w === 'string' ? w : (soundProblem(w.word, spec.sound) ?? w);
+            }}
+            recheck={spec.sound}
+            onChange={(words) => onChange({ ...spec, words })}
+          />
+          <MusicRounds value={spec.rounds} onChange={(rounds) => onChange({ ...spec, rounds })} />
+        </Stack>
+      );
+    case 'wordScheme':
+      return (
+        <Stack gap="xs">
+          <LinesInput
+            key={spec.kind}
+            label="Слова с картинкой — эмодзи и слово до 6 букв, только с твёрдыми согласными"
+            value={spec.words}
+            format={(w) => `${w.emoji} ${w.word}`}
+            parse={(line) => {
+              const w = picWordOf(line);
+              if (typeof w === 'string') return w;
+              return (wordScheme(w.word)?.length ?? 9) <= 6
+                ? w
+                : 'до 6 букв, без Е, Ё, Ю, Я, Й, Ь, Ч, Щ и мягких звуков';
+            }}
+            onChange={(words) => onChange({ ...spec, words })}
+          />
+          <Group grow>
+            <Choices value={spec.choices} onChange={(choices) => onChange({ ...spec, choices })} />
+            <MusicRounds value={spec.rounds} onChange={(rounds) => onChange({ ...spec, rounds })} />
+          </Group>
+        </Stack>
+      );
+    case 'pickWord':
+      return (
+        <Stack gap="xs">
+          <LinesInput
+            key={spec.kind}
+            label="По одному в строке: эмодзи, слово и похожие слова («🐱 КОТ: КИТ, РОТ, КРОТ»)"
+            value={spec.items}
+            format={(i) => `${i.emoji} ${i.word}: ${i.similar.join(', ')}`}
+            parse={(line) => {
+              const m = /^(\S+)\s+([А-ЯЁа-яё]{2,10})\s*:\s*(.+)$/u.exec(line);
+              if (!m || m[1]!.length > 16) return 'нужно «эмодзи СЛОВО: похожие слова»';
+              const word = m[2]!.toUpperCase();
+              const similar = [
+                ...new Set(
+                  m[3]!
+                    .toUpperCase()
+                    .split(/[\s,]+/)
+                    .filter((x) => /^[А-ЯЁ]{2,10}$/u.test(x) && x !== word),
+                ),
+              ];
+              if (similar.length < 1 || similar.length > 3) return 'похожих слов — от 1 до 3';
+              return { emoji: m[1]!, word, similar };
+            }}
+            onChange={(items) => onChange({ ...spec, items })}
+          />
+          <Group grow>
+            <Choices value={spec.choices} onChange={(choices) => onChange({ ...spec, choices })} />
+            <MusicRounds value={spec.rounds} onChange={(rounds) => onChange({ ...spec, rounds })} />
+          </Group>
+        </Stack>
+      );
+    case 'readPhrase':
+      return (
+        <Stack gap="xs">
+          <LinesInput
+            key={spec.kind}
+            label="По одной в строке: фраза = ответ | похожие картинки («ДВА ГРИБА = 🍄🍄 | 🍄🍄🍄, 🍄»)"
+            value={spec.items}
+            format={(i) => `${i.text} = ${i.emoji} | ${i.similar.join(', ')}`}
+            parse={(line) => {
+              const m = /^([^=]+)=([^|]+)\|(.+)$/u.exec(line);
+              if (!m) return 'нужно «ФРАЗА = картинка | похожие, через запятую»';
+              const text = m[1]!.trim().toUpperCase().replace(/\s+/g, ' ');
+              if (!/^[А-ЯЁ]{1,10}( [А-ЯЁ]{1,10}){1,3}$/u.test(text) || text.length > 32)
+                return 'фраза из 2–4 слов';
+              const emoji = m[2]!.trim();
+              const similar = [
+                ...new Set(
+                  m[3]!
+                    .split(',')
+                    .map((x) => x.trim())
+                    .filter((x) => x && x !== emoji),
+                ),
+              ];
+              if (!emoji || emoji.length > 24 || similar.some((x) => x.length > 24))
+                return 'картинка — до 24 знаков';
+              if (similar.length < 1 || similar.length > 3) return 'похожих картинок — от 1 до 3';
+              return { text, emoji, similar };
+            }}
+            onChange={(items) => onChange({ ...spec, items })}
+          />
+          <Group grow>
+            <Choices value={spec.choices} onChange={(choices) => onChange({ ...spec, choices })} />
+            <MusicRounds value={spec.rounds} onChange={(rounds) => onChange({ ...spec, rounds })} />
+          </Group>
+        </Stack>
+      );
     // ─── Этап 34 ───
     case 'clock':
       return (
@@ -2216,6 +2410,70 @@ function Presets<T>(props: {
         </Text>
       )}
     </Stack>
+  );
+}
+
+/** «🐱 КОТ» → слово с картинкой; строка — что не так. */
+function picWordOf(line: string): { emoji: string; word: string } | string {
+  const p = line.split(/\s+/);
+  if (p.length !== 2 || !/^[А-ЯЁа-яё]{2,10}$/u.test(p[1]!)) return 'нужно «эмодзи СЛОВО»';
+  return { emoji: p[0]!, word: p[1]!.toUpperCase() };
+}
+
+/**
+ * Список по строкам (этап 49): текст правится свободно, в игру идут подходящие строки,
+ * а под полем — какие строки не подошли и почему. recheck — от чего ещё зависит проверка.
+ */
+function LinesInput<T>(props: {
+  label: string;
+  value: T[];
+  format: (x: T) => string;
+  parse: (line: string) => T | string;
+  recheck?: unknown;
+  onChange: (xs: T[]) => void;
+}) {
+  const [text, setText] = useState(() => props.value.map(props.format).join('\n'));
+  const lines = text
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
+  const parsed = lines.map((line) => ({ line, r: props.parse(line) }));
+  const good = parsed.flatMap(({ r }) => (typeof r === 'string' ? [] : [r]));
+  const bad = parsed.filter(({ r }) => typeof r === 'string');
+  const emit = (t: string) =>
+    props.onChange(
+      t
+        .split('\n')
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .flatMap((l) => {
+          const r = props.parse(l);
+          return typeof r === 'string' ? [] : [r];
+        }),
+    );
+  useEffect(() => {
+    if (props.recheck !== undefined) emit(text);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- проверить заново, когда сменилось условие
+  }, [props.recheck]);
+  return (
+    <Textarea
+      label={props.label}
+      description={`В игре: ${good.length}`}
+      autosize
+      minRows={3}
+      value={text}
+      error={
+        bad.length > 0 &&
+        bad
+          .slice(0, 3)
+          .map(({ line, r }) => `«${line}» — ${r as string}`)
+          .join('; ') + (bad.length > 3 ? ` и ещё ${bad.length - 3}` : '')
+      }
+      onChange={(e) => {
+        setText(e.currentTarget.value);
+        emit(e.currentTarget.value);
+      }}
+    />
   );
 }
 

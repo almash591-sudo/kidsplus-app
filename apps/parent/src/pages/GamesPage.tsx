@@ -101,7 +101,15 @@ export function gameSummary(spec: GameSpec): string {
       return `${spec.syllables.join(', ')} · раундов: ${spec.rounds}`;
     case 'firstLetter':
     case 'readWord':
+    case 'syllableCount':
+    case 'wordScheme':
       return `${spec.words.map((w) => w.word.toLowerCase()).join(', ')} · раундов: ${spec.rounds}`;
+    case 'soundPlace':
+      return `звук ${spec.sound}: ${spec.words.map((w) => w.word.toLowerCase()).join(', ')} · раундов: ${spec.rounds}`;
+    case 'pickWord':
+      return `${spec.items.map((i) => i.word.toLowerCase()).join(', ')} · раундов: ${spec.rounds}`;
+    case 'readPhrase':
+      return `${spec.items.map((i) => i.text.toLowerCase()).join(', ')} · раундов: ${spec.rounds}`;
     case 'clock':
       return `${spec.half ? 'часы и половины' : 'целые часы'} · раундов: ${spec.rounds}`;
     case 'shop':
