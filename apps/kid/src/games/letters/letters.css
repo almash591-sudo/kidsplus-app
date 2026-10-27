@@ -62,3 +62,73 @@
 .letters-option.picked {
   box-shadow: 0 0 0 6px #22c55e;
 }
+
+/* ─── Звуки и чтение (этап 49) ─── */
+.letters.syllableCount .letters-option.emoji {
+  font-size: min(8vw, 5.5vh);
+  letter-spacing: -0.08em;
+}
+
+.letters.pickWord .letters-option {
+  font-size: min(9vw, 6vh);
+}
+
+.letters.readPhrase .letters-word {
+  max-width: 92vw;
+  font-size: min(10vw, 7vh);
+  text-align: center;
+}
+
+.letters.readPhrase .letters-option.emoji {
+  height: auto;
+  min-height: min(22vw, 14vh);
+  font-size: min(10vw, 6.5vh);
+}
+
+/* Схемы — столбиком: длинные слова не помещаются в ряд. */
+.letters.soundPlace .letters-options,
+.letters.wordScheme .letters-options {
+  flex-direction: column;
+  align-items: center;
+}
+
+.letters-option.scheme {
+  display: flex;
+  gap: min(2vw, 1.2vh);
+  align-items: center;
+  justify-content: center;
+  height: auto;
+  padding: min(3vw, 2vh) min(4vw, 2.6vh);
+}
+
+.letters-cell {
+  display: grid;
+  place-items: center;
+  width: min(11vw, 7vh);
+  height: min(11vw, 7vh);
+  border-radius: 12px;
+  font-size: min(8vw, 5vh);
+  color: #fff;
+}
+
+.letters.soundPlace .letters-cell {
+  width: min(16vw, 10vh);
+  height: min(16vw, 10vh);
+}
+
+.letters-cell.off {
+  border: 4px dashed #cbd5e1;
+}
+
+.letters-cell.on {
+  background: #f59e0b;
+}
+
+/* Как в букварях: гласный — красная фишка, твёрдый согласный — синяя. */
+.letters-cell.v {
+  background: #ef4444;
+}
+
+.letters-cell.c {
+  background: #2563eb;
+}
