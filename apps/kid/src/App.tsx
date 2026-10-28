@@ -3,6 +3,7 @@ import type { Activity, KidToday, Subject } from '@kidsplus/shared/schedule';
 import { startAutoUpdate } from '@kidsplus/shared/app-update';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { kidApi, NotPairedError } from './api';
+import { setErrorScreen } from './errors';
 import { playSequence, speechLanguages } from './audio';
 import {
   categoriesOf,
@@ -153,6 +154,15 @@ function itemOf(s: State) {
   return { kind, id: item.id } as const;
 }
 
+/** Где ребёнок — для отчёта о сбое (этап 51): экран, раздел, вид игры. */
+function screenName(s: State): string {
+  if (s.screen === 'home') return s.category ? `home:${s.category}` : 'home';
+  if (s.screen !== 'run') return s.screen;
+  const item = itemsOf(s.playlist.items, s.category, Boolean(s.lesson))[s.step.index];
+  const what = item?.kind === 'interactive' ? `game:${item.spec.kind}` : s.step.phase;
+  return s.lesson ? `${what} (${s.lesson})` : what;
+}
+
 type Run = Extract<State, { screen: 'run' }>;
 
 /** Минуты экрана набрались — пора отдыхать (этап 50). */
@@ -236,6 +246,9 @@ export function App() {
     current.current = state;
     currentToday.current = today;
   });
+  useEffect(() => {
+    setErrorScreen(inCall ? 'call' : (camera ?? screenName(state)));
+  }, [state, camera, inCall]);
 
   const refreshToday = useCallback(async () => {
     try {

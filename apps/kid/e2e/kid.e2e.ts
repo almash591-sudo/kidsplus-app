@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test as base, type Page } from '@playwright/test';
+import type { AppErrorReport } from '@kidsplus/shared/app-errors';
 import type { KidBedtime } from '@kidsplus/shared/bedtime';
 import type { KidHabit, KidHabits } from '@kidsplus/shared/habits';
 import type { EyeBreak } from '@kidsplus/shared/schedule';
@@ -93,6 +94,8 @@ interface Backend {
   noise?: { db: number }[];
   /** Что телефон сообщил о заряде. */
   battery?: { level: number; charging: boolean }[];
+  /** Сбои приложения, которые телефон отправил (этап 51). */
+  appErrors?: AppErrorReport[];
 }
 
 const speech = (text: string) => ({ text, lang: 'ru' as const, audioUrl: null });
@@ -440,6 +443,11 @@ async function mockBackend(page: Page, backend: Backend) {
         return route.fulfill({ status: 204 });
       case '/api/kid/battery':
         (backend.battery ??= []).push(route.request().postDataJSON());
+        return route.fulfill({ status: 204 });
+      case '/api/kid/errors':
+        (backend.appErrors ??= []).push(
+          ...(route.request().postDataJSON() as { errors: AppErrorReport[] }).errors,
+        );
         return route.fulfill({ status: 204 });
       case '/api/kid/live':
         if (!backend.calls) return route.fulfill({ status: 204 });
@@ -5070,5 +5078,36 @@ test.describe('перерыв для глаз (этап 50)', () => {
     await page.clock.runFor(30_000);
     await expect(page.getByTestId('eye-break')).toHaveCount(0);
     expect(backend.eyeBreaks).toBeUndefined();
+  });
+});
+
+test.describe('сбои — родителю (этап 51)', () => {
+  test('необработанная ошибка уходит на сервер с экраном; без связи — позже', async ({
+    page,
+    backend,
+  }) => {
+    await page.goto('/');
+    await expect(page.getByTestId('tile').first()).toBeVisible();
+    await page.evaluate(() =>
+      setTimeout(() => {
+        throw new TypeError('Проверка сбоя');
+      }),
+    );
+    await expect.poll(() => backend.appErrors?.length, { timeout: 10_000 }).toBe(1);
+    expect(backend.appErrors![0]).toMatchObject({
+      kind: 'error',
+      message: 'TypeError: Проверка сбоя',
+      screen: 'home',
+      count: 1,
+    });
+
+    // Отказ промиса без связи — копится и уходит, когда связь вернулась.
+    await page.context().setOffline(true);
+    await page.evaluate(() => void Promise.reject(new Error('Без связи')));
+    await page.waitForTimeout(4000);
+    expect(backend.appErrors).toHaveLength(1);
+    await page.context().setOffline(false);
+    await expect.poll(() => backend.appErrors?.length, { timeout: 10_000 }).toBe(2);
+    expect(backend.appErrors![1]).toMatchObject({ kind: 'rejection', message: 'Error: Без связи' });
   });
 });

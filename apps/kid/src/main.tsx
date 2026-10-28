@@ -10,6 +10,7 @@ import { ErrorBoundary } from './ErrorBoundary';
 import { installTapFeedback } from './fx';
 import { unlockAudio } from './audio';
 import { startOutbox } from './offline';
+import { startErrorReports } from './errors';
 import { dropServiceWorker, inAndroidWebView } from './kiosk';
 import './styles.css';
 import './motion.css';
@@ -20,6 +21,8 @@ import '@fontsource/nunito/900.css';
 import './theme.css';
 import './wow.css';
 
+// Сбои — на сервер, родителю в «Устройства» (этап 51).
+startErrorReports();
 installTapFeedback();
 // iPhone: звук и голос разрешены только после касания — первое касание их «будит».
 addEventListener('pointerdown', unlockAudio, { capture: true, once: true });
