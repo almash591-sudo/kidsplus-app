@@ -52,6 +52,7 @@ import { Dive } from './Dive';
 import { Race } from './Race';
 import { Rocket } from './Rocket';
 import { Dots } from './Dots';
+import { Book } from './Book';
 import { Poem } from './Poem';
 import { Tangram } from './Tangram';
 import { SyllableWord, Word } from './Word';
@@ -143,6 +144,7 @@ const OWN_SCENE: GameKind[] = [
   'race',
   'differences',
   'poem',
+  'book',
 ];
 export const backdropOf = (kind: GameKind): Backdrop | undefined =>
   OWN_SCENE.includes(kind)
@@ -164,6 +166,8 @@ const OWL_INSIDE: readonly GameKind[] = [
   'riddle',
   // Стих (этап 45): совёнок читает и слушает ребёнка.
   'poem',
+  // Книжка (этап 52): совёнок спрашивает в конце, на страницах — только сцена.
+  'book',
 ];
 
 /** Игры без своего задания: как играть — звучит при входе. */
@@ -235,6 +239,7 @@ const GAMES: { [K in GameKind]: ComponentType<GameProps<K>> } = {
   race: Race,
   differences: Differences,
   poem: Poem,
+  book: Book,
 };
 
 /** Экран игры: сама игра, кнопка «домой», в конце — звёздочка и следующий пункт. */

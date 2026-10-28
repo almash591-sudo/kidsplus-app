@@ -173,6 +173,10 @@ body {
   --c: #a3348f;
   --c-shadow: rgb(163 52 143 / 0.35);
 }
+.tile.category.books {
+  --c: #b7652b;
+  --c-shadow: rgb(183 101 43 / 0.35);
+}
 .tile.category.music {
   --c: #00a9bd;
   --c-shadow: rgb(0 169 189 / 0.35);
@@ -695,6 +699,9 @@ body {
 }
 .tile.category.letters {
   --c-tint: #ffe0cc;
+}
+.tile.category.books {
+  --c-tint: #f8dfc6;
 }
 .tile.category.other {
   --c-tint: #e2d6ff;

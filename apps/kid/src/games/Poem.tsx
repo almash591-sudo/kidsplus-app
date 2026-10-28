@@ -48,13 +48,13 @@ import './poem.css';
 
 /** В автотестах очередь ребёнка — миг: голос там поддельный и договаривает сразу. */
 const FAST = typeof navigator !== 'undefined' && navigator.webdriver;
-const pause = (ms: number) => new Promise((ok) => setTimeout(ok, FAST ? 150 : ms));
+export const pause = (ms: number) => new Promise((ok) => setTimeout(ok, FAST ? 150 : ms));
 
 /**
  * Шаг занятия — сценарий: фразы и паузы по очереди. Уход с шага (или из игры) его обрывает:
  * alive() становится false, и сценарий дальше не идёт.
  */
-function useScript(script: (alive: () => boolean) => Promise<unknown>, deps: unknown[]) {
+export function useScript(script: (alive: () => boolean) => Promise<unknown>, deps: unknown[]) {
   useEffect(() => {
     let on = true;
     void script(() => on);
@@ -66,7 +66,7 @@ function useScript(script: (alive: () => boolean) => Promise<unknown>, deps: unk
 }
 
 /** Сказать и дождаться тишины (если ребёнок попросил повторить «ушком» — и этого тоже). */
-const speak = async (...texts: string[]) => {
+export const speak = async (...texts: string[]) => {
   await say(...texts);
   await whenQuiet();
 };
@@ -92,7 +92,7 @@ const MIN_FONT = 13;
  * уменьшенной (appear) — по кадру анимации длинная подпись «влезала» и потом уходила за край.
  * Повернули телефон — подбираем заново.
  */
-function useFitText(ref: RefObject<HTMLElement | null>, key: string) {
+export function useFitText(ref: RefObject<HTMLElement | null>, key: string) {
   useLayoutEffect(() => {
     const el = ref.current;
     const game = el?.closest<HTMLElement>('.game');
@@ -308,7 +308,7 @@ function Option(props: {
 }
 
 /** Раунды выбора — «Договори» и вопросы: неверно — «попробуй ещё», верно — похвала и ответ. */
-function useChoice<R extends { answer: PoemChoice }>(
+export function useChoice<R extends { answer: PoemChoice }>(
   rounds: R[],
   phrases: KidPhrases,
   answer: (r: R) => string[],
@@ -348,7 +348,7 @@ function useChoice<R extends { answer: PoemChoice }>(
   return { n, round, solved, pick, state };
 }
 
-function Options<R extends { answer: PoemChoice; options: PoemChoice[] }>(props: {
+export function Options<R extends { answer: PoemChoice; options: PoemChoice[] }>(props: {
   round: R;
   n: number;
   solved: boolean;
@@ -414,7 +414,11 @@ function Blanks(props: {
 }
 
 /** 4. Вопросы по смыслу: совёнок спрашивает, ответ — картинкой. */
-function Questions(props: { rounds: QuestionRound[]; phrases: KidPhrases; onDone: () => void }) {
+export function Questions(props: {
+  rounds: QuestionRound[];
+  phrases: KidPhrases;
+  onDone: () => void;
+}) {
   const c = useChoice(props.rounds, props.phrases, (r) => [poemAnswer(r.answer[0])], props.onDone);
   const { question } = c.round;
   useScript(

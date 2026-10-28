@@ -26,6 +26,13 @@ import {
   type RocketColor,
   type RocketPart,
 } from '@kidsplus/shared/games';
+import {
+  bookAnnounce,
+  bookOf,
+  chapterAnnounce,
+  type BookCode,
+  type BookGenre,
+} from '@kidsplus/shared/books';
 import { MAX_LEVEL, specAtLevel } from '@kidsplus/shared/levels';
 import { lineStart, partSpeech, poemAnnounce, poemOf, type PoemCode } from '@kidsplus/shared/poems';
 import { SONGS } from '@kidsplus/shared/songs';
@@ -47,6 +54,7 @@ export const CATEGORY_LABELS: Record<KidCategory, string> = {
   music: 'Музыка',
   letters: 'Буквы',
   poems: 'Стихи и сказки',
+  books: 'Книжки',
   games: 'Игры',
   other: 'Разное',
 };
@@ -559,6 +567,31 @@ export function poemPhrases(code: PoemCode): string[] {
   ];
 }
 
+// ─── Книжки (этап 52) ─────────────────────────────────────────────────────────
+export const BOOK_INTRO = 'Слушай и смотри картинки!';
+export const BOOK_TURN = 'Нажми на стрелку — что там дальше?';
+export const BOOK_RESUME = 'Продолжаем с закладки!';
+export const BOOK_TOMORROW = 'Продолжение — завтра!';
+/** Конец книжки — как в народной сказке; у рассказа — проще. */
+export const BOOK_END: Record<BookGenre, string> = {
+  folk: 'Вот и сказке конец, а кто слушал — молодец!',
+  tale: 'Вот и сказке конец, а кто слушал — молодец!',
+  story: 'Вот и всё! Спасибо, что послушали вместе со мной.',
+};
+/** Всё, что может прозвучать в книжке. */
+export function bookPhrases(code: BookCode): string[] {
+  const b = bookOf(code);
+  return [
+    bookAnnounce(b),
+    ...b.chapters.map((_, i) => chapterAnnounce(b, i)).filter((t) => t !== null),
+    ...[BOOK_TURN, BOOK_RESUME, BOOK_TOMORROW, BOOK_END[b.genre], POEM_QUESTIONS],
+    ...b.chapters.flatMap((c) => [
+      ...c.pages.flatMap((page) => page.text),
+      ...c.questions.flatMap((q) => [q.text, poemAnswer(q.answer[0])]),
+    ]),
+  ];
+}
+
 /** Как играть — для игр без своего задания и для «ушка», если задание ещё не звучало. */
 export const GAME_INTRO: Record<GameKind, string> = {
   drawing: 'Рисуй пальчиком! Краски — внизу.',
@@ -625,6 +658,7 @@ export const GAME_INTRO: Record<GameKind, string> = {
   race: RACE_PROMPT,
   differences: DIFF_PROMPT,
   poem: POEM_INTRO,
+  book: BOOK_INTRO,
 };
 
 /** Подсказки на экранах выбора — для тех, кто не читает. */
@@ -856,6 +890,8 @@ export function gamePhrases(spec: GameSpec): string[] {
       return diffPhrases();
     case 'poem':
       return poemPhrases(spec.poem);
+    case 'book':
+      return bookPhrases(spec.book);
     case 'drawing':
     case 'puzzle':
     case 'memory':

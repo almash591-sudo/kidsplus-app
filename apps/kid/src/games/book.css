@@ -1,0 +1,180 @@
+/* ─── Книжки (этап 52) ─────────────────────────────────────────────────────── */
+/* Раскладка — как у стиха (poem.css): сцена, под ней подпись; в альбоме — рядом. */
+
+/* Камера наезжает по-разному на соседних страницах с одной сценой. */
+.book-pic.pan-1 .poem-pic-img,
+.book-pic.pan-1 .book-draft {
+  animation-name: book-pan-1;
+}
+.book-pic.pan-2 .poem-pic-img,
+.book-pic.pan-2 .book-draft {
+  animation-name: book-pan-2;
+}
+@keyframes book-pan-1 {
+  from {
+    transform: scale(1.1) translate(2%, -1.5%);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+@keyframes book-pan-2 {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.12) translate(1.5%, 2%);
+  }
+}
+
+/* Сцена ещё не нарисована: её эмодзи на своём цветном фоне. */
+.book-pic.draft {
+  display: grid;
+  place-items: center;
+  background: radial-gradient(
+    circle at 50% 40%,
+    hsl(var(--h) 80% 92%),
+    hsl(calc(var(--h) + 40) 60% 78%)
+  );
+}
+.book-draft {
+  font-size: clamp(48px, 16vw, 120px);
+  line-height: 1.1;
+  letter-spacing: 0.05em;
+  text-align: center;
+  animation: poem-pan 14s ease-in-out both;
+}
+
+.book-cover-text .book-title {
+  font-size: 1.05em;
+}
+.book-cover-text .book-author,
+.book-cover-text .book-chapter {
+  margin-top: 4px;
+  font-size: 0.7em;
+  opacity: 0.7;
+}
+
+/* Подсветка того, что звучит, — как маркером. */
+.book-text {
+  text-align: left;
+}
+.book-line {
+  border-radius: 8px;
+  transition:
+    background-color 0.3s,
+    box-shadow 0.3s;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.book-line.now {
+  background: #ffe8a3;
+  box-shadow: 0 0 0 3px #ffe8a3;
+}
+
+.book-next {
+  background: #b7652b;
+  box-shadow: 0 8px 18px rgb(183 101 43 / 0.4);
+}
+/* Страница дочитана — стрелка зовёт листать. */
+.book-next.ready {
+  animation: book-call 1.4s ease-in-out infinite;
+}
+/* Только тень: сама кнопка не двигается — палец попадает, куда целился. */
+@keyframes book-call {
+  50% {
+    box-shadow:
+      0 8px 18px rgb(183 101 43 / 0.4),
+      0 0 0 16px rgb(183 101 43 / 0.22);
+  }
+}
+
+.book-prev {
+  position: absolute;
+  z-index: 3;
+  left: max(16px, env(safe-area-inset-left));
+  bottom: max(22px, env(safe-area-inset-bottom));
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.9);
+  color: #b7652b;
+  box-shadow: 0 6px 0 #e8d9bd;
+}
+.book-prev:active {
+  transform: scale(0.94);
+}
+
+/* Номер страницы — между стрелками, для мамы. */
+.book-pageno {
+  position: absolute;
+  left: 50%;
+  bottom: max(40px, calc(env(safe-area-inset-bottom) + 24px));
+  transform: translateX(-50%);
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 800;
+  opacity: 0.45;
+}
+
+@media (orientation: portrait) {
+  .game.book.page,
+  .game.book.cover {
+    padding-bottom: calc(max(16px, env(safe-area-inset-bottom)) + 92px);
+  }
+  .game.book.page .poem-pic,
+  .game.book.cover .poem-pic {
+    flex-shrink: 0;
+  }
+}
+
+/* Плитка книжки на полке: обложка во всю плитку, «новая» и закладка. */
+.game-tile.book-tile {
+  position: relative;
+  overflow: hidden;
+  border-radius: inherit;
+}
+.game-tile.book-tile > .book-pic {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  aspect-ratio: auto;
+  border-radius: inherit;
+  box-shadow: none;
+}
+.game-tile.book-tile .book-draft {
+  font-size: clamp(26px, 9vw, 52px);
+  animation: none;
+}
+.book-new {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #e8590c;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 900;
+}
+/* Закладка: ленточка сверху справа. */
+.book-mark {
+  position: absolute;
+  top: 0;
+  right: 14px;
+  width: 20px;
+  height: 34px;
+  background: #e03131;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 76%, 0 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .book-draft,
+  .book-next.ready,
+  .book-pic .poem-pic-img {
+    animation: none;
+  }
+}

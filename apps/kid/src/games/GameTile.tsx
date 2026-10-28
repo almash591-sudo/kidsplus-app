@@ -1,6 +1,9 @@
 import { mediaUrl } from '@kidsplus/shared/api';
+import { bookOf } from '@kidsplus/shared/books';
 import { poemOf } from '@kidsplus/shared/poems';
 import type { GameKind, GameSpec } from '@kidsplus/shared/games';
+import { BookScene } from './BookScene';
+import { markOf, shelfState } from './bookPlan';
 import { PictureSvg } from './Coloring';
 import { PALETTE } from './common';
 import { PICTURES } from './pictures';
@@ -72,6 +75,7 @@ export const ICON: Record<GameKind, string> = {
   race: '🏎️',
   differences: '🔍',
   poem: '📖',
+  book: '📚',
 };
 
 /** Глиняный значок игры (этап 35): квадратная картинка с прозрачным фоном, вписывается без растяжения. */
@@ -137,6 +141,17 @@ export function GameTile({ spec }: { spec: GameSpec }) {
         <span className="game-badge">
           <GameIcon kind="poem" />
         </span>
+      </span>
+    );
+  }
+  // Книжка (этап 52): обложка; не открывали — «новая», читаем — закладка.
+  if (spec.kind === 'book') {
+    const state = shelfState(bookOf(spec.book), markOf(spec.book));
+    return (
+      <span className="game-tile book-tile" data-shelf={state}>
+        <BookScene code={spec.book} scene={bookOf(spec.book).cover} />
+        {state === 'new' && <span className="book-new">новая</span>}
+        {state === 'reading' && <span className="book-mark" data-testid="book-mark" />}
       </span>
     );
   }

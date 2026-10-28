@@ -10,6 +10,7 @@ export const CATEGORY_ORDER: readonly KidCategory[] = [
   'nature',
   'letters',
   'poems',
+  'books',
   'music',
   'games',
   'other',
