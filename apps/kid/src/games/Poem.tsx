@@ -87,8 +87,10 @@ const MIN_FONT = 13;
 
 /**
  * Длинная часть (басня, сказка — до семи строк): шрифт подписи мельче, пока сцена и подпись не
- * встанут на экран и подпись не выйдет из-под «Дальше»; не хватило и мелкого — сцена ниже. Считаем в размерах раскладки — экран
- * появляется с анимацией (scale), она замер не сбивает. Повернули телефон — подбираем заново.
+ * встанут на экран и подпись не выйдет из-под «Дальше»; не хватило и мелкого — сцена ниже. Считаем
+ * по раскладке (offset*), не по getBoundingClientRect: экран наезжает (scale), а подпись появляется
+ * уменьшенной (appear) — по кадру анимации длинная подпись «влезала» и потом уходила за край.
+ * Повернули телефон — подбираем заново.
  */
 function useFitText(ref: RefObject<HTMLElement | null>, key: string) {
   useLayoutEffect(() => {
@@ -96,16 +98,19 @@ function useFitText(ref: RefObject<HTMLElement | null>, key: string) {
     const game = el?.closest<HTMLElement>('.game');
     if (!el || !game) return;
     const fits = () => {
-      const g = game.getBoundingClientRect();
-      const k = game.offsetHeight / g.height || 1;
       const box = (e: Element) => {
-        const r = e.getBoundingClientRect();
-        return {
-          top: (r.top - g.top) * k,
-          bottom: (r.bottom - g.top) * k,
-          left: (r.left - g.left) * k,
-          right: (r.right - g.left) * k,
-        };
+        let top = 0;
+        let left = 0;
+        for (
+          let n = e as HTMLElement | null;
+          n && n !== game;
+          n = n.offsetParent as HTMLElement | null
+        ) {
+          top += n.offsetTop;
+          left += n.offsetLeft;
+        }
+        const { offsetWidth: w, offsetHeight: h } = e as HTMLElement;
+        return { top, bottom: top + h, left, right: left + w };
       };
       const css = getComputedStyle(game);
       const top = parseFloat(css.paddingTop) - 1;
