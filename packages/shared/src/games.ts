@@ -1,6 +1,7 @@
 // Интерактивные игры (п. 5.6 ТЗ): каждый вид — компонент детского приложения + схема параметров.
 // Параметры хранятся в БД (interactives.params) и проверяются этой схемой и при записи, и при выдаче.
 import { z } from 'zod';
+import { BOOK_CODES } from './books';
 import { POEM_CODES } from './poems';
 import { SONG_IDS } from './songs';
 import { SOUND_LETTERS, soundProblem, syllablesIn, wordScheme } from './sounds';
@@ -768,6 +769,19 @@ export const gameSpec = z.discriminatedUnion('kind', [
     questions: z.boolean().default(true),
     choices: z.number().int().min(2).max(4).default(3),
   }),
+  /**
+   * Книжка (этап 52) из встроенной библиотеки: страница — глиняная картинка и 1–3 предложения,
+   * голос читает и подсвечивает то, что звучит. autoTurn — страницы листаются сами, иначе ребёнок
+   * нажимает «дальше». Длинная — по главе в день, телефон помнит закладку. questions — вопросы
+   * в конце главы, choices вариантов-картинок.
+   */
+  z.object({
+    kind: z.literal('book'),
+    book: z.enum(BOOK_CODES),
+    autoTurn: z.boolean().default(false),
+    questions: z.boolean().default(true),
+    choices: z.number().int().min(2).max(4).default(3),
+  }),
 ]);
 
 /** Цвета рыбок «Подводного плавания» (этап 43). */
@@ -873,6 +887,7 @@ export const GAME_KINDS: Record<GameKind, string> = {
   race: 'Гонки',
   differences: 'Найди отличия',
   poem: 'Стих или сказка',
+  book: 'Книжка',
 };
 
 /** id картинок в параметрах игры — для проверки, что они есть и готовы. */
@@ -949,6 +964,7 @@ export function gameImageIds(g: GameSpec): string[] {
     case 'race':
     case 'differences':
     case 'poem':
+    case 'book':
       return [];
   }
 }
