@@ -6,7 +6,7 @@ export default defineConfig({
   // Сборка — в отчётах о сбоях (этап 51): видно, на какой версии сломалось.
   define: {
     __KID_BUILD__: JSON.stringify(
-      process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) ?? new Date().toISOString().slice(0, 16),
+      process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) || new Date().toISOString().slice(0, 16),
     ),
   },
   plugins: [
