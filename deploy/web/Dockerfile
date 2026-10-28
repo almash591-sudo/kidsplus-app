@@ -8,6 +8,8 @@ WORKDIR /repo
 ARG APP
 COPY . .
 RUN pnpm install --frozen-lockfile --filter "@kidsplus/${APP}..."
+# Коммит — в отчётах о сбоях детского приложения (этап 51); Railway передаёт его сам.
+ARG RAILWAY_GIT_COMMIT_SHA
 RUN pnpm --filter "@kidsplus/${APP}" build
 
 FROM mirror.gcr.io/library/caddy:2-alpine

@@ -6,6 +6,7 @@ import { cachedSpeechUrl, wantSpeech } from './speechCache';
 import { withoutStress } from '@kidsplus/shared/voice';
 import { cachedObjectUrl } from './offline';
 import { isIos } from './ios';
+import { reportError } from './errors';
 
 const SPEECH_LANG: Record<Language, string> = { ru: 'ru-RU', en: 'en-US', zh: 'zh-CN' };
 /** Медленнее обычного — для малышей. */
@@ -199,7 +200,11 @@ function say(s: Speech): Promise<void> {
       try {
         const result = await playFile(local ?? url, url);
         if (result === 'blocked' && !unlocked) blocked = s;
-        else if (result === 'error' && !local) await speakText(s);
+        else if (result === 'error' && !local) {
+          // При связи файл озвучки должен открываться — иначе это сбой (этап 51).
+          if (navigator.onLine !== false) reportError('audio', 'Звук не загрузился', url);
+          await speakText(s);
+        }
       } finally {
         if (local) URL.revokeObjectURL(local);
       }

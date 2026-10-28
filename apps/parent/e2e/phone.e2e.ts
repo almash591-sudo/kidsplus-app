@@ -352,6 +352,60 @@ test('перерыв для глаз (этап 50): включить в проф
   await expect(page).toHaveURL(/\/children$/);
 });
 
+test('сбои телефона (этап 51): телефон сообщил — в «Устройствах» счётчик и что упало', async ({
+  page,
+  playwright,
+}) => {
+  await login(page);
+  const kid = (await (
+    await page.request.post('/api/parent/children', {
+      data: { nickname: 'Мишутка', birthYear: 2021, birthMonth: 5, gender: 'm', languages: ['ru'] },
+    })
+  ).json()) as { id: string };
+  const { code } = (await (
+    await page.request.post('/api/parent/pairings', {
+      data: { childId: kid.id, deviceName: 'Телефон Мишутки' },
+    })
+  ).json()) as { code: string };
+  const phone = await playwright.request.newContext({ baseURL: test.info().project.use.baseURL });
+  expect((await phone.post('/api/kid/pair', { data: { code } })).status()).toBe(204);
+  const report = (message: string, count: number) =>
+    phone.post('/api/kid/errors', {
+      data: {
+        errors: [
+          {
+            kind: 'screen',
+            message,
+            stack: 'TypeError: x is undefined\n    at Maze (index-abc.js:1:2)',
+            screen: 'game:maze',
+            build: 'abc1234',
+            count,
+            at: new Date().toISOString(),
+          },
+        ],
+      },
+    });
+  expect(
+    (await report("TypeError: Cannot read properties of undefined (reading 'cells')", 3)).status(),
+  ).toBe(204);
+  await phone.dispose();
+
+  await page.goto('/devices');
+  const card = page.locator('.mantine-Card-root').filter({ hasText: 'Телефон Мишутки' }).first();
+  const errors = card.getByTestId('device-errors');
+  await expect(errors).toHaveText(/Сбоев за неделю: 3/);
+  await errors.getByRole('button').click();
+  const entry = errors.getByTestId('device-error');
+  await expect(entry).toContainText('экран упал');
+  await expect(entry).toContainText('3 раза · game:maze');
+  await expect(entry).toContainText("reading 'cells'");
+  await expect(entry).toContainText('сборка abc1234');
+  expect(await layoutProblems(page)).toEqual([]);
+
+  // Профиль-помощник больше не нужен — вместе с ним уходят телефон и его сбои.
+  expect((await page.request.delete(`/api/parent/children/${kid.id}`)).ok()).toBe(true);
+});
+
 test('точность (этап 47): уроки подписаны, завершённый день — «не сегодня», а не «позже»', async ({
   page,
 }) => {

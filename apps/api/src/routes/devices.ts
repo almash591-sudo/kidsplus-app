@@ -6,7 +6,8 @@ import {
   type Device,
   type PairingCreated,
 } from '@kidsplus/shared/api';
-import { and, desc, eq, gt, isNull } from 'drizzle-orm';
+import { APP_ERROR_RECENT_DAYS } from '@kidsplus/shared/app-errors';
+import { and, desc, eq, gt, gte, inArray, isNull, sum } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { requireDevice, requireParent, setDeviceCookie } from '../auth';
 import { PAIRING_TTL_MS, type Ctx } from '../context';
@@ -16,9 +17,9 @@ const PREVIEW_TTL_MS = 2 * 3600_000;
 import { formatPairingCode, pairingCode, randomToken, sha256 } from '../lib/crypto';
 import { HttpError, idFrom, notFound, parse } from '../lib/http';
 
-const { children, devices, devicePairings } = schema;
+const { children, deviceErrors, devices, devicePairings } = schema;
 
-const toDevice = (d: typeof devices.$inferSelect): Device => ({
+const toDevice = (d: typeof devices.$inferSelect, errors = 0): Device => ({
   id: d.id,
   childId: d.childId,
   name: d.name,
@@ -27,6 +28,7 @@ const toDevice = (d: typeof devices.$inferSelect): Device => ({
   revokedAt: d.revokedAt?.toISOString() ?? null,
   speechLangs: d.speechLangs ?? null,
   speechCheckedAt: d.speechCheckedAt?.toISOString() ?? null,
+  errors,
 });
 
 export function devicesRoutes(app: FastifyInstance, ctx: Ctx) {
@@ -40,7 +42,18 @@ export function devicesRoutes(app: FastifyInstance, ctx: Ctx) {
       .innerJoin(children, eq(children.id, devices.childId))
       .where(and(eq(devices.preview, false), eq(children.familyId, request.parent!.familyId)))
       .orderBy(desc(devices.createdAt));
-    return rows.map((r) => toDevice(r.d));
+    // Этап 51: сколько раз за неделю на телефоне что-то сломалось.
+    const since = new Date(ctx.now().getTime() - APP_ERROR_RECENT_DAYS * 24 * 3600_000);
+    const ids = rows.map((r) => r.d.id);
+    const counts = ids.length
+      ? await db
+          .select({ deviceId: deviceErrors.deviceId, n: sum(deviceErrors.count).mapWith(Number) })
+          .from(deviceErrors)
+          .where(and(inArray(deviceErrors.deviceId, ids), gte(deviceErrors.lastAt, since)))
+          .groupBy(deviceErrors.deviceId)
+      : [];
+    const errors = new Map(counts.map((c) => [c.deviceId, c.n]));
+    return rows.map((r) => toDevice(r.d, errors.get(r.d.id) ?? 0));
   });
 
   // Родитель создаёт одноразовый код привязки для конкретного ребёнка.

@@ -318,6 +318,34 @@ export const events = pgTable(
   (t) => [index().on(t.childId, t.createdAt)],
 );
 
+/**
+ * Сбои детского приложения на телефоне (этап 51): ошибка в коде, необработанный отказ, упавший
+ * экран. Одинаковые за сутки — одна строка со счётчиком; хранятся 30 дней. Только для кабинета —
+ * во внешние сервисы не уходят.
+ */
+export const deviceErrors = pgTable(
+  'device_errors',
+  {
+    id: bigserial({ mode: 'number' }).primaryKey(),
+    deviceId: uuid()
+      .notNull()
+      .references(() => devices.id, { onDelete: 'cascade' }),
+    /** error | rejection | screen | audio */
+    kind: text().notNull(),
+    message: text().notNull(),
+    stack: text(),
+    /** Где был ребёнок: экран приложения и вид игры. */
+    screen: text(),
+    /** Сборка детского приложения. */
+    build: text(),
+    userAgent: text(),
+    count: integer().notNull().default(1),
+    firstAt: timestamp({ withTimezone: true }).notNull(),
+    lastAt: timestamp({ withTimezone: true }).notNull(),
+  },
+  (t) => [index().on(t.deviceId, t.lastAt)],
+);
+
 // ─── Медиа ───────────────────────────────────────────────────────────────────
 
 export const mediaKindEnum = pgEnum('media_kind', ['audio', 'image']);

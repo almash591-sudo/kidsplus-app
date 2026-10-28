@@ -32,6 +32,7 @@
     "./analytics": "./src/analytics.ts",
     "./push": "./src/push.ts",
     "./battery": "./src/battery.ts",
+    "./app-errors": "./src/app-errors.ts",
     "./captures": "./src/captures.ts",
     "./calls": "./src/calls.ts",
     "./call-client": "./src/call-client.ts",
