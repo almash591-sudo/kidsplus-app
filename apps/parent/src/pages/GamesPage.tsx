@@ -1,5 +1,6 @@
 import type { Game } from '@kidsplus/shared/api';
 import { GAME_KINDS, type GameKind, type GameSpec } from '@kidsplus/shared/games';
+import { bookOf } from '@kidsplus/shared/books';
 import { poemOf } from '@kidsplus/shared/poems';
 import { SONGS } from '@kidsplus/shared/songs';
 import {
@@ -139,6 +140,11 @@ export function gameSummary(spec: GameSpec): string {
         spec.questions && 'вопросы',
       ].filter(Boolean);
       return `«${poemOf(spec.poem).title}»${steps.length ? ` · ${steps.join(', ')}` : ' · только послушать'}`;
+    }
+    case 'book': {
+      const b = bookOf(spec.book);
+      const chapters = b.chapters.length > 1 ? ` · ${b.chapters.length} глав, по главе в день` : '';
+      return `«${b.title}»${chapters} · ${spec.autoTurn ? 'листается сама' : 'листает ребёнок'}${spec.questions ? ' · вопросы' : ''}`;
     }
     case 'differences':
       return `отличий: ${spec.count} · картинок: ${spec.rounds}${spec.hint ? ' · с лупой' : ''}`;
