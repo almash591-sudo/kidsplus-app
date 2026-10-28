@@ -5,7 +5,7 @@ import type { KidPlaylist } from '@kidsplus/shared/api';
 import { BOOK_CODES, bookOf, bookPictures, type Book } from '@kidsplus/shared/books';
 import { gameSpec } from '@kidsplus/shared/games';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { appPhrases, bookPhrases } from '../phrases';
+import { appPhrases, BOOK_READ, bookPhrases, bookWord } from '../phrases';
 import { playlistMedia } from '../offline';
 import {
   chapterQuestions,
@@ -146,6 +146,15 @@ describe('книжки: озвучка и картинки', () => {
     );
     for (const code of BOOK_CODES)
       for (const t of bookPhrases(code)) expect(t.length, t).toBeLessThanOrEqual(200);
+  });
+
+  it('«Прочитай сам»: просьба и каждое слово — заранее; у книжки без слов — нет', () => {
+    const filipok = bookPhrases('filipok');
+    expect(filipok).toContain(BOOK_READ);
+    for (const p of bookOf('filipok').chapters.flatMap((c) => c.pages))
+      expect(filipok).toContain(bookWord(p.read!));
+    expect(filipok).toContain('школу');
+    expect(bookPhrases('kotPetuh')).not.toContain(BOOK_READ);
   });
 
   it('нарисованная книжка — каждая сцена лежит файлом; скачивается заранее целиком', () => {
