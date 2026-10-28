@@ -15,6 +15,11 @@ export interface BookPage {
   text: string[];
   /** Сцена страницы (ключ из art); соседние страницы делят сцену — камера наезжает по-другому. */
   picture: string;
+  /**
+   * «Прочитай сам» (у книжек старшим): слово из текста страницы — как в тексте, без ударений.
+   * Перед чтением оно крупно по слогам; ребёнок читает и нажимает — голос говорит слово.
+   */
+  read?: string;
 }
 
 export interface BookChapter {
@@ -1065,6 +1070,10 @@ export const bookPictures = (b: Book): string[] =>
         bookPicture,
       )
     : [];
+
+/** Слова «Прочитай сам» книжки по порядку страниц; нет — книжка без чтения. */
+export const bookReads = (b: Book): string[] =>
+  b.chapters.flatMap((c) => c.pages.flatMap((p) => (p.read ? [p.read] : [])));
 
 /** Сколько знаков звучит в книжке — для оценки стоимости озвучки. */
 export const bookChars = (b: Book) =>

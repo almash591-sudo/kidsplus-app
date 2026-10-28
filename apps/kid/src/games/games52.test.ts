@@ -15,6 +15,7 @@ import {
   shelfState,
   startOf,
   today,
+  wordAt,
 } from './bookPlan';
 
 const kot = bookOf('kotPetuh');
@@ -105,6 +106,17 @@ describe('вопросы в конце главы', () => {
       }
     }
     expect(chapterQuestions('kotPetuh', 5, 3)).toEqual([]);
+  });
+});
+
+describe('«Прочитай сам»: слово в тексте страницы', () => {
+  it('целое слово без учёта регистра; часть другого слова — не оно', () => {
+    const text = ['Жила-была лягушка.', 'Утки летели на юг, а Лягушка смотрела.'];
+    expect(wordAt(text, 'Лягушка')).toEqual({ line: 0, from: 10, to: 17 });
+    expect(wordAt(text, 'юг')).toEqual({ line: 1, from: 15, to: 17 });
+    expect(wordAt(['Лягушка-путешественница!'], 'лягушка')).toEqual({ line: 0, from: 0, to: 7 });
+    expect(wordAt(text, 'ут')).toBeNull();
+    expect(wordAt(text, 'кот')).toBeNull();
   });
 });
 

@@ -22,6 +22,28 @@ const isConsonant = (c: string | undefined) => !!c && !isVowel(c) && !'ЬЪ'.inc
 export const syllablesIn = (word: string) => [...word].filter(isVowel).length;
 
 /**
+ * Слово по слогам, как в «Слове из слогов»: ЛЯ-ГУШ-КА, УТ-КА, ЯБ-ЛО-КО. Один согласный между
+ * гласными уходит к следующему слогу, из нескольких первый остаётся с предыдущим; Й, Ь и Ъ —
+ * всегда с предыдущим (ЗАЙ-КА, ПАЛЬ-ТО, СЕМЬ-Я). Регистр букв сохраняется.
+ */
+export function syllableSplit(word: string): string[] {
+  const chars = [...word];
+  const up = chars.map((c) => c.toUpperCase());
+  const vowels = up.flatMap((c, i) => (isVowel(c) ? [i] : []));
+  const cuts = vowels.slice(1).map((b, k) => {
+    const a = vowels[k]!;
+    if (b === a + 1) return b;
+    // Разделительный Ь или Ъ перед гласной: СЕМЬ-Я, ОБЪ-ЕЗД.
+    if ('ЬЪ'.includes(up[b - 1]!)) return b;
+    // Первый согласный (с Ь после него): один между гласными — к следующему слогу (ЛИ-СА),
+    // иначе остаётся с предыдущим (УТ-КА); Й — всегда с предыдущим.
+    const end = 'ЬЪ'.includes(up[a + 2]!) ? a + 2 : a + 1;
+    return end === b - 1 && up[a + 1] !== 'Й' ? a + 1 : end + 1;
+  });
+  return [0, ...cuts].map((from, i) => chars.slice(from, cuts[i] ?? chars.length).join(''));
+}
+
+/**
  * Звуки, которые совёнок может протянуть («с-с-с», «м-м-м»): с ними задание «Где звук?»
  * звучит понятно. Взрывные (К, Т, П…) голос называет как букву — «ка», «тэ», — их не берём.
  */
