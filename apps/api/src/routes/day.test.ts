@@ -614,6 +614,32 @@ describe('пульт родителя (этап 29)', () => {
     );
     expect(log.entries.map((e) => e.text)).toEqual(['Послушал рассказ «Четыре желания»']);
   });
+
+  it('журнал: книжка — «Слушал книжку…», у длинной — какая глава (этап 52)', async () => {
+    const game = await addGame('Кот, петух и лиса', 'books');
+    const done = (payload: object) =>
+      t.app.inject({
+        method: 'POST',
+        url: '/api/kid/events',
+        cookies: device,
+        payload: {
+          type: 'interactive_complete',
+          interactiveId: game,
+          payload: { kind: 'book', book: 'kotPetuh', ...payload },
+        },
+      });
+    await done({ chapter: 1, chapters: 1 });
+    t.advance(60_000);
+    await done({ chapter: 2, chapters: 4 });
+    const log = await get<{ entries: { text: string }[] }>(
+      `/api/parent/children/${child}/activity`,
+      parent,
+    );
+    expect(log.entries.map((e) => e.text)).toEqual([
+      'Слушал книжку «Кот, петух и лиса»: глава 2 из 4',
+      'Слушал книжку «Кот, петух и лиса»',
+    ]);
+  });
 });
 
 describe('перерыв для глаз (этап 50)', () => {
