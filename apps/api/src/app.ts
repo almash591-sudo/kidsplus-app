@@ -11,6 +11,7 @@ import { dayRoutes } from './routes/day';
 import { decksRoutes } from './routes/decks';
 import { gamesRoutes } from './routes/games';
 import { devicesRoutes } from './routes/devices';
+import { appErrorsRoutes } from './routes/app-errors';
 import { kidRoutes } from './routes/kid';
 import { mediaRoutes } from './routes/media';
 import { moderationRoutes } from './routes/moderation';
@@ -111,6 +112,7 @@ export async function buildApp({
   parentAuthRoutes(app, ctx);
   childrenRoutes(app, ctx);
   devicesRoutes(app, ctx);
+  appErrorsRoutes(app, ctx);
   videosRoutes(app, ctx);
   quizRoutes(app, ctx);
   decksRoutes(app, ctx);

@@ -225,6 +225,13 @@
       "when": 1793120169160,
       "tag": "0031_eye_break",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1793205301727,
+      "tag": "0032_device_errors",
+      "breakpoints": true
     }
   ]
 }
