@@ -67,6 +67,22 @@ export function chapterQuestions(
     }));
 }
 
+/**
+ * Где на странице слово «Прочитай сам»: предложение и кусок [from, to) — его выделяем в тексте.
+ * Ищем целое слово без учёта регистра; не нашли — null.
+ */
+export function wordAt(
+  text: readonly string[],
+  word: string,
+): { line: number; from: number; to: number } | null {
+  const re = new RegExp(`(?<![а-яё])${word}(?![а-яё])`, 'iu');
+  for (const [line, t] of text.entries()) {
+    const m = re.exec(t);
+    if (m) return { line, from: m.index, to: m.index + m[0].length };
+  }
+  return null;
+}
+
 // ─── Закладки (на телефоне ребёнка) ─────────────────────────────────────────
 
 const STORE = 'kidsplus.books';

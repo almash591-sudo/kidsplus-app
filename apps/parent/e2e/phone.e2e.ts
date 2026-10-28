@@ -586,6 +586,45 @@ test('книжка в конструкторе игр (этап 52): разде�
   await expect(row).toHaveCount(0);
 });
 
+test('книжка «Прочитай сам» (этап 52): переключатель — только у книжки со словами', async ({
+  page,
+}) => {
+  await login(page);
+  await page.goto('/content?tab=games');
+  await page.getByRole('button', { name: '+ Игра' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('combobox', { name: 'Вид игры' }).click();
+  await page.getByRole('option', { name: 'Книжка', exact: true }).click();
+  const readSelf = dialog.getByRole('switch', { name: 'Прочитай сам' });
+  // У сказки для малышей слов для чтения нет — и переключателя нет.
+  await expect(readSelf).toHaveCount(0);
+  const book = dialog.getByRole('combobox', { name: 'Книжка' });
+  await book.click();
+  await page.getByRole('option', { name: /Филипок/ }).click();
+  await expect(readSelf).not.toBeChecked();
+  await expect(dialog.getByText(/Слов: 18/)).toBeVisible();
+  await readSelf.check();
+  // Сменили на книжку без слов и обратно — выключен: сам собой не включается.
+  await book.click();
+  await page.getByRole('option', { name: /Кот, петух и лиса/ }).click();
+  await expect(readSelf).toHaveCount(0);
+  await book.click();
+  await page.getByRole('option', { name: /Филипок/ }).click();
+  await expect(readSelf).not.toBeChecked();
+  await readSelf.check();
+  expect(await layoutProblems(page)).toEqual([]);
+  await dialog.getByRole('button', { name: 'Сохранить' }).click();
+  await expect(dialog).toHaveCount(0);
+  const row = page.locator('.attention-row').filter({ hasText: 'Филипок' });
+  await expect(row).toContainText('листает ребёнок · вопросы · прочитай сам');
+
+  // Уборка за собой: стенд общий для тестов.
+  await row.getByRole('button', { name: 'Действия' }).click();
+  await page.getByRole('menuitem', { name: 'Удалить' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Удалить' }).click();
+  await expect(row).toHaveCount(0);
+});
+
 test('привычки: готовое и своё дело, отметка за ребёнка, награда за звёзды', async ({ page }) => {
   await login(page);
   await page.goto('/habits');

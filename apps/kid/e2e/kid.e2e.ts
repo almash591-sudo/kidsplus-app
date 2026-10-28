@@ -3250,72 +3250,218 @@ test.describe('новые игры', () => {
     expect(said).not.toContain('А теперь вопросы!');
   });
 
-  // Самые длинные страницы каждой книжки: сцена и подпись на экране, подпись не под стрелками.
-  for (const code of BOOK_CODES)
-    test(`книжка «${code}» (этап 52): длинные страницы — на экране, подпись не под стрелками`, async ({
-      page,
-      backend,
-    }) => {
-      test.setTimeout(120_000);
-      const pages = BOOKS[code].chapters[0]!.pages;
-      const chars = pages.map((p) => p.text.join(' ').length);
-      const longest = [...chars.keys()].sort((a, b) => chars[b]! - chars[a]!).slice(0, 4);
-      backend.items = [
-        game(
-          1,
-          { kind: 'book', book: code, autoTurn: false, questions: true, choices: 4 },
-          'books',
-        ),
-        game(2, { kind: 'balloons', count: 5, target: null }),
-      ];
-      await gameMedia(page);
-      await page.goto('/');
-      await page.locator('[data-category=books]').click();
-      // Голос «говорит» долго — листаем сами и меряем самые длинные страницы.
-      await slowSpeech(page, 8000);
-      await page.getByTestId('tile').first().click();
-      const g = page.getByTestId('game-book');
+  test('«Прочитай сам» (этап 52): слово по слогам, нажал — голос говорит его, потом страница со словом', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(180_000);
+    await page.addInitScript(
+      () => ((window as unknown as { __speechMs: number }).__speechMs = 300),
+    );
+    const spec = { kind: 'book', book: 'filipok', autoTurn: false, questions: true, choices: 3 };
+    backend.items = [
+      game(1, { ...spec, readSelf: true }, 'books'),
+      game(2, { kind: 'balloons', count: 5, target: null }),
+    ];
+    await gameMedia(page);
+    await page.goto('/');
+    await page.locator('[data-category=books]').click();
+    await page.getByTestId('tile').first().click();
+    const g = page.getByTestId('game-book');
+    await expect(g).toHaveAttribute('data-step', 'page', { timeout: 10_000 });
+    // Сначала слово страницы — крупно, по слогам; текста ещё нет, рука зовёт нажать.
+    const word = g.getByTestId('book-read');
+    await expect(word).toHaveAttribute('data-word', 'школу');
+    await expect(word.getByTestId('book-syl')).toHaveText(['ШКО', 'ЛУ']);
+    await expect(word).toHaveAttribute('data-hint', '');
+    await expect(g.getByTestId('book-text')).toHaveCount(0);
+    await page.waitForTimeout(600);
+    await shot(page, 'book-read');
+    // Прочитал, нажал — слоги слились, голос сказал слово; потом звучит страница, слово выделено.
+    await word.click();
+    await expect(word).toHaveClass(/heard/);
+    await expect(g.getByTestId('book-word')).toHaveText('школу', { timeout: 10_000 });
+    await expect(g.getByTestId('book-next')).toHaveClass(/ready/, { timeout: 15_000 });
+    await shot(page, 'book-read-page');
+    let said = (await spoken(page)).map((x) => x.text);
+    const at = (t: string) => said.indexOf(t);
+    expect(at('Прочитай слово сам — и нажми на него!')).toBeGreaterThanOrEqual(0);
+    expect(at('школу')).toBeGreaterThan(at('Прочитай слово сам — и нажми на него!'));
+    expect(at('Был мальчик, звали его Филипп.')).toBeGreaterThan(at('школу'));
+    // Не стал читать — листает дальше; следующее слово прочитал.
+    await g.getByTestId('book-next').click();
+    await expect(g).toHaveAttribute('data-page', '1');
+    await expect(word).toHaveAttribute('data-word', 'мал');
+    await g.getByTestId('book-next').click();
+    await expect(g).toHaveAttribute('data-page', '2');
+    await expect(word).toHaveAttribute('data-word', 'бабушка');
+    await word.click();
+    await expect(g.getByTestId('book-word')).toHaveText('бабушка', { timeout: 10_000 });
+    const total = Number((await g.locator('.book-pageno').textContent())!.split('/')[1]);
+    for (let k = 3; k < total; k++) {
       await g.getByTestId('book-next').click();
-      await expect(g).toHaveAttribute('data-step', 'page');
-      for (let k = 0; k <= Math.max(...longest); k++) {
-        if (k > 0) await g.getByTestId('book-next').click();
-        await expect(g).toHaveAttribute('data-page', String(k));
-        if (!longest.includes(k)) continue;
-        // Подпись появляется с увеличением (0,4 с) — меряем, когда встала на место.
-        await page.waitForTimeout(600);
-        const box = await page.evaluate(() => {
-          const r = (q: string) => document.querySelector(q)!.getBoundingClientRect();
-          const text = document.querySelector('[data-testid=book-text]')!;
-          return {
-            pic: r('.book-pic'),
-            text: r('[data-testid=book-text]'),
-            next: r('.book-next'),
-            prev: document.querySelector('.book-prev')?.getBoundingClientRect() ?? null,
-            h: innerHeight,
-            w: innerWidth,
-            font: parseFloat(getComputedStyle(text).fontSize),
-            scrolled: document.querySelector('.game-screen')!.scrollTop,
-          };
-        });
-        const where = `страница ${k + 1}`;
-        expect(box.scrolled, where).toBe(0);
-        expect(box.pic.top, where).toBeGreaterThanOrEqual(0);
-        expect(box.pic.height, where).toBeGreaterThan(box.h * 0.2);
-        expect(box.text.bottom, where).toBeLessThanOrEqual(box.h);
-        expect(box.text.right, where).toBeLessThanOrEqual(box.w);
-        expect(box.font, where).toBeGreaterThanOrEqual(13);
-        // Подпись не заходит под стрелки.
-        for (const b of [box.next, box.prev])
-          if (b && box.text.right > b.left && box.text.left < b.right)
-            expect(box.text.bottom, where).toBeLessThanOrEqual(b.top);
-      }
-      // Самая длинная страница книжки для старших — на скриншот.
-      if (code !== 'hrabryZayac') return;
-      while (Number(await g.getAttribute('data-page')) > longest[0]!)
-        await g.getByTestId('book-prev').click();
-      await page.waitForTimeout(600);
-      await shot(page, 'book-long');
+      await expect(g).toHaveAttribute('data-page', String(k));
+    }
+    await g.getByTestId('book-next').click();
+    await expect(g).toHaveAttribute('data-step', 'questions', { timeout: 10_000 });
+    for (let k = 0; k < 2; k++) {
+      const question = await g.getByTestId('poem-text').textContent();
+      await g.locator('[data-testid=poem-option][data-hint]').click();
+      if (k === 0)
+        await expect(g.getByTestId('poem-text')).not.toHaveText(question!, { timeout: 15_000 });
+    }
+    await expectFinished(page, backend);
+    // В журнал — сколько слов прочитал сам; «Прочитай слово сам» — только на первом слове.
+    expect(backend.events.find((e) => e.type === 'interactive_complete')!.payload).toMatchObject({
+      kind: 'book',
+      book: 'filipok',
+      chapter: 1,
+      chapters: 1,
+      read: 2,
     });
+    said = (await spoken(page)).map((x) => x.text);
+    expect(said.filter((t) => t === 'Прочитай слово сам — и нажми на него!')).toHaveLength(1);
+    expect(said).toContain('Лев Толстой. «Филипок».');
+  });
+
+  test('«Прочитай сам», страницы листаются сами: слово ждёт ребёнка (этап 52)', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(120_000);
+    await page.addInitScript(() => {
+      localStorage.setItem('kidsplus.books', '{"filipok":{"chapter":0,"page":17}}');
+      (window as unknown as { __speechMs: number }).__speechMs = 300;
+    });
+    backend.items = [
+      game(
+        1,
+        {
+          kind: 'book',
+          book: 'filipok',
+          autoTurn: true,
+          questions: false,
+          choices: 3,
+          readSelf: true,
+        },
+        'books',
+      ),
+      game(2, { kind: 'balloons', count: 5, target: null }),
+    ];
+    await gameMedia(page);
+    await page.goto('/');
+    await page.locator('[data-category=books]').click();
+    await page.getByTestId('tile').first().click();
+    const g = page.getByTestId('game-book');
+    await expect(g).toHaveAttribute('data-step', 'page', { timeout: 10_000 });
+    await expect(g).toHaveAttribute('data-page', '17');
+    const word = g.getByTestId('book-read');
+    await expect(word.getByTestId('book-syl')).toHaveText(['РЕ', 'БЯ', 'ТА', 'МИ']);
+    // Самое длинное слово книжек — на экране и не под стрелками, буквы крупные.
+    await page.waitForTimeout(600);
+    const box = await page.evaluate(() => {
+      const r = (q: string) => document.querySelector(q)?.getBoundingClientRect() ?? null;
+      return {
+        word: r('[data-testid=book-read]')!,
+        arrows: [r('.book-next'), r('.book-prev')],
+        h: innerHeight,
+        w: innerWidth,
+        font: parseFloat(getComputedStyle(document.querySelector('.book-syl')!).fontSize),
+      };
+    });
+    expect(box.word.left).toBeGreaterThanOrEqual(0);
+    expect(box.word.right).toBeLessThanOrEqual(box.w);
+    expect(box.word.bottom).toBeLessThanOrEqual(box.h);
+    expect(box.font).toBeGreaterThanOrEqual(28);
+    for (const b of box.arrows)
+      if (b && box.word.right > b.left && box.word.left < b.right)
+        expect(box.word.bottom).toBeLessThanOrEqual(b.top);
+    // Сама не листается, а подсказка-рука может звать нажать.
+    await page.waitForTimeout(3000);
+    await expect(g).toHaveAttribute('data-step', 'page');
+    expect(await g.getAttribute('data-no-idle')).toBeNull();
+    await word.click();
+    // Нажал — голос сказал слово, прочитал страницу и закрыл книжку сам.
+    await expectFinished(page, backend);
+    expect(backend.events.find((e) => e.type === 'interactive_complete')!.payload).toMatchObject({
+      book: 'filipok',
+      read: 1,
+    });
+  });
+
+  // Самые длинные страницы каждой главы: сцена и подпись на экране, подпись не под стрелками.
+  for (const code of BOOK_CODES)
+    for (const chapter of BOOKS[code].chapters.keys())
+      test(`книжка «${code}»${chapter ? `, глава ${chapter + 1}` : ''} (этап 52): длинные страницы — на экране, подпись не под стрелками`, async ({
+        page,
+        backend,
+      }) => {
+        test.setTimeout(120_000);
+        // Вторая глава — с закладки.
+        if (chapter)
+          await page.addInitScript(
+            (mark) => localStorage.setItem('kidsplus.books', mark),
+            JSON.stringify({ [code]: { chapter, page: 0 } }),
+          );
+        const pages = BOOKS[code].chapters[chapter]!.pages;
+        const chars = pages.map((p) => p.text.join(' ').length);
+        const longest = [...chars.keys()].sort((a, b) => chars[b]! - chars[a]!).slice(0, 4);
+        backend.items = [
+          game(
+            1,
+            { kind: 'book', book: code, autoTurn: false, questions: true, choices: 4 },
+            'books',
+          ),
+          game(2, { kind: 'balloons', count: 5, target: null }),
+        ];
+        await gameMedia(page);
+        await page.goto('/');
+        await page.locator('[data-category=books]').click();
+        // Голос «говорит» долго — листаем сами и меряем самые длинные страницы.
+        await slowSpeech(page, 8000);
+        await page.getByTestId('tile').first().click();
+        const g = page.getByTestId('game-book');
+        await g.getByTestId('book-next').click();
+        await expect(g).toHaveAttribute('data-step', 'page');
+        for (let k = 0; k <= Math.max(...longest); k++) {
+          if (k > 0) await g.getByTestId('book-next').click();
+          await expect(g).toHaveAttribute('data-page', String(k));
+          if (!longest.includes(k)) continue;
+          // Подпись появляется с увеличением (0,4 с) — меряем, когда встала на место.
+          await page.waitForTimeout(600);
+          const box = await page.evaluate(() => {
+            const r = (q: string) => document.querySelector(q)!.getBoundingClientRect();
+            const text = document.querySelector('[data-testid=book-text]')!;
+            return {
+              pic: r('.book-pic'),
+              text: r('[data-testid=book-text]'),
+              next: r('.book-next'),
+              prev: document.querySelector('.book-prev')?.getBoundingClientRect() ?? null,
+              h: innerHeight,
+              w: innerWidth,
+              font: parseFloat(getComputedStyle(text).fontSize),
+              scrolled: document.querySelector('.game-screen')!.scrollTop,
+            };
+          });
+          const where = `страница ${k + 1}`;
+          expect(box.scrolled, where).toBe(0);
+          expect(box.pic.top, where).toBeGreaterThanOrEqual(0);
+          expect(box.pic.height, where).toBeGreaterThan(box.h * 0.2);
+          expect(box.text.bottom, where).toBeLessThanOrEqual(box.h);
+          expect(box.text.right, where).toBeLessThanOrEqual(box.w);
+          expect(box.font, where).toBeGreaterThanOrEqual(13);
+          // Подпись не заходит под стрелки.
+          for (const b of [box.next, box.prev])
+            if (b && box.text.right > b.left && box.text.left < b.right)
+              expect(box.text.bottom, where).toBeLessThanOrEqual(b.top);
+        }
+        // Самая длинная страница книжки для старших — на скриншот.
+        if (code !== 'hrabryZayac') return;
+        while (Number(await g.getAttribute('data-page')) > longest[0]!)
+          await g.getByTestId('book-prev').click();
+        await page.waitForTimeout(600);
+        await shot(page, 'book-long');
+      });
 
   test('гонки (этап 43): светофор, ворота с ответом (сначала не те), обгон и финиш', async ({
     page,

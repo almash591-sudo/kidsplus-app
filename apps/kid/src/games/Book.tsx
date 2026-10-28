@@ -6,12 +6,13 @@ import {
   type Book as BookData,
   type BookCode,
 } from '@kidsplus/shared/books';
+import { syllableSplit } from '@kidsplus/shared/sounds';
 import { withoutStress } from '@kidsplus/shared/voice';
-import { useEffect, useRef, useState } from 'react';
-import { BOOK_END, BOOK_RESUME, BOOK_TOMORROW, BOOK_TURN } from '../phrases';
+import { useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react';
+import { BOOK_END, BOOK_READ, BOOK_RESUME, BOOK_TOMORROW, BOOK_TURN, bookWord } from '../phrases';
 import { Icon } from '../ui/icons';
 import { BookScene } from './BookScene';
-import { chapterQuestions, markOf, saveMark, startOf, today } from './bookPlan';
+import { chapterQuestions, markOf, saveMark, startOf, today, wordAt } from './bookPlan';
 import { gameReport, say, setTask, type GameProps } from './common';
 import { pause, Questions, speak, useFitText, useScript } from './Poem';
 import './poem.css';
@@ -70,8 +71,48 @@ function NextButton({ onClick, ready = false }: { onClick: () => void; ready?: b
 }
 
 /**
+ * «Прочитай сам»: слово крупно по слогам, под каждым слогом — дуга, как в букваре. Ребёнок
+ * читает и нажимает — слоги сливаются в слово, голос его говорит.
+ */
+function ReadWord({
+  word,
+  heard,
+  boxRef,
+  onClick,
+}: {
+  word: string;
+  heard: boolean;
+  boxRef: RefObject<HTMLDivElement | null>;
+  onClick: () => void;
+}) {
+  const parts = syllableSplit(word.toUpperCase());
+  return (
+    <div ref={boxRef} className="poem-text book-read-box">
+      <button
+        type="button"
+        className={heard ? 'book-read heard' : 'book-read'}
+        style={{ '--len': word.length } as CSSProperties}
+        aria-label={heard ? word : parts.join('-')}
+        data-testid="book-read"
+        data-word={word}
+        data-hint={heard ? undefined : ''}
+        onClick={onClick}
+      >
+        {parts.map((part, i) => (
+          <span key={i} className="book-syl" data-testid="book-syl">
+            {part}
+          </span>
+        ))}
+      </button>
+    </div>
+  );
+}
+
+/**
  * Страница: сцена и 1–3 предложения. Голос читает их по одному и подсвечивает то, что звучит;
  * нажал на предложение — прочитает его ещё раз. Дочитал — сам листает (autoTurn) или ждёт стрелку.
+ * С «Прочитай сам» сначала слово страницы по слогам: прочитал, нажал — голос его говорит, и уже
+ * потом звучит страница, а слово в ней выделено.
  */
 function Page(props: {
   code: BookCode;
@@ -79,16 +120,29 @@ function Page(props: {
   chapter: number;
   page: number;
   autoTurn: boolean;
+  readSelf: boolean;
+  /** Сказать «Прочитай слово сам» — только на первом слове, дальше зовёт подсказка-рука. */
+  askRead: () => boolean;
+  onRead: () => void;
+  onReading: (on: boolean) => void;
   onNext: () => void;
   onPrev: (() => void) | null;
 }) {
-  const { book, chapter, page } = props;
+  const { book, chapter, page, onReading } = props;
   const pages = book.chapters[chapter]!.pages;
   const p = pages[page]!;
+  const word = props.readSelf ? p.read : undefined;
+  // read — ждём, пока прочитает; heard — голос говорит слово; listen — звучит страница.
+  const [phase, setPhase] = useState<'read' | 'heard' | 'listen'>(word ? 'read' : 'listen');
   const [now, setNow] = useState(-1);
   const [ready, setReady] = useState(false);
   const textRef = useRef<HTMLDivElement>(null);
-  useFitText(textRef, `${chapter}:${page}`);
+  useFitText(textRef, `${chapter}:${page}:${phase === 'listen'}`);
+  const mark = word ? wordAt(p.text, word) : null;
+  useEffect(() => {
+    onReading(phase === 'read');
+    return () => onReading(false);
+  }, [onReading, phase]);
 
   // Следующая сцена — заранее: страница перевернётся без белого мига.
   useEffect(() => {
@@ -96,46 +150,85 @@ function Page(props: {
     if (book.drawn && next && next !== p.picture) new Image().src = bookPicture(next);
   }, [book, pages, page, p.picture]);
 
-  useScript(async (alive) => {
-    setTask(() => say(...p.text));
-    for (let k = 0; k < p.text.length; k++) {
+  useScript(
+    async (alive) => {
+      if (word && phase === 'read') {
+        setTask(() => say(BOOK_READ));
+        if (props.askRead()) await speak(BOOK_READ);
+        return;
+      }
+      if (word && phase === 'heard') {
+        setTask(() => say(bookWord(word)));
+        await speak(bookWord(word));
+        if (!alive()) return;
+        await pause(500);
+        if (alive()) setPhase('listen');
+        return;
+      }
+      setTask(() => say(...p.text));
+      for (let k = 0; k < p.text.length; k++) {
+        if (!alive()) return;
+        setNow(k);
+        await speak(p.text[k]!);
+      }
       if (!alive()) return;
-      setNow(k);
-      await speak(p.text[k]!);
-    }
-    if (!alive()) return;
-    setNow(-1);
-    if (props.autoTurn) {
-      await pause(1200);
-      if (alive()) props.onNext();
-      return;
-    }
-    setReady(true);
-    setTask(() => say(BOOK_TURN));
-  }, []);
+      setNow(-1);
+      if (props.autoTurn) {
+        await pause(1200);
+        if (alive()) props.onNext();
+        return;
+      }
+      setReady(true);
+      setTask(() => say(BOOK_TURN));
+    },
+    [phase],
+  );
 
   // Одна сцена на несколько страниц — камера наезжает с другой стороны.
   const same = pages.slice(0, page).filter((x) => x.picture === p.picture).length;
   return (
     <>
       <BookScene code={props.code} scene={p.picture} pan={same} />
-      <div ref={textRef} className="poem-text book-text" data-testid="book-text">
-        <p>
-          {p.text.map((t, k) => (
-            <span
-              key={k}
-              className={k === now ? 'book-line now' : 'book-line'}
-              data-testid={k === now ? 'book-line-now' : 'book-line'}
-              onClick={() => {
-                setNow(k);
-                void say(t).then(() => setNow((n) => (n === k ? -1 : n)));
-              }}
-            >
-              {withoutStress(t)}{' '}
-            </span>
-          ))}
-        </p>
-      </div>
+      {word && phase !== 'listen' ? (
+        <ReadWord
+          word={word}
+          heard={phase === 'heard'}
+          boxRef={textRef}
+          onClick={() => {
+            if (phase !== 'read') return;
+            props.onRead();
+            setPhase('heard');
+          }}
+        />
+      ) : (
+        <div ref={textRef} className="poem-text book-text" data-testid="book-text">
+          <p>
+            {p.text.map((t, k) => (
+              <span
+                key={k}
+                className={k === now ? 'book-line now' : 'book-line'}
+                data-testid={k === now ? 'book-line-now' : 'book-line'}
+                onClick={() => {
+                  setNow(k);
+                  void say(t).then(() => setNow((n) => (n === k ? -1 : n)));
+                }}
+              >
+                {mark?.line === k ? (
+                  <>
+                    {withoutStress(t.slice(0, mark.from))}
+                    <b className="book-word" data-testid="book-word">
+                      {t.slice(mark.from, mark.to)}
+                    </b>
+                    {withoutStress(t.slice(mark.to))}
+                  </>
+                ) : (
+                  withoutStress(t)
+                )}{' '}
+              </span>
+            ))}
+          </p>
+        </div>
+      )}
       {props.onPrev && (
         <button
           type="button"
@@ -191,6 +284,10 @@ export function Book({ spec, phrases, onFinish }: GameProps<'book'>) {
   );
   const pages = book.chapters[chapter]!.pages;
   const more = chapter + 1 < book.chapters.length;
+  // «Прочитай сам»: какие страницы ребёнок прочитал сам (в журнал) и ждёт ли слово его сейчас.
+  const read = useRef(new Set<number>());
+  const asked = useRef(false);
+  const [reading, setReading] = useState(false);
 
   // Закладка — на каждой странице: ушёл посреди — вернётся сюда же.
   useEffect(() => {
@@ -202,7 +299,12 @@ export function Book({ spec, phrases, onFinish }: GameProps<'book'>) {
     setStep(rounds.length ? 'questions' : 'end');
   };
   const finish = () => {
-    gameReport.set({ book: code, chapter: chapter + 1, chapters: book.chapters.length });
+    gameReport.set({
+      book: code,
+      chapter: chapter + 1,
+      chapters: book.chapters.length,
+      ...(spec.readSelf && read.current.size ? { read: read.current.size } : {}),
+    });
     onFinish();
   };
 
@@ -215,7 +317,8 @@ export function Book({ spec, phrases, onFinish }: GameProps<'book'>) {
       data-chapter={chapter}
       data-page={page}
       // Голос читает — ребёнок слушает; подсказка «нажми» — только когда страница дочитана.
-      data-no-idle={step === 'cover' || step === 'end' || spec.autoTurn || undefined}
+      // Слово «Прочитай сам» ждёт ребёнка и тогда, когда страницы листаются сами.
+      data-no-idle={step === 'cover' || step === 'end' || (spec.autoTurn && !reading) || undefined}
       key={step === 'page' ? `page-${page}` : step}
     >
       {step === 'cover' && (
@@ -234,6 +337,10 @@ export function Book({ spec, phrases, onFinish }: GameProps<'book'>) {
           chapter={chapter}
           page={page}
           autoTurn={spec.autoTurn}
+          readSelf={spec.readSelf}
+          askRead={() => !asked.current && (asked.current = true)}
+          onRead={() => read.current.add(page)}
+          onReading={setReading}
           onNext={() => (page + 1 < pages.length ? setPage(page + 1) : endChapter())}
           onPrev={page > 0 ? () => setPage(page - 1) : null}
         />

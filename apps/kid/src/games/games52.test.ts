@@ -5,7 +5,7 @@ import type { KidPlaylist } from '@kidsplus/shared/api';
 import { BOOK_CODES, bookOf, bookPictures, type Book } from '@kidsplus/shared/books';
 import { gameSpec } from '@kidsplus/shared/games';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { appPhrases, bookPhrases } from '../phrases';
+import { appPhrases, BOOK_READ, bookPhrases, bookWord } from '../phrases';
 import { playlistMedia } from '../offline';
 import {
   chapterQuestions,
@@ -15,6 +15,7 @@ import {
   shelfState,
   startOf,
   today,
+  wordAt,
 } from './bookPlan';
 
 const kot = bookOf('kotPetuh');
@@ -108,6 +109,17 @@ describe('вопросы в конце главы', () => {
   });
 });
 
+describe('«Прочитай сам»: слово в тексте страницы', () => {
+  it('целое слово без учёта регистра; часть другого слова — не оно', () => {
+    const text = ['Жила-была лягушка.', 'Утки летели на юг, а Лягушка смотрела.'];
+    expect(wordAt(text, 'Лягушка')).toEqual({ line: 0, from: 10, to: 17 });
+    expect(wordAt(text, 'юг')).toEqual({ line: 1, from: 15, to: 17 });
+    expect(wordAt(['Лягушка-путешественница!'], 'лягушка')).toEqual({ line: 0, from: 0, to: 7 });
+    expect(wordAt(text, 'ут')).toBeNull();
+    expect(wordAt(text, 'кот')).toBeNull();
+  });
+});
+
 describe('книжки: озвучка и картинки', () => {
   const spec = gameSpec.parse({ kind: 'book', book: 'kotPetuh' });
 
@@ -134,6 +146,15 @@ describe('книжки: озвучка и картинки', () => {
     );
     for (const code of BOOK_CODES)
       for (const t of bookPhrases(code)) expect(t.length, t).toBeLessThanOrEqual(200);
+  });
+
+  it('«Прочитай сам»: просьба и каждое слово — заранее; у книжки без слов — нет', () => {
+    const filipok = bookPhrases('filipok');
+    expect(filipok).toContain(BOOK_READ);
+    for (const p of bookOf('filipok').chapters.flatMap((c) => c.pages))
+      expect(filipok).toContain(bookWord(p.read!));
+    expect(filipok).toContain('школу');
+    expect(bookPhrases('kotPetuh')).not.toContain(BOOK_READ);
   });
 
   it('нарисованная книжка — каждая сцена лежит файлом; скачивается заранее целиком', () => {
