@@ -2983,9 +2983,10 @@ test.describe('новые игры', () => {
   }) => {
     test.setTimeout(120_000);
     await page.addInitScript(() => localStorage.setItem('kidsplus.poems', '{"petushok":3}'));
-    // Голос «говорит» по 700 мс — успеваем увидеть каждый шаг занятия.
+    // Голос «говорит» долго с самого начала: части листаем сами (при 700 мс под нагрузкой первая
+    // часть успевала смениться сама до замедления — и стрелка перескакивала через одну).
     await page.addInitScript(
-      () => ((window as unknown as { __speechMs: number }).__speechMs = 700),
+      () => ((window as unknown as { __speechMs: number }).__speechMs = 4000),
     );
     backend.items = [
       game(
@@ -3004,7 +3005,6 @@ test.describe('новые игры', () => {
     await openGame(page);
     const g = page.getByTestId('game-poem');
     await expect(g).toHaveAttribute('data-learned', '3');
-    await slowSpeech(page, 4000);
     for (const picture of ['rooster-2', 'rooster-3']) {
       await g.getByTestId('poem-next').click();
       await expect(g.locator('.poem-pic')).toHaveAttribute('data-picture', picture, {
