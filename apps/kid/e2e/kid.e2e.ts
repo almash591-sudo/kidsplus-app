@@ -3133,6 +3133,186 @@ test.describe('новые игры', () => {
     await expect(page.getByTestId('tile')).toHaveCount(1);
   });
 
+  test('книжка (этап 52): полка, обложка, страницы под голос с подсветкой, стрелки, вопросы, закладка', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(180_000);
+    // Голос «говорит» по 700 мс — успеваем увидеть подсветку предложения.
+    await page.addInitScript(
+      () => ((window as unknown as { __speechMs: number }).__speechMs = 700),
+    );
+    backend.items = [
+      game(
+        1,
+        { kind: 'book', book: 'kotPetuh', autoTurn: false, questions: true, choices: 3 },
+        'books',
+      ),
+      game(2, { kind: 'balloons', count: 5, target: null }),
+    ];
+    await gameMedia(page);
+    await page.goto('/');
+    // Свой раздел; на полке — обложка и «новая».
+    await page.locator('[data-category=books]').click();
+    const tile = page.locator('.book-tile');
+    await expect(tile).toHaveAttribute('data-shelf', 'new');
+    await expect(tile.locator('.book-new')).toBeVisible();
+    await expect(tile.locator('[data-picture]')).toHaveAttribute('data-picture', 'kot-happy');
+    await shot(page, 'book-shelf');
+    await page.getByTestId('tile').first().click();
+    const g = page.getByTestId('game-book');
+    await expect(g).toHaveAttribute('data-step', 'cover');
+    await expect(g.getByTestId('book-cover')).toContainText('Кот, петух и лиса');
+    await shot(page, 'book-cover');
+    // Обложку объявили — первая страница сама; звучит первое предложение, оно подсвечено.
+    await expect(g).toHaveAttribute('data-step', 'page', { timeout: 10_000 });
+    await expect(g).toHaveAttribute('data-page', '0');
+    await expect(g.getByTestId('book-line-now')).toContainText('Жил-был старик');
+    await shot(page, 'book-page');
+    // Дочитали — стрелка зовёт листать.
+    await expect(g.getByTestId('book-next')).toHaveClass(/ready/, { timeout: 15_000 });
+    await expect(g.getByTestId('book-line-now')).toHaveCount(0);
+    await g.getByTestId('book-next').click();
+    await expect(g).toHaveAttribute('data-page', '1');
+    // Назад — на первую страницу; на ней стрелки «назад» нет.
+    await g.getByTestId('book-prev').click();
+    await expect(g).toHaveAttribute('data-page', '0');
+    await expect(g.getByTestId('book-prev')).toHaveCount(0);
+    // Листаем, не дожидаясь голоса; закладка — на каждой странице.
+    const total = Number((await g.locator('.book-pageno').textContent())!.split('/')[1]);
+    for (let k = 1; k < total; k++) {
+      await g.getByTestId('book-next').click();
+      await expect(g).toHaveAttribute('data-page', String(k));
+      if (k === 3)
+        expect(await page.evaluate(() => localStorage.getItem('kidsplus.books'))).toBe(
+          '{"kotPetuh":{"chapter":0,"page":3}}',
+        );
+    }
+    await g.getByTestId('book-next').click();
+    // Вопросы — два, ответ картинкой.
+    await expect(g).toHaveAttribute('data-step', 'questions', { timeout: 10_000 });
+    await page.waitForTimeout(600);
+    await shot(page, 'book-questions');
+    for (let k = 0; k < 2; k++) {
+      const question = await g.getByTestId('poem-text').textContent();
+      await g.locator('[data-testid=poem-option][data-hint]').click();
+      if (k === 0)
+        await expect(g.getByTestId('poem-text')).not.toHaveText(question!, { timeout: 15_000 });
+    }
+    await expectFinished(page, backend);
+    expect(backend.events.find((e) => e.type === 'interactive_complete')!.payload).toMatchObject({
+      kind: 'book',
+      book: 'kotPetuh',
+      chapter: 1,
+      chapters: 1,
+    });
+    // Прочитана — в закладке день: на полке больше не «новая».
+    const mark = JSON.parse((await page.evaluate(() => localStorage.getItem('kidsplus.books')))!);
+    expect(mark.kotPetuh).toMatchObject({ chapter: 0, page: 0 });
+    expect(mark.kotPetuh.day).toMatch(/^\d{4}-\d\d-\d\d$/);
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain('Книжки!');
+    expect(said).toContain('Русская народная сказка «Кот, петух и лиса».');
+    expect(said).toContain('А теперь вопросы!');
+    expect(said).toContain('Вот и сказке конец, а кто слушал — молодец!');
+  });
+
+  test('книжка листается сама и продолжает с закладки (этап 52)', async ({ page, backend }) => {
+    test.setTimeout(120_000);
+    await page.addInitScript(() => {
+      localStorage.setItem('kidsplus.books', '{"kotPetuh":{"chapter":0,"page":15}}');
+      (window as unknown as { __speechMs: number }).__speechMs = 300;
+    });
+    backend.items = [
+      game(
+        1,
+        { kind: 'book', book: 'kotPetuh', autoTurn: true, questions: false, choices: 3 },
+        'books',
+      ),
+      game(2, { kind: 'balloons', count: 5, target: null }),
+    ];
+    await gameMedia(page);
+    await page.goto('/');
+    await page.locator('[data-category=books]').click();
+    // Читаем — на обложке закладка.
+    await expect(page.locator('.book-tile')).toHaveAttribute('data-shelf', 'reading');
+    await expect(page.getByTestId('book-mark')).toBeVisible();
+    await page.getByTestId('tile').first().click();
+    const g = page.getByTestId('game-book');
+    await expect(g).toHaveAttribute('data-page', '15');
+    await expect(g).toHaveAttribute('data-step', 'page', { timeout: 10_000 });
+    // Дочитала страницу — перевернула сама; в конце — без вопросов.
+    await expect(g).toHaveAttribute('data-page', '16', { timeout: 15_000 });
+    await expectFinished(page, backend);
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain('Продолжаем с закладки!');
+    expect(said).not.toContain('А теперь вопросы!');
+  });
+
+  test('книжка для старших (этап 52): каждая страница — на экране, подпись не под стрелками', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(120_000);
+    backend.items = [
+      game(
+        1,
+        { kind: 'book', book: 'hrabryZayac', autoTurn: false, questions: true, choices: 4 },
+        'books',
+      ),
+      game(2, { kind: 'balloons', count: 5, target: null }),
+    ];
+    await gameMedia(page);
+    await page.goto('/');
+    await page.locator('[data-category=books]').click();
+    // Голос «говорит» долго — листаем сами и меряем каждую страницу.
+    await slowSpeech(page, 8000);
+    await page.getByTestId('tile').first().click();
+    const g = page.getByTestId('game-book');
+    await g.getByTestId('book-next').click();
+    await expect(g).toHaveAttribute('data-step', 'page');
+    const total = Number((await g.locator('.book-pageno').textContent())!.split('/')[1]);
+    let longest = { k: 0, chars: 0 };
+    for (let k = 0; k < total; k++) {
+      if (k > 0) await g.getByTestId('book-next').click();
+      await expect(g).toHaveAttribute('data-page', String(k));
+      // Подпись появляется с увеличением (0,4 с) — меряем, когда встала на место.
+      await page.waitForTimeout(600);
+      const box = await page.evaluate(() => {
+        const r = (q: string) => document.querySelector(q)!.getBoundingClientRect();
+        const text = document.querySelector('[data-testid=book-text]')!;
+        return {
+          pic: r('.book-pic'),
+          text: r('[data-testid=book-text]'),
+          next: r('.book-next'),
+          prev: document.querySelector('.book-prev')?.getBoundingClientRect() ?? null,
+          h: innerHeight,
+          w: innerWidth,
+          font: parseFloat(getComputedStyle(text).fontSize),
+          chars: text.textContent!.length,
+          scrolled: document.querySelector('.game-screen')!.scrollTop,
+        };
+      });
+      const where = `страница ${k + 1}`;
+      expect(box.scrolled, where).toBe(0);
+      expect(box.pic.top, where).toBeGreaterThanOrEqual(0);
+      expect(box.pic.height, where).toBeGreaterThan(box.h * 0.2);
+      expect(box.text.bottom, where).toBeLessThanOrEqual(box.h);
+      expect(box.text.right, where).toBeLessThanOrEqual(box.w);
+      expect(box.font, where).toBeGreaterThanOrEqual(13);
+      // Подпись не заходит под стрелки.
+      for (const b of [box.next, box.prev])
+        if (b && box.text.right > b.left && box.text.left < b.right)
+          expect(box.text.bottom, where).toBeLessThanOrEqual(b.top);
+      if (box.chars > longest.chars) longest = { k, chars: box.chars };
+    }
+    // Самая длинная страница — на скриншот.
+    while (Number(await g.getAttribute('data-page')) > longest.k)
+      await g.getByTestId('book-prev').click();
+    await page.waitForTimeout(600);
+    await shot(page, 'book-long');
+  });
+
   test('гонки (этап 43): светофор, ворота с ответом (сначала не те), обгон и финиш', async ({
     page,
     backend,

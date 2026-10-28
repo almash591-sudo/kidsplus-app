@@ -549,6 +549,43 @@ test('стих в конструкторе игр (этап 45): раздел и
   await expect(row).toHaveCount(0);
 });
 
+test('книжка в конструкторе игр (этап 52): раздел и название по книжке, текст и источник', async ({
+  page,
+}) => {
+  await login(page);
+  await page.goto('/content?tab=games');
+  await page.getByRole('button', { name: '+ Игра' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('combobox', { name: 'Вид игры' }).click();
+  await page.getByRole('option', { name: 'Книжка', exact: true }).click();
+  // Раздел «Книжки» и название — сами.
+  await expect(dialog.getByRole('combobox', { name: 'Раздел у ребёнка' })).toHaveValue('Книжки');
+  const title = dialog.getByRole('textbox', { name: 'Название (видите только вы)' });
+  await expect(title).toHaveValue('Кот, петух и лиса');
+  await dialog.getByRole('combobox', { name: 'Книжка' }).click();
+  await page.getByRole('option', { name: /храброго Зайца/ }).click();
+  await expect(title).toHaveValue(/^Сказка про храброго Зайца/);
+  await expect(
+    dialog.getByText(/Дмитрий Мамин-Сибиряк\. «Сказка про храброго Зайца/),
+  ).toBeVisible();
+  await expect(dialog.getByText(/Источник: «Алёнушкины сказки»/)).toBeVisible();
+  await dialog.getByRole('button', { name: 'Весь текст' }).click();
+  await expect(dialog.getByText(/Родился зайчик в лесу/)).toBeVisible();
+  await dialog.getByRole('switch', { name: 'Страницы листаются сами' }).check();
+  expect(await layoutProblems(page)).toEqual([]);
+  await dialog.getByRole('button', { name: 'Сохранить' }).click();
+  await expect(dialog).toHaveCount(0);
+  const row = page.locator('.attention-row').filter({ hasText: 'храброго Зайца' });
+  await expect(row).toContainText('Книжка · Книжки · «Сказка про храброго Зайца');
+  await expect(row).toContainText('листается сама · вопросы');
+
+  // Уборка за собой: стенд общий для тестов.
+  await row.getByRole('button', { name: 'Действия' }).click();
+  await page.getByRole('menuitem', { name: 'Удалить' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Удалить' }).click();
+  await expect(row).toHaveCount(0);
+});
+
 test('привычки: готовое и своё дело, отметка за ребёнка, награда за звёзды', async ({ page }) => {
   await login(page);
   await page.goto('/habits');
