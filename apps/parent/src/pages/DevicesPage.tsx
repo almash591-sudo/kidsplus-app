@@ -4,6 +4,7 @@ import {
   type Device,
   type PairingCreated,
 } from '@kidsplus/shared/api';
+import type { AppErrorEntry } from '@kidsplus/shared/app-errors';
 import {
   Alert,
   Badge,
@@ -20,11 +21,11 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import QRCode from 'qrcode';
 import { useEffect, useState } from 'react';
 import { api } from '../api';
-import { LANGUAGE_LABELS } from '../lib/child';
+import { LANGUAGE_LABELS, plural } from '../lib/child';
 import { modals } from '../lib/modals';
 import { phoneOf } from '../lib/names';
 import { keys, queryClient, useChildren, useDecks, useDevices } from '../queries';
@@ -150,6 +151,75 @@ function DeviceRow({
         )}
       </Group>
       {!device.revokedAt && <SpeechVoices device={device} required={required} />}
+      {!device.revokedAt && <DeviceErrors device={device} />}
+    </Stack>
+  );
+}
+
+const ERROR_KINDS: Record<AppErrorEntry['kind'], string> = {
+  error: 'ошибка',
+  rejection: 'ошибка',
+  screen: 'экран упал',
+  audio: 'звук',
+};
+
+/**
+ * Сбои детского приложения (этап 51): сколько за неделю и что именно — чтобы на приёмке
+ * не описывать, что сломалось, а показать.
+ */
+function DeviceErrors({ device }: { device: Device }) {
+  const [open, setOpen] = useState(false);
+  const list = useQuery({
+    queryKey: ['device-errors', device.id],
+    queryFn: () => api.get<AppErrorEntry[]>(`/parent/devices/${device.id}/errors`),
+    enabled: open,
+  });
+  if (!device.errors)
+    return (
+      <Text size="xs" c="dimmed" data-testid="device-errors">
+        Сбоев за неделю нет
+      </Text>
+    );
+  return (
+    <Stack gap={4} data-testid="device-errors">
+      <Button
+        size="compact-xs"
+        variant="subtle"
+        color="orange"
+        px={0}
+        style={{ alignSelf: 'flex-start' }}
+        onClick={() => setOpen((o) => !o)}
+      >
+        Сбоев за неделю: {device.errors} {open ? '▴' : '▾'}
+      </Button>
+      {open &&
+        list.data?.map((e) => (
+          <Card key={e.id} withBorder p="xs" data-testid="device-error">
+            <Group gap={6} wrap="wrap">
+              <Badge size="xs" color={e.kind === 'audio' ? 'gray' : 'orange'} variant="light">
+                {ERROR_KINDS[e.kind]}
+              </Badge>
+              <Text size="xs" c="dimmed">
+                {dateTime(e.lastAt)}
+                {e.count > 1 ? ` · ${e.count} ${plural(e.count, 'раз', 'раза', 'раз')}` : ''}
+                {e.screen ? ` · ${e.screen}` : ''}
+              </Text>
+            </Group>
+            <Text size="xs" style={{ overflowWrap: 'anywhere' }}>
+              {e.message}
+            </Text>
+            {e.stack && (
+              <Code block fz={10} mt={4} style={{ maxHeight: 120, overflow: 'auto' }}>
+                {e.stack}
+              </Code>
+            )}
+            {e.build && (
+              <Text size="xs" c="dimmed">
+                сборка {e.build}
+              </Text>
+            )}
+          </Card>
+        ))}
     </Stack>
   );
 }
