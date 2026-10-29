@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test as base, type Page } from '@playwright/test';
 import type { AppErrorReport } from '@kidsplus/shared/app-errors';
+import { BOOK_CODES, BOOKS } from '@kidsplus/shared/books';
 import type { KidBedtime } from '@kidsplus/shared/bedtime';
 import type { KidHabit, KidHabits } from '@kidsplus/shared/habits';
 import type { EyeBreak } from '@kidsplus/shared/schedule';
@@ -3249,69 +3250,72 @@ test.describe('новые игры', () => {
     expect(said).not.toContain('А теперь вопросы!');
   });
 
-  test('книжка для старших (этап 52): каждая страница — на экране, подпись не под стрелками', async ({
-    page,
-    backend,
-  }) => {
-    test.setTimeout(120_000);
-    backend.items = [
-      game(
-        1,
-        { kind: 'book', book: 'hrabryZayac', autoTurn: false, questions: true, choices: 4 },
-        'books',
-      ),
-      game(2, { kind: 'balloons', count: 5, target: null }),
-    ];
-    await gameMedia(page);
-    await page.goto('/');
-    await page.locator('[data-category=books]').click();
-    // Голос «говорит» долго — листаем сами и меряем каждую страницу.
-    await slowSpeech(page, 8000);
-    await page.getByTestId('tile').first().click();
-    const g = page.getByTestId('game-book');
-    await g.getByTestId('book-next').click();
-    await expect(g).toHaveAttribute('data-step', 'page');
-    const total = Number((await g.locator('.book-pageno').textContent())!.split('/')[1]);
-    let longest = { k: 0, chars: 0 };
-    for (let k = 0; k < total; k++) {
-      if (k > 0) await g.getByTestId('book-next').click();
-      await expect(g).toHaveAttribute('data-page', String(k));
-      // Подпись появляется с увеличением (0,4 с) — меряем, когда встала на место.
+  // Самые длинные страницы каждой книжки: сцена и подпись на экране, подпись не под стрелками.
+  for (const code of BOOK_CODES)
+    test(`книжка «${code}» (этап 52): длинные страницы — на экране, подпись не под стрелками`, async ({
+      page,
+      backend,
+    }) => {
+      test.setTimeout(120_000);
+      const pages = BOOKS[code].chapters[0]!.pages;
+      const chars = pages.map((p) => p.text.join(' ').length);
+      const longest = [...chars.keys()].sort((a, b) => chars[b]! - chars[a]!).slice(0, 4);
+      backend.items = [
+        game(
+          1,
+          { kind: 'book', book: code, autoTurn: false, questions: true, choices: 4 },
+          'books',
+        ),
+        game(2, { kind: 'balloons', count: 5, target: null }),
+      ];
+      await gameMedia(page);
+      await page.goto('/');
+      await page.locator('[data-category=books]').click();
+      // Голос «говорит» долго — листаем сами и меряем самые длинные страницы.
+      await slowSpeech(page, 8000);
+      await page.getByTestId('tile').first().click();
+      const g = page.getByTestId('game-book');
+      await g.getByTestId('book-next').click();
+      await expect(g).toHaveAttribute('data-step', 'page');
+      for (let k = 0; k <= Math.max(...longest); k++) {
+        if (k > 0) await g.getByTestId('book-next').click();
+        await expect(g).toHaveAttribute('data-page', String(k));
+        if (!longest.includes(k)) continue;
+        // Подпись появляется с увеличением (0,4 с) — меряем, когда встала на место.
+        await page.waitForTimeout(600);
+        const box = await page.evaluate(() => {
+          const r = (q: string) => document.querySelector(q)!.getBoundingClientRect();
+          const text = document.querySelector('[data-testid=book-text]')!;
+          return {
+            pic: r('.book-pic'),
+            text: r('[data-testid=book-text]'),
+            next: r('.book-next'),
+            prev: document.querySelector('.book-prev')?.getBoundingClientRect() ?? null,
+            h: innerHeight,
+            w: innerWidth,
+            font: parseFloat(getComputedStyle(text).fontSize),
+            scrolled: document.querySelector('.game-screen')!.scrollTop,
+          };
+        });
+        const where = `страница ${k + 1}`;
+        expect(box.scrolled, where).toBe(0);
+        expect(box.pic.top, where).toBeGreaterThanOrEqual(0);
+        expect(box.pic.height, where).toBeGreaterThan(box.h * 0.2);
+        expect(box.text.bottom, where).toBeLessThanOrEqual(box.h);
+        expect(box.text.right, where).toBeLessThanOrEqual(box.w);
+        expect(box.font, where).toBeGreaterThanOrEqual(13);
+        // Подпись не заходит под стрелки.
+        for (const b of [box.next, box.prev])
+          if (b && box.text.right > b.left && box.text.left < b.right)
+            expect(box.text.bottom, where).toBeLessThanOrEqual(b.top);
+      }
+      // Самая длинная страница книжки для старших — на скриншот.
+      if (code !== 'hrabryZayac') return;
+      while (Number(await g.getAttribute('data-page')) > longest[0]!)
+        await g.getByTestId('book-prev').click();
       await page.waitForTimeout(600);
-      const box = await page.evaluate(() => {
-        const r = (q: string) => document.querySelector(q)!.getBoundingClientRect();
-        const text = document.querySelector('[data-testid=book-text]')!;
-        return {
-          pic: r('.book-pic'),
-          text: r('[data-testid=book-text]'),
-          next: r('.book-next'),
-          prev: document.querySelector('.book-prev')?.getBoundingClientRect() ?? null,
-          h: innerHeight,
-          w: innerWidth,
-          font: parseFloat(getComputedStyle(text).fontSize),
-          chars: text.textContent!.length,
-          scrolled: document.querySelector('.game-screen')!.scrollTop,
-        };
-      });
-      const where = `страница ${k + 1}`;
-      expect(box.scrolled, where).toBe(0);
-      expect(box.pic.top, where).toBeGreaterThanOrEqual(0);
-      expect(box.pic.height, where).toBeGreaterThan(box.h * 0.2);
-      expect(box.text.bottom, where).toBeLessThanOrEqual(box.h);
-      expect(box.text.right, where).toBeLessThanOrEqual(box.w);
-      expect(box.font, where).toBeGreaterThanOrEqual(13);
-      // Подпись не заходит под стрелки.
-      for (const b of [box.next, box.prev])
-        if (b && box.text.right > b.left && box.text.left < b.right)
-          expect(box.text.bottom, where).toBeLessThanOrEqual(b.top);
-      if (box.chars > longest.chars) longest = { k, chars: box.chars };
-    }
-    // Самая длинная страница — на скриншот.
-    while (Number(await g.getAttribute('data-page')) > longest.k)
-      await g.getByTestId('book-prev').click();
-    await page.waitForTimeout(600);
-    await shot(page, 'book-long');
-  });
+      await shot(page, 'book-long');
+    });
 
   test('гонки (этап 43): светофор, ворота с ответом (сначала не те), обгон и финиш', async ({
     page,
