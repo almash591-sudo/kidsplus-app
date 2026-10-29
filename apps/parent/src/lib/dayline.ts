@@ -2,6 +2,7 @@
 // по времени, с отметкой «готово / сейчас / позже / не сегодня». Только расчёт, без интерфейса.
 // Этап 47: день закрыт (время вышло, завершён вами, выходной) или время дел прошло — не «позже».
 import type { ParentSleep } from '@kidsplus/shared/bedtime';
+import { bookOf } from '@kidsplus/shared/books';
 import { slotAt, type HabitSlot, type ParentHabits } from '@kidsplus/shared/habits';
 import type { ChildNow, DayClosed, Schedule, Weekday } from '@kidsplus/shared/schedule';
 import { SUBJECT_LABELS } from './subjects';
@@ -48,6 +49,7 @@ const CLOSED_NOTE: Record<DayClosed, string> = {
 const SLOT_ORDER: HabitSlot[] = ['morning', 'day', 'evening'];
 const COMPANION: Record<string, string> = {
   story: 'сказка и колыбельная',
+  book: 'книжка на ночь',
   lullaby: 'колыбельная',
   track: 'запись из аудиотеки',
   none: 'тишина',
@@ -125,7 +127,10 @@ export function dayLine(p: {
       minute: toMin(s.at),
       time: s.at,
       label: 'Отбой',
-      note: COMPANION[s.companion] ?? '',
+      note:
+        s.companion === 'book' && s.bookCode
+          ? `книжка «${bookOf(s.bookCode).title}»`
+          : (COMPANION[s.companion] ?? ''),
       state: p.sleep!.now?.phase === 'night' ? 'now' : 'later',
       tab: 'sleep',
     });

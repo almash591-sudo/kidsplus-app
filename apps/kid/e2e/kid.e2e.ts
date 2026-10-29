@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { expect, test as base, type Page } from '@playwright/test';
 import type { AppErrorReport } from '@kidsplus/shared/app-errors';
-import { BOOK_CODES, BOOKS } from '@kidsplus/shared/books';
-import type { KidBedtime } from '@kidsplus/shared/bedtime';
+import { BOOK_CODES, bookAnnounce, BOOKS, chapterAnnounce } from '@kidsplus/shared/books';
+import type { BookPlayed, KidBedtime } from '@kidsplus/shared/bedtime';
 import type { KidHabit, KidHabits } from '@kidsplus/shared/habits';
 import type { EyeBreak } from '@kidsplus/shared/schedule';
 import {
@@ -55,6 +55,7 @@ interface Backend {
   /** Ночной экран (этап 31). */
   bedtime?: KidBedtime;
   storiesPlayed?: string[];
+  booksPlayed?: BookPlayed[];
   /** День по расписанию; по умолчанию расписание выключено. */
   today?: Record<string, unknown>;
   /** Уроки по предметам (для режима расписания). */
@@ -406,13 +407,15 @@ async function mockBackend(page: Page, backend: Backend) {
             companion: 'none',
             story: null,
             track: null,
+            book: null,
           },
         });
-      case '/api/kid/bedtime/played':
-        (backend.storiesPlayed ??= []).push(
-          (route.request().postDataJSON() as { storyId: string }).storyId,
-        );
+      case '/api/kid/bedtime/played': {
+        const body = route.request().postDataJSON() as { storyId: string } | BookPlayed;
+        if ('storyId' in body) (backend.storiesPlayed ??= []).push(body.storyId);
+        else (backend.booksPlayed ??= []).push(body);
         return route.fulfill({ status: 204 });
+      }
       case '/api/kid/heartbeat':
         (backend.beats ??= []).push(route.request().postDataJSON());
         return route.fulfill({
@@ -779,6 +782,7 @@ test.describe('пора спать (этап 31)', () => {
       parts: [speech('Жил-был ёжик.'), speech('Ёжик уснул. Спокойной ночи.')],
     },
     track: null,
+    book: null,
     ...o,
   });
 
@@ -818,6 +822,87 @@ test.describe('пора спать (этап 31)', () => {
     await expect(page.locator('.night-hush')).toBeVisible();
     await page.clock.runFor(10_000);
     await expect(screen).toHaveClass(/dark/);
+  });
+
+  // «Книжка на ночь» (этап 52): глава голосом на тёмном экране, без картинок и вопросов.
+  const UGLY = BOOKS.gadkiyUtenok;
+  const bookNight = (chapter: number) =>
+    night({
+      companion: 'book',
+      story: null,
+      book: {
+        code: 'gadkiyUtenok',
+        chapter,
+        chapters: 2,
+        head: [speech(bookAnnounce(UGLY)), speech(chapterAnnounce(UGLY, chapter)!)],
+        pages: UGLY.chapters[chapter]!.pages.slice(0, 3).map((p) => p.text.map(speech)),
+      },
+    });
+
+  test('книжка на ночь: глава голосом, огоньки страниц, «продолжение — завтра»', async ({
+    page,
+    backend,
+  }) => {
+    await page.clock.install({ time: new Date('2026-10-18T20:30:00') });
+    // Фразы длиннее — экран главы успевает показаться.
+    await page.addInitScript(() => {
+      (window as unknown as { __speechMs: number }).__speechMs = 700;
+    });
+    backend.today = { ...OFF_TODAY, bedtime: NIGHT };
+    backend.bedtime = bookNight(0);
+    await page.goto('/');
+    const screen = page.getByTestId('night');
+    const book = page.getByTestId('night-book');
+    await expect(book).toBeVisible();
+    await expect(book).toHaveAttribute('data-chapter', '0');
+    await expect(book.locator('.night-title')).toHaveText(UGLY.title);
+    await expect(book.locator('.night-chapter')).toHaveText('Глава 1 из 2');
+    await expect(book.locator('.night-pages span')).toHaveCount(3);
+    await expect(book).toHaveAttribute('data-page', '1', { timeout: 15_000 });
+    await expect(book.locator('.night-pages span.on')).toHaveCount(2);
+    await shot(page, 'night-book');
+    // Ни картинок книжки, ни «Прочитай сам» — только спящий совёнок.
+    await expect(screen.locator('img')).toHaveCount(1);
+    await expect(screen.locator('.book-read, [data-testid="book-read"]')).toHaveCount(0);
+    await page.evaluate(() => {
+      (window as unknown as { __speechMs: number }).__speechMs = 50;
+    });
+
+    await expect(screen).toHaveAttribute('data-stage', 'lullaby', { timeout: 20_000 });
+    const said = (await spoken(page)).map((x) => x.text);
+    const pages = UGLY.chapters[0]!.pages.slice(0, 3).flatMap((p) => p.text);
+    expect(said).toEqual(
+      expect.arrayContaining([
+        'Пора спать! Ложись поудобнее и слушай книжку.',
+        bookAnnounce(UGLY),
+        chapterAnnounce(UGLY, 0)!,
+        ...pages,
+        'Продолжение — завтра!',
+      ]),
+    );
+    // Порядок: объявление, страницы по порядку, потом «завтра».
+    const idx = [bookAnnounce(UGLY), ...pages, 'Продолжение — завтра!'].map((t) => said.indexOf(t));
+    expect(idx).toEqual([...idx].sort((a, b) => a - b));
+    expect(backend.booksPlayed).toEqual([
+      { book: 'gadkiyUtenok', chapter: 0, night: '2026-10-18' },
+    ]);
+    expect(backend.storiesPlayed ?? []).toEqual([]);
+  });
+
+  test('книжка на ночь: последняя глава — «сказке конец»', async ({ page, backend }) => {
+    backend.today = { ...OFF_TODAY, bedtime: NIGHT };
+    backend.bedtime = bookNight(1);
+    await page.goto('/');
+    await expect(page.getByTestId('night')).toHaveAttribute('data-stage', 'lullaby', {
+      timeout: 20_000,
+    });
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain(chapterAnnounce(UGLY, 1)!);
+    expect(said).toContain('Вот и сказке конец, а кто слушал — молодец!');
+    expect(said).not.toContain('Продолжение — завтра!');
+    expect(backend.booksPlayed).toEqual([
+      { book: 'gadkiyUtenok', chapter: 1, night: '2026-10-18' },
+    ]);
   });
 
   test('ночь без сказки и музыки — сразу темно', async ({ page, backend }) => {

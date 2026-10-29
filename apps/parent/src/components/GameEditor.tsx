@@ -26,14 +26,12 @@ import {
   type NeighborMode,
 } from '@kidsplus/shared/games';
 import {
-  BOOK_CODES,
   bookAnnounce,
   bookChars,
   bookOf,
   bookReads,
   BOOKS,
   type BookCode,
-  type BookGenre,
 } from '@kidsplus/shared/books';
 import { RIDDLE_SETS, SUDOKU_SETS, SYLLABLE_WORD_SETS } from '@kidsplus/shared/game-presets';
 import {
@@ -74,6 +72,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { keys, queryClient, useChildren } from '../queries';
+import { bookOptions } from '../lib/books';
 import { problem, wordProblemOf } from '../lib/game';
 import { ImageSlot } from './ImagePicker';
 import { PIANO_MODE_LABELS } from '../pages/GamesPage';
@@ -415,21 +414,7 @@ const POEM_OPTIONS = GENRES.map(([genre, group]) => ({
 const POEM_TITLES = new Set(Object.values(POEMS).map((p) => p.title));
 
 /** Библиотека книжек (этап 52) — по жанрам, с возрастом. */
-const BOOK_GENRES: [BookGenre, string][] = [
-  ['folk', 'Народные сказки'],
-  ['tale', 'Сказки писателей'],
-  ['story', 'Рассказы'],
-];
-const BOOK_OPTIONS = BOOK_GENRES.map(([genre, group]) => ({
-  group,
-  items: BOOK_CODES.filter((c) => bookOf(c).genre === genre).map((c) => {
-    const b = bookOf(c);
-    return {
-      value: c,
-      label: `${b.title}${b.author ? ` — ${b.author}` : ''} (с ${b.fromAge} лет)`,
-    };
-  }),
-})).filter((g) => g.items.length);
+const BOOK_OPTIONS = bookOptions();
 const BOOK_TITLES = new Set(Object.values(BOOKS).map((b) => b.title));
 
 const DIFF_SCENE_LABELS: Record<(typeof DIFF_SCENES)[number], string> = {
