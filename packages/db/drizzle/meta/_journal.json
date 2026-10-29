@@ -232,6 +232,13 @@
       "when": 1793205301727,
       "tag": "0032_device_errors",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1793215551632,
+      "tag": "0033_night_book",
+      "breakpoints": true
     }
   ]
 }

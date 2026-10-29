@@ -1,8 +1,10 @@
 import type { BedtimeInput, KidBedtime, ParentSleep, Story } from '@kidsplus/shared/bedtime';
 import type { KidToday } from '@kidsplus/shared/schedule';
+import { bookAnnounce, bookOf, chapterAnnounce } from '@kidsplus/shared/books';
 import { STORY_LIBRARY } from '@kidsplus/shared/stories-library';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
+  cookieFrom,
   createChild,
   girl,
   makeApp,
@@ -152,5 +154,78 @@ describe('пора спать (этап 31)', () => {
     ).toBe(404);
     expect((await req('DELETE', `${base()}/stories/${s.id}`, parent)).statusCode).toBe(204);
     expect((await kidNight()).story).toBeNull();
+  });
+});
+
+describe('книжка на ночь (этап 52)', () => {
+  const BOOK = { companion: 'book', bookCode: 'gadkiyUtenok' } as const;
+  const played = (chapter: number, night: string, cookies = device) =>
+    req('POST', '/api/kid/bedtime/played', cookies, { book: 'gadkiyUtenok', chapter, night });
+  const chapter = (c: number) => req('PUT', `${base()}/sleep/book-chapter`, parent, { chapter: c });
+
+  it('по главе за ночь: перезапуск этой ночью — та же глава, после последней — сначала', async () => {
+    expect((await put(BOOK)).statusCode).toBe(200);
+    at('21:00');
+    const b = bookOf('gadkiyUtenok');
+    const first = (await kidNight()).book!;
+    expect(first).toMatchObject({ code: 'gadkiyUtenok', chapter: 0, chapters: 2 });
+    expect(first.head.map((s) => s.text)).toEqual([bookAnnounce(b), chapterAnnounce(b, 0)]);
+    expect(first.pages.map((p) => p.map((s) => s.text))).toEqual(
+      b.chapters[0]!.pages.map((p) => p.text),
+    );
+    expect((await kidNight()).story).toBeNull();
+
+    // Чужая глава не двигает; дослушанная — двигает, но раз за ночь.
+    expect((await played(1, '2026-10-14')).statusCode).toBe(204);
+    expect((await page()).book).toEqual({ chapter: 0, night: null });
+    expect((await played(0, '2026-10-14')).statusCode).toBe(204);
+    expect((await page()).book).toEqual({ chapter: 1, night: '2026-10-14' });
+    expect((await kidNight()).book!.chapter).toBe(0);
+    await played(0, '2026-10-14');
+    expect((await page()).book).toEqual({ chapter: 1, night: '2026-10-14' });
+
+    // После полуночи — та же ночь; следующим вечером — вторая глава, потом снова первая.
+    at('02:00', 15);
+    expect((await kidNight()).book!.chapter).toBe(0);
+    at('21:00', 15);
+    expect((await kidNight()).book!.chapter).toBe(1);
+    await played(1, '2026-10-15');
+    expect((await page()).book).toEqual({ chapter: 0, night: '2026-10-15' });
+    at('21:00', 16);
+    expect((await kidNight()).book!.chapter).toBe(0);
+  });
+
+  it('без книжки — нельзя; глава вручную; другая книжка — с первой главы', async () => {
+    expect((await put({ companion: 'book' })).statusCode).toBe(400);
+    expect((await chapter(1)).statusCode).toBe(409);
+    await put(BOOK);
+    expect((await chapter(2)).statusCode).toBe(400);
+    const res = await chapter(1);
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ chapter: 1, night: null });
+    at('21:00');
+    expect((await kidNight()).book!.chapter).toBe(1);
+
+    // Сохранение других настроек главу не сбрасывает; смена книжки — сбрасывает.
+    await put({ ...BOOK, warnMinutes: 10 });
+    expect((await page()).book.chapter).toBe(1);
+    await put({ companion: 'book', bookCode: 'morozIvanovich' });
+    expect((await page()).book).toEqual({ chapter: 0, night: null });
+    expect((await page()).settings.bookCode).toBe('morozIvanovich');
+
+    // Сказка вместо книжки — книжки ночью нет, а выбранная остаётся.
+    await put({ companion: 'story', bookCode: 'morozIvanovich' });
+    expect((await kidNight()).book).toBeNull();
+  });
+
+  it('просмотр из кабинета главу не двигает', async () => {
+    await put(BOOK);
+    at('21:00');
+    const created = await req('POST', `${base()}/preview`, parent);
+    const { code } = created.json<{ code: string }>();
+    const paired = await t.app.inject({ method: 'POST', url: '/api/kid/pair', payload: { code } });
+    const view = { kp_device: cookieFrom(paired, 'kp_device') };
+    expect((await played(0, '2026-10-14', view)).statusCode).toBe(204);
+    expect((await page()).book).toEqual({ chapter: 0, night: null });
   });
 });
