@@ -160,6 +160,8 @@ export function quizSettings(
 export const pairingCreateRequest = z.object({
   childId: uuid,
   deviceName: z.string().trim().min(1).max(40),
+  /** Код для настройки по QR-коду (этап 53): сброс и установка киоска дольше 10 минут. */
+  forSetup: z.boolean().optional(),
 });
 export type PairingCreateRequest = z.input<typeof pairingCreateRequest>;
 

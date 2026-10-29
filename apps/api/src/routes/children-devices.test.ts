@@ -125,6 +125,29 @@ describe('привязка устройства', () => {
     ).toBe(403);
   });
 
+  it('код для настройки по QR-коду живёт час: сброс и установка киоска долгие', async () => {
+    const childId = await createChild(t, parent);
+    const created = (
+      await t.app.inject({
+        method: 'POST',
+        url: '/api/parent/pairings',
+        cookies: parent,
+        payload: { childId, deviceName: 'x', forSetup: true },
+      })
+    ).json<{ code: string; expiresAt: string }>();
+    expect(Date.parse(created.expiresAt) - t.clock.now.getTime()).toBe(60 * 60 * 1000);
+    t.advance(50 * 60 * 1000);
+    expect(
+      (
+        await t.app.inject({
+          method: 'POST',
+          url: '/api/kid/pair',
+          payload: { code: created.code },
+        })
+      ).statusCode,
+    ).toBe(204);
+  });
+
   it('отозванное устройство теряет доступ', async () => {
     const childId = await createChild(t, parent);
     const device = await pairDevice(t, parent, childId);
