@@ -953,6 +953,8 @@ export const TEETH_DONE = 'Готово! Какие чистые зубки!';
 export const BEDTIME_SOON = 'Скоро спать! Давай сделаем вечерние дела.';
 export const BEDTIME_SOON_PLAIN = 'Скоро спать! Пора заканчивать игры.';
 export const NIGHT_STORY = 'Пора спать! Ложись поудобнее, сейчас будет сказка.';
+/** «Книжка на ночь» (этап 52). */
+export const NIGHT_BOOK = 'Пора спать! Ложись поудобнее и слушай книжку.';
 export const NIGHT_LULLABY = 'Пора спать! Ложись поудобнее и слушай колыбельную.';
 export const NIGHT_QUIET = 'Пора спать! Закрывай глазки. Спокойной ночи!';
 export const NIGHT_HUSH = [
@@ -1027,6 +1029,9 @@ export function appPhrases(playlist: KidPlaylist): Phrase[] {
     BEDTIME_SOON,
     BEDTIME_SOON_PLAIN,
     NIGHT_STORY,
+    NIGHT_BOOK,
+    BOOK_TOMORROW,
+    ...Object.values(BOOK_END),
     NIGHT_LULLABY,
     NIGHT_QUIET,
     ...NIGHT_HUSH,

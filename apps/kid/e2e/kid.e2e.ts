@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { expect, test as base, type Page } from '@playwright/test';
 import type { AppErrorReport } from '@kidsplus/shared/app-errors';
-import { BOOK_CODES, BOOKS } from '@kidsplus/shared/books';
-import type { KidBedtime } from '@kidsplus/shared/bedtime';
+import { BOOK_CODES, bookAnnounce, BOOKS, chapterAnnounce } from '@kidsplus/shared/books';
+import type { BookPlayed, KidBedtime } from '@kidsplus/shared/bedtime';
 import type { KidHabit, KidHabits } from '@kidsplus/shared/habits';
 import type { EyeBreak } from '@kidsplus/shared/schedule';
 import {
@@ -55,6 +55,7 @@ interface Backend {
   /** Ночной экран (этап 31). */
   bedtime?: KidBedtime;
   storiesPlayed?: string[];
+  booksPlayed?: BookPlayed[];
   /** День по расписанию; по умолчанию расписание выключено. */
   today?: Record<string, unknown>;
   /** Уроки по предметам (для режима расписания). */
@@ -406,13 +407,15 @@ async function mockBackend(page: Page, backend: Backend) {
             companion: 'none',
             story: null,
             track: null,
+            book: null,
           },
         });
-      case '/api/kid/bedtime/played':
-        (backend.storiesPlayed ??= []).push(
-          (route.request().postDataJSON() as { storyId: string }).storyId,
-        );
+      case '/api/kid/bedtime/played': {
+        const body = route.request().postDataJSON() as { storyId: string } | BookPlayed;
+        if ('storyId' in body) (backend.storiesPlayed ??= []).push(body.storyId);
+        else (backend.booksPlayed ??= []).push(body);
         return route.fulfill({ status: 204 });
+      }
       case '/api/kid/heartbeat':
         (backend.beats ??= []).push(route.request().postDataJSON());
         return route.fulfill({
@@ -779,6 +782,7 @@ test.describe('пора спать (этап 31)', () => {
       parts: [speech('Жил-был ёжик.'), speech('Ёжик уснул. Спокойной ночи.')],
     },
     track: null,
+    book: null,
     ...o,
   });
 
@@ -818,6 +822,87 @@ test.describe('пора спать (этап 31)', () => {
     await expect(page.locator('.night-hush')).toBeVisible();
     await page.clock.runFor(10_000);
     await expect(screen).toHaveClass(/dark/);
+  });
+
+  // «Книжка на ночь» (этап 52): глава голосом на тёмном экране, без картинок и вопросов.
+  const UGLY = BOOKS.gadkiyUtenok;
+  const bookNight = (chapter: number) =>
+    night({
+      companion: 'book',
+      story: null,
+      book: {
+        code: 'gadkiyUtenok',
+        chapter,
+        chapters: 2,
+        head: [speech(bookAnnounce(UGLY)), speech(chapterAnnounce(UGLY, chapter)!)],
+        pages: UGLY.chapters[chapter]!.pages.slice(0, 3).map((p) => p.text.map(speech)),
+      },
+    });
+
+  test('книжка на ночь: глава голосом, огоньки страниц, «продолжение — завтра»', async ({
+    page,
+    backend,
+  }) => {
+    await page.clock.install({ time: new Date('2026-10-18T20:30:00') });
+    // Фразы длиннее — экран главы успевает показаться.
+    await page.addInitScript(() => {
+      (window as unknown as { __speechMs: number }).__speechMs = 700;
+    });
+    backend.today = { ...OFF_TODAY, bedtime: NIGHT };
+    backend.bedtime = bookNight(0);
+    await page.goto('/');
+    const screen = page.getByTestId('night');
+    const book = page.getByTestId('night-book');
+    await expect(book).toBeVisible();
+    await expect(book).toHaveAttribute('data-chapter', '0');
+    await expect(book.locator('.night-title')).toHaveText(UGLY.title);
+    await expect(book.locator('.night-chapter')).toHaveText('Глава 1 из 2');
+    await expect(book.locator('.night-pages span')).toHaveCount(3);
+    await expect(book).toHaveAttribute('data-page', '1', { timeout: 15_000 });
+    await expect(book.locator('.night-pages span.on')).toHaveCount(2);
+    await shot(page, 'night-book');
+    // Ни картинок книжки, ни «Прочитай сам» — только спящий совёнок.
+    await expect(screen.locator('img')).toHaveCount(1);
+    await expect(screen.locator('.book-read, [data-testid="book-read"]')).toHaveCount(0);
+    await page.evaluate(() => {
+      (window as unknown as { __speechMs: number }).__speechMs = 50;
+    });
+
+    await expect(screen).toHaveAttribute('data-stage', 'lullaby', { timeout: 20_000 });
+    const said = (await spoken(page)).map((x) => x.text);
+    const pages = UGLY.chapters[0]!.pages.slice(0, 3).flatMap((p) => p.text);
+    expect(said).toEqual(
+      expect.arrayContaining([
+        'Пора спать! Ложись поудобнее и слушай книжку.',
+        bookAnnounce(UGLY),
+        chapterAnnounce(UGLY, 0)!,
+        ...pages,
+        'Продолжение — завтра!',
+      ]),
+    );
+    // Порядок: объявление, страницы по порядку, потом «завтра».
+    const idx = [bookAnnounce(UGLY), ...pages, 'Продолжение — завтра!'].map((t) => said.indexOf(t));
+    expect(idx).toEqual([...idx].sort((a, b) => a - b));
+    expect(backend.booksPlayed).toEqual([
+      { book: 'gadkiyUtenok', chapter: 0, night: '2026-10-18' },
+    ]);
+    expect(backend.storiesPlayed ?? []).toEqual([]);
+  });
+
+  test('книжка на ночь: последняя глава — «сказке конец»', async ({ page, backend }) => {
+    backend.today = { ...OFF_TODAY, bedtime: NIGHT };
+    backend.bedtime = bookNight(1);
+    await page.goto('/');
+    await expect(page.getByTestId('night')).toHaveAttribute('data-stage', 'lullaby', {
+      timeout: 20_000,
+    });
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain(chapterAnnounce(UGLY, 1)!);
+    expect(said).toContain('Вот и сказке конец, а кто слушал — молодец!');
+    expect(said).not.toContain('Продолжение — завтра!');
+    expect(backend.booksPlayed).toEqual([
+      { book: 'gadkiyUtenok', chapter: 1, night: '2026-10-18' },
+    ]);
   });
 
   test('ночь без сказки и музыки — сразу темно', async ({ page, backend }) => {
@@ -3389,79 +3474,75 @@ test.describe('новые игры', () => {
     });
   });
 
-  // Самые длинные страницы каждой главы: сцена и подпись на экране, подпись не под стрелками.
+  // Самые длинные страницы каждой книжки (во всех главах): сцена и подпись на экране, подпись не под
+  // стрелками. Страницу открываем с закладки — длинные книжки не листаем по порядку.
   for (const code of BOOK_CODES)
-    for (const chapter of BOOKS[code].chapters.keys())
-      test(`книжка «${code}»${chapter ? `, глава ${chapter + 1}` : ''} (этап 52): длинные страницы — на экране, подпись не под стрелками`, async ({
-        page,
-        backend,
-      }) => {
-        test.setTimeout(120_000);
-        // Вторая глава — с закладки.
-        if (chapter)
-          await page.addInitScript(
-            (mark) => localStorage.setItem('kidsplus.books', mark),
-            JSON.stringify({ [code]: { chapter, page: 0 } }),
-          );
-        const pages = BOOKS[code].chapters[chapter]!.pages;
-        const chars = pages.map((p) => p.text.join(' ').length);
-        const longest = [...chars.keys()].sort((a, b) => chars[b]! - chars[a]!).slice(0, 4);
-        backend.items = [
-          game(
-            1,
-            { kind: 'book', book: code, autoTurn: false, questions: true, choices: 4 },
-            'books',
-          ),
-          game(2, { kind: 'balloons', count: 5, target: null }),
-        ];
-        await gameMedia(page);
-        await page.goto('/');
+    test(`книжка «${code}» (этап 52): длинные страницы — на экране, подпись не под стрелками`, async ({
+      page,
+      backend,
+    }) => {
+      test.setTimeout(120_000);
+      const longest = BOOKS[code].chapters
+        .flatMap((c, chapter) =>
+          c.pages.map((p, at) => ({ chapter, at, chars: p.text.join(' ').length })),
+        )
+        .sort((a, b) => b.chars - a.chars)
+        .slice(0, 4);
+      backend.items = [
+        game(
+          1,
+          { kind: 'book', book: code, autoTurn: false, questions: true, choices: 4 },
+          'books',
+        ),
+        game(2, { kind: 'balloons', count: 5, target: null }),
+      ];
+      await gameMedia(page);
+      await page.goto('/');
+      for (const { chapter, at } of longest) {
+        await page.evaluate(
+          (mark) => localStorage.setItem('kidsplus.books', mark),
+          JSON.stringify({ [code]: { chapter, page: at } }),
+        );
+        await page.reload();
         await page.locator('[data-category=books]').click();
-        // Голос «говорит» долго — листаем сами и меряем самые длинные страницы.
+        // Голос «говорит» долго — страница стоит, пока меряем.
         await slowSpeech(page, 8000);
         await page.getByTestId('tile').first().click();
         const g = page.getByTestId('game-book');
         await g.getByTestId('book-next').click();
         await expect(g).toHaveAttribute('data-step', 'page');
-        for (let k = 0; k <= Math.max(...longest); k++) {
-          if (k > 0) await g.getByTestId('book-next').click();
-          await expect(g).toHaveAttribute('data-page', String(k));
-          if (!longest.includes(k)) continue;
-          // Подпись появляется с увеличением (0,4 с) — меряем, когда встала на место.
-          await page.waitForTimeout(600);
-          const box = await page.evaluate(() => {
-            const r = (q: string) => document.querySelector(q)!.getBoundingClientRect();
-            const text = document.querySelector('[data-testid=book-text]')!;
-            return {
-              pic: r('.book-pic'),
-              text: r('[data-testid=book-text]'),
-              next: r('.book-next'),
-              prev: document.querySelector('.book-prev')?.getBoundingClientRect() ?? null,
-              h: innerHeight,
-              w: innerWidth,
-              font: parseFloat(getComputedStyle(text).fontSize),
-              scrolled: document.querySelector('.game-screen')!.scrollTop,
-            };
-          });
-          const where = `страница ${k + 1}`;
-          expect(box.scrolled, where).toBe(0);
-          expect(box.pic.top, where).toBeGreaterThanOrEqual(0);
-          expect(box.pic.height, where).toBeGreaterThan(box.h * 0.2);
-          expect(box.text.bottom, where).toBeLessThanOrEqual(box.h);
-          expect(box.text.right, where).toBeLessThanOrEqual(box.w);
-          expect(box.font, where).toBeGreaterThanOrEqual(13);
-          // Подпись не заходит под стрелки.
-          for (const b of [box.next, box.prev])
-            if (b && box.text.right > b.left && box.text.left < b.right)
-              expect(box.text.bottom, where).toBeLessThanOrEqual(b.top);
-        }
-        // Самая длинная страница книжки для старших — на скриншот.
-        if (code !== 'hrabryZayac') return;
-        while (Number(await g.getAttribute('data-page')) > longest[0]!)
-          await g.getByTestId('book-prev').click();
+        await expect(g).toHaveAttribute('data-page', String(at));
+        // Подпись появляется с увеличением (0,4 с) — меряем, когда встала на место.
         await page.waitForTimeout(600);
-        await shot(page, 'book-long');
-      });
+        const box = await page.evaluate(() => {
+          const r = (q: string) => document.querySelector(q)!.getBoundingClientRect();
+          const text = document.querySelector('[data-testid=book-text]')!;
+          return {
+            pic: r('.book-pic'),
+            text: r('[data-testid=book-text]'),
+            next: r('.book-next'),
+            prev: document.querySelector('.book-prev')?.getBoundingClientRect() ?? null,
+            h: innerHeight,
+            w: innerWidth,
+            font: parseFloat(getComputedStyle(text).fontSize),
+            scrolled: document.querySelector('.game-screen')!.scrollTop,
+          };
+        });
+        const where = `глава ${chapter + 1}, страница ${at + 1}`;
+        expect(box.scrolled, where).toBe(0);
+        expect(box.pic.top, where).toBeGreaterThanOrEqual(0);
+        expect(box.pic.height, where).toBeGreaterThan(box.h * 0.2);
+        expect(box.text.bottom, where).toBeLessThanOrEqual(box.h);
+        expect(box.text.right, where).toBeLessThanOrEqual(box.w);
+        expect(box.font, where).toBeGreaterThanOrEqual(13);
+        // Подпись не заходит под стрелки.
+        for (const b of [box.next, box.prev])
+          if (b && box.text.right > b.left && box.text.left < b.right)
+            expect(box.text.bottom, where).toBeLessThanOrEqual(b.top);
+        // Самая длинная страница книжки для старших — на скриншот.
+        if (code === 'hrabryZayac' && at === longest[0]!.at) await shot(page, 'book-long');
+      }
+    });
 
   test('гонки (этап 43): светофор, ворота с ответом (сначала не те), обгон и финиш', async ({
     page,

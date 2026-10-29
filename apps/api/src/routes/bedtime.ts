@@ -1,16 +1,20 @@
 // «Пора спать» (этап 31): отбой по расписанию, сказки на ночь (готовые и от модели — только
-// одобренные родителем), ночной экран телефона.
+// одобренные родителем), ночной экран телефона. «Книжка на ночь» (этап 52) — по главе за ночь.
 import { schema, type Db } from '@kidsplus/db';
 import { loadBedtime, loadSchedule } from '@kidsplus/db/day';
 import {
   bedtimeAt,
   bedtimeInput,
+  bookChapterInput,
+  bookPlayedInput,
+  nightChapter,
   storyRequest,
   type KidBedtime,
   type ParentSleep,
   type Story,
   type StoryStatus,
 } from '@kidsplus/shared/bedtime';
+import { bookAnnounce, bookOf, chapterAnnounce, type BookCode } from '@kidsplus/shared/books';
 import { localClock } from '@kidsplus/shared/schedule';
 import { LIBRARY_BY_CODE, libraryInfo, STORY_LIBRARY } from '@kidsplus/shared/stories-library';
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
@@ -28,7 +32,7 @@ const { audioTracks, bedtimes, children, stories } = schema;
 const uuid = z.string().uuid();
 const storyParams = z.object({ id: uuid, storyId: uuid });
 const libraryParams = z.object({ id: uuid, code: z.string().min(1).max(40) });
-const playedBody = z.object({ storyId: uuid });
+const playedBody = z.union([z.object({ storyId: uuid }), bookPlayedInput]);
 
 /** Сказок у ребёнка не больше — список в кабинете остаётся обозримым. */
 export const MAX_STORIES = 40;
@@ -47,6 +51,26 @@ const toStory = (r: typeof stories.$inferSelect): Story => ({
 /** Озвучка сказки: название и каждый абзац — отдельные фразы (короче запрос, надёжнее кэш). */
 async function voiceStory(db: Db, ctx: Ctx, s: { title: string; paragraphs: string[] }) {
   for (const t of [s.title, ...s.paragraphs]) await ensureTts(db, ctx.config.tts, t, 'ru');
+}
+
+/** Что звучит в главе «Книжки на ночь»: объявление и предложения страниц. */
+function nightBookTexts(code: BookCode, chapter: number) {
+  const b = bookOf(code);
+  const head = chapterAnnounce(b, chapter);
+  return {
+    head: [bookAnnounce(b), ...(head ? [head] : [])],
+    pages: b.chapters[chapter]!.pages.map((p) => p.text),
+  };
+}
+
+/** Озвучка «Книжки на ночь» — вся книжка сразу: к ночи каждая глава звучит голосом. */
+async function voiceBook(db: Db, ctx: Ctx, code: BookCode) {
+  const texts = new Set<string>();
+  bookOf(code).chapters.forEach((_, i) => {
+    const t = nightBookTexts(code, i);
+    [...t.head, ...t.pages.flat()].forEach((x) => texts.add(x));
+  });
+  for (const t of texts) await ensureTts(db, ctx.config.tts, t, 'ru');
 }
 
 export function bedtimeRoutes(app: FastifyInstance, ctx: Ctx) {
@@ -109,6 +133,7 @@ export function bedtimeRoutes(app: FastifyInstance, ctx: Ctx) {
         stories: list.map(toStory),
         library: STORY_LIBRARY.filter((s) => !have.has(s.code)).map(libraryInfo),
         tracks,
+        book: sleep.book,
       };
     },
   );
@@ -131,14 +156,41 @@ export function bedtimeRoutes(app: FastifyInstance, ctx: Ctx) {
         );
       if (!t) throw new HttpError(400, 'validation', 'запись не найдена в аудиотеке детей');
     }
-    const values = { ...body, updatedAt: ctx.now() };
+    // Другая книжка на ночь — с первой главы.
+    const before = await loadBedtime(db, childId);
+    const values = {
+      ...body,
+      ...(body.bookCode !== before.settings.bookCode ? { bookChapter: 0, bookNight: null } : {}),
+      updatedAt: ctx.now(),
+    };
     await db
       .insert(bedtimes)
       .values({ childId, ...values })
       .onConflictDoUpdate({ target: bedtimes.childId, set: values });
+    if (body.companion === 'book' && body.bookCode) await voiceBook(db, ctx, body.bookCode);
     notify(childId);
     return body;
   });
+
+  /** «Книжка на ночь»: с какой главы следующая ночь — вернуться или пропустить. */
+  app.put(
+    '/api/parent/children/:id/sleep/book-chapter',
+    { preHandler: parentOnly },
+    async (request): Promise<ParentSleep['book']> => {
+      const childId = idFrom(request.params);
+      const { chapter } = parse(bookChapterInput, request.body);
+      const { settings } = await loadBedtime(db, childId);
+      if (!settings.bookCode) throw new HttpError(409, 'no_book', 'книжка на ночь не выбрана');
+      if (chapter >= bookOf(settings.bookCode).chapters.length)
+        throw new HttpError(400, 'validation', 'нет такой главы');
+      await db
+        .update(bedtimes)
+        .set({ bookChapter: chapter, bookNight: null, updatedAt: ctx.now() })
+        .where(eq(bedtimes.childId, childId));
+      notify(childId);
+      return { chapter, night: null };
+    },
+  );
 
   /** Придумать сказку: заявка в очередь worker'а (тема и возраст, без имени). */
   app.post(
@@ -244,7 +296,18 @@ export function bedtimeRoutes(app: FastifyInstance, ctx: Ctx) {
     const childId = request.device!.childId;
     const sleep = await loadBedtime(db, childId);
     const clock = localClock(ctx.now(), (await loadSchedule(db, childId)).timezone);
-    const { companion, trackId, wakeAt } = sleep.settings;
+    const { companion, trackId, wakeAt, bookCode } = sleep.settings;
+    const now = bedtimeAt(clock, sleep.settings, sleep.skipNight);
+    const ids = new Map<string, string | null>();
+    const voice = async (texts: string[]) => {
+      for (const t of texts)
+        if (!ids.has(t)) ids.set(t, await ensureTts(db, ctx.config.tts, t, 'ru'));
+    };
+    const speeches = async () => {
+      const assets = await loadAssets(db, [...ids.values()]);
+      const ready = (id: string | null) => Boolean(id && assets.get(id)?.status === 'ready');
+      return (t: string) => toSpeech(ctx.config.tts, t, 'ru', ids.get(t) ?? null, ready);
+    };
 
     // Сказки по очереди: та, что звучала давнее всех (новая — первой).
     const [story] =
@@ -256,16 +319,31 @@ export function bedtimeRoutes(app: FastifyInstance, ctx: Ctx) {
             .orderBy(sql`${stories.playedAt} asc nulls first`, asc(stories.createdAt))
             .limit(1)
         : [];
-    let speeches: KidBedtime['story'] = null;
+    let storySpeech: KidBedtime['story'] = null;
     if (story) {
-      const texts = [story.title, ...story.paragraphs];
-      const ids = new Map<string, string | null>();
-      for (const t of texts)
-        if (!ids.has(t)) ids.set(t, await ensureTts(db, ctx.config.tts, t, 'ru'));
-      const assets = await loadAssets(db, [...ids.values()]);
-      const ready = (id: string | null) => Boolean(id && assets.get(id)?.status === 'ready');
-      const speech = (t: string) => toSpeech(ctx.config.tts, t, 'ru', ids.get(t) ?? null, ready);
-      speeches = { id: story.id, title: speech(story.title), parts: story.paragraphs.map(speech) };
+      await voice([story.title, ...story.paragraphs]);
+      const speech = await speeches();
+      storySpeech = {
+        id: story.id,
+        title: speech(story.title),
+        parts: story.paragraphs.map(speech),
+      };
+    }
+
+    // Книжка на ночь: следующая глава; та, что уже звучала этой ночью, — ещё раз.
+    let bookSpeech: KidBedtime['book'] = null;
+    if (companion === 'book' && bookCode) {
+      const chapter = nightChapter(bookCode, sleep.book, now?.night ?? null);
+      const texts = nightBookTexts(bookCode, chapter);
+      await voice([...texts.head, ...texts.pages.flat()]);
+      const speech = await speeches();
+      bookSpeech = {
+        code: bookCode,
+        chapter,
+        chapters: bookOf(bookCode).chapters.length,
+        head: texts.head.map(speech),
+        pages: texts.pages.map((p) => p.map(speech)),
+      };
     }
 
     const [track] =
@@ -277,26 +355,45 @@ export function bedtimeRoutes(app: FastifyInstance, ctx: Ctx) {
         : [];
 
     return {
-      now: bedtimeAt(clock, sleep.settings, sleep.skipNight),
+      now,
       wakeAt,
       companion,
-      story: speeches,
+      story: storySpeech,
       track: track ? { ...track, url: `/api/audio/${track.id}/file` } : null,
+      book: bookSpeech,
     };
   });
 
-  /** Сказка дослушана — следующей ночью будет другая. Просмотр из кабинета очередь не двигает. */
+  /**
+   * Сказка дослушана — следующей ночью будет другая; глава книжки — следующей ночью следующая
+   * (дочитали последнюю — книжка начнётся сначала). Просмотр из кабинета очередь не двигает.
+   */
   app.post(
     '/api/kid/bedtime/played',
     { preHandler: deviceOnly, config: { rateLimit: { max: 20, timeWindow: '1 minute' } } },
     async (request, reply) => {
-      const { storyId } = parse(playedBody, request.body);
-      if (!request.device!.preview)
+      const body = parse(playedBody, request.body);
+      const childId = request.device!.childId;
+      reply.code(204);
+      if (request.device!.preview) return;
+      if ('storyId' in body) {
         await db
           .update(stories)
           .set({ playedAt: ctx.now() })
-          .where(and(eq(stories.id, storyId), eq(stories.childId, request.device!.childId)));
-      reply.code(204);
+          .where(and(eq(stories.id, body.storyId), eq(stories.childId, childId)));
+        return;
+      }
+      // Глава двигается раз за ночь и только та, что звучала: повтор запроса её не пропустит.
+      const sleep = await loadBedtime(db, childId);
+      if (sleep.settings.bookCode !== body.book || sleep.book.night === body.night) return;
+      if (nightChapter(body.book, sleep.book, null) !== body.chapter) return;
+      await db
+        .update(bedtimes)
+        .set({
+          bookChapter: (body.chapter + 1) % bookOf(body.book).chapters.length,
+          bookNight: body.night,
+        })
+        .where(eq(bedtimes.childId, childId));
     },
   );
 }

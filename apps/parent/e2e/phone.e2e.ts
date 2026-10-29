@@ -688,6 +688,34 @@ test('сон: отбой и готовая сказка; придуманная 
   await expect(page.getByTestId('sleep-save')).toBeDisabled();
 });
 
+test('сон: книжка на ночь — по главе за ночь, глава вручную (этап 52)', async ({ page }) => {
+  await login(page);
+  await page.goto('/sleep');
+  await page.getByTestId('sleep-companion').click();
+  await page.getByRole('option', { name: 'Книжка на ночь и колыбельная' }).click();
+  await page.getByTestId('sleep-book').click();
+  await page.getByRole('option', { name: /Гадкий утёнок.*2 главы/ }).click();
+  await page.getByTestId('sleep-save').click();
+  await expect(page.getByTestId('sleep-save')).toBeDisabled();
+
+  const progress = page.getByTestId('sleep-book-progress');
+  await expect(progress).toContainText('Гадкий утёнок');
+  await expect(page.getByTestId('sleep-book-next')).toContainText('глава 1 из 2');
+  await page.getByTestId('sleep-book-chapter').click();
+  await page.getByRole('option', { name: 'Глава 2 «Лебедь»' }).click();
+  await expect(page.getByTestId('sleep-book-next')).toContainText('глава 2 из 2');
+  expect(await layoutProblems(page)).toEqual([]);
+
+  // Уборка за собой: стенд общий для тестов.
+  await page.getByTestId('sleep-book-chapter').click();
+  await page.getByRole('option', { name: /^Глава 1/ }).click();
+  await expect(page.getByTestId('sleep-book-next')).toContainText('глава 1 из 2');
+  await page.getByTestId('sleep-companion').click();
+  await page.getByRole('option', { name: 'Сказка и колыбельная' }).click();
+  await page.getByTestId('sleep-save').click();
+  await expect(progress).toHaveCount(0);
+});
+
 test('«Что нравится» в «Прогрессе» (этап 44): любимое, бросает; не открытое — убрать и отменить', async ({
   page,
 }) => {

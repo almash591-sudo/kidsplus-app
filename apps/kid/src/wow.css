@@ -878,7 +878,8 @@
 
 .night-scene {
   position: relative;
-  width: min(64vw, 300px);
+  /* Лёжа совёнок меньше — под ним помещаются название, глава и огоньки. */
+  width: min(64vw, 300px, 50dvh);
   aspect-ratio: 1;
 }
 
@@ -910,10 +911,20 @@
   line-height: 1.2;
 }
 
-/* Сколько сказки прочитано — огоньки-страницы. */
+/* Сколько сказки прочитано — огоньки-страницы; у книжки их больше — переносятся. */
 .night-pages {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 8px;
+  max-width: min(86vw, 420px);
+}
+
+.night-chapter {
+  margin: 0;
+  font-size: clamp(16px, 4.4vw, 20px);
+  font-weight: 700;
+  opacity: 0.75;
 }
 
 .night-pages span {

@@ -908,10 +908,14 @@ export const bedtimes = pgTable('bedtimes', {
   /** mon…sun */
   days: text().array().notNull(),
   warnMinutes: integer().notNull().default(15),
-  /** story | lullaby | track | none */
+  /** story | book | lullaby | track | none */
   companion: text().notNull().default('story'),
   trackId: uuid().references(() => audioTracks.id, { onDelete: 'set null' }),
   skipNight: text(),
+  /** «Книжка на ночь» (этап 52): код встроенной книжки, следующая глава и ночь прошлой главы. */
+  bookCode: text(),
+  bookChapter: integer().notNull().default(0),
+  bookNight: text(),
   updatedAt: createdAt(),
 });
 

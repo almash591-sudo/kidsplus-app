@@ -85,6 +85,22 @@ describe('лента дня', () => {
       minute: 21 * 60,
     });
     expect(items.map((i) => [i.label, i.state])).toEqual([['Отбой', 'now']]);
+    expect(items[0]!.note).toBe('сказка и колыбельная');
+  });
+
+  it('книжка на ночь (этап 52) — в отбое её название', () => {
+    const items = dayLine({
+      now: now({ mode: 'off' }),
+      schedule,
+      habits: undefined,
+      sleep: {
+        ...sleep,
+        settings: { ...sleep.settings, companion: 'book', bookCode: 'gadkiyUtenok' },
+      },
+      weekday: 'mon',
+      minute: 18 * 60,
+    });
+    expect(items.map((i) => [i.label, i.note])).toEqual([['Отбой', 'книжка «Гадкий утёнок»']]);
   });
 
   it('день закрыт (этап 47): не пройденные уроки — «не сегодня» с причиной, не «позже»', () => {
