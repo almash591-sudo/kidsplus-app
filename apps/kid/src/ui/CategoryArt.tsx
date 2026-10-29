@@ -72,6 +72,16 @@ const ART: Record<Art, React.ReactNode> = {
       />
     </>
   ),
+  // Закрытая книжка с закладкой: книжки.
+  books: (
+    <>
+      <rect x="12" y="9" width="28" height="33" rx="3" fill="var(--c-tint)" />
+      <rect x="8" y="6" width="29" height="33" rx="4" fill="var(--c)" />
+      <path d="M13.5 6.5v32" stroke="var(--c-tint)" strokeWidth="2" opacity="0.7" />
+      <path d="M26 6v14l3.5-3 3.5 3V6z" fill="var(--c-tint)" />
+      <circle cx="22" cy="27" r="5" fill="var(--c-tint)" />
+    </>
+  ),
   music: (
     <>
       <path

@@ -1,6 +1,7 @@
 // Журнал действий ребёнка за день (этап 29): события телефона, звонки и снимки — одной лентой.
 import { schema, type Db } from '@kidsplus/db';
 import { loadSchedule } from '@kidsplus/db/day';
+import { BOOKS, type Book } from '@kidsplus/shared/books';
 import { POEMS, type Poem, type PoemGenre } from '@kidsplus/shared/poems';
 import { localClock, type ActivityEntry } from '@kidsplus/shared/schedule';
 import { and, desc, eq, gte, inArray } from 'drizzle-orm';
@@ -43,6 +44,16 @@ function poemDone(p: Record<string, unknown>): string | null {
   if (parts && Number(p.part) > 0)
     return `Учил ${what} ${title}: часть ${Number(p.part)} из ${parts}`;
   return `Послушал ${what} ${title}`;
+}
+
+/** Книжка (этап 52): «Слушал книжку «Кот, петух и лиса»», длинная — «…: глава 2 из 4». */
+function bookDone(p: Record<string, unknown>): string | null {
+  const book = (BOOKS as Record<string, Book>)[String(p.book)];
+  if (p.kind !== 'book' || !book) return null;
+  const chapters = Number(p.chapters) || 0;
+  const chapter = Number(p.chapter) || 0;
+  const part = chapters > 1 && chapter > 0 ? `: глава ${chapter} из ${chapters}` : '';
+  return `Слушал книжку «${book.title}»${part}`;
 }
 
 export async function childActivity(
@@ -157,7 +168,9 @@ export async function childActivity(
         add(
           e.createdAt,
           'game',
-          poemDone(p) ?? `Прошёл игру ${q(gameTitle.get(p.interactiveId as string))}`.trim(),
+          poemDone(p) ??
+            bookDone(p) ??
+            `Прошёл игру ${q(gameTitle.get(p.interactiveId as string))}`.trim(),
         );
         break;
       // Этап 44: открыл и ушёл, не пройдя.

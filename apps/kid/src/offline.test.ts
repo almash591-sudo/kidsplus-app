@@ -42,6 +42,13 @@ describe('файлы занятий для работы без сети', () => 
           category: 'games',
           spec: { kind: 'memory', imageIds: ['00000000-0000-4000-8000-000000000001'] },
         },
+        // Книжка без картинок (ещё рисуются) — качать нечего.
+        {
+          kind: 'interactive',
+          id: 'b',
+          category: 'books',
+          spec: { kind: 'book', book: 'kotPetuh', autoTurn: false, questions: true, choices: 3 },
+        },
       ],
       phrases,
       phrasesEn: { correct: [], retry: [], done: [] },

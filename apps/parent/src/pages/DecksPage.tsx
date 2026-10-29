@@ -48,6 +48,7 @@ export const CATEGORY_LABELS: Record<DeckCategory, string> = {
   music: 'Музыка',
   letters: 'Буквы',
   poems: 'Стихи и сказки',
+  books: 'Книжки',
   other: 'Разное',
 };
 const CATEGORY_ORDER: DeckCategory[] = [
@@ -59,6 +60,7 @@ const CATEGORY_ORDER: DeckCategory[] = [
   'music',
   'letters',
   'poems',
+  'books',
   'other',
 ];
 

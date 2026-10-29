@@ -2,6 +2,7 @@
 // занятий (их кэширует service worker), а события прогресса без сети копим и отправляем потом.
 import { API_PREFIX } from '@kidsplus/shared';
 import type { KidEventRequest, KidPlaylist, Speech } from '@kidsplus/shared/api';
+import { bookOf, bookPictures } from '@kidsplus/shared/books';
 import { mediaUrl } from '@kidsplus/shared/api';
 import { gameImageIds } from '@kidsplus/shared/games';
 
@@ -25,6 +26,9 @@ export function playlistMedia(p: KidPlaylist): string[] {
       }
     } else {
       for (const id of gameImageIds(item.spec)) out.add(mediaUrl(id));
+      // Книжка (этап 52): её сцены не в сборке приложения — качаем заранее всю книжку.
+      if (item.spec.kind === 'book')
+        for (const u of bookPictures(bookOf(item.spec.book))) out.add(u);
     }
   }
   // Колыбельные мамы (малыш) — в машине без интернета нужнее всего.
@@ -32,11 +36,14 @@ export function playlistMedia(p: KidPlaylist): string[] {
   for (const list of [p.phrases, p.phrasesEn])
     for (const kind of ['correct', 'retry', 'done'] as const) list[kind].forEach(speech);
   // Только свои файлы (сторонние картинки — например, обложки YouTube — не кэшируем).
-  return [...out].filter((u) => u.startsWith(`${API_PREFIX}/media/`));
+  return [...out].filter((u) => u.startsWith(`${API_PREFIX}/media/`) || u.startsWith(BOOKS_PATH));
 }
 
 /** Кэш файлов — тот же, что у service worker в браузере (vite.config.ts). */
 export const MEDIA_CACHE = 'kidsplus-media';
+/** Сцены книжек — свой кэш (vite.config.ts): статика приложения, а не файлы сервера. */
+export const BOOKS_CACHE = 'kidsplus-books';
+const BOOKS_PATH = '/books/';
 const hasCaches = () => typeof caches !== 'undefined';
 
 const warmed = new Set<string>();
@@ -46,10 +53,13 @@ const PARALLEL = 3;
 
 /** Скачать один файл в кэш (если его там ещё нет). */
 async function warmOne(url: string) {
-  const cache = await caches.open(MEDIA_CACHE);
+  const book = url.startsWith(BOOKS_PATH);
+  const cache = await caches.open(book ? BOOKS_CACHE : MEDIA_CACHE);
   if (await cache.match(url)) return;
   const r = await fetch(url, { credentials: 'same-origin' });
-  if (r.ok) await cache.put(url, r);
+  // Нет такой сцены — веб-сервер отдаёт index.html с кодом 200: такое не кладём.
+  if (r.ok && (!book || r.headers.get('content-type')?.startsWith('image/')))
+    await cache.put(url, r);
 }
 
 /** Скачать файлы в фоне по три за раз. Уже скачанные — пропуск; без сети — в следующий раз. */

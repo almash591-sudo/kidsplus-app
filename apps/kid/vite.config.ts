@@ -16,7 +16,8 @@ export default defineConfig({
       // Регистрация — в коде приложения (@kidsplus/shared/sw-register), с автообновлением.
       injectRegister: false,
       // owl — кадры совёнка (этап 26), games — глиняная графика игр (этап 35), poems — сцены стихов
-      // и сказок (этап 45): нужны и без интернета.
+      // и сказок (этап 45): нужны и без интернета. Сцены книжек (books, этап 52) — не здесь: их
+      // много, телефон качает только назначенные книжки (offline.ts).
       includeAssets: [
         'favicon.svg',
         'apple-touch-icon.png',
@@ -59,6 +60,16 @@ export default defineConfig({
               cacheName: 'kidsplus-media',
               expiration: { maxEntries: 4000, maxAgeSeconds: 60 * 24 * 3600 },
               cacheableResponse: { statuses: [200] },
+            },
+          },
+          {
+            // Сцены книжек (этап 52). Нет файла — веб-сервер отвечает index.html: такое не кэшируем.
+            urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith('/books/'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'kidsplus-books',
+              expiration: { maxEntries: 600, maxAgeSeconds: 120 * 24 * 3600 },
+              cacheableResponse: { statuses: [200], headers: { 'content-type': 'image/webp' } },
             },
           },
           {

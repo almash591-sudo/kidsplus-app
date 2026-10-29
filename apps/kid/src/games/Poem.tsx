@@ -48,13 +48,13 @@ import './poem.css';
 
 /** В автотестах очередь ребёнка — миг: голос там поддельный и договаривает сразу. */
 const FAST = typeof navigator !== 'undefined' && navigator.webdriver;
-const pause = (ms: number) => new Promise((ok) => setTimeout(ok, FAST ? 150 : ms));
+export const pause = (ms: number) => new Promise((ok) => setTimeout(ok, FAST ? 150 : ms));
 
 /**
  * Шаг занятия — сценарий: фразы и паузы по очереди. Уход с шага (или из игры) его обрывает:
  * alive() становится false, и сценарий дальше не идёт.
  */
-function useScript(script: (alive: () => boolean) => Promise<unknown>, deps: unknown[]) {
+export function useScript(script: (alive: () => boolean) => Promise<unknown>, deps: unknown[]) {
   useEffect(() => {
     let on = true;
     void script(() => on);
@@ -66,7 +66,7 @@ function useScript(script: (alive: () => boolean) => Promise<unknown>, deps: unk
 }
 
 /** Сказать и дождаться тишины (если ребёнок попросил повторить «ушком» — и этого тоже). */
-const speak = async (...texts: string[]) => {
+export const speak = async (...texts: string[]) => {
   await say(...texts);
   await whenQuiet();
 };
@@ -87,25 +87,30 @@ const MIN_FONT = 13;
 
 /**
  * Длинная часть (басня, сказка — до семи строк): шрифт подписи мельче, пока сцена и подпись не
- * встанут на экран и подпись не выйдет из-под «Дальше»; не хватило и мелкого — сцена ниже. Считаем в размерах раскладки — экран
- * появляется с анимацией (scale), она замер не сбивает. Повернули телефон — подбираем заново.
+ * встанут на экран и подпись не выйдет из-под «Дальше»; не хватило и мелкого — сцена ниже. Считаем
+ * по раскладке (offset*), не по getBoundingClientRect: экран наезжает (scale), а подпись появляется
+ * уменьшенной (appear) — по кадру анимации длинная подпись «влезала» и потом уходила за край.
+ * Повернули телефон — подбираем заново.
  */
-function useFitText(ref: RefObject<HTMLElement | null>, key: string) {
+export function useFitText(ref: RefObject<HTMLElement | null>, key: string) {
   useLayoutEffect(() => {
     const el = ref.current;
     const game = el?.closest<HTMLElement>('.game');
     if (!el || !game) return;
     const fits = () => {
-      const g = game.getBoundingClientRect();
-      const k = game.offsetHeight / g.height || 1;
       const box = (e: Element) => {
-        const r = e.getBoundingClientRect();
-        return {
-          top: (r.top - g.top) * k,
-          bottom: (r.bottom - g.top) * k,
-          left: (r.left - g.left) * k,
-          right: (r.right - g.left) * k,
-        };
+        let top = 0;
+        let left = 0;
+        for (
+          let n = e as HTMLElement | null;
+          n && n !== game;
+          n = n.offsetParent as HTMLElement | null
+        ) {
+          top += n.offsetTop;
+          left += n.offsetLeft;
+        }
+        const { offsetWidth: w, offsetHeight: h } = e as HTMLElement;
+        return { top, bottom: top + h, left, right: left + w };
       };
       const css = getComputedStyle(game);
       const top = parseFloat(css.paddingTop) - 1;
@@ -303,7 +308,7 @@ function Option(props: {
 }
 
 /** Раунды выбора — «Договори» и вопросы: неверно — «попробуй ещё», верно — похвала и ответ. */
-function useChoice<R extends { answer: PoemChoice }>(
+export function useChoice<R extends { answer: PoemChoice }>(
   rounds: R[],
   phrases: KidPhrases,
   answer: (r: R) => string[],
@@ -343,7 +348,7 @@ function useChoice<R extends { answer: PoemChoice }>(
   return { n, round, solved, pick, state };
 }
 
-function Options<R extends { answer: PoemChoice; options: PoemChoice[] }>(props: {
+export function Options<R extends { answer: PoemChoice; options: PoemChoice[] }>(props: {
   round: R;
   n: number;
   solved: boolean;
@@ -409,7 +414,11 @@ function Blanks(props: {
 }
 
 /** 4. Вопросы по смыслу: совёнок спрашивает, ответ — картинкой. */
-function Questions(props: { rounds: QuestionRound[]; phrases: KidPhrases; onDone: () => void }) {
+export function Questions(props: {
+  rounds: QuestionRound[];
+  phrases: KidPhrases;
+  onDone: () => void;
+}) {
   const c = useChoice(props.rounds, props.phrases, (r) => [poemAnswer(r.answer[0])], props.onDone);
   const { question } = c.round;
   useScript(

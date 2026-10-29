@@ -25,6 +25,15 @@ import {
   type GameSpec,
   type NeighborMode,
 } from '@kidsplus/shared/games';
+import {
+  BOOK_CODES,
+  bookAnnounce,
+  bookChars,
+  bookOf,
+  BOOKS,
+  type BookCode,
+  type BookGenre,
+} from '@kidsplus/shared/books';
 import { RIDDLE_SETS, SUDOKU_SETS, SYLLABLE_WORD_SETS } from '@kidsplus/shared/game-presets';
 import {
   POEM_CODES,
@@ -374,6 +383,13 @@ const DEFAULTS: { [K in GameKind]: Extract<GameSpec, { kind: K }> } = {
     questions: true,
     choices: 3,
   },
+  book: {
+    kind: 'book',
+    book: 'kotPetuh',
+    autoTurn: false,
+    questions: true,
+    choices: 3,
+  },
 };
 
 /** Библиотека стихов и сказок (этап 45) — по жанрам, с возрастом. */
@@ -395,6 +411,24 @@ const POEM_OPTIONS = GENRES.map(([genre, group]) => ({
   }),
 })).filter((g) => g.items.length);
 const POEM_TITLES = new Set(Object.values(POEMS).map((p) => p.title));
+
+/** Библиотека книжек (этап 52) — по жанрам, с возрастом. */
+const BOOK_GENRES: [BookGenre, string][] = [
+  ['folk', 'Народные сказки'],
+  ['tale', 'Сказки писателей'],
+  ['story', 'Рассказы'],
+];
+const BOOK_OPTIONS = BOOK_GENRES.map(([genre, group]) => ({
+  group,
+  items: BOOK_CODES.filter((c) => bookOf(c).genre === genre).map((c) => {
+    const b = bookOf(c);
+    return {
+      value: c,
+      label: `${b.title}${b.author ? ` — ${b.author}` : ''} (с ${b.fromAge} лет)`,
+    };
+  }),
+})).filter((g) => g.items.length);
+const BOOK_TITLES = new Set(Object.values(BOOKS).map((b) => b.title));
 
 const DIFF_SCENE_LABELS: Record<(typeof DIFF_SCENES)[number], string> = {
   meadow: 'Полянка',
@@ -2461,6 +2495,61 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
         </Stack>
       );
     }
+    case 'book': {
+      const b = bookOf(spec.book);
+      const pages = b.chapters.reduce((n, c) => n + c.pages.length, 0);
+      return (
+        <Stack gap="xs">
+          <Select
+            label="Книжка"
+            allowDeselect={false}
+            value={spec.book}
+            data={BOOK_OPTIONS}
+            onChange={(v) => v && onChange({ ...spec, book: v as BookCode })}
+          />
+          <Text size="xs" c="dimmed">
+            {bookAnnounce(b)}
+            {b.translator ? ` Перевод: ${b.translator}.` : ''} Страниц: {pages}
+            {b.chapters.length > 1 ? ` · глав: ${b.chapters.length}, по главе в день` : ''} · около{' '}
+            {Math.max(1, Math.round(bookChars(b) / 900))} мин.
+            {b.drawn ? '' : ' Картинки ещё рисуются — пока вместо них значки.'}
+          </Text>
+          <Spoiler maxHeight={44} showLabel="Весь текст" hideLabel="Свернуть">
+            <Text size="sm" style={{ whiteSpace: 'pre-line' }}>
+              {b.chapters
+                .map((c) =>
+                  [c.title ?? '', ...c.pages.map((page) => page.text.join(' '))]
+                    .filter(Boolean)
+                    .join('\n\n'),
+                )
+                .join('\n\n')}
+            </Text>
+          </Spoiler>
+          <Text size="xs" c="dimmed">
+            Источник: {b.source.note}
+          </Text>
+          <Switch
+            label="Страницы листаются сами"
+            description="Иначе ребёнок нажимает стрелку, когда дослушал страницу"
+            checked={spec.autoTurn}
+            onChange={(e) => onChange({ ...spec, autoTurn: e.currentTarget.checked })}
+          />
+          <Switch
+            label="Вопросы в конце"
+            checked={spec.questions}
+            onChange={(e) => onChange({ ...spec, questions: e.currentTarget.checked })}
+          />
+          {spec.questions && (
+            <Choices value={spec.choices} onChange={(choices) => onChange({ ...spec, choices })} />
+          )}
+          <Text size="xs" c="dimmed">
+            Голос читает страницу и подсвечивает предложение, которое звучит; нажал на предложение —
+            прочитает ещё раз. Телефон помнит закладку: вышел посреди — продолжит с той же страницы.
+            Длинная книжка — по главе в день.
+          </Text>
+        </Stack>
+      );
+    }
     case 'differences':
       return (
         <Stack gap="xs">
@@ -2668,14 +2757,23 @@ export function GameEditor({ game, onDone }: { game: Game | null; onDone: () => 
   });
   const why = problem(v);
   const spec = v.spec as GameSpec;
-  /** Стих (этап 45): раздел «Стихи и сказки» и название по произведению, если родитель не задал своё. */
+  /**
+   * Стих (этап 45) и книжка (этап 52): раздел «Стихи и сказки» или «Книжки» и название по
+   * произведению, если родитель не задал своё.
+   */
   const setSpec = (s: GameSpec) =>
     setV((old) => {
-      if (s.kind !== 'poem') return { ...old, spec: s };
-      const title =
-        !old.title.trim() || POEM_TITLES.has(old.title) ? poemOf(s.poem).title : old.title;
-      const category = (old.spec as GameSpec).kind === 'poem' ? old.category : 'poems';
-      return { ...old, spec: s, title, category };
+      const was = (old.spec as GameSpec).kind;
+      const generic = !old.title.trim() || POEM_TITLES.has(old.title) || BOOK_TITLES.has(old.title);
+      if (s.kind === 'poem') {
+        const title = generic ? poemOf(s.poem).title : old.title;
+        return { ...old, spec: s, title, category: was === 'poem' ? old.category : 'poems' };
+      }
+      if (s.kind === 'book') {
+        const title = generic ? bookOf(s.book).title : old.title;
+        return { ...old, spec: s, title, category: was === 'book' ? old.category : 'books' };
+      }
+      return { ...old, spec: s };
     });
 
   return (
