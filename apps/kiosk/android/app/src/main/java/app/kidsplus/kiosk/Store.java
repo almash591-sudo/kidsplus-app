@@ -8,7 +8,7 @@ import java.security.SecureRandom;
 
 /**
  * Данные киоска — только на телефоне (личное хранилище приложения): PIN настроек телефона,
- * подписка VPN и готовые настройки sing-box.
+ * подписка VPN и готовые настройки sing-box, режим «без VPN», код привязки из QR-кода.
  */
 public final class Store {
     private final SharedPreferences p;
@@ -62,6 +62,35 @@ public final class Store {
 
     public void setVpn(String source, String config) {
         p.edit().putString("vpn_source", source).putString("vpn_config", config).apply();
+    }
+
+    /** Адрес или ссылки VPN из QR-кода (этап 53), если подключить сразу не вышло: их видно в настройках. */
+    public void setVpnSource(String source) {
+        p.edit().putString("vpn_source", source).apply();
+    }
+
+    /** VPN не нужен (семья не в России, этап 53): интернет напрямую, постоянного VPN нет. */
+    public boolean isVpnOff() {
+        return p.getBoolean("vpn_off", false);
+    }
+
+    public void setVpnOff(boolean v) {
+        p.edit().putBoolean("vpn_off", v).commit();
+    }
+
+    /** Без PIN и без VPN (если он нужен) к ребёнку нельзя — сначала настройка телефона. */
+    public boolean needsSetup() {
+        return !hasPin() || (!hasVpnConfig() && !isVpnOff());
+    }
+
+    /** Код привязки из QR-кода настройки: детское приложение откроет его один раз. */
+    public String pendingPair() {
+        return p.getString("pending_pair", null);
+    }
+
+    public void setPendingPair(String code) {
+        if (code == null) p.edit().remove("pending_pair").apply();
+        else p.edit().putString("pending_pair", code).apply();
     }
 
     /** Идёт настройка VPN — постоянный VPN без блокировки, чтобы скачать подписку. */

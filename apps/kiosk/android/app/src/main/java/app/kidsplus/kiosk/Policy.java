@@ -77,14 +77,16 @@ public final class Policy {
     /**
      * Постоянный VPN — сам киоск. С блокировкой (без VPN интернета нет) — только когда VPN
      * настроен и не идёт настройка: иначе ссылку подписки не скачать. И не во время входа в сеть
-     * отеля (страница входа открывается мимо VPN).
+     * отеля (страница входа открывается мимо VPN). Если VPN не нужен (этап 53) — постоянного VPN
+     * нет, а запрет менять VPN остаётся: ребёнок свой не поставит.
      */
     public static void applyVpn(Context c) {
         if (!isOwner(c)) return;
         Store s = new Store(c);
         boolean lockdown = s.hasVpnConfig() && !s.isConfiguring() && !s.isPortal();
         try {
-            dpm(c).setAlwaysOnVpnPackage(AdminReceiver.component(c), c.getPackageName(), lockdown);
+            if (s.isVpnOff()) dpm(c).setAlwaysOnVpnPackage(AdminReceiver.component(c), null, false);
+            else dpm(c).setAlwaysOnVpnPackage(AdminReceiver.component(c), c.getPackageName(), lockdown);
         } catch (Exception e) {
             Log.w(TAG, "always-on vpn", e);
         }
