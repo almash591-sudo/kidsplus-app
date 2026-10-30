@@ -55,5 +55,7 @@ export const INVITE_TTL_MS = 24 * 3600 * 1000;
 /** Приглашение новой семьи живёт дольше: его пересылают родственникам. */
 export const FAMILY_INVITE_TTL_MS = 14 * 24 * 3600 * 1000;
 export const PAIRING_TTL_MS = 10 * 60 * 1000;
+/** Код в QR-коде настройки Android (этап 53): сброс, скачивание и установка киоска — долго. */
+export const SETUP_PAIRING_TTL_MS = 60 * 60 * 1000;
 /** Chrome ограничивает срок жизни cookie 400 днями; продлеваем при каждом обращении. */
 export const DEVICE_COOKIE_MAX_AGE_S = 400 * 24 * 3600;

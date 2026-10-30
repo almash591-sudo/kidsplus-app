@@ -25,6 +25,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import QRCode from 'qrcode';
 import { useEffect, useState } from 'react';
 import { api } from '../api';
+import { AndroidSetupFlow } from '../components/AndroidSetup';
 import { LANGUAGE_LABELS, plural } from '../lib/child';
 import { modals } from '../lib/modals';
 import { phoneOf } from '../lib/names';
@@ -42,8 +43,9 @@ export function DevicesPage() {
   const children = useChildren();
   const decks = useDecks();
   const [pairingFor, setPairingFor] = useState<Child | null>(null);
+  const [setupFor, setSetupFor] = useState<Child | null>(null);
   // Пока открыт диалог привязки, опрашиваем список устройств, чтобы увидеть новое.
-  const devices = useDevices(pairingFor ? 3000 : undefined);
+  const devices = useDevices(pairingFor || setupFor ? 3000 : undefined);
 
   const revoke = useMutation({
     mutationFn: (id: string) => api.delete(`/parent/devices/${id}`),
@@ -64,9 +66,14 @@ export function DevicesPage() {
             <Stack gap="sm">
               <Group justify="space-between">
                 <Text fw={600}>{child.nickname}</Text>
-                <Button size="xs" onClick={() => setPairingFor(child)}>
-                  Привязать телефон
-                </Button>
+                <Group gap="xs">
+                  <Button size="xs" variant="light" onClick={() => setSetupFor(child)}>
+                    Android без компьютера
+                  </Button>
+                  <Button size="xs" onClick={() => setPairingFor(child)}>
+                    Привязать телефон
+                  </Button>
+                </Group>
               </Group>
               {list.length === 0 && (
                 <Text size="sm" c="dimmed">
@@ -110,6 +117,21 @@ export function DevicesPage() {
             child={pairingFor}
             devices={devices.data ?? []}
             onDone={() => setPairingFor(null)}
+          />
+        )}
+      </Modal>
+
+      <Modal
+        opened={setupFor !== null}
+        onClose={() => setSetupFor(null)}
+        title="Подключить Android без компьютера"
+        size="md"
+      >
+        {setupFor && (
+          <AndroidSetupFlow
+            child={setupFor}
+            devices={devices.data ?? []}
+            onDone={() => setSetupFor(null)}
           />
         )}
       </Modal>

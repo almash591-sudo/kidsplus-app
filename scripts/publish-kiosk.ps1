@@ -6,6 +6,13 @@
 # хранится в %USERPROFILE%\.kidsplus\kiosk-publish-token.txt; при первом запуске скрипт создаёт его
 # и сам записывает в переменную KIOSK_PUBLISH_TOKEN сервиса api на Railway (на экран не выводит).
 # Первую версию с обновлением без кабеля нужно один раз поставить по кабелю (provision-device.ps1).
+#
+# Этап 53: вместе с APK на сервер уходит SHA-256 сертификата подписи — по нему Android проверяет
+# киоск при настройке по QR-коду из кабинета. С ключом -Mirror APK ещё и выкладывается в
+# GitHub Releases (нужен gh): оттуда телефон в России скачает киоск без VPN.
+#
+#   powershell -ExecutionPolicy Bypass -File scripts\publish-kiosk.ps1 -Mirror
+param([switch]$Mirror)
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
 function Say($text) { Write-Host "→ $text" -ForegroundColor Cyan }
@@ -53,13 +60,44 @@ Pop-Location
 if (-not $built) { Fail 'сборка не удалась' }
 $apk = "$root\apps\kiosk\android\app\build\outputs\apk\release\app-release.apk"
 
+# Отпечаток подписи для QR-кода: SHA-256 сертификата, base64url без «=».
+$tools = Get-ChildItem "$env:ANDROID_HOME\build-tools" -Directory |
+  Sort-Object { [version]($_.Name -replace '[^\d.].*$', '') } | Select-Object -Last 1
+$apksigner = Join-Path $tools.FullName 'apksigner.bat'
+if (-not (Test-Path $apksigner)) { Fail "нет apksigner в $env:ANDROID_HOME\build-tools" }
+if ($env:JAVA_HOME) { $env:Path = "$env:JAVA_HOME\bin;$env:Path" }
+$certs = & $apksigner verify --print-certs $apk
+$line = $certs | Where-Object { $_ -match 'Signer #1 certificate SHA-256 digest:\s*([0-9a-fA-F]{64})' } |
+  Select-Object -First 1
+if (-not $line) { Fail 'apksigner не показал SHA-256 сертификата — APK не подписан?' }
+$null = $line -match '([0-9a-fA-F]{64})'
+$hex = $Matches[1]
+$digest = [byte[]](0..31 | ForEach-Object { [Convert]::ToByte($hex.Substring($_ * 2, 2), 16) })
+$checksum = [Convert]::ToBase64String($digest).TrimEnd('=').Replace('+', '-').Replace('/', '_')
+$headers = @{ authorization = "Bearer $token"; 'x-version-code' = "$code"; 'x-signature-checksum' = $checksum }
+
+if ($Mirror) {
+  # Имя файла в выпуске одно и то же — ссылка отличается только тегом kiosk-<версия>.
+  $repo = (gh repo view --json nameWithOwner -q .nameWithOwner)
+  if (-not $repo) { Fail 'gh не видит репозиторий — выполните gh auth login' }
+  $copy = Join-Path ([IO.Path]::GetTempPath()) 'kidsplus-kiosk.apk'
+  Copy-Item $apk $copy -Force
+  Say "Выкладываю копию в GitHub Releases ($repo, kiosk-$code)…"
+  gh release create "kiosk-$code" $copy --repo $repo --title "Киоск $code" `
+    --notes 'Киоск KidsPlus для настройки телефона по QR-коду из кабинета.' | Out-Null
+  $published = $LASTEXITCODE -eq 0
+  Remove-Item $copy -ErrorAction SilentlyContinue
+  if (-not $published) { Fail 'не удалось создать выпуск на GitHub' }
+  $headers['x-mirror-url'] = "https://github.com/$repo/releases/download/kiosk-$code/kidsplus-kiosk.apk"
+}
+
 $server = (Get-Content "$root\apps\kiosk\capacitor.config.json" -Raw | ConvertFrom-Json).server.url.TrimEnd('/')
 Say "Загружаю на сервер ($([Math]::Round((Get-Item $apk).Length / 1MB)) МБ)…"
 try {
   $r = Invoke-RestMethod -Method Post -Uri "$server/api/kiosk/releases" -InFile $apk `
-    -ContentType 'application/vnd.android.package-archive' -TimeoutSec 600 `
-    -Headers @{ authorization = "Bearer $token"; 'x-version-code' = "$code" }
+    -ContentType 'application/vnd.android.package-archive' -TimeoutSec 600 -Headers $headers
 } catch {
   Fail "сервер не принял APK: $($_.Exception.Message)"
 }
 Say "Готово: версия $($r.versionCode) на сервере. Телефоны поставят её ночью, когда будут на зарядке с выключенным экраном."
+if ($r.mirrorUrl) { Say "Копия для QR-кода: $($r.mirrorUrl)" }
