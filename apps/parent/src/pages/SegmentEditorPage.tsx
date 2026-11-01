@@ -8,6 +8,7 @@ import {
   type VideoLookup,
 } from '@kidsplus/shared/api';
 import { formatTime, parseTime } from '@kidsplus/shared/time';
+import { PROVIDER_NAMES, videoPageUrl } from '@kidsplus/shared/video-url';
 import {
   Alert,
   Button,
@@ -27,11 +28,24 @@ import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { api } from '../api';
 import { QuestionsEditor } from '../components/QuestionsEditor';
+import { RuTubePreview } from '../components/RuTubePreview';
 import { YouTubePreview, type YouTubePreviewHandle } from '../components/YouTubePreview';
 import { SUBJECT_LABELS } from '../lib/subjects';
 import { keys, queryClient, useChildren, useSegments } from '../queries';
 
 const DEFAULT_LEN = 120;
+const COUNTRIES = new Intl.DisplayNames(['ru'], { type: 'region' });
+/** Названия стран по кодам; незнакомый код (у RuTube есть AB, OS) — как есть. */
+const countryNames = (codes: string[]) =>
+  codes
+    .map((c) => {
+      try {
+        return COUNTRIES.of(c) ?? c;
+      } catch {
+        return c;
+      }
+    })
+    .join(', ');
 
 export function SegmentEditorPage() {
   const { id } = useParams();
@@ -48,9 +62,7 @@ function Editor({ existing }: { existing: Segment | null }) {
   const children = useChildren();
   const preview = useRef<YouTubePreviewHandle>(null);
 
-  const [url, setUrl] = useState(
-    existing ? `https://www.youtube.com/watch?v=${existing.source.externalId}` : '',
-  );
+  const [url, setUrl] = useState(existing ? videoPageUrl(existing.source) : '');
   const [video, setVideo] = useState<VideoLookup | null>(
     existing ? { ...existing.source, suggestedStartSec: null } : null,
   );
@@ -116,8 +128,8 @@ function Editor({ existing }: { existing: Segment | null }) {
       <Group align="flex-end" wrap="nowrap">
         <TextInput
           style={{ flex: 1 }}
-          label="Ссылка на видео YouTube"
-          placeholder="https://www.youtube.com/watch?v=…"
+          label="Ссылка на видео YouTube или RuTube"
+          placeholder="https://www.youtube.com/watch?v=… или https://rutube.ru/video/…"
           value={url}
           onChange={(e) => setUrl(e.currentTarget.value)}
           disabled={Boolean(existing)}
@@ -137,9 +149,20 @@ function Editor({ existing }: { existing: Segment | null }) {
       {video && (
         <>
           <Text size="sm" c="dimmed">
-            {video.title} · {video.channelTitle ?? 'канал неизвестен'}
+            {PROVIDER_NAMES[video.provider]} · {video.title} ·{' '}
+            {video.channelTitle ?? 'канал неизвестен'}
           </Text>
-          <YouTubePreview ref={preview} videoId={video.externalId} startSec={start ?? 0} />
+          {video.onlyIn && (
+            <Alert color="yellow">
+              Это видео можно смотреть только в: {countryNames(video.onlyIn)}. В других странах
+              ребёнок его не увидит.
+            </Alert>
+          )}
+          {video.provider === 'rutube' ? (
+            <RuTubePreview ref={preview} videoId={video.externalId} startSec={start ?? 0} />
+          ) : (
+            <YouTubePreview ref={preview} videoId={video.externalId} startSec={start ?? 0} />
+          )}
 
           <Card withBorder>
             <Stack>
