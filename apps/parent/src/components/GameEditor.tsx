@@ -14,6 +14,7 @@ import {
   FISHING_LETTERS,
   FLASHLIGHT_SCENES,
   GAME_KINDS,
+  isTraceLetter,
   MOLE_SPEEDS,
   NEIGHBOR_MODES,
   PATTERNS,
@@ -21,6 +22,7 @@ import {
   SORTER_SHAPES,
   TANGRAM_FIGURES,
   TRACE_GUIDES,
+  TRACE_LETTERS,
   TRACE_SHAPES,
   type GameKind,
   type GameSpec,
@@ -177,7 +179,8 @@ function PickChips<T extends string>(props: {
   );
 }
 
-const SHAPE_LABELS: Record<(typeof TRACE_SHAPES)[number], string> = {
+/** Подписи фигур и цифр; буквы подписаны сами собой. */
+const SHAPE_LABELS: Partial<Record<(typeof TRACE_SHAPES)[number], string>> = {
   line: 'линия',
   wave: 'волна',
   zigzag: 'зигзаг',
@@ -186,23 +189,14 @@ const SHAPE_LABELS: Record<(typeof TRACE_SHAPES)[number], string> = {
   triangle: 'треугольник',
   star: 'звезда',
   heart: 'сердце',
-  '0': '0',
-  '1': '1',
-  '2': '2',
-  '3': '3',
-  '4': '4',
-  '5': '5',
-  '6': '6',
-  '7': '7',
-  '8': '8',
-  '9': '9',
-  А: 'А',
-  О: 'О',
-  У: 'У',
-  а: 'а',
-  о: 'о',
-  у: 'у',
 };
+
+/** Что обводить — группами (этап 56: весь алфавит), чтобы 84 фигуры не слились в одну кучу. */
+const SHAPE_GROUPS: { label: string; shapes: (typeof TRACE_SHAPES)[number][] }[] = [
+  { label: 'Фигуры и цифры', shapes: TRACE_SHAPES.filter((s) => !isTraceLetter(s)) },
+  { label: 'Большие буквы', shapes: TRACE_LETTERS.filter((l) => l !== l.toLowerCase()) },
+  { label: 'Маленькие буквы', shapes: TRACE_LETTERS.filter((l) => l === l.toLowerCase()) },
+];
 
 const GUIDE_LABELS: Record<(typeof TRACE_GUIDES)[number], string> = {
   dots: 'по точкам',
@@ -835,13 +829,22 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
               })
             }
           >
-            <Group gap={6}>
-              {TRACE_SHAPES.map((s) => (
-                <Chip key={s} value={s} size="sm">
-                  {SHAPE_LABELS[s]}
-                </Chip>
+            <Stack gap={6}>
+              {SHAPE_GROUPS.map((g) => (
+                <div key={g.label}>
+                  <Text size="xs" c="dimmed" mb={4}>
+                    {g.label}
+                  </Text>
+                  <Group gap={6}>
+                    {g.shapes.map((s) => (
+                      <Chip key={s} value={s} size="sm">
+                        {SHAPE_LABELS[s] ?? s}
+                      </Chip>
+                    ))}
+                  </Group>
+                </div>
               ))}
-            </Group>
+            </Stack>
           </Chip.Group>
           <Text size="sm" fw={500} mt="xs">
             Как обводить — каждую фигуру на каждой ступени по очереди
