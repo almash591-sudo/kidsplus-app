@@ -716,3 +716,28 @@ test('«Что нравится» в «Прогрессе» (этап 44): лю�
   expect(sent[0]).toEqual({ remove: [{ kind: 'interactive', refId: expect.any(String) }] });
   expect(sent[1]).toEqual({ add: sent[0]!.remove });
 });
+
+test('видео с RuTube (этап 54): ссылка, плеер rutube.ru и «только в России»', async ({ page }) => {
+  // Плеер RuTube — пустая страница: тесты не ходят в интернет.
+  await page.route('https://rutube.ru/**', (r) =>
+    r.fulfill({ contentType: 'text/html', body: '<!doctype html><title>RuTube</title>' }),
+  );
+  await login(page);
+  await page.goto('/videos/new');
+  await page
+    .getByLabel('Ссылка на видео YouTube или RuTube')
+    .fill('https://rutube.ru/video/c9be5e8850ddc8583c71a986284ac6ef/?t=30');
+  await page.getByRole('button', { name: 'Найти' }).click();
+  await expect(page.getByText(/^RuTube · Видео RuTube c9be5e · Детский канал/)).toBeVisible();
+  await expect(page.getByText(/можно смотреть только в: Россия/)).toBeVisible();
+  await expect(
+    page.locator(
+      'iframe[src^="https://rutube.ru/play/embed/c9be5e8850ddc8583c71a986284ac6ef/?t=30"]',
+    ),
+  ).toBeVisible();
+  await expect(page.getByLabel('Начало')).toHaveValue('0:30');
+  expect(await layoutProblems(page)).toEqual([]);
+  if (process.env.SHOTS)
+    await page.screenshot({ path: `${process.env.SHOTS}/rutube-${test.info().project.name}.png` });
+  // Сохранять не будем: стенд общий для всех телефонов, его данные не трогаем.
+});
