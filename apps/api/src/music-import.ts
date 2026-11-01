@@ -7,6 +7,7 @@
 // Владелец решил: уроки включаются детям сразу, родитель может скрыть любой в кабинете.
 // Этап 49 (звуки и чтение): только семье владельца; уроки на слух — между ещё не пройденными,
 // чтение — в конец дорожки. «Счёт» (этап 49) — тоже только семье владельца, дорожкой в «Математике».
+// Этап 56 («Повторяем О, А, У») — блоком сразу после последнего пройденного урока «Букв».
 import type { GameSpec } from '@kidsplus/shared/games';
 import { LETTER_LESSONS } from '@kidsplus/shared/letters-lessons';
 import { MATH_LESSONS } from '@kidsplus/shared/math-lessons';
@@ -28,6 +29,11 @@ export interface LessonCatalog {
    * последнего пройденного), остальные — в конец дорожки. Только при первом назначении.
    */
   ahead?: boolean;
+  /**
+   * Сразу следующими: все уроки — подряд, по порядку набора, после последнего пройденного урока
+   * раздела, перед ещё не пройденными. Только при первом назначении.
+   */
+  next?: boolean;
   /** Только детям семьи владельца (families.is_admin): в семьях родственников уроки выбирают сами. */
   ownerOnly?: boolean;
 }
@@ -59,6 +65,18 @@ export const LETTERS_SCHOOL_CATALOG: LessonCatalog = {
   ownerOnly: true,
 };
 
+/**
+ * «Повторяем О, А, У» (этап 56, уроки 61–70): старшим дошкольникам семьи владельца — тем, кто
+ * проходит буквы в садике, — сразу следующими в дорожке «Буквы».
+ */
+export const LETTERS_OAU_CATALOG: LessonCatalog = {
+  category: 'letters',
+  oldFromAge: 5,
+  lessons: LETTER_LESSONS.slice(60, 70),
+  next: true,
+  ownerOnly: true,
+};
+
 /** Счёт к школе (этап 49) — дошкольникам семьи владельца, в конец, по порядку дорожки. */
 export const MATH_COUNT_CATALOG: LessonCatalog = {
   category: 'math',
@@ -83,6 +101,7 @@ const CATEGORY = ${JSON.stringify(catalog.category)};
 const DRY = ${!commit};
 const SPREAD = ${Boolean(catalog.spread)};
 const AHEAD = ${Boolean(catalog.ahead)};
+const NEXT = ${Boolean(catalog.next)};
 const OWNER_ONLY = ${Boolean(catalog.ownerOnly)};
 const done = (async () => {
   const c = new Client({ connectionString: process.env.DATABASE_URL });
@@ -116,7 +135,7 @@ const done = (async () => {
       added += r.rowCount;
     }
     let note = '';
-    if (SPREAD || (AHEAD && added > 0)) {
+    if (SPREAD || ((AHEAD || NEXT) && added > 0)) {
       // Порядок дорожки — по position; новые уроки встают на места уроков раздела.
       const mine = new Map(LESSONS.filter((x) => x.age === group).map((x) => [ids[x.title], x]));
       const rows = (await c.query(
@@ -142,8 +161,14 @@ const done = (async () => {
         let last = -1;
         rest.forEach((r, i) => { if (done.has(String(r.interactive_id))) last = i; });
         order.push(...rest.slice(0, last + 1));
-        mix(rest.slice(last + 1), rows.filter((r) => mine.has(r.interactive_id) && mine.get(r.interactive_id).spread));
-        order.push(...rows.filter((r) => mine.has(r.interactive_id) && !mine.get(r.interactive_id).spread));
+        if (NEXT) {
+          // Блок повторения — сразу за пройденным, дальше — непройденные как были.
+          order.push(...rows.filter((r) => mine.has(r.interactive_id)));
+          order.push(...rest.slice(last + 1));
+        } else {
+          mix(rest.slice(last + 1), rows.filter((r) => mine.has(r.interactive_id) && mine.get(r.interactive_id).spread));
+          order.push(...rows.filter((r) => mine.has(r.interactive_id) && !mine.get(r.interactive_id).spread));
+        }
         note = 'пройдено ' + (last + 1) + ', впереди ' + (rest.length - last - 1);
       }
       const positions = rows.map((r) => r.position).sort((a, b) => a - b);
