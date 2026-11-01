@@ -180,6 +180,49 @@ describe('найди букву: большие и маленькие', () => {
   });
 });
 
+describe('буквы из садика: найди одну букву среди похожих', () => {
+  it('спрашивает только букву из ask, похожие — на кнопках, голосом не называются', () => {
+    const s = spec<'letter'>({
+      kind: 'letter',
+      letters: ['Ж', 'Х', 'К', 'Ш'],
+      ask: ['Ж'],
+      choices: 3,
+      rounds: 8,
+    });
+    const seen = new Set<string>();
+    for (let i = 0, prev: string | undefined; i < 30; i++) {
+      const r = makeRound(s, prev);
+      expect(r.answer).toBe('Ж');
+      expect(r.options.map((o) => o.id)).toContain('Ж');
+      r.options.forEach((o) => seen.add(o.id));
+      prev = r.key;
+    }
+    expect([...seen].sort()).toEqual(['Ж', 'К', 'Х', 'Ш']);
+    expect(gamePhrases(s)).toEqual(['Найди букву Ж.', 'Буква Ж!']);
+  });
+
+  it('Ъ и Ь голос называет знаками', () => {
+    const s = spec<'letter'>({
+      kind: 'letter',
+      letters: ['Ь', 'Ъ', 'Б'],
+      ask: ['Ь'],
+      choices: 3,
+      rounds: 8,
+    });
+    expect(gamePhrases(s)).toEqual(['Найди мягкий знак.', 'Это мягкий знак!']);
+    const b = spec<'balloons'>({
+      kind: 'balloons',
+      count: 6,
+      letters: { find: 'Ь', others: ['Ъ', 'Б'], lower: true },
+    });
+    expect(gamePhrases(b)).toEqual([
+      'Лопни шарики с мягким знаком — большим и маленьким!',
+      'Это твёрдый знак. Ищи мягкий знак!',
+      'Это буква Б. Ищи мягкий знак!',
+    ]);
+  });
+});
+
 describe('с какой буквы: обманки', () => {
   const words = [
     { emoji: '🍉', word: 'АРБУЗ' },
