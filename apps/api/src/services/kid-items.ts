@@ -9,6 +9,7 @@ import {
   type KidQuestion,
   type Language,
   type Speech,
+  type VideoProvider,
 } from '@kidsplus/shared/api';
 import { gameImageIds, gameSpec, type GameSpec } from '@kidsplus/shared/games';
 import { and, asc, eq, inArray } from 'drizzle-orm';
@@ -243,12 +244,10 @@ export async function buildKidItems(
     if (item.segmentId) {
       const row = segments.find((s) => s.segment.id === item.segmentId);
       if (!row) continue; // видео недоступно — пропускаем
-      // Плеер RuTube появится на телефоне следующим шагом этапа 54; до тех пор не отдаём.
-      if (row.source.provider !== 'youtube') continue;
       result.push({
         kind: 'segment',
         id: row.segment.id,
-        provider: 'youtube',
+        provider: row.source.provider as VideoProvider,
         externalId: row.source.externalId,
         startSec: row.segment.startSec,
         endSec: row.segment.endSec,

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { END_MARGIN_SEC, shouldFinish } from './guard';
 
-const PLAYING = 1;
-const ENDED = 0;
+const PLAYING = false;
+const ENDED = true;
 
 describe('shouldFinish', () => {
   it('нет — пока до конца больше запаса', () => {
@@ -23,5 +23,9 @@ describe('shouldFinish', () => {
 
   it('нет — при некорректном времени', () => {
     expect(shouldFinish(Number.NaN, 120, PLAYING)).toBe(false);
+  });
+
+  it('нет — пока плеер не сообщил время (RuTube до первого сообщения)', () => {
+    expect(shouldFinish(undefined, 120, PLAYING)).toBe(false);
   });
 });

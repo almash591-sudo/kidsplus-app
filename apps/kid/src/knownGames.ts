@@ -1,8 +1,8 @@
 import type { KidItem, VideoProvider } from '@kidsplus/shared/api';
 import { gameSpec } from '@kidsplus/shared/games';
 
-/** Сервисы, чьи видео эта версия приложения умеет играть (плеер RuTube — следом). */
-const PLAYABLE: readonly VideoProvider[] = ['youtube'];
+/** Сервисы, чьи видео эта версия приложения умеет играть (RuTube — с этапа 54). */
+const PLAYABLE: readonly VideoProvider[] = ['youtube', 'rutube'];
 
 /**
  * Только игры и видео, которые эта версия приложения умеет показать. Сервер обновляется

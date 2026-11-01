@@ -14,6 +14,7 @@ import {
 } from '@kidsplus/shared/calls';
 
 const FAKE_YT = readFileSync(new URL('./fake-youtube.js', import.meta.url), 'utf8');
+const FAKE_RUTUBE = readFileSync(new URL('./fake-rutube.html', import.meta.url), 'utf8');
 // 1×1 PNG вместо превью с i.ytimg.com — тесты не ходят в интернет.
 const PIXEL = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
@@ -319,14 +320,16 @@ data: ${JSON.stringify({ type: 'monitor', state: { on, sensitivity: 'high' } })}
   }
 }
 
-/** Подменённый сервер: /api/kid/*, YouTube IFrame API и картинки. */
+/** Подменённый сервер: /api/kid/*, плееры YouTube и RuTube, картинки. */
 async function mockBackend(page: Page, backend: Backend) {
   await page.route('https://www.youtube.com/iframe_api', (r) =>
     r.fulfill({ contentType: 'text/javascript', body: FAKE_YT }),
   );
-  await page.route('https://i.ytimg.com/**', (r) =>
-    r.fulfill({ contentType: 'image/png', body: PIXEL }),
+  await page.route('https://rutube.ru/play/embed/**', (r) =>
+    r.fulfill({ contentType: 'text/html', body: FAKE_RUTUBE }),
   );
+  for (const host of ['https://i.ytimg.com/**', 'https://pic.rtbcdn.ru/**'])
+    await page.route(host, (r) => r.fulfill({ contentType: 'image/png', body: PIXEL }));
   // Картинки и «озвучка»: в тестах звук не играет — плеер сразу считает его законченным.
   await page.route('**/api/media/**', (r) => r.fulfill({ contentType: 'image/png', body: PIXEL }));
   await page.route(/\/api\/(kid|calls)(\/|\?|$)/, async (route) => {
@@ -5293,5 +5296,115 @@ test.describe('сбои — родителю (этап 51)', () => {
     await page.context().setOffline(false);
     await expect.poll(() => backend.appErrors?.length, { timeout: 10_000 }).toBe(2);
     expect(backend.appErrors![1]).toMatchObject({ kind: 'rejection', message: 'Error: Без связи' });
+  });
+});
+
+test.describe('плеер RuTube (этап 54)', () => {
+  const RT1 = 'c9be5e8850ddc8583c71a986284ac6ef';
+  const RT2 = '0123456789abcdef0123456789abcdef';
+  const rutube = (id: string, n: number) => ({
+    id: `${n}${n}${n}${n}${n}${n}${n}${n}-${n}${n}${n}${n}-4${n}${n}${n}-8${n}${n}${n}-${String(n).repeat(12)}`,
+    kind: 'segment',
+    provider: 'rutube',
+    externalId: id,
+    startSec: 10,
+    endSec: 90,
+    thumbnailUrl: `https://pic.rtbcdn.ru/video/${id}.jpg`,
+    questions: [],
+  });
+  const frame = (page: Page) => page.frameLocator('iframe[src^="https://rutube.ru/"]');
+  /** Вызов в поддельном плеере RuTube (он с origin rutube.ru, как настоящий). */
+  const rt = async <T>(page: Page, fn: string): Promise<T> => {
+    const f = page.frames().find((x) => x.url().startsWith('https://rutube.ru/play/embed/'));
+    if (!f) throw new Error('нет плеера RuTube');
+    return (await f.evaluate(`(() => window.__rt.${fn})()`)) as T;
+  };
+  const playerSrc = (page: Page) =>
+    page.locator('iframe[src^="https://rutube.ru/"]').getAttribute('src');
+
+  test.beforeEach(({ backend }) => {
+    backend.items = [rutube(RT1, 3), rutube(RT2, 4)];
+  });
+
+  test('видео играет в плеере rutube.ru: свой старт и конец, касания не доходят, пауза закрыта', async ({
+    page,
+    backend,
+  }) => {
+    await startFirst(page);
+    expect(await playerSrc(page)).toBe(`https://rutube.ru/play/embed/${RT1}/?t=10&stopTime=90`);
+    await expect(frame(page).locator('body')).toBeAttached();
+    expect(await rt<string[]>(page, 'calls')).toContain('player:play');
+    expect(backend.events.map((e) => e.type)).toEqual(['segment_start']);
+
+    // Поверх iframe — наш слой: касание в центр до RuTube не доходит и паузу не ставит.
+    const box = (await page.locator('iframe').boundingBox())!;
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    expect(await rt<number>(page, 'hits')).toBe(0);
+    expect(await rt<string>(page, 'state')).toBe('playing');
+
+    await page.getByTestId('pause').click();
+    await expect(page.getByTestId('play')).toBeVisible();
+    expect(await rt<string>(page, 'state')).toBe('pause');
+    await page.getByTestId('play').click();
+    await expect(page.getByTestId('pause')).toBeVisible();
+  });
+
+  test('конец фрагмента по времени: плеер уничтожается до рекомендаций, дальше — следующее', async ({
+    page,
+    backend,
+  }) => {
+    await startFirst(page);
+    await rt(page, 'at(89.8)');
+    await expect(page.locator('iframe')).toHaveCount(0, { timeout: 600 });
+    await expect(page.getByTestId('celebrate')).toBeVisible();
+    expect(backend.events.map((e) => e.type)).toEqual(['segment_start', 'segment_complete']);
+    await expect.poll(() => playerSrc(page), { timeout: 4000 }).toContain(RT2);
+  });
+
+  test('время между сообщениями плеера досчитывается — конец не проскакивает', async ({ page }) => {
+    await startFirst(page);
+    // Последнее сообщение — за секунду до конца; дальше RuTube молчит, а видео идёт.
+    await rt(page, 'at(89)');
+    await expect(page.locator('iframe')).toHaveCount(0, { timeout: 2000 });
+    await expect(page.getByTestId('celebrate')).toBeVisible();
+  });
+
+  test('«видео закончилось» от RuTube тоже сразу убирает плеер', async ({ page }) => {
+    await startFirst(page);
+    await rt(page, 'complete()');
+    await expect(page.locator('iframe')).toHaveCount(0);
+  });
+
+  test('iPhone: кнопка не запустила RuTube — открывается центр плеера, касание запускает', async ({
+    page,
+  }) => {
+    await page.route('https://rutube.ru/play/embed/**', (r) =>
+      r.fulfill({
+        contentType: 'text/html',
+        body: FAKE_RUTUBE.replace('const needsFrameTap = false;', 'const needsFrameTap = true;'),
+      }),
+    );
+    await page.goto('/');
+    await page.getByTestId('tile').first().click();
+    await page.getByTestId('play').click({ timeout: 4000 });
+    await expect(page.getByTestId('tap-video')).toBeVisible({ timeout: 4000 });
+    const box = (await page.getByTestId('player').boundingBox())!;
+    await page.mouse.click(box.x + box.width / 2, box.y + 30);
+    expect(await rt<number>(page, 'hits')).toBe(0);
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(page.getByTestId('pause')).toBeVisible();
+    await expect(page.getByTestId('tap-video')).toHaveCount(0);
+  });
+
+  test('ошибка RuTube: событие без кода YouTube и переход к следующему', async ({
+    page,
+    backend,
+  }) => {
+    await startFirst(page);
+    await rt(page, "fail('Видео недоступно в вашей стране')");
+    await expect
+      .poll(() => backend.events.find((e) => e.type === 'segment_error')?.payload?.code)
+      .toBe('rutube');
+    await expect.poll(() => playerSrc(page), { timeout: 4000 }).toContain(RT2);
   });
 });

@@ -19,12 +19,13 @@ describe('незнакомые игры (сервер новее телефон�
     expect(knownGames(items).map((i) => i.id)).toEqual(['v', 'ladushki', 'b', 'd']);
   });
 
-  it('видео с незнакомого сервиса пропускается', () => {
+  it('видео YouTube и RuTube показываются, с незнакомого сервиса — пропускается', () => {
     const items = [
       { kind: 'segment' as const, id: 'yt', provider: 'youtube' as const },
       { kind: 'segment' as const, id: 'rt', provider: 'rutube' as const },
+      { kind: 'segment' as const, id: 'vk', provider: 'vk' as never },
       { kind: 'segment' as const, id: 'old' },
     ];
-    expect(knownGames(items).map((i) => i.id)).toEqual(['yt', 'old']);
+    expect(knownGames(items).map((i) => i.id)).toEqual(['yt', 'rt', 'old']);
   });
 });
