@@ -187,14 +187,20 @@ export interface Device {
 
 // ─── Видео ───────────────────────────────────────────────────────────────────
 
+/** Откуда видео: встраиваемый плеер YouTube или RuTube (этап 54). */
+export const VIDEO_PROVIDERS = ['youtube', 'rutube'] as const;
+export type VideoProvider = (typeof VIDEO_PROVIDERS)[number];
+
 export interface VideoLookup {
-  provider: 'youtube';
+  provider: VideoProvider;
   externalId: string;
   title: string;
   channelTitle: string | null;
   thumbnailUrl: string | null;
   /** Время из ссылки (`?t=`), подсказка для начала фрагмента. */
   suggestedStartSec: number | null;
+  /** Страны, где видео можно смотреть (коды ISO, RuTube); null — ограничений нет или неизвестны. */
+  onlyIn?: string[] | null;
 }
 
 /** Разделы главного экрана ребёнка для наборов карточек (видео — отдельный раздел). */
@@ -252,7 +258,7 @@ export type SegmentCreateRequest = z.input<typeof segmentCreateRequest>;
 export type SegmentUpdateRequest = z.input<typeof segmentUpdateRequest>;
 
 export interface VideoSourceInfo {
-  provider: 'youtube';
+  provider: VideoProvider;
   externalId: string;
   title: string;
   channelTitle: string | null;
@@ -465,7 +471,7 @@ export const pairClaimRequest = z.object({
 
 export interface KidSegment {
   id: string;
-  provider: 'youtube';
+  provider: VideoProvider;
   externalId: string;
   startSec: number;
   endSec: number;
