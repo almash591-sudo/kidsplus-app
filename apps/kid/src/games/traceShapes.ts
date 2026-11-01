@@ -1,4 +1,4 @@
-// Фигуры и цифры для обводки: штрихи — ломаные в поле 100 × 100 (y вниз).
+// Фигуры, цифры и буквы для обводки: штрихи — ломаные в поле 100 × 100 (y вниз).
 import type { TraceShape } from '@kidsplus/shared/games';
 
 type Pt = [number, number];
@@ -27,7 +27,23 @@ const heart = (): Stroke =>
     return [50 + x * 2.3, 48 - y * 2.3] as Pt;
   });
 
-export const TRACES: Record<TraceShape, { name: string; strokes: Stroke[] }> = {
+/**
+ * Линейки букв (этап 56), как в прописях: верх большой буквы, верх маленькой, строка.
+ * Хвостик «у» уходит ниже строки.
+ */
+export const LETTER_RULES = { top: 18, middle: 40, base: 82 } as const;
+const { top: T, middle: M, base: B } = LETTER_RULES;
+
+export const TRACES: Record<
+  TraceShape,
+  {
+    name: string;
+    strokes: Stroke[];
+    letter?: true;
+    /** Где стоят номера штрихов (у букв, где начала штрихов рядом). */
+    numbers?: Pt[];
+  }
+> = {
   line: {
     name: 'линию',
     strokes: [
@@ -149,6 +165,84 @@ export const TRACES: Record<TraceShape, { name: string; strokes: Stroke[] }> = {
   '9': {
     name: 'цифру девять',
     strokes: [[...arc(50, 36, 18, 18, 0, -360), [68, 36], [64, 82]]],
+  },
+  // Печатные буквы (этап 56): штрихи в том порядке и направлении, как учат в садике.
+  А: {
+    name: 'большую букву А',
+    letter: true,
+    // Оба наклонных штриха начинаются в вершине — номера по разные стороны от неё.
+    numbers: [
+      [40, 17],
+      [60, 17],
+      [27, 60],
+    ],
+    strokes: [
+      [
+        [50, T],
+        [24, B],
+      ],
+      [
+        [50, T],
+        [76, B],
+      ],
+      [
+        [34, 58],
+        [66, 58],
+      ],
+    ],
+  },
+  О: { name: 'большую букву О', letter: true, strokes: [arc(50, 50, 24, 32, -90, -450)] },
+  У: {
+    name: 'большую букву У',
+    letter: true,
+    numbers: [
+      [19, 20],
+      [81, 20],
+    ],
+    strokes: [
+      [
+        [26, T],
+        [52, 54],
+      ],
+      [
+        [74, T],
+        [36, B],
+      ],
+    ],
+  },
+  а: {
+    name: 'маленькую букву А',
+    letter: true,
+    numbers: [
+      [55, 53],
+      [71, 42],
+    ],
+    strokes: [
+      arc(49, 61, 15, 21, -30, -390),
+      [
+        [64, M],
+        [64, B],
+      ],
+    ],
+  },
+  о: { name: 'маленькую букву О', letter: true, strokes: [arc(50, 61, 16, 21, -90, -450)] },
+  у: {
+    name: 'маленькую букву У',
+    letter: true,
+    numbers: [
+      [27, 42],
+      [73, 42],
+    ],
+    strokes: [
+      [
+        [34, M],
+        [51, 72],
+      ],
+      [
+        [66, M],
+        [40, 96],
+      ],
+    ],
   },
 };
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { LetterCase } from '@kidsplus/shared/games';
 import {
   SOUND_PLACES,
   soundPlace,
@@ -68,6 +69,10 @@ function pick<T>(xs: readonly T[], prev?: T): T {
 }
 
 /** Ответ и (choices − 1) других вариантов, перемешанные. */
+/** Буква на кнопке (этап 56): большая, маленькая или наугад; ответ — всё равно большая. */
+const inCase = (l: string, letterCase: LetterCase | undefined) =>
+  letterCase === 'lower' || (letterCase === 'mixed' && Math.random() < 0.5) ? l.toLowerCase() : l;
+
 function withDistractors(answer: string, pool: readonly string[], choices: number): string[] {
   const others = shuffled([...new Set(pool)].filter((x) => x !== answer)).slice(0, choices - 1);
   return shuffled([answer, ...others]);
@@ -108,7 +113,10 @@ export function makeRound(spec: Spec, prevKey?: string): LetterRound {
       return {
         key: a,
         show: null,
-        options: withDistractors(a, pool, spec.choices).map((l) => ({ id: l, label: l })),
+        options: withDistractors(a, pool, spec.choices).map((l) => ({
+          id: l,
+          label: inCase(l, spec.letterCase),
+        })),
         answer: a,
         askText: findLetter(a),
         rightText: isLetter(a),

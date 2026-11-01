@@ -37,7 +37,7 @@ import {
 import { MAX_LEVEL, specAtLevel } from '@kidsplus/shared/levels';
 import { lineStart, partSpeech, poemAnnounce, poemOf, type PoemCode } from '@kidsplus/shared/poems';
 import { SONGS } from '@kidsplus/shared/songs';
-import { soundPlace, syllablesIn, wordScheme } from '@kidsplus/shared/sounds';
+import { soundPlace, syllablesIn, unstressed, wordScheme } from '@kidsplus/shared/sounds';
 import { NUMBERS, paint, PALETTE } from './games/common';
 import { SORTER } from './games/sorterShapes';
 import { PICTURES } from './games/pictures';
@@ -78,6 +78,10 @@ export const coloringTask = (picture: ColoringPicture, i: number) => {
 export const needColor = (id: Parameters<typeof paint>[0]) => `Нужен ${paint(id).name} цвет.`;
 
 export const tracePrompt = (shape: TraceShape) => `Обведи ${TRACES[shape].name}.`;
+/** Ступень «сама» (этап 56): только точка начала и образец рядом. */
+export const traceSelfPrompt = (shape: TraceShape) =>
+  `Напиши ${TRACES[shape].name} по образцу. Начни с зелёной точки.`;
+export const TRACE_HINT = 'Подскажу: веди вот так.';
 
 export const BALLOON_NAMES: Record<BalloonColor, { name: string; plural: string }> = {
   red: { name: 'красный', plural: 'красные' },
@@ -89,6 +93,11 @@ export const balloonsPrompt = (target: BalloonColor | null) =>
   target ? `Лопни ${BALLOON_NAMES[target].plural} шарики!` : 'Лопай шарики!';
 export const balloonsWrong = (color: BalloonColor, target: BalloonColor) =>
   `Это ${BALLOON_NAMES[color].name}. Ищи ${BALLOON_NAMES[target].plural}!`;
+/** Шарики с буквами (этап 56): буква — заглавной, так голос читает её как букву. */
+export const balloonLetterPrompt = (find: string, lower: boolean) =>
+  lower ? `Лопни шарики с буквой ${find} — большой и маленькой!` : `Лопни шарики с буквой ${find}!`;
+export const balloonLetterWrong = (letter: string, find: string) =>
+  `Это буква ${letter}. Ищи букву ${find}!`;
 
 export const MAZE_PROMPT = 'Веди пальчиком по дорожке до цели!';
 export const SHADOWS_PROMPT = 'Найди, чья это тень! Перетащи картинку на тень.';
@@ -193,11 +202,12 @@ export const SYLLABLE_COUNT_INTRO = 'Хлопай на каждый слог и 
 export const syllablesAsk = (word: string) => `Сколько слогов в слове ${low(word)}? Похлопай!`;
 export const syllablesAre = (word: string, n: number) => `${low(word)} — ${SYLLABLE_NUMS[n]}!`;
 export const SOUND_PLACE_INTRO = 'Слушай слово. Где звук: в начале, в середине или в конце?';
+// Знак ударения (этап 56) нужен проверке слова, голосу — нет.
 export const soundAsk = (letter: string, word: string) =>
-  `Где звук ${sound(letter)} в слове ${low(word)}?`;
+  `Где звук ${sound(letter)} в слове ${low(unstressed(word))}?`;
 const PLACE_NAMES = { start: 'в начале', middle: 'в середине', end: 'в конце' } as const;
 export const soundIs = (letter: string, word: string, place: keyof typeof PLACE_NAMES) =>
-  `${low(word)} — звук ${sound(letter)} ${PLACE_NAMES[place]}!`;
+  `${low(unstressed(word))} — звук ${sound(letter)} ${PLACE_NAMES[place]}!`;
 export const WORD_SCHEME_INTRO = 'Красная фишка — гласный звук, синяя — согласный.';
 export const schemeAsk = (word: string) => `Найди схему слова ${low(word)}.`;
 export const schemeIs = (word: string, chips: readonly ('v' | 'c')[]) =>
@@ -682,11 +692,21 @@ export function gamePhrases(spec: GameSpec): string[] {
           ])
         : [];
     case 'tracing':
-      return spec.shapes.map(tracePrompt);
+      return [
+        ...spec.shapes.map(tracePrompt),
+        ...(spec.guides?.includes('start')
+          ? [...spec.shapes.map(traceSelfPrompt), TRACE_HINT]
+          : []),
+      ];
     case 'sorting':
       return [spec.prompt, ...spec.bins.map((b) => b.name)];
     case 'balloons': {
-      const { target } = spec;
+      const { target, letters } = spec;
+      if (letters)
+        return [
+          balloonLetterPrompt(letters.find, letters.lower),
+          ...letters.others.map((l) => balloonLetterWrong(l, letters.find)),
+        ];
       const wrong = target
         ? (Object.keys(BALLOON_NAMES) as BalloonColor[])
             .filter((c) => c !== target)
