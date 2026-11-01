@@ -406,6 +406,43 @@ test('сбои телефона (этап 51): телефон сообщил —
   expect((await page.request.delete(`/api/parent/children/${kid.id}`)).ok()).toBe(true);
 });
 
+test('Android без компьютера (этап 53): QR-код собран в браузере — Wi-Fi и VPN на сервер не уходят', async ({
+  page,
+}) => {
+  await login(page);
+  const sent: string[] = [];
+  page.on('request', (r) => {
+    if (new URL(r.url()).pathname.startsWith('/api/'))
+      sent.push(`${r.url()} ${r.postData() ?? ''}`);
+  });
+  await page.goto('/devices');
+  const card = page.locator('.mantine-Card-root').filter({ hasText: 'Зайка' }).first();
+  await card.getByRole('button', { name: 'Android без компьютера' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Подключить Android без компьютера' });
+  // Копии киоска на GitHub на стенде нет — в России сервер без VPN не откроется.
+  await expect(dialog).toContainText('в России без VPN не открывается');
+  await dialog.getByLabel('Ссылка VPN').fill('vless://vpn-secret@example.test:443');
+  await dialog.getByLabel('Сеть Wi-Fi').fill('Дача');
+  await dialog.getByLabel('Пароль Wi-Fi').fill('wifi-secret-123');
+  expect(await layoutProblems(page)).toEqual([]);
+
+  await dialog.getByRole('button', { name: 'Показать QR-код' }).click();
+  await expect(dialog.getByTestId('setup-qr')).toBeVisible();
+  await expect(dialog).toContainText(/Действует ещё (60:00|59:\d\d)/);
+  await expect(dialog).toContainText('VPN подключится сам');
+  expect(await layoutProblems(page)).toEqual([]);
+  expect(
+    sent.some((s) => s.includes('/api/parent/pairings') && s.includes('"forSetup":true')),
+  ).toBe(true);
+  expect(sent.join('\n')).not.toContain('secret');
+
+  // Семья не в России: без VPN предупреждения нет.
+  await dialog.getByRole('button', { name: 'Изменить данные' }).click();
+  await dialog.getByText('Не нужен').click();
+  await expect(dialog).not.toContainText('в России без VPN не открывается');
+  await expect(dialog.getByLabel('Ссылка VPN')).toHaveCount(0);
+});
+
 test('точность (этап 47): уроки подписаны, завершённый день — «не сегодня», а не «позже»', async ({
   page,
 }) => {
@@ -717,4 +754,29 @@ test('«Что нравится» в «Прогрессе» (этап 44): лю�
   await expect.poll(() => sent.length).toBe(2);
   expect(sent[0]).toEqual({ remove: [{ kind: 'interactive', refId: expect.any(String) }] });
   expect(sent[1]).toEqual({ add: sent[0]!.remove });
+});
+
+test('видео с RuTube (этап 54): ссылка, плеер rutube.ru и «только в России»', async ({ page }) => {
+  // Плеер RuTube — пустая страница: тесты не ходят в интернет.
+  await page.route('https://rutube.ru/**', (r) =>
+    r.fulfill({ contentType: 'text/html', body: '<!doctype html><title>RuTube</title>' }),
+  );
+  await login(page);
+  await page.goto('/videos/new');
+  await page
+    .getByLabel('Ссылка на видео YouTube или RuTube')
+    .fill('https://rutube.ru/video/c9be5e8850ddc8583c71a986284ac6ef/?t=30');
+  await page.getByRole('button', { name: 'Найти' }).click();
+  await expect(page.getByText(/^RuTube · Видео RuTube c9be5e · Детский канал/)).toBeVisible();
+  await expect(page.getByText(/можно смотреть только в: Россия/)).toBeVisible();
+  await expect(
+    page.locator(
+      'iframe[src^="https://rutube.ru/play/embed/c9be5e8850ddc8583c71a986284ac6ef/?t=30"]',
+    ),
+  ).toBeVisible();
+  await expect(page.getByLabel('Начало')).toHaveValue('0:30');
+  expect(await layoutProblems(page)).toEqual([]);
+  if (process.env.SHOTS)
+    await page.screenshot({ path: `${process.env.SHOTS}/rutube-${test.info().project.name}.png` });
+  // Сохранять не будем: стенд общий для всех телефонов, его данные не трогаем.
 });

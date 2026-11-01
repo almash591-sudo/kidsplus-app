@@ -10,7 +10,7 @@ import { APP_ERROR_RECENT_DAYS } from '@kidsplus/shared/app-errors';
 import { and, desc, eq, gt, gte, inArray, isNull, sum } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { requireDevice, requireParent, setDeviceCookie } from '../auth';
-import { PAIRING_TTL_MS, type Ctx } from '../context';
+import { PAIRING_TTL_MS, SETUP_PAIRING_TTL_MS, type Ctx } from '../context';
 
 /** Просмотр из кабинета длится 2 часа. */
 const PREVIEW_TTL_MS = 2 * 3600_000;
@@ -69,7 +69,8 @@ export function devicesRoutes(app: FastifyInstance, ctx: Ctx) {
       if (!child) throw notFound('ребёнок не найден');
 
       const code = pairingCode();
-      const expiresAt = new Date(ctx.now().getTime() + PAIRING_TTL_MS);
+      const ttl = body.forSetup ? SETUP_PAIRING_TTL_MS : PAIRING_TTL_MS;
+      const expiresAt = new Date(ctx.now().getTime() + ttl);
       await db.insert(devicePairings).values({
         codeHash: sha256(code),
         childId: child.id,

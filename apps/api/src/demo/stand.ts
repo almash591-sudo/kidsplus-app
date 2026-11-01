@@ -20,6 +20,7 @@ const KID_PORT = Number(process.env.DEMO_KID_PORT ?? 4801);
 export const DEMO_EMAIL = 'demo@example.com';
 export const DEMO_PASSWORD = 'demo-password-123';
 const SETUP = 'demo-setup-token-0123456789';
+const KIOSK_TOKEN = 'demo-kiosk-publish-token-0123456789';
 const root = resolve(import.meta.dirname, '../../../..');
 
 /** oEmbed без сети: название из списка, иначе — «Видео …». */
@@ -33,6 +34,17 @@ const TITLES: Record<string, string> = {
 };
 const fakeFetch = (async (input: string | URL | Request) => {
   const url = new URL(String(input instanceof Request ? input.url : input));
+  // RuTube (этап 54): метаданные в форме настоящего API; смотреть можно только в России.
+  const rutube = /^\/api\/video\/([0-9a-f]{32})\/$/.exec(url.pathname);
+  if (url.hostname === 'rutube.ru' && rutube)
+    return Response.json({
+      id: rutube[1],
+      title: TITLES[rutube[1]!] ?? `Видео RuTube ${rutube[1]!.slice(0, 6)}`,
+      author: { name: 'Детский канал' },
+      duration: 600,
+      pg_rating: { age: 0 },
+      restrictions: { country: { allowed: ['RU'], restricted: [] } },
+    });
   const id = new URL(url.searchParams.get('url') ?? 'https://x/?v=x').searchParams.get('v') ?? 'x';
   return Response.json({ title: TITLES[id] ?? `Видео ${id}`, author_name: 'Детский канал' });
 }) as typeof fetch;
@@ -49,6 +61,7 @@ async function main() {
     storage,
     config: {
       setupToken: SETUP,
+      kioskPublishToken: KIOSK_TOKEN,
       kidAppUrl: `http://localhost:${KID_PORT}`,
       trustProxyHops: 0,
       tts: { providerId: 'browser', speed: 0.9, voices: {} },
@@ -80,6 +93,22 @@ async function main() {
   const P = { kp_session: session };
   const as = <T>(method: string, url: string, payload?: unknown) => req<T>(method, url, payload, P);
   await as('PUT', '/api/parent/me/name', { displayName: 'Мама' });
+
+  // Киоск для QR-кода настройки Android (этап 53): крошечный «APK» с отпечатком подписи.
+  const apk = Buffer.alloc(64);
+  apk.set([0x50, 0x4b, 0x03, 0x04]);
+  const kiosk = await app.inject({
+    method: 'POST',
+    url: '/api/kiosk/releases',
+    headers: {
+      authorization: `Bearer ${KIOSK_TOKEN}`,
+      'x-version-code': '1',
+      'x-signature-checksum': 'demo'.repeat(10) + 'abc',
+      'content-type': 'application/vnd.android.package-archive',
+    },
+    payload: apk,
+  });
+  if (kiosk.statusCode !== 201) throw new Error(`киоск: ${kiosk.statusCode} ${kiosk.body}`);
 
   type Id = { id: string };
   const zaika = (

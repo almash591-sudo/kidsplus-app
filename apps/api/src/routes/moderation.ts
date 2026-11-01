@@ -12,6 +12,7 @@ import {
   type ModerationReport,
   type ModerationStatus,
 } from '@kidsplus/shared/moderation';
+import { parseRuTubeId } from '@kidsplus/shared/rutube';
 import { parseYouTubeTarget } from '@kidsplus/shared/youtube';
 import { subjectFromTopic } from '@kidsplus/shared/schedule';
 import { and, desc, eq, inArray } from 'drizzle-orm';
@@ -77,6 +78,13 @@ export function moderationRoutes(app: FastifyInstance, ctx: Ctx) {
 
   /** ID видео по ссылке: видео, плейлист или канал (два последних — только с ключом YouTube). */
   async function resolveIds(url: string): Promise<string[]> {
+    // Gemini смотрит видео только с YouTube; RuTube родитель проверяет сам (этап 54).
+    if (parseRuTubeId(url))
+      throw new HttpError(
+        400,
+        'validation',
+        'видео RuTube ИИ не смотрит — добавьте его в «Видео» кнопкой «+» и проверьте сами',
+      );
     const target = parseYouTubeTarget(url);
     if (!target)
       throw new HttpError(400, 'validation', 'это не ссылка на видео, плейлист или канал YouTube');

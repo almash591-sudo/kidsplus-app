@@ -7,10 +7,18 @@ import org.json.JSONObject;
 
 /**
  * Настройки sing-box (формат 1.12+, проверено sing-box 1.14 `check`): весь трафик телефона —
- * через VPN; несколько узлов — sing-box сам выбирает работающий (urltest); локальная сеть — напрямую.
+ * через VPN; несколько узлов — sing-box сам выбирает работающий (urltest); локальная сеть и
+ * RuTube — напрямую.
  */
 public final class SingBox {
     private SingBox() {}
+
+    /**
+     * Мимо VPN (этап 54): плеер и видео RuTube. Многие ролики смотрят только из России — через
+     * VPN RuTube отказал бы по стране; адреса берём у DNS сети, чтобы видео шло с ближнего узла.
+     * Поддомены (bl., static., pic. и узлы с видео) входят сами.
+     */
+    static final String[] DIRECT_DOMAINS = {"rutube.ru", "rtbcdn.ru"};
 
     static JSONObject outbound(Vless.Node n, String tag) throws JSONException {
         JSONObject o = new JSONObject()
@@ -86,6 +94,10 @@ public final class SingBox {
                                 .put("server", "1.1.1.1")
                                 .put("detour", "proxy"))
                         .put(new JSONObject().put("type", "local").put("tag", "local")))
+                .put("rules", new JSONArray()
+                        .put(new JSONObject()
+                                .put("domain_suffix", new JSONArray(DIRECT_DOMAINS))
+                                .put("server", "local")))
                 .put("final", "remote")
                 .put("strategy", "ipv4_only");
         JSONObject tun = new JSONObject()
@@ -100,7 +112,10 @@ public final class SingBox {
                 .put("rules", new JSONArray()
                         .put(new JSONObject().put("action", "sniff"))
                         .put(new JSONObject().put("protocol", "dns").put("action", "hijack-dns"))
-                        .put(new JSONObject().put("ip_is_private", true).put("outbound", "direct")))
+                        .put(new JSONObject().put("ip_is_private", true).put("outbound", "direct"))
+                        .put(new JSONObject()
+                                .put("domain_suffix", new JSONArray(DIRECT_DOMAINS))
+                                .put("outbound", "direct")))
                 .put("final", "proxy")
                 .put("auto_detect_interface", true)
                 .put("default_domain_resolver", "local");

@@ -17,9 +17,31 @@ export const TEST_TTS = { providerId: 'fake', speed: 0.85, voices: {} };
 export const BLOCKED_ID = 'blocked0000';
 export const MISSING_ID = 'missing0000';
 
+/** Видео RuTube (этап 54): обычное (только в России), 18+, удалённое, RuTube «лежит». */
+export const RUTUBE_ID = 'c9be5e8850ddc8583c71a986284ac6ef';
+export const RUTUBE_ADULT_ID = 'f'.repeat(32);
+export const RUTUBE_MISSING_ID = 'e'.repeat(32);
+export const RUTUBE_DOWN_ID = 'd'.repeat(32);
+export const rutubeUrl = (id: string) => `https://rutube.ru/video/${id}/`;
+
+function ruTubeApi(id: string) {
+  if (id === RUTUBE_MISSING_ID) return new Response('', { status: 404 });
+  if (id === RUTUBE_DOWN_ID) return new Response('', { status: 503 });
+  return Response.json({
+    id,
+    title: `Видео RuTube ${id.slice(0, 4)}`,
+    author: { name: 'Канал RuTube' },
+    thumbnail_url: `https://pic.rtbcdn.ru/video/${id}.jpg`,
+    pg_rating: { age: id === RUTUBE_ADULT_ID ? 18 : 0 },
+    restrictions: { country: { allowed: ['RU'], restricted: [] } },
+  });
+}
+
 export function oembedFetch() {
   return vi.fn(async (input: string | URL | Request) => {
     const url = new URL(String(input instanceof Request ? input.url : input));
+    const rutube = /^\/api\/video\/([0-9a-f]{32})\/$/.exec(url.pathname);
+    if (url.hostname === 'rutube.ru' && rutube) return ruTubeApi(rutube[1]!);
     const videoId = new URL(url.searchParams.get('url')!).searchParams.get('v');
     if (videoId === BLOCKED_ID) return new Response('Unauthorized', { status: 401 });
     if (videoId === MISSING_ID) return new Response('Not Found', { status: 404 });

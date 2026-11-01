@@ -9,8 +9,9 @@ import {
   type ChildItemsBulkResult,
   type Segment,
   type VideoLookup,
+  type VideoProvider,
 } from '@kidsplus/shared/api';
-import { parseYouTubeId, parseYouTubeStart } from '@kidsplus/shared/youtube';
+import { parseVideoUrl } from '@kidsplus/shared/video-url';
 import { and, asc, count, desc, eq, inArray } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
@@ -18,14 +19,14 @@ import { requireParent } from '../auth';
 import type { Ctx } from '../context';
 import { HttpError, idFrom, notFound, parse } from '../lib/http';
 import { assignOnly, bulkChildItems, childIdsByRef, syncChildItems } from '../services/child-items';
-import { fetchYouTubeOEmbed } from '../services/oembed';
+import { fetchVideoInfo } from '../services/video-info';
 
 const { childItems, quizQuestions, videoSegments, videoSources } = schema;
 
-function youtubeIdOrThrow(url: string): string {
-  const id = parseYouTubeId(url);
-  if (!id) throw new HttpError(400, 'validation', 'это не ссылка на видео YouTube');
-  return id;
+function videoOrThrow(url: string) {
+  const video = parseVideoUrl(url);
+  if (!video) throw new HttpError(400, 'validation', 'это не ссылка на видео YouTube или RuTube');
+  return video;
 }
 
 export function videosRoutes(app: FastifyInstance, ctx: Ctx) {
@@ -54,7 +55,7 @@ export function videosRoutes(app: FastifyInstance, ctx: Ctx) {
       endSec: s.endSec,
       createdAt: s.createdAt.toISOString(),
       source: {
-        provider: 'youtube',
+        provider: v.provider as VideoProvider,
         externalId: v.externalId,
         title: v.title,
         channelTitle: v.channelTitle,
@@ -74,14 +75,9 @@ export function videosRoutes(app: FastifyInstance, ctx: Ctx) {
     { preHandler: parentOnly },
     async (request): Promise<VideoLookup> => {
       const { url } = parse(z.object({ url: z.string().min(1).max(500) }), request.query);
-      const externalId = youtubeIdOrThrow(url);
-      const info = await fetchYouTubeOEmbed(ctx.fetch, externalId);
-      return {
-        provider: 'youtube',
-        externalId,
-        ...info,
-        suggestedStartSec: parseYouTubeStart(url),
-      };
+      const { provider, externalId, startSec } = videoOrThrow(url);
+      const { info, onlyIn } = await fetchVideoInfo(ctx.fetch, { provider, externalId });
+      return { provider, externalId, ...info, suggestedStartSec: startSec, onlyIn };
     },
   );
 
@@ -92,14 +88,14 @@ export function videosRoutes(app: FastifyInstance, ctx: Ctx) {
     { preHandler: parentOnly },
     async (request, reply): Promise<Segment> => {
       const body = parse(segmentCreateRequest, request.body);
-      const externalId = youtubeIdOrThrow(body.url);
+      const { provider, externalId } = videoOrThrow(body.url);
       // Проверяем встраивание и обновляем метаданные при каждом добавлении.
-      const info = await fetchYouTubeOEmbed(ctx.fetch, externalId);
+      const { info } = await fetchVideoInfo(ctx.fetch, { provider, externalId });
 
       const id = await db.transaction(async (tx) => {
         const [source] = await tx
           .insert(videoSources)
-          .values({ provider: 'youtube', externalId, ...info, statusCheckedAt: ctx.now() })
+          .values({ provider, externalId, ...info, statusCheckedAt: ctx.now() })
           .onConflictDoUpdate({
             target: [videoSources.provider, videoSources.externalId],
             set: { ...info, status: 'available', statusReason: null, statusCheckedAt: ctx.now() },
@@ -244,15 +240,24 @@ export function videosRoutes(app: FastifyInstance, ctx: Ctx) {
     async (request): Promise<Segment> => {
       const id = idFrom(request.params);
       const [row] = await db
-        .select({ sourceId: videoSources.id, externalId: videoSources.externalId })
+        .select({
+          sourceId: videoSources.id,
+          provider: videoSources.provider,
+          externalId: videoSources.externalId,
+        })
         .from(videoSegments)
         .innerJoin(videoSources, eq(videoSources.id, videoSegments.sourceId))
         .where(eq(videoSegments.id, id));
       if (!row) throw notFound('фрагмент не найден');
-      const info = await fetchYouTubeOEmbed(ctx.fetch, row.externalId).catch((err: unknown) => {
-        if (err instanceof HttpError && err.statusCode === 422) return null;
-        throw err;
-      });
+      const info = await fetchVideoInfo(ctx.fetch, {
+        provider: row.provider as VideoProvider,
+        externalId: row.externalId,
+      })
+        .then((v) => v.info)
+        .catch((err: unknown) => {
+          if (err instanceof HttpError && err.statusCode === 422) return null;
+          throw err;
+        });
       await db
         .update(videoSources)
         .set(

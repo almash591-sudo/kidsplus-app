@@ -9,6 +9,7 @@ import {
   type KidQuestion,
   type Language,
   type Speech,
+  type VideoProvider,
 } from '@kidsplus/shared/api';
 import { gameImageIds, gameSpec, type GameSpec } from '@kidsplus/shared/games';
 import { and, asc, eq, inArray } from 'drizzle-orm';
@@ -246,7 +247,7 @@ export async function buildKidItems(
       result.push({
         kind: 'segment',
         id: row.segment.id,
-        provider: 'youtube',
+        provider: row.source.provider as VideoProvider,
         externalId: row.source.externalId,
         startSec: row.segment.startSec,
         endSec: row.segment.endSec,

@@ -160,6 +160,8 @@ export function quizSettings(
 export const pairingCreateRequest = z.object({
   childId: uuid,
   deviceName: z.string().trim().min(1).max(40),
+  /** Код для настройки по QR-коду (этап 53): сброс и установка киоска дольше 10 минут. */
+  forSetup: z.boolean().optional(),
 });
 export type PairingCreateRequest = z.input<typeof pairingCreateRequest>;
 
@@ -187,14 +189,20 @@ export interface Device {
 
 // ─── Видео ───────────────────────────────────────────────────────────────────
 
+/** Откуда видео: встраиваемый плеер YouTube или RuTube (этап 54). */
+export const VIDEO_PROVIDERS = ['youtube', 'rutube'] as const;
+export type VideoProvider = (typeof VIDEO_PROVIDERS)[number];
+
 export interface VideoLookup {
-  provider: 'youtube';
+  provider: VideoProvider;
   externalId: string;
   title: string;
   channelTitle: string | null;
   thumbnailUrl: string | null;
   /** Время из ссылки (`?t=`), подсказка для начала фрагмента. */
   suggestedStartSec: number | null;
+  /** Страны, где видео можно смотреть (коды ISO, RuTube); null — ограничений нет или неизвестны. */
+  onlyIn?: string[] | null;
 }
 
 /** Разделы главного экрана ребёнка для наборов карточек (видео — отдельный раздел). */
@@ -252,7 +260,7 @@ export type SegmentCreateRequest = z.input<typeof segmentCreateRequest>;
 export type SegmentUpdateRequest = z.input<typeof segmentUpdateRequest>;
 
 export interface VideoSourceInfo {
-  provider: 'youtube';
+  provider: VideoProvider;
   externalId: string;
   title: string;
   channelTitle: string | null;
@@ -465,7 +473,7 @@ export const pairClaimRequest = z.object({
 
 export interface KidSegment {
   id: string;
-  provider: 'youtube';
+  provider: VideoProvider;
   externalId: string;
   startSec: number;
   endSec: number;
