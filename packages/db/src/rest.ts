@@ -74,6 +74,8 @@ export async function loadGameLevels(
   const plays = rows.flatMap((r) => {
     const kind = r.payload?.kind;
     const mistakes = r.payload?.mistakes;
+    // Этап 55: повтор пройденного «посложнее» — не в счёт: уровень ребёнка он не двигает.
+    if (r.payload?.review === true) return [];
     return typeof kind === 'string'
       ? [
           {
