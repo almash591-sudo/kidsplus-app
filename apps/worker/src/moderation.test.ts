@@ -255,7 +255,7 @@ describe('checkAvailability', () => {
         { externalId: 'ccccccccccc', ...ok },
       ],
     };
-    const r = await checkAvailability(db, youtube as never, NOW);
+    const r = await checkAvailability(db, { youtube, fetch, region: 'RU' }, NOW);
     expect(r).toEqual({ checked: 3, unavailable: 2, restored: 1 });
     const rows = await db.select().from(videoSources);
     const by = (id: string) => rows.find((x) => x.id === id)!;
