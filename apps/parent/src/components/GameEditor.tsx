@@ -20,6 +20,7 @@ import {
   PIANO_MODES,
   SORTER_SHAPES,
   TANGRAM_FIGURES,
+  TRACE_GUIDES,
   TRACE_SHAPES,
   type GameKind,
   type GameSpec,
@@ -48,7 +49,9 @@ import { SONG_IDS, SONGS, type SongId } from '@kidsplus/shared/songs';
 import {
   SOUND_LETTERS,
   soundProblem,
+  STRESS,
   syllablesIn,
+  unstressed,
   wordScheme,
   type SoundLetter,
 } from '@kidsplus/shared/sounds';
@@ -193,7 +196,26 @@ const SHAPE_LABELS: Record<(typeof TRACE_SHAPES)[number], string> = {
   '7': '7',
   '8': '8',
   '9': '9',
+  А: 'А',
+  О: 'О',
+  У: 'У',
+  а: 'а',
+  о: 'о',
+  у: 'у',
 };
+
+const GUIDE_LABELS: Record<(typeof TRACE_GUIDES)[number], string> = {
+  dots: 'по точкам',
+  line: 'по бледной линии',
+  start: 'сама по образцу',
+};
+
+/** Шарики с буквой (этап 56) — с чего начать. */
+const BALLOON_LETTERS = { find: 'О', others: ['А', 'У'], lower: false };
+/** Буквы из поля: только русские, заглавными, без повторов. */
+const lettersOf = (text: string) => [
+  ...new Set([...text.toUpperCase()].filter((c) => /[А-ЯЁ]/u.test(c))),
+];
 
 const BALLOON_LABELS: Record<(typeof BALLOON_COLORS)[number], string> = {
   red: 'только красные',
@@ -821,35 +843,106 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
               ))}
             </Group>
           </Chip.Group>
+          <Text size="sm" fw={500} mt="xs">
+            Как обводить — каждую фигуру на каждой ступени по очереди
+          </Text>
+          <Chip.Group
+            multiple
+            value={spec.guides ?? ['dots']}
+            onChange={(v) =>
+              onChange({ ...spec, guides: TRACE_GUIDES.filter((g) => v.includes(g)) })
+            }
+          >
+            <Group gap={6}>
+              {TRACE_GUIDES.map((g) => (
+                <Chip key={g} value={g} size="sm">
+                  {GUIDE_LABELS[g]}
+                </Chip>
+              ))}
+            </Group>
+          </Chip.Group>
+          <Text size="xs" c="dimmed">
+            Буквы на следующем уровне сложности сдвигаются на ступень выше.
+          </Text>
         </Stack>
       );
-    case 'balloons':
+    case 'balloons': {
+      const { letters } = spec;
       return (
-        <Group grow align="flex-end">
-          <NumberInput
-            label="Сколько лопнуть"
-            min={3}
-            max={20}
-            value={spec.count}
-            onChange={(v) => onChange({ ...spec, count: Number(v) || 3 })}
-          />
-          <Select
-            label="Какие шарики"
-            allowDeselect={false}
-            value={spec.target ?? 'any'}
-            data={[
-              { value: 'any', label: 'любые' },
-              ...BALLOON_COLORS.map((c) => ({ value: c, label: BALLOON_LABELS[c] })),
-            ]}
-            onChange={(v) =>
-              onChange({
-                ...spec,
-                target: v === 'any' || !v ? null : (v as (typeof BALLOON_COLORS)[number]),
-              })
-            }
-          />
-        </Group>
+        <Stack gap="xs">
+          <Group grow align="flex-end">
+            <NumberInput
+              label="Сколько лопнуть"
+              min={3}
+              max={20}
+              value={spec.count}
+              onChange={(v) => onChange({ ...spec, count: Number(v) || 3 })}
+            />
+            <Select
+              label="Какие шарики"
+              allowDeselect={false}
+              value={letters ? 'letter' : (spec.target ?? 'any')}
+              data={[
+                { value: 'any', label: 'любые' },
+                ...BALLOON_COLORS.map((c) => ({ value: c, label: BALLOON_LABELS[c] })),
+                { value: 'letter', label: 'только с буквой' },
+              ]}
+              onChange={(v) => {
+                if (v === 'letter') onChange({ ...spec, target: null, letters: BALLOON_LETTERS });
+                else
+                  onChange({
+                    ...spec,
+                    letters: undefined,
+                    target: v === 'any' || !v ? null : (v as (typeof BALLOON_COLORS)[number]),
+                  });
+              }}
+            />
+          </Group>
+          {letters && (
+            <Group grow align="flex-end">
+              <TextInput
+                label="Какую букву лопать"
+                value={letters.find}
+                onChange={(e) => {
+                  const find = lettersOf(e.currentTarget.value).at(-1);
+                  if (find)
+                    onChange({
+                      ...spec,
+                      letters: {
+                        ...letters,
+                        find,
+                        others: letters.others.filter((l) => l !== find),
+                      },
+                    });
+                }}
+              />
+              <TextInput
+                label="Другие буквы на шариках (подряд)"
+                value={letters.others.join('')}
+                onChange={(e) =>
+                  onChange({
+                    ...spec,
+                    letters: {
+                      ...letters,
+                      others: lettersOf(e.currentTarget.value)
+                        .filter((l) => l !== letters.find)
+                        .slice(0, 5),
+                    },
+                  })
+                }
+              />
+              <Checkbox
+                label="И маленькие буквы"
+                checked={letters.lower}
+                onChange={(e) =>
+                  onChange({ ...spec, letters: { ...letters, lower: e.currentTarget.checked } })
+                }
+              />
+            </Group>
+          )}
+        </Stack>
       );
+    }
     case 'counting':
       return (
         <Stack gap="xs">
@@ -1458,20 +1551,24 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
           <TextInput
             label="Буквы (подряд, заглавными)"
             value={spec.letters.join('')}
-            onChange={(e) =>
-              onChange({
-                ...spec,
-                letters: [
-                  ...new Set(
-                    [...e.currentTarget.value.toUpperCase()].filter((c) => /[А-ЯЁ]/u.test(c)),
-                  ),
-                ],
-              })
-            }
+            onChange={(e) => onChange({ ...spec, letters: lettersOf(e.currentTarget.value) })}
           />
           <Group grow>
             <Choices value={spec.choices} onChange={(choices) => onChange({ ...spec, choices })} />
             <MusicRounds value={spec.rounds} onChange={(rounds) => onChange({ ...spec, rounds })} />
+            <Select
+              label="Буквы на кнопках"
+              allowDeselect={false}
+              value={spec.letterCase ?? 'upper'}
+              data={[
+                { value: 'upper', label: 'большие' },
+                { value: 'lower', label: 'маленькие' },
+                { value: 'mixed', label: 'вперемешку' },
+              ]}
+              onChange={(v) =>
+                onChange({ ...spec, letterCase: (v ?? 'upper') as 'upper' | 'lower' | 'mixed' })
+              }
+            />
           </Group>
         </Stack>
       );
@@ -1551,7 +1648,7 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
         <Stack gap="xs">
           <Select
             label="Звук"
-            description="Только звуки, которые можно протянуть: «ссс», «ммм»"
+            description="Только звуки, которые можно протянуть: «ссс», «ммм», «ооо»"
             data={[...SOUND_LETTERS]}
             value={spec.sound}
             allowDeselect={false}
@@ -1560,10 +1657,11 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
           <LinesInput
             key={spec.kind}
             label="Слова с картинкой — эмодзи и слово; звук в начале, в середине или в конце"
+            hint="Для А и О отметьте ударную гласную апострофом: ⛵ ЛО'ДКА"
             value={spec.words}
-            format={(w) => `${w.emoji} ${w.word}`}
+            format={(w) => `${w.emoji} ${w.word.replace(STRESS, "'")}`}
             parse={(line) => {
-              const w = picWordOf(line);
+              const w = soundWordOf(line);
               return typeof w === 'string' ? w : (soundProblem(w.word, spec.sound) ?? w);
             }}
             recheck={spec.sound}
@@ -2672,12 +2770,25 @@ function picWordOf(line: string): { emoji: string; word: string } | string {
   return { emoji: p[0]!, word: p[1]!.toUpperCase() };
 }
 
+/** Слово «Где звук?» (этап 56): апостроф или знак ударения после ударной гласной — ЛО'ДКА. */
+function soundWordOf(line: string): { emoji: string; word: string } | string {
+  const p = line.split(/\s+/);
+  const word = p[1]?.toUpperCase().replace(/['’ʼ´]|\u0301/gu, STRESS) ?? '';
+  if (p.length !== 2 || !/^[А-ЯЁ]{2,10}$/u.test(unstressed(word))) return 'нужно «эмодзи СЛОВО»';
+  if (word.split(STRESS).length > 2) return 'ударение — одно';
+  if (word.includes(STRESS) && !/[АОУЫЭИЯЁЮЕ]\u0301/u.test(word))
+    return 'апостроф ставьте сразу после ударной гласной';
+  return { emoji: p[0]!, word };
+}
+
 /**
  * Список по строкам (этап 49): текст правится свободно, в игру идут подходящие строки,
  * а под полем — какие строки не подошли и почему. recheck — от чего ещё зависит проверка.
  */
 function LinesInput<T>(props: {
   label: string;
+  /** Подсказка под названием поля. */
+  hint?: string;
   value: T[];
   format: (x: T) => string;
   parse: (line: string) => T | string;
@@ -2710,7 +2821,7 @@ function LinesInput<T>(props: {
   return (
     <Textarea
       label={props.label}
-      description={`В игре: ${good.length}`}
+      description={`${props.hint ? `${props.hint} · ` : ''}В игре: ${good.length}`}
       autosize
       minRows={3}
       value={text}
