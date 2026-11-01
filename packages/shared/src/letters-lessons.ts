@@ -7,7 +7,7 @@
 // обвести большие и маленькие, услышать звук, найти, прочитать АУ и УА, написать без подсказки.
 // «Буквы из садика» (этап 56) — такой же блок для любой буквы, которую отметили в профиле.
 // Картинки — эмодзи (рисует сам телефон), поэтому уроки не зависят от загруженных файлов.
-import { gameSpec, type GameSpec, type TraceLetter } from './games';
+import { CAPITAL_LETTERS, gameSpec, type GameSpec, type TraceLetter } from './games';
 import { STRESS, type SoundLetter } from './sounds';
 
 export interface LetterLesson {
@@ -760,7 +760,7 @@ export const LETTER_LESSONS: LetterLesson[] = [
 // ─── Этап 56: буквы из садика ───
 
 /** Буквы, которые родитель отмечает в профиле: «прошли в садике». */
-export const GARDEN_LETTERS = [...'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ'];
+export const GARDEN_LETTERS: readonly string[] = CAPITAL_LETTERS;
 /** А, О, У — общим блоком «Повторяем О, А, У» (уроки 61–70). */
 export const GARDEN_OAU = ['А', 'О', 'У'];
 export const GARDEN_TITLE = 'Буквы из садика';

@@ -44,6 +44,8 @@ const LOWER = 'абвгдеёжзийклмнопрстуфхцчшщъыьэю�
 type Chars<S extends string> = S extends `${infer C}${infer R}` ? C | Chars<R> : never;
 export type TraceLetter = Chars<typeof UPPER | typeof LOWER>;
 export const TRACE_LETTERS = [...UPPER, ...LOWER] as readonly TraceLetter[];
+/** Алфавит — 33 большие буквы по порядку. */
+export const CAPITAL_LETTERS = [...UPPER] as readonly Chars<typeof UPPER>[];
 export const isTraceLetter = (s: string): s is TraceLetter =>
   (TRACE_LETTERS as readonly string[]).includes(s);
 

@@ -5,6 +5,7 @@ import type { FastifyInstance } from 'fastify';
 import { requireParent } from '../auth';
 import type { Ctx } from '../context';
 import { HttpError, idFrom, notFound, parse } from '../lib/http';
+import { addKindergartenBlocks } from '../services/kindergarten';
 import { kidPhrases } from './kid';
 
 const { children } = schema;
@@ -23,6 +24,7 @@ export const toChild = (c: typeof children.$inferSelect): Child => ({
   repeatMode: c.repeatMode as RepeatMode,
   eyeBreakEvery: c.eyeBreakEvery,
   eyeBreakRest: c.eyeBreakRest,
+  kindergartenLetters: c.kindergartenLetters as Child['kindergartenLetters'],
   createdAt: c.createdAt.toISOString(),
 });
 
@@ -50,10 +52,15 @@ export function childrenRoutes(app: FastifyInstance, ctx: Ctx) {
   });
 
   app.post('/api/parent/children', { preHandler }, async (request, reply): Promise<Child> => {
-    const [row] = await db
-      .insert(children)
-      .values({ ...parseChild(request.body), familyId: request.parent!.familyId })
-      .returning();
+    const input = parseChild(request.body);
+    const row = await db.transaction(async (tx) => {
+      const [row] = await tx
+        .insert(children)
+        .values({ ...input, familyId: request.parent!.familyId })
+        .returning();
+      await addKindergartenBlocks(tx, row!.id, row!.kindergartenLetters);
+      return row;
+    });
     // Озвучка похвалы для рода ребёнка ставится в очередь заранее.
     await kidPhrases(db, ctx.config.tts, row!.gender);
     reply.code(201);
@@ -63,14 +70,30 @@ export function childrenRoutes(app: FastifyInstance, ctx: Ctx) {
   app.put('/api/parent/children/:id', { preHandler }, async (request): Promise<Child> => {
     const id = idFrom(request.params);
     const input = parseChild(request.body);
-    // Старый кабинет (из кэша) не знает о перерыве — не выключать его молча при правке прозвища.
-    const knows =
-      typeof request.body === 'object' && request.body !== null && 'eyeBreakEvery' in request.body;
-    const [row] = await db
-      .update(children)
-      .set(knows ? input : { ...input, eyeBreakEvery: undefined, eyeBreakRest: undefined })
-      .where(eq(children.id, id))
-      .returning();
+    // Старый кабинет (из кэша) не знает о перерыве и буквах из садика — не сбрасывать их молча
+    // при правке прозвища.
+    const has = (key: string) =>
+      typeof request.body === 'object' && request.body !== null && key in request.body;
+    const row = await db.transaction(async (tx) => {
+      const [old] = await tx
+        .select({ letters: children.kindergartenLetters })
+        .from(children)
+        .where(eq(children.id, id));
+      if (!old) return undefined;
+      const [row] = await tx
+        .update(children)
+        .set({
+          ...input,
+          ...(has('eyeBreakEvery') ? {} : { eyeBreakEvery: undefined, eyeBreakRest: undefined }),
+          ...(has('kindergartenLetters') ? {} : { kindergartenLetters: undefined }),
+        })
+        .where(eq(children.id, id))
+        .returning();
+      // Новая отметка — блок уроков; снятая — уроки остаются, их убирают в «Материалах».
+      const fresh = row!.kindergartenLetters.filter((l) => !old.letters.includes(l));
+      await addKindergartenBlocks(tx, id, fresh);
+      return row;
+    });
     if (!row) throw notFound('ребёнок не найден');
     await kidPhrases(db, ctx.config.tts, row.gender);
     return toChild(row);

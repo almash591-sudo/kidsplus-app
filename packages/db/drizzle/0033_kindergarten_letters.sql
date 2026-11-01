@@ -1,0 +1,1 @@
+ALTER TABLE "children" ADD COLUMN "kindergarten_letters" text[] DEFAULT '{}'::text[] NOT NULL;

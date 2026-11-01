@@ -1,7 +1,7 @@
 // Контракты HTTP API: Zod-схемы запросов и типы ответов.
 // Сервер проверяет запросы этими схемами; фронтенды импортируют отсюда только типы.
 import { z } from 'zod';
-import { gameSpec, type GameSpec } from './games';
+import { CAPITAL_LETTERS, gameSpec, type GameSpec } from './games';
 
 // ─── Общее ───────────────────────────────────────────────────────────────────
 
@@ -109,6 +109,15 @@ export const childInput = z.object({
    */
   eyeBreakEvery: z.number().int().min(5).max(60).nullable().default(null),
   eyeBreakRest: z.number().int().min(1).max(60).default(15),
+  /**
+   * «Буквы из садика» (этап 56): какие буквы ребёнок прошёл в садике. Новая буква — блок уроков
+   * в «Буквах» сразу после пройденного; снятая отметка уроки не убирает.
+   */
+  kindergartenLetters: z
+    .array(z.enum(CAPITAL_LETTERS))
+    .max(CAPITAL_LETTERS.length)
+    .default([])
+    .transform((ls) => CAPITAL_LETTERS.filter((l) => ls.includes(l))),
 });
 export type ChildInput = z.input<typeof childInput>;
 
