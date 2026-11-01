@@ -1,6 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { SYLLABLE_WORD_SETS } from './game-presets';
-import { soundPlace, soundProblem, syllableSplit, syllablesIn, wordScheme } from './sounds';
+import {
+  soundPlace,
+  soundProblem,
+  STRESS,
+  stressAt,
+  syllableSplit,
+  syllablesIn,
+  unstressed,
+  wordScheme,
+} from './sounds';
+
+/** ЛО'ДКА → ЛО́ДКА: апостроф — как вводит родитель в кабинете. */
+const st = (w: string) => w.replace("'", STRESS);
 
 describe('звуки слова', () => {
   it('слогов столько же, сколько гласных', () => {
@@ -73,5 +85,44 @@ describe('звуки слова', () => {
   it('схемы нет у слов с мягкими согласными и Е, Ё, Ю, Я, Й, Ь, Ч, Щ', () => {
     for (const word of ['ЛИСА', 'КИТ', 'ЛЕВ', 'МЯЧ', 'ЁЖ', 'ЧАЙ', 'МЫШЬ', 'ЩИТ'])
       expect(wordScheme(word), word).toBeNull();
+  });
+
+  it('ударение (этап 56): знак после гласной, Ё или единственная гласная', () => {
+    expect(stressAt(st("ЛО'ДКА"))).toBe(1);
+    expect(stressAt(st("МЕТРО'"))).toBe(4);
+    expect(stressAt('КОТ')).toBe(1);
+    expect(stressAt('ЁЖИК')).toBe(0);
+    expect(stressAt('КОРОВА')).toBeNull();
+    expect(unstressed(st("ЛО'ДКА"))).toBe('ЛОДКА');
+    expect(soundPlace(st("МЕТРО'"), 'О')).toBe('end');
+  });
+
+  it('гласные А, О, У: годятся, где буква одна и звучит чисто', () => {
+    for (const [word, letter] of [
+      ['КОТ', 'О'],
+      [st("ЛО'ДКА"), 'О'],
+      [st("МЕТРО'"), 'О'],
+      [st("КИНО'"), 'О'],
+      [st("ПАЛЬТО'"), 'О'],
+      [st("А'ИСТ"), 'А'],
+      ['МАК', 'А'],
+      [st("ЛУНА'"), 'А'],
+      ['УТКА', 'У'],
+      ['МУХА', 'У'],
+      ['ПАУК', 'У'],
+    ])
+      expect(soundProblem(word!, letter!), word).toBeNull();
+  });
+
+  it('гласные: не годятся без ударения, дважды или с Ё, Ю, Я', () => {
+    expect(soundProblem(st("ГОРА'"), 'О')).toMatch(/без ударения/);
+    expect(soundProblem('КОРОВА', 'О')).toMatch(/ровно один раз/);
+    expect(soundProblem('ЛОДКА', 'О')).toMatch(/апострофом/);
+    expect(soundProblem('ЁЖИК', 'О')).toMatch(/ровно один раз/);
+    expect(soundProblem('САМОЛЁТ', 'О')).toMatch(/Ё тоже/);
+    expect(soundProblem(st("СОВА'"), 'А')).toMatch(/безударная О/);
+    expect(soundProblem('УТЮГ', 'У')).toMatch(/Ю тоже/);
+    expect(soundProblem(st("МЯ'ЧИК"), 'А')).toMatch(/ровно один раз/);
+    expect(soundProblem(st("ЗА'ЯЦ"), 'А')).toMatch(/Я тоже/);
   });
 });

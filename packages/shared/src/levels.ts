@@ -2,7 +2,7 @@
 // подряд без ошибок — уровень выше, много ошибок — ниже. Уровень 1 — игра как её настроил родитель;
 // выше — те же картинки, но больше счёт, крупнее пазл, длиннее мелодия (в пределах схемы игры).
 import type { GameKind, GameSpec } from './games';
-import { PATTERNS } from './games';
+import { isTraceLetter, PATTERNS, TRACE_GUIDES } from './games';
 
 export const MAX_LEVEL = 4;
 /** Без ошибок столько раз подряд — уровень выше. */
@@ -45,7 +45,23 @@ export function specAtLevel(spec: GameSpec, level: number): GameSpec {
     case 'maze':
       return { ...spec, size: clamp(spec.size + up, 3, 9), rounds: clamp(spec.rounds + up, 1, 5) };
     case 'balloons':
-      return { ...spec, count: clamp(spec.count + 3 * up, 3, 20), target: spec.target ?? 'red' };
+      // С буквами (этап 56) — со второго шага и маленькие; без букв — только один цвет.
+      return spec.letters
+        ? {
+            ...spec,
+            count: clamp(spec.count + 3 * up, 3, 20),
+            letters: { ...spec.letters, lower: true },
+          }
+        : { ...spec, count: clamp(spec.count + 3 * up, 3, 20), target: spec.target ?? 'red' };
+    case 'tracing': {
+      // Буквы (этап 56): каждый шаг — ступенью выше (по точкам → по линии → сама). Фигуры и
+      // цифры — как есть: их обводят малыши.
+      if (!spec.shapes.some(isTraceLetter)) return spec;
+      const guides = (spec.guides ?? ['dots']).map(
+        (g) => TRACE_GUIDES[clamp(TRACE_GUIDES.indexOf(g) + up, 0, TRACE_GUIDES.length - 1)]!,
+      );
+      return { ...spec, guides: [...new Set(guides)] };
+    }
     case 'moles':
       return {
         ...spec,

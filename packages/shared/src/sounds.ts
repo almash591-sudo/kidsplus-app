@@ -18,6 +18,27 @@ const VOICING = 'БГДЖЗ';
 const isVowel = (c: string | undefined) => !!c && VOWELS.includes(c);
 const isConsonant = (c: string | undefined) => !!c && !isVowel(c) && !'ЬЪ'.includes(c);
 
+/**
+ * Знак ударения после гласной (этап 56): ЛО́ДКА. Нужен в «Где звук?» для О и А — без ударения
+ * они звучат иначе: в «горе» слышится «гара».
+ */
+export const STRESS = '\u0301';
+/** Слово без знака ударения. */
+export const unstressed = (word: string) => word.replaceAll(STRESS, '');
+/**
+ * Какая буква слова (без знака) ударная: отмеченная знаком, Ё или единственная гласная;
+ * null — не знаем.
+ */
+export function stressAt(word: string): number | null {
+  const mark = word.indexOf(STRESS);
+  if (mark > 0) return mark - 1;
+  const chars = [...word];
+  const yo = chars.indexOf('Ё');
+  if (yo >= 0) return yo;
+  const vowels = chars.flatMap((c, i) => (isVowel(c) ? [i] : []));
+  return vowels.length === 1 ? vowels[0]! : null;
+}
+
 /** Слогов в слове столько же, сколько гласных. */
 export const syllablesIn = (word: string) => [...word].filter(isVowel).length;
 
@@ -43,19 +64,37 @@ export function syllableSplit(word: string): string[] {
   return [0, ...cuts].map((from, i) => chars.slice(from, cuts[i] ?? chars.length).join(''));
 }
 
+/** Гласные «Где звук?» (этап 56): их тоже можно протянуть — «о-о-о», «у-у-у». */
+export const SOUND_VOWELS = ['А', 'О', 'У'] as const;
 /**
  * Звуки, которые совёнок может протянуть («с-с-с», «м-м-м»): с ними задание «Где звук?»
  * звучит понятно. Взрывные (К, Т, П…) голос называет как букву — «ка», «тэ», — их не берём.
  */
-export const SOUND_LETTERS = ['М', 'Н', 'Л', 'Р', 'С', 'З', 'Ш', 'Ж', 'В', 'Ф', 'Х', 'Щ'] as const;
+export const SOUND_LETTERS = [
+  'М',
+  'Н',
+  'Л',
+  'Р',
+  'С',
+  'З',
+  'Ш',
+  'Ж',
+  'В',
+  'Ф',
+  'Х',
+  'Щ',
+  ...SOUND_VOWELS,
+] as const;
 export type SoundLetter = (typeof SOUND_LETTERS)[number];
+/** Йотированная пара гласной: в «ёжике» тоже слышно [о], в «юле» — [у], в «мяче» — [а]. */
+const IOTATED: Record<string, string> = { А: 'Я', О: 'Ё', У: 'Ю' };
 
 export const SOUND_PLACES = ['start', 'middle', 'end'] as const;
 export type SoundPlace = (typeof SOUND_PLACES)[number];
 
 /** Где в слове буква letter: в начале, в середине или в конце (Ь и Ъ — не звуки). */
 export function soundPlace(word: string, letter: string): SoundPlace | null {
-  const sounds = [...word].filter((c) => !'ЬЪ'.includes(c));
+  const sounds = [...unstressed(word)].filter((c) => !'ЬЪ'.includes(c));
   const i = sounds.indexOf(letter);
   if (i < 0) return null;
   return i === 0 ? 'start' : i === sounds.length - 1 ? 'end' : 'middle';
@@ -63,10 +102,11 @@ export function soundPlace(word: string, letter: string): SoundPlace | null {
 
 /** Почему слово не годится для «Где звук letter?»; null — годится. */
 export function soundProblem(word: string, letter: string): string | null {
-  const chars = [...word];
+  const chars = [...unstressed(word)];
   const at = chars.flatMap((c, i) => (c === letter ? [i] : []));
   if (at.length !== 1) return `буква ${letter} должна быть в слове ровно один раз`;
   const i = at[0]!;
+  if (isVowel(letter)) return vowelProblem(word, chars, letter, i);
   const next = chars[i + 1];
   const after = chars[i + 2];
   const soft =
@@ -81,6 +121,21 @@ export function soundProblem(word: string, letter: string): string | null {
     return `звук ${letter} здесь оглушается`;
   if (VOICELESS.includes(letter) && !!next && VOICING.includes(next))
     return `звук ${letter} здесь озвончается`;
+  return null;
+}
+
+/**
+ * Гласная (этап 56): без своей йотированной пары; О и А — только под ударением, а для А в слове
+ * не должно быть О — безударная О звучит как [а] («сова» — «сава»). У без ударения не меняется.
+ */
+function vowelProblem(word: string, chars: string[], letter: string, i: number): string | null {
+  const pair = IOTATED[letter];
+  if (pair && chars.includes(pair)) return `в букве ${pair} тоже слышно ${letter}`;
+  if (letter === 'У') return null;
+  const stress = stressAt(word);
+  if (stress === null) return `отметьте ударную гласную апострофом: ЛО'ДКА`;
+  if (stress !== i) return `буква ${letter} без ударения — звучит иначе`;
+  if (letter === 'А' && chars.includes('О')) return 'безударная О звучит как А';
   return null;
 }
 
