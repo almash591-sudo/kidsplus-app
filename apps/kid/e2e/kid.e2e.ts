@@ -4762,6 +4762,147 @@ test.describe('буквы', () => {
   });
 });
 
+test.describe('буквы О, А, У (этап 56)', () => {
+  /** Провести пальцем по штрихам фигуры (координаты поля 100×100 → экран). */
+  async function traceStrokes(page: Page, shape: 'А' | 'О' | 'а') {
+    const { TRACES, resample } = await import('../src/games/traceShapes');
+    for (const stroke of TRACES[shape].strokes) {
+      const pts = await fieldPoints(page, resample(stroke));
+      await page.mouse.move(pts[0]!.x, pts[0]!.y);
+      await page.mouse.down();
+      for (const p of pts) await page.mouse.move(p.x, p.y);
+      await page.mouse.up();
+    }
+  }
+  async function fieldPoints(page: Page, pts: readonly (readonly [number, number])[]) {
+    const box = (await page.getByTestId('trace').boundingBox())!;
+    const s = Math.min(box.width, box.height) / 100;
+    const ox = box.x + (box.width - 100 * s) / 2;
+    const oy = box.y + (box.height - 100 * s) / 2;
+    return pts.map(([x, y]) => ({ x: ox + x * s, y: oy + y * s }));
+  }
+
+  test('обведи букву: по точкам со стрелкой и номерами, потом сама по образцу; промахи — подсказка', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [game(1, { kind: 'tracing', shapes: ['А'], guides: ['dots', 'start'] })];
+    await openGame(page);
+    const field = page.getByTestId('game-tracing');
+    await expect(field).toHaveAttribute('data-guide', 'dots');
+    await expect(page.getByTestId('trace-arrow')).toBeVisible();
+    await expect(page.locator('.trace-number')).toHaveCount(3);
+    await expect(page.locator('.trace-rule')).toHaveCount(3);
+    await shot(page, 'tracing-letter');
+    await traceStrokes(page, 'А');
+    // Вторая ступень — без пунктира: образец в углу, только точка начала.
+    await expect(field).toHaveAttribute('data-guide', 'start', { timeout: 5000 });
+    await expect(page.getByTestId('trace-sample')).toBeVisible();
+    await expect(page.locator('.trace-dash')).toHaveCount(0);
+    await expect(page.locator('.trace-end')).toHaveCount(0);
+    // Касание мимо начала штриха — промах; после второго — линия-подсказка.
+    const [miss] = await fieldPoints(page, [[92, 92]]);
+    for (let i = 0; i < 2; i++) {
+      await page.mouse.move(miss!.x, miss!.y);
+      await page.mouse.down();
+      await page.mouse.up();
+    }
+    await expect(page.getByTestId('trace-hint')).toBeVisible();
+    await shot(page, 'tracing-letter-self');
+    await traceStrokes(page, 'А');
+    await expectFinished(page, backend);
+    const said = (await spoken(page)).map((s) => s.text);
+    expect(said).toContain('Обведи большую букву А.');
+    expect(said).toContain('Напиши большую букву А по образцу. Начни с зелёной точки.');
+    expect(said).toContain('Подскажу: веди вот так.');
+  });
+
+  test('шарики с буквой О: другая буква не считается и совёнок подсказывает', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(60_000);
+    backend.items = [
+      game(1, {
+        kind: 'balloons',
+        count: 3,
+        letters: { find: 'О', others: ['А', 'У'], lower: false },
+      }),
+    ];
+    await openGame(page);
+    const wrong = page.locator('.balloon[data-letter]:not([data-letter="О"]):not(.popped)');
+    await expect(wrong.first()).toBeAttached({ timeout: 15000 });
+    const letter = (await wrong.first().getAttribute('data-letter'))!;
+    // Для снимка — дать шарикам подняться.
+    if (process.env.SHOTS) await page.waitForTimeout(3000);
+    await shot(page, 'balloons-letter');
+    await wrong.first().dispatchEvent('pointerdown');
+    await expect(page.locator('.balloon-score .on')).toHaveCount(0);
+    for (let i = 0; i < 3; i++) {
+      const right = page.locator('.balloon[data-letter="О"]:not(.popped)').first();
+      await expect(right).toBeAttached({ timeout: 15000 });
+      await right.dispatchEvent('pointerdown');
+    }
+    await expectFinished(page, backend);
+    const said = (await spoken(page)).map((s) => s.text);
+    expect(said).toContain('Лопни шарики с буквой О!');
+    expect(said).toContain(`Это буква ${letter}. Ищи букву О!`);
+  });
+
+  test('найди букву среди маленьких; «Где звук?» для О — ударение не мешает', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [
+      game(
+        1,
+        { kind: 'letter', letters: ['А', 'О', 'У'], choices: 3, rounds: 2, letterCase: 'lower' },
+        'letters',
+      ),
+      game(
+        2,
+        {
+          kind: 'soundPlace',
+          sound: 'О',
+          words: [
+            { emoji: '⛵', word: 'ЛО\u0301ДКА' },
+            { emoji: '🚇', word: 'МЕТРО\u0301' },
+            { emoji: '🐱', word: 'КОТ' },
+          ],
+          rounds: 2,
+        },
+        'letters',
+      ),
+    ];
+    await page.goto('/');
+    await expect(page.getByTestId('lesson-path')).toBeVisible();
+    const field = page.getByTestId('game-letters');
+    const play = async (check?: () => Promise<void>) => {
+      for (let round = 0; round < 2; round++) {
+        await check?.();
+        const answer = (await field.getAttribute('data-answer'))!;
+        const option = page.locator(`[data-testid=letters-option][data-value="${answer}"]`);
+        await option.click();
+        await expect(option).toHaveClass(/picked/);
+        if (round === 0)
+          await expect(page.locator('.letters-option.picked')).toHaveCount(0, { timeout: 5000 });
+      }
+      await expect(page.getByTestId('lesson-path')).toBeVisible({ timeout: 8000 });
+    };
+    await page.getByTestId('tile').nth(0).click();
+    await play(async () => {
+      const labels = await page.getByTestId('letters-option').allInnerTexts();
+      expect(labels.join('')).toMatch(/^[аоу]{3}$/u);
+    });
+    await page.getByTestId('tile').nth(1).click();
+    await play();
+    const said = (await spoken(page)).map((s) => s.text);
+    expect(said.some((t) => /^Найди букву [АОУ]\.$/u.test(t))).toBe(true);
+    expect(said.some((t) => /^Где звук ооо в слове (лодка|метро|кот)\?$/u.test(t))).toBe(true);
+    expect(said.join(' ')).not.toContain('\u0301');
+  });
+});
+
 test.describe('счёт к школе', () => {
   test('«Математика»: «Счёт» — дорожкой сверху, другие игры — под ней; четыре игры до конца', async ({
     page,
