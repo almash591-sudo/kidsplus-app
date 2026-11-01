@@ -105,7 +105,7 @@ export function gameSummary(spec: GameSpec): string {
     case 'orchestra':
       return `зверят: ${spec.players} · раундов: ${spec.rounds}`;
     case 'letter':
-      return `${spec.letters.join(' ')}${LETTER_CASE_NOTES[spec.letterCase ?? 'upper']} · раундов: ${spec.rounds}`;
+      return `${spec.ask ? `ищем ${spec.ask.join(' ')} среди ` : ''}${spec.letters.join(' ')}${LETTER_CASE_NOTES[spec.letterCase ?? 'upper']} · раундов: ${spec.rounds}`;
     case 'syllable':
       return `${spec.syllables.join(', ')} · раундов: ${spec.rounds}`;
     case 'firstLetter':

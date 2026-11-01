@@ -1554,7 +1554,20 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
           <TextInput
             label="Буквы (подряд, заглавными)"
             value={spec.letters.join('')}
-            onChange={(e) => onChange({ ...spec, letters: lettersOf(e.currentTarget.value) })}
+            onChange={(e) => {
+              const letters = lettersOf(e.currentTarget.value);
+              const ask = spec.ask?.filter((l) => letters.includes(l));
+              onChange({ ...spec, letters, ask: ask?.length ? ask : undefined });
+            }}
+          />
+          <TextInput
+            label="Спрашивать только эти"
+            description="Пусто — все. Остальные буквы — только на кнопках (как в «Буквах из садика»)"
+            value={spec.ask?.join('') ?? ''}
+            onChange={(e) => {
+              const ask = lettersOf(e.currentTarget.value).filter((l) => spec.letters.includes(l));
+              onChange({ ...spec, ask: ask.length ? ask : undefined });
+            }}
           />
           <Group grow>
             <Choices value={spec.choices} onChange={(choices) => onChange({ ...spec, choices })} />
