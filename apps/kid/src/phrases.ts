@@ -29,6 +29,7 @@ import {
 import {
   bookAnnounce,
   bookOf,
+  bookReads,
   chapterAnnounce,
   type BookCode,
   type BookGenre,
@@ -572,6 +573,10 @@ export const BOOK_INTRO = 'Слушай и смотри картинки!';
 export const BOOK_TURN = 'Нажми на стрелку — что там дальше?';
 export const BOOK_RESUME = 'Продолжаем с закладки!';
 export const BOOK_TOMORROW = 'Продолжение — завтра!';
+/** «Прочитай сам»: слово по слогам — прочитать и нажать. */
+export const BOOK_READ = 'Прочитай слово сам — и нажми на него!';
+/** Как голос говорит слово «Прочитай сам» после нажатия. */
+export const bookWord = (word: string) => word.toLowerCase();
 /** Конец книжки — как в народной сказке; у рассказа — проще. */
 export const BOOK_END: Record<BookGenre, string> = {
   folk: 'Вот и сказке конец, а кто слушал — молодец!',
@@ -585,6 +590,7 @@ export function bookPhrases(code: BookCode): string[] {
     bookAnnounce(b),
     ...b.chapters.map((_, i) => chapterAnnounce(b, i)).filter((t) => t !== null),
     ...[BOOK_TURN, BOOK_RESUME, BOOK_TOMORROW, BOOK_END[b.genre], POEM_QUESTIONS],
+    ...(bookReads(b).length ? [BOOK_READ, ...bookReads(b).map(bookWord)] : []),
     ...b.chapters.flatMap((c) => [
       ...c.pages.flatMap((page) => page.text),
       ...c.questions.flatMap((q) => [q.text, poemAnswer(q.answer[0])]),

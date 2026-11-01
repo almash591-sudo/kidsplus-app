@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { bookAnnounce, BOOK_CODES, bookPictures, BOOKS, chapterAnnounce, type Book } from './books';
+import {
+  bookAnnounce,
+  BOOK_CODES,
+  bookPictures,
+  bookReads,
+  BOOKS,
+  chapterAnnounce,
+  type Book,
+} from './books';
 import { gameSpec } from './games';
 import { POEMS } from './poems';
+import { syllableSplit } from './sounds';
 
 describe('библиотека книжек', () => {
   for (const code of BOOK_CODES) {
@@ -41,6 +50,25 @@ describe('библиотека книжек', () => {
       expect(b.source.note).toMatch(/общественное достояние/);
       if (b.genre === 'folk') expect(b.author).toBeNull();
       else expect(b.author).toBeTruthy();
+    });
+
+    it(`${code}: «Прочитай сам» — слово на каждой странице или нигде`, () => {
+      const pages = b.chapters.flatMap((c) => c.pages);
+      const reads = bookReads(b);
+      if (!reads.length) return;
+      expect(reads.length, 'слово на каждой странице').toBe(pages.length);
+      // Читать по слогам — старшим, после «Букв».
+      expect(b.fromAge).toBeGreaterThanOrEqual(5);
+      for (const p of pages) {
+        const w = p.read!;
+        expect(w, w).toMatch(/^[А-ЯЁа-яё]+$/u);
+        // Слово стоит в тексте страницы целиком (не кусок другого слова).
+        const inText = new RegExp(`(?<![а-яё])${w}(?![а-яё])`, 'iu');
+        expect(p.text.join(' '), w).toMatch(inText);
+        const parts = syllableSplit(w);
+        expect(parts.length, w).toBeLessThanOrEqual(4);
+        for (const part of parts) expect(part.length, w).toBeLessThanOrEqual(5);
+      }
     });
   }
 
@@ -91,6 +119,7 @@ describe('библиотека книжек', () => {
       autoTurn: false,
       questions: true,
       choices: 3,
+      readSelf: false,
     });
     expect(() => gameSpec.parse({ kind: 'book', book: 'нет такой' })).toThrow();
   });

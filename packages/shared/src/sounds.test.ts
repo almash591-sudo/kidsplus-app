@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { soundPlace, soundProblem, syllablesIn, wordScheme } from './sounds';
+import { SYLLABLE_WORD_SETS } from './game-presets';
+import { soundPlace, soundProblem, syllableSplit, syllablesIn, wordScheme } from './sounds';
 
 describe('звуки слова', () => {
   it('слогов столько же, сколько гласных', () => {
@@ -8,6 +9,24 @@ describe('звуки слова', () => {
     expect(syllablesIn('ЯБЛОКО')).toBe(3);
     expect(syllablesIn('ЧЕРЕПАХА')).toBe(4);
     expect(syllablesIn('МЫШЬ')).toBe(1);
+  });
+
+  it('по слогам — как в «Слове из слогов»', () => {
+    for (const set of SYLLABLE_WORD_SETS)
+      for (const { word } of set.words)
+        expect(syllableSplit(word.replaceAll('-', '')).join('-')).toBe(word);
+    for (const word of [
+      'ЗАЙ-КА',
+      'ПАЛЬ-ТО',
+      'СЕМЬ-Я',
+      'ОБЪ-ЕЗД',
+      'ПО-ЭТ',
+      'КОТ',
+      'МЫШЬ',
+      'СТРАШ-НО',
+    ])
+      expect(syllableSplit(word.replaceAll('-', '')).join('-')).toBe(word);
+    expect(syllableSplit('Лягушка')).toEqual(['Ля', 'гуш', 'ка']);
   });
 
   it('место звука: начало, середина, конец; Ь звуком не считается', () => {

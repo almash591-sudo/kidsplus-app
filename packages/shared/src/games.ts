@@ -773,7 +773,7 @@ export const gameSpec = z.discriminatedUnion('kind', [
    * Книжка (этап 52) из встроенной библиотеки: страница — глиняная картинка и 1–3 предложения,
    * голос читает и подсвечивает то, что звучит. autoTurn — страницы листаются сами, иначе ребёнок
    * нажимает «дальше». Длинная — по главе в день, телефон помнит закладку. questions — вопросы
-   * в конце главы, choices вариантов-картинок.
+   * в конце главы, choices вариантов-картинок. readSelf — «Прочитай сам» для старших.
    */
   z.object({
     kind: z.literal('book'),
@@ -781,6 +781,8 @@ export const gameSpec = z.discriminatedUnion('kind', [
     autoTurn: z.boolean().default(false),
     questions: z.boolean().default(true),
     choices: z.number().int().min(2).max(4).default(3),
+    /** «Прочитай сам»: перед страницей её слово крупно по слогам (у книжек со словами). */
+    readSelf: z.boolean().default(false),
   }),
 ]);
 

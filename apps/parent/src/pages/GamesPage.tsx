@@ -144,7 +144,7 @@ export function gameSummary(spec: GameSpec): string {
     case 'book': {
       const b = bookOf(spec.book);
       const chapters = b.chapters.length > 1 ? ` · ${b.chapters.length} глав, по главе в день` : '';
-      return `«${b.title}»${chapters} · ${spec.autoTurn ? 'листается сама' : 'листает ребёнок'}${spec.questions ? ' · вопросы' : ''}`;
+      return `«${b.title}»${chapters} · ${spec.autoTurn ? 'листается сама' : 'листает ребёнок'}${spec.questions ? ' · вопросы' : ''}${spec.readSelf ? ' · прочитай сам' : ''}`;
     }
     case 'differences':
       return `отличий: ${spec.count} · картинок: ${spec.rounds}${spec.hint ? ' · с лупой' : ''}`;

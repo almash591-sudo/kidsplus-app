@@ -178,3 +178,60 @@
     animation: none;
   }
 }
+
+/* «Прочитай сам»: слово крупно по слогам, дуги под слогами — как в букваре. Длинное слово
+   мельче (--len — букв в слове), чтобы не переносилось. */
+.book-read-box {
+  display: grid;
+  place-items: center;
+  padding: 10px 12px 14px;
+}
+.book-read {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 0.18em;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: min(84px, 15vh, calc(100vw / (var(--len) + 2)));
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: 0.04em;
+  transition: gap 0.3s;
+}
+.book-syl {
+  padding: 0 0.04em 0.12em;
+  border-bottom: 0.09em solid currentColor;
+  border-radius: 0 0 50% 50% / 0 0 0.35em 0.35em;
+  transition:
+    color 0.3s,
+    border-color 0.3s;
+}
+.book-syl:nth-child(odd) {
+  color: #c2255c;
+}
+.book-syl:nth-child(even) {
+  color: #1c7ed6;
+}
+/* Нажал — слоги сливаются в слово. */
+.book-read.heard {
+  gap: 0;
+}
+.book-read.heard .book-syl {
+  border-bottom-color: transparent;
+  color: #2b8a3e;
+  animation: bounce 0.6s ease-out;
+}
+/* Это слово ребёнок прочитал сам. */
+.book-word {
+  color: #2b8a3e;
+  font-weight: 900;
+}
+@media (orientation: landscape) {
+  .book-read {
+    font-size: min(72px, 18vh, calc(42vw / (var(--len) + 2)));
+  }
+}

@@ -46,14 +46,35 @@ function poemDone(p: Record<string, unknown>): string | null {
   return `Послушал ${what} ${title}`;
 }
 
-/** Книжка (этап 52): «Слушал книжку «Кот, петух и лиса»», длинная — «…: глава 2 из 4». */
+/** 1 слово, 2 слова, 5 слов. */
+function words(n: number): string {
+  const ten = n % 10;
+  const form =
+    n % 100 >= 11 && n % 100 <= 14
+      ? 'слов'
+      : ten === 1
+        ? 'слово'
+        : ten >= 2 && ten <= 4
+          ? 'слова'
+          : 'слов';
+  return `${n} ${form}`;
+}
+
+/**
+ * Книжка (этап 52): «Слушал книжку «Кот, петух и лиса»», длинная — «…: глава 2 из 4»;
+ * с «Прочитай сам» — «…, сам прочитал 12 слов».
+ */
 function bookDone(p: Record<string, unknown>): string | null {
   const book = (BOOKS as Record<string, Book>)[String(p.book)];
   if (p.kind !== 'book' || !book) return null;
   const chapters = Number(p.chapters) || 0;
   const chapter = Number(p.chapter) || 0;
-  const part = chapters > 1 && chapter > 0 ? `: глава ${chapter} из ${chapters}` : '';
-  return `Слушал книжку «${book.title}»${part}`;
+  const read = Number(p.read) || 0;
+  const part = [
+    ...(chapters > 1 && chapter > 0 ? [`глава ${chapter} из ${chapters}`] : []),
+    ...(read > 0 ? [`сам прочитал ${words(read)}`] : []),
+  ].join(', ');
+  return `Слушал книжку «${book.title}»${part ? `: ${part}` : ''}`;
 }
 
 export async function childActivity(

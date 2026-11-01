@@ -615,7 +615,7 @@ describe('пульт родителя (этап 29)', () => {
     expect(log.entries.map((e) => e.text)).toEqual(['Послушал рассказ «Четыре желания»']);
   });
 
-  it('журнал: книжка — «Слушал книжку…», у длинной — какая глава (этап 52)', async () => {
+  it('журнал: книжка — «Слушал книжку…», у длинной — какая глава, сколько прочитал сам (этап 52)', async () => {
     const game = await addGame('Кот, петух и лиса', 'books');
     const done = (payload: object) =>
       t.app.inject({
@@ -631,11 +631,17 @@ describe('пульт родителя (этап 29)', () => {
     await done({ chapter: 1, chapters: 1 });
     t.advance(60_000);
     await done({ chapter: 2, chapters: 4 });
+    t.advance(60_000);
+    await done({ chapter: 3, chapters: 4, read: 12 });
+    t.advance(60_000);
+    await done({ chapter: 1, chapters: 1, read: 21 });
     const log = await get<{ entries: { text: string }[] }>(
       `/api/parent/children/${child}/activity`,
       parent,
     );
     expect(log.entries.map((e) => e.text)).toEqual([
+      'Слушал книжку «Кот, петух и лиса»: сам прочитал 21 слово',
+      'Слушал книжку «Кот, петух и лиса»: глава 3 из 4, сам прочитал 12 слов',
       'Слушал книжку «Кот, петух и лиса»: глава 2 из 4',
       'Слушал книжку «Кот, петух и лиса»',
     ]);

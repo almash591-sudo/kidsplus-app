@@ -30,6 +30,7 @@ import {
   bookAnnounce,
   bookChars,
   bookOf,
+  bookReads,
   BOOKS,
   type BookCode,
   type BookGenre,
@@ -389,6 +390,7 @@ const DEFAULTS: { [K in GameKind]: Extract<GameSpec, { kind: K }> } = {
     autoTurn: false,
     questions: true,
     choices: 3,
+    readSelf: false,
   },
 };
 
@@ -2505,7 +2507,14 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
             allowDeselect={false}
             value={spec.book}
             data={BOOK_OPTIONS}
-            onChange={(v) => v && onChange({ ...spec, book: v as BookCode })}
+            onChange={(v) =>
+              v &&
+              onChange({
+                ...spec,
+                book: v as BookCode,
+                readSelf: spec.readSelf && bookReads(bookOf(v as BookCode)).length > 0,
+              })
+            }
           />
           <Text size="xs" c="dimmed">
             {bookAnnounce(b)}
@@ -2541,6 +2550,14 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
           />
           {spec.questions && (
             <Choices value={spec.choices} onChange={(choices) => onChange({ ...spec, choices })} />
+          )}
+          {bookReads(b).length > 0 && (
+            <Switch
+              label="Прочитай сам"
+              description={`Продолжение «Букв»: перед страницей её слово крупно по слогам — ребёнок читает и нажимает, голос проверяет. Слов: ${bookReads(b).length}`}
+              checked={spec.readSelf}
+              onChange={(e) => onChange({ ...spec, readSelf: e.currentTarget.checked })}
+            />
           )}
           <Text size="xs" c="dimmed">
             Голос читает страницу и подсвечивает предложение, которое звучит; нажал на предложение —
