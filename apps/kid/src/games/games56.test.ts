@@ -8,8 +8,9 @@ import type { SpecOf } from './common';
 import { makeRound } from './letters/LetterGame';
 import { advance, LETTER_RULES, resample, TRACES } from './traceShapes';
 
-const spec = <K extends 'tracing' | 'balloons' | 'letter' | 'soundPlace'>(s: object) =>
-  gameSpec.parse(s) as SpecOf<K>;
+const spec = <K extends 'tracing' | 'balloons' | 'letter' | 'soundPlace' | 'firstLetter'>(
+  s: object,
+) => gameSpec.parse(s) as SpecOf<K>;
 
 describe('обведи букву', () => {
   it('буквы стоят на строке: большие — от верхней линейки, маленькие — от средней', () => {
@@ -117,6 +118,33 @@ describe('найди букву: большие и маленькие', () => {
         .options.map((o) => o.label)
         .join(''),
     ).toMatch(/^[АОУ]{3}$/u);
+  });
+});
+
+describe('с какой буквы: обманки', () => {
+  const words = [
+    { emoji: '🍉', word: 'АРБУЗ' },
+    { emoji: '👓', word: 'ОЧКИ' },
+    { emoji: '🦆', word: 'УТКА' },
+    { emoji: '🦈', word: 'АКУЛА' },
+  ];
+  it('первых букв урока хватает — обманки только из них', () => {
+    const s = spec<'firstLetter'>({ kind: 'firstLetter', words, choices: 3, rounds: 4 });
+    for (let i = 0; i < 20; i++)
+      expect(
+        makeRound(s)
+          .options.map((o) => o.label)
+          .sort()
+          .join(''),
+      ).toBe('АОУ');
+  });
+
+  it('не хватает — добираются из алфавита', () => {
+    const s = spec<'firstLetter'>({ kind: 'firstLetter', words, choices: 4, rounds: 4 });
+    for (let i = 0; i < 20; i++) {
+      const labels = makeRound(s).options.map((o) => o.label);
+      expect(new Set(labels).size).toBe(4);
+    }
   });
 });
 
