@@ -3087,6 +3087,77 @@ test.describe('новые игры', () => {
       await shot(page, c.shot);
     });
 
+  test('тёмный режим телефона: подписи стиха и книжки и ответы — тёмным по светлому', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(90_000);
+    await page.emulateMedia({ colorScheme: 'dark' });
+    backend.items = [
+      game(
+        1,
+        { kind: 'poem', poem: 'petushok', repeat: true, blanks: true, questions: true, choices: 3 },
+        'poems',
+      ),
+      game(
+        2,
+        { kind: 'book', book: 'kotPetuh', autoTurn: false, questions: true, choices: 3 },
+        'books',
+      ),
+    ];
+    await gameMedia(page);
+    await page.goto('/');
+    expect(
+      await page.evaluate(() =>
+        getComputedStyle(document.documentElement).getPropertyValue('--ink').trim(),
+      ),
+    ).toBe('#f3f1ff');
+    // Контраст текста и фона самого элемента (WCAG): белым по белому — около 1.
+    const contrast = (testid: string) =>
+      page
+        .getByTestId(testid)
+        .first()
+        .evaluate((el) => {
+          const lum = (c: string) => {
+            const [r, g, b] = c
+              .match(/[\d.]+/g)!
+              .slice(0, 3)
+              .map((v) => {
+                const x = Number(v) / 255;
+                return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+              });
+            return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+          };
+          const s = getComputedStyle(el);
+          const [a, b] = [lum(s.color), lum(s.backgroundColor)];
+          return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+        });
+
+    await page.locator('[data-category=poems]').click();
+    await slowSpeech(page, 4000);
+    await page.getByTestId('tile').first().click();
+    await expect(page.getByTestId('poem-text')).toContainText('Золотой гребешок');
+    expect(await contrast('poem-text')).toBeGreaterThan(7);
+    await shot(page, 'poem-dark');
+
+    await page.goto('/');
+    await page.locator('[data-category=books]').click();
+    await page.getByTestId('tile').first().click();
+    const g = page.getByTestId('game-book');
+    await expect(g.getByTestId('book-cover')).toContainText('Кот, петух и лиса');
+    expect(await contrast('book-cover')).toBeGreaterThan(7);
+    await expect(g).toHaveAttribute('data-step', 'page', { timeout: 10_000 });
+    expect(await contrast('book-text')).toBeGreaterThan(7);
+    await shot(page, 'book-dark');
+    // Листаем до вопросов: ответы — карточки с подписью.
+    const total = Number((await g.locator('.book-pageno').textContent())!.split('/')[1]);
+    for (let k = 1; k <= total; k++) await g.getByTestId('book-next').click();
+    await expect(g).toHaveAttribute('data-step', 'questions', { timeout: 10_000 });
+    await expect(g.getByTestId('poem-option').first()).toBeVisible();
+    expect(await contrast('poem-option')).toBeGreaterThan(7);
+    expect(await contrast('poem-text')).toBeGreaterThan(7);
+  });
+
   test('сказка (этап 46): пока голос читает, подсказка «ушка» не начинает часть заново', async ({
     page,
     backend,
