@@ -6,23 +6,66 @@ import { describe, expect, it } from 'vitest';
 import { gamePhrases } from '../phrases';
 import type { SpecOf } from './common';
 import { makeRound } from './letters/LetterGame';
-import { advance, LETTER_RULES, resample, TRACES } from './traceShapes';
+import { advance, isDot, LETTER_RULES, resample, strokeNumbers, TRACES } from './traceShapes';
 
 const spec = <K extends 'tracing' | 'balloons' | 'letter' | 'soundPlace' | 'firstLetter'>(
   s: object,
 ) => gameSpec.parse(s) as SpecOf<K>;
 
 describe('обведи букву', () => {
+  it('весь алфавит: 33 большие и 33 маленькие буквы', () => {
+    expect(TRACE_LETTERS.join('')).toBe(
+      'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя',
+    );
+  });
+
   it('буквы стоят на строке: большие — от верхней линейки, маленькие — от средней', () => {
     for (const l of TRACE_LETTERS) {
       const { letter, strokes } = TRACES[l];
       expect(letter, l).toBe(true);
-      const ys = strokes.flat().map(([, y]) => y);
-      const top = l === l.toUpperCase() ? LETTER_RULES.top : LETTER_RULES.middle;
+      for (const [x, y] of strokes.flat()) {
+        expect(x, l).toBeGreaterThanOrEqual(18);
+        expect(x, l).toBeLessThanOrEqual(82);
+        expect(y, l).toBeGreaterThanOrEqual(3);
+        expect(y, l).toBeLessThanOrEqual(97);
+      }
+      // Точки и дужка (Ё, Й) — над буквой; без них буква от линейки до строки.
+      const body = strokes.filter((s, i) => !isDot(s) && !('Йй'.includes(l) && i === 1));
+      const ys = body.flat().map(([, y]) => y);
+      const big = l !== l.toLowerCase();
+      // У «б» и «ф» палочка — до верхней линейки, как у больших.
+      const top = big || 'бф'.includes(l) ? LETTER_RULES.top : LETTER_RULES.middle;
       expect(Math.min(...ys), l).toBeCloseTo(top, 0);
-      // Хвостик «у» — ниже строки, остальные кончаются на ней.
-      if (l !== 'у' && l !== 'У') expect(Math.max(...ys), l).toBeCloseTo(LETTER_RULES.base, 0);
+      // Хвостики (у, р, ф, д, ц, щ) — ниже строки; у большой У хвостик кончается на строке.
+      if ('уДдЦцЩщрф'.includes(l))
+        expect(Math.max(...ys), l).toBeGreaterThan(LETTER_RULES.base + 5);
+      else expect(Math.max(...ys), l).toBeCloseTo(LETTER_RULES.base, 0);
+      if ('ЁЙёй'.includes(l))
+        expect(Math.min(...strokes.flat().map(([, y]) => y)), l).toBeLessThan(top - 3);
     }
+  });
+
+  it('палочки — сверху вниз, перекладины — слева направо', () => {
+    for (const l of TRACE_LETTERS)
+      for (const s of TRACES[l].strokes) {
+        if (s.length !== 2 || isDot(s)) continue;
+        const [[x0, y0], [x1, y1]] = s as [[number, number], [number, number]];
+        if (x0 === x1) expect(y1, l).toBeGreaterThan(y0);
+        if (y0 === y1) expect(x1, l).toBeGreaterThan(x0);
+      }
+  });
+
+  it('у Ё точки ставят касанием, у Й — дужка; мягкий и твёрдый знак называются знаками', () => {
+    expect(TRACES['Ё'].strokes.filter(isDot)).toHaveLength(2);
+    expect(TRACES['ё'].strokes.filter(isDot)).toHaveLength(2);
+    expect(TRACES['Й'].strokes.filter(isDot)).toHaveLength(0);
+    expect(TRACES['Б'].name).toBe('большую букву Б');
+    expect(TRACES['ь'].name).toBe('маленький мягкий знак');
+    expect(TRACES['Ъ'].name).toBe('большой твёрдый знак');
+    expect(gamePhrases(spec<'tracing'>({ kind: 'tracing', shapes: ['й', 'ь'] }))).toEqual([
+      'Обведи маленькую букву Й.',
+      'Обведи маленький мягкий знак.',
+    ]);
   });
 
   it('штрихи — как в прописях: А из трёх, У из двух, О одним движением', () => {
@@ -40,17 +83,33 @@ describe('обведи букву', () => {
 
   it('номера штрихов не налезают друг на друга и стоят у своего штриха', () => {
     for (const l of TRACE_LETTERS) {
-      const { strokes, numbers } = TRACES[l];
-      if (strokes.length < 2) continue;
-      expect(numbers, l).toHaveLength(strokes.length);
-      const at = numbers!;
-      for (let i = 0; i < at.length; i++)
-        for (let j = i + 1; j < at.length; j++)
-          expect(Math.hypot(at[i]![0] - at[j]![0], at[i]![1] - at[j]![1]), l).toBeGreaterThan(8);
-      // Номер ближе к началу своего штриха, чем к началу любого другого.
-      for (const [i, [x, y]] of at.entries()) {
-        const d = strokes.map((s) => Math.hypot(s[0]![0] - x, s[0]![1] - y));
-        expect(Math.min(...d), l).toBe(d[i]);
+      const { strokes } = TRACES[l];
+      const at = strokeNumbers(TRACES[l]);
+      expect(at, l).toHaveLength(strokes.length);
+      if (strokes.length < 2) {
+        expect(at, l).toEqual([null]);
+        continue;
+      }
+      // Номер есть у каждого штриха, кроме точек.
+      for (const [i, p] of at.entries()) expect(p === null, l).toBe(isDot(strokes[i]!));
+      const nums = at.flatMap((p, i) => (p ? [{ i, x: p[0], y: p[1] - 2.5 }] : []));
+      for (const a of nums) {
+        expect(a.x, l).toBeGreaterThanOrEqual(3);
+        expect(a.x, l).toBeLessThanOrEqual(97);
+        expect(a.y, l).toBeGreaterThanOrEqual(3);
+        expect(a.y, l).toBeLessThanOrEqual(97);
+        for (const b of nums)
+          if (b.i > a.i) expect(Math.hypot(a.x - b.x, a.y - b.y), l).toBeGreaterThan(8);
+        // Номер ближе к началу своего штриха, чем к началу любого другого.
+        const d = nums.map((b) =>
+          Math.hypot(strokes[b.i]![0]![0] - a.x, strokes[b.i]![0]![1] - a.y),
+        );
+        expect(Math.min(...d), l).toBe(d[nums.indexOf(a)]);
+        // И не лежит на линиях буквы.
+        const ink = strokes.flatMap((s) => resample(s, 1));
+        expect(Math.min(...ink.map(([x, y]) => Math.hypot(x - a.x, y - a.y))), l).toBeGreaterThan(
+          4,
+        );
       }
     }
   });
