@@ -429,14 +429,21 @@ export const gameSpec = z.discriminatedUnion('kind', [
   }),
   // ─── Буквы ───
   /** Найди букву: звучит буква — ребёнок выбирает её среди choices. */
-  z.object({
-    kind: z.literal('letter'),
-    letters: z.array(letter).min(2).max(33),
-    choices,
-    rounds: letterRounds,
-    /** Нет — большими, как до этапа 56. */
-    letterCase: z.enum(LETTER_CASES).optional(),
-  }),
+  z
+    .object({
+      kind: z.literal('letter'),
+      letters: z.array(letter).min(2).max(33),
+      choices,
+      rounds: letterRounds,
+      /** Нет — большими, как до этапа 56. */
+      letterCase: z.enum(LETTER_CASES).optional(),
+      /** Какие буквы спрашивать (этап 56, «Буквы из садика»), остальные — только на кнопках; нет — все. */
+      ask: z.array(letter).min(1).max(33).optional(),
+    })
+    .refine((g) => !g.ask || g.ask.every((l) => g.letters.includes(l)), {
+      message: 'спрашивать можно только буквы из списка',
+      path: ['ask'],
+    }),
   /** Найди слог: звучит слог («ма») — выбрать написанный. */
   z.object({
     kind: z.literal('syllable'),
