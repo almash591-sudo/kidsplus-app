@@ -243,6 +243,8 @@ export async function buildKidItems(
     if (item.segmentId) {
       const row = segments.find((s) => s.segment.id === item.segmentId);
       if (!row) continue; // видео недоступно — пропускаем
+      // Плеер RuTube появится на телефоне следующим шагом этапа 54; до тех пор не отдаём.
+      if (row.source.provider !== 'youtube') continue;
       result.push({
         kind: 'segment',
         id: row.segment.id,

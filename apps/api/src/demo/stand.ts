@@ -33,6 +33,17 @@ const TITLES: Record<string, string> = {
 };
 const fakeFetch = (async (input: string | URL | Request) => {
   const url = new URL(String(input instanceof Request ? input.url : input));
+  // RuTube (этап 54): метаданные в форме настоящего API; смотреть можно только в России.
+  const rutube = /^\/api\/video\/([0-9a-f]{32})\/$/.exec(url.pathname);
+  if (url.hostname === 'rutube.ru' && rutube)
+    return Response.json({
+      id: rutube[1],
+      title: TITLES[rutube[1]!] ?? `Видео RuTube ${rutube[1]!.slice(0, 6)}`,
+      author: { name: 'Детский канал' },
+      duration: 600,
+      pg_rating: { age: 0 },
+      restrictions: { country: { allowed: ['RU'], restricted: [] } },
+    });
   const id = new URL(url.searchParams.get('url') ?? 'https://x/?v=x').searchParams.get('v') ?? 'x';
   return Response.json({ title: TITLES[id] ?? `Видео ${id}`, author_name: 'Детский канал' });
 }) as typeof fetch;
