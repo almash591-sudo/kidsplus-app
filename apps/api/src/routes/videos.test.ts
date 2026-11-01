@@ -34,7 +34,7 @@ afterEach(() => t.close());
 /** Видео из плейлиста устройства. */
 const kidSegments = async (device: Record<string, string>) =>
   (await t.app.inject({ url: '/api/kid/playlist', cookies: device }))
-    .json<{ items: { kind: string; id: string; externalId: string }[] }>()
+    .json<{ items: { kind: string; id: string; externalId: string; provider: string }[] }>()
     .items.filter((i) => i.kind === 'segment');
 
 const childItemIds = async (childId: string) =>
@@ -115,7 +115,7 @@ describe('RuTube (этап 54)', () => {
     expect((await lookup(rutubeUrl(RUTUBE_DOWN_ID))).statusCode).toBe(502);
   });
 
-  it('фрагмент сохраняется с провайдером; телефон его пока не получает', async () => {
+  it('фрагмент сохраняется с провайдером и приходит на телефон', async () => {
     const res = await t.app.inject({
       method: 'POST',
       url: '/api/parent/segments',
@@ -131,9 +131,15 @@ describe('RuTube (этап 54)', () => {
     expect(res.statusCode).toBe(201);
     expect(res.json()).toMatchObject({ source: { provider: 'rutube', externalId: RUTUBE_ID } });
     const youtube = await createSegment(t, parent, { videoId: 'abcdefghijk', childIds: [younger] });
-    // Плеер RuTube на телефоне — следующий шаг; до него телефон видит только YouTube.
     const device = await pairDevice(t, parent, younger);
-    expect((await kidSegments(device)).map((s) => s.id)).toEqual([youtube]);
+    const phone = await kidSegments(device);
+    expect(phone).toHaveLength(2);
+    expect(phone.find((s) => s.id === youtube)).toMatchObject({ provider: 'youtube' });
+    expect(phone.find((s) => s.id !== youtube)).toMatchObject({
+      provider: 'rutube',
+      externalId: RUTUBE_ID,
+      thumbnailUrl: `https://pic.rtbcdn.ru/video/${RUTUBE_ID}.jpg`,
+    });
 
     // Перепроверка ходит в RuTube, а не в YouTube.
     const segmentId = res.json<{ id: string }>().id;
