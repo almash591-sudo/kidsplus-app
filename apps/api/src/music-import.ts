@@ -54,7 +54,7 @@ export const LETTERS_CATALOG: LessonCatalog = {
 export const LETTERS_SCHOOL_CATALOG: LessonCatalog = {
   category: 'letters',
   oldFromAge: 4,
-  lessons: LETTER_LESSONS.slice(40),
+  lessons: LETTER_LESSONS.slice(40, 60),
   ahead: true,
   ownerOnly: true,
 };

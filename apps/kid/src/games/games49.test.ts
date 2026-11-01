@@ -9,7 +9,7 @@ import { makeRound, schemeDistractors } from './letters/LetterGame';
 
 type Kind = 'syllableCount' | 'soundPlace' | 'wordScheme' | 'pickWord' | 'readPhrase';
 const spec = <K extends Kind>(s: object) => gameSpec.parse(s) as SpecOf<K>;
-const school = LETTER_LESSONS.slice(40).map((l) => l.spec as SpecOf<Kind>);
+const school = LETTER_LESSONS.slice(40, 60).map((l) => l.spec as SpecOf<Kind>);
 
 /** Раунды подряд, как в игре: каждый следующий не повторяет прошлое слово. */
 function rounds(s: SpecOf<Kind>, n = 30) {
