@@ -406,6 +406,43 @@ test('сбои телефона (этап 51): телефон сообщил —
   expect((await page.request.delete(`/api/parent/children/${kid.id}`)).ok()).toBe(true);
 });
 
+test('Android без компьютера (этап 53): QR-код собран в браузере — Wi-Fi и VPN на сервер не уходят', async ({
+  page,
+}) => {
+  await login(page);
+  const sent: string[] = [];
+  page.on('request', (r) => {
+    if (new URL(r.url()).pathname.startsWith('/api/'))
+      sent.push(`${r.url()} ${r.postData() ?? ''}`);
+  });
+  await page.goto('/devices');
+  const card = page.locator('.mantine-Card-root').filter({ hasText: 'Зайка' }).first();
+  await card.getByRole('button', { name: 'Android без компьютера' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Подключить Android без компьютера' });
+  // Копии киоска на GitHub на стенде нет — в России сервер без VPN не откроется.
+  await expect(dialog).toContainText('в России без VPN не открывается');
+  await dialog.getByLabel('Ссылка VPN').fill('vless://vpn-secret@example.test:443');
+  await dialog.getByLabel('Сеть Wi-Fi').fill('Дача');
+  await dialog.getByLabel('Пароль Wi-Fi').fill('wifi-secret-123');
+  expect(await layoutProblems(page)).toEqual([]);
+
+  await dialog.getByRole('button', { name: 'Показать QR-код' }).click();
+  await expect(dialog.getByTestId('setup-qr')).toBeVisible();
+  await expect(dialog).toContainText(/Действует ещё (60:00|59:\d\d)/);
+  await expect(dialog).toContainText('VPN подключится сам');
+  expect(await layoutProblems(page)).toEqual([]);
+  expect(
+    sent.some((s) => s.includes('/api/parent/pairings') && s.includes('"forSetup":true')),
+  ).toBe(true);
+  expect(sent.join('\n')).not.toContain('secret');
+
+  // Семья не в России: без VPN предупреждения нет.
+  await dialog.getByRole('button', { name: 'Изменить данные' }).click();
+  await dialog.getByText('Не нужен').click();
+  await expect(dialog).not.toContainText('в России без VPN не открывается');
+  await expect(dialog.getByLabel('Ссылка VPN')).toHaveCount(0);
+});
+
 test('точность (этап 47): уроки подписаны, завершённый день — «не сегодня», а не «позже»', async ({
   page,
 }) => {

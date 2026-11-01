@@ -20,6 +20,7 @@ const KID_PORT = Number(process.env.DEMO_KID_PORT ?? 4801);
 export const DEMO_EMAIL = 'demo@example.com';
 export const DEMO_PASSWORD = 'demo-password-123';
 const SETUP = 'demo-setup-token-0123456789';
+const KIOSK_TOKEN = 'demo-kiosk-publish-token-0123456789';
 const root = resolve(import.meta.dirname, '../../../..');
 
 /** oEmbed без сети: название из списка, иначе — «Видео …». */
@@ -49,6 +50,7 @@ async function main() {
     storage,
     config: {
       setupToken: SETUP,
+      kioskPublishToken: KIOSK_TOKEN,
       kidAppUrl: `http://localhost:${KID_PORT}`,
       trustProxyHops: 0,
       tts: { providerId: 'browser', speed: 0.9, voices: {} },
@@ -80,6 +82,22 @@ async function main() {
   const P = { kp_session: session };
   const as = <T>(method: string, url: string, payload?: unknown) => req<T>(method, url, payload, P);
   await as('PUT', '/api/parent/me/name', { displayName: 'Мама' });
+
+  // Киоск для QR-кода настройки Android (этап 53): крошечный «APK» с отпечатком подписи.
+  const apk = Buffer.alloc(64);
+  apk.set([0x50, 0x4b, 0x03, 0x04]);
+  const kiosk = await app.inject({
+    method: 'POST',
+    url: '/api/kiosk/releases',
+    headers: {
+      authorization: `Bearer ${KIOSK_TOKEN}`,
+      'x-version-code': '1',
+      'x-signature-checksum': 'demo'.repeat(10) + 'abc',
+      'content-type': 'application/vnd.android.package-archive',
+    },
+    payload: apk,
+  });
+  if (kiosk.statusCode !== 201) throw new Error(`киоск: ${kiosk.statusCode} ${kiosk.body}`);
 
   type Id = { id: string };
   const zaika = (
