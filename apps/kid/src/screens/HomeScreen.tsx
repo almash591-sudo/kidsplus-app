@@ -131,10 +131,13 @@ export function CategoryScreen({
 export function HomeScreen({
   items,
   onPick,
+  onReview,
   onBack,
 }: {
   items: KidItem[];
   onPick: (index: number) => void;
+  /** Бледная плитка (этап 55): открыть после заданий; false — проверить нечем, отдыхает. */
+  onReview?: (index: number) => boolean;
   /** Назад к разделам — если разделов несколько. */
   onBack?: (() => void) | undefined;
 }) {
@@ -181,6 +184,7 @@ export function HomeScreen({
             style={{ '--i': j } as React.CSSProperties}
             onClick={() => {
               if (!resting) return onPick(i);
+              if (onReview?.(i)) return;
               fx.soft();
               void playSequence([ru(item.rest === 'learned' ? REST_LEARNED : REST_TODAY)]);
             }}

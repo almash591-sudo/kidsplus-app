@@ -251,6 +251,8 @@ export function GameScreen(props: {
   level?: number | undefined;
   /** Урок «Сегодня» или сам выбрал (этап 44). */
   from?: From;
+  /** Повтор пройденного «посложнее» (этап 55): в журнал так и пишется, уровень не двигает. */
+  review?: boolean;
   onDone: () => void;
   onExit: () => void;
 }) {
@@ -259,7 +261,12 @@ export function GameScreen(props: {
   const spec = useMemo(() => specAtLevel(props.spec, level), [props.spec, level]);
   const [finished, setFinished] = useState(false);
   const Game = GAMES[spec.kind] as ComponentType<GameProps<GameKind>>;
-  const about = { kind: spec.kind, level, ...fromPayload(props.from) };
+  const about = {
+    kind: spec.kind,
+    level,
+    ...fromPayload(props.from),
+    ...(props.review ? { review: true } : {}),
+  };
   const seconds = useVisit(() =>
     sendEvent({ type: 'interactive_start', interactiveId: id, payload: about }),
   );

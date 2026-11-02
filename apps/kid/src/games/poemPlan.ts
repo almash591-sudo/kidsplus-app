@@ -35,7 +35,8 @@ export type PoemStep =
   | { kind: 'blanks'; rounds: BlankRound[] }
   | { kind: 'questions'; rounds: QuestionRound[] };
 
-const options = (answer: PoemChoice, wrong: readonly PoemChoice[], choices: number) =>
+/** Варианты раунда: верный и неверные до `choices` (не меньше двух), вперемешку. */
+export const choiceOptions = (answer: PoemChoice, wrong: readonly PoemChoice[], choices: number) =>
   shuffled([answer, ...shuffled(wrong).slice(0, Math.max(1, choices - 1))]);
 
 /** Занятие: послушать, учить (или рассказать вместе), «Договори», вопросы — что включил родитель. */
@@ -62,7 +63,7 @@ export function poemPlan(spec: SpecOf<'poem'>, learned: number): PoemStep[] {
           blank,
           part: blankPart(p, blank),
           answer,
-          options: options(answer, blank.wrong, spec.choices),
+          options: choiceOptions(answer, blank.wrong, spec.choices),
         };
       });
     if (rounds.length) steps.push({ kind: 'blanks', rounds });
@@ -73,7 +74,7 @@ export function poemPlan(spec: SpecOf<'poem'>, learned: number): PoemStep[] {
       .map((question) => ({
         question,
         answer: question.answer,
-        options: options(question.answer, question.wrong, spec.choices),
+        options: choiceOptions(question.answer, question.wrong, spec.choices),
       }));
     steps.push({ kind: 'questions', rounds });
   }
