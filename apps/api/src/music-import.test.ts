@@ -3,6 +3,7 @@ import { LETTER_LESSONS } from '@kidsplus/shared/letters-lessons';
 import { MATH_LESSONS } from '@kidsplus/shared/math-lessons';
 import {
   LETTERS_CATALOG,
+  LETTERS_OAU_CATALOG,
   LETTERS_SCHOOL_CATALOG,
   MATH_COUNT_CATALOG,
   MUSIC_FUN_CATALOG,
@@ -175,7 +176,7 @@ describe('импорт уроков музыки', () => {
         )
       ).rows.map((r) => r.title as string);
     const list = await titles(big);
-    const all = LETTER_LESSONS.map((l) => l.title);
+    const all = LETTER_LESSONS.slice(0, 60).map((l) => l.title);
     expect(list).toHaveLength(60);
     expect(list.slice(0, 12)).toEqual(all.slice(0, 12));
     const middle = list.slice(12, 52);
@@ -194,6 +195,58 @@ describe('импорт уроков музыки', () => {
 
     await run(true, LETTERS_SCHOOL_CATALOG);
     expect(await titles(big)).toEqual(list);
+  });
+
+  it('«Повторяем О, А, У»: блоком сразу после пройденного, только старшим семьи владельца', async () => {
+    const parent = await setupParent(t);
+    const year = new Date().getFullYear();
+    const small = await createChild(
+      t,
+      parent,
+      girl({ nickname: 'Зайка', birthYear: year - 4, birthMonth: 1 }),
+    );
+    const big = await createChild(t, parent, girl({ nickname: 'Солнышко', birthYear: year - 6 }));
+    const other = await createChild(t, parent, girl({ nickname: 'Мишутка', birthYear: year - 6 }));
+    const fam = (await pg.query("insert into families (name) values ('Родственники') returning id"))
+      .rows[0]!.id;
+    await pg.query('update children set family_id = $1 where id = $2', [fam, other]);
+    await run(true, LETTERS_CATALOG);
+    await run(true, LETTERS_SCHOOL_CATALOG);
+    const titles = async (id: string) =>
+      (
+        await pg.query(
+          `select i.title from child_items c join interactives i on i.id = c.interactive_id
+           where c.child_id = $1 order by c.position`,
+          [id],
+        )
+      ).rows.map((r) => r.title as string);
+    const before = await titles(big);
+    // Пройдены первые 15 уроков дорожки (как она стоит у ребёнка), кроме 14-го.
+    const done = before.slice(0, 15).filter((_, i) => i !== 13);
+    await pg.query(
+      `insert into events (child_id, type, payload)
+       select $1, 'interactive_complete', jsonb_build_object('interactiveId', id::text)
+       from interactives where title = any($2)`,
+      [big, done],
+    );
+
+    const log = await run(true, LETTERS_OAU_CATALOG);
+    expect(
+      log.some((l) => l.includes('назначено 10') && l.includes('пройдено 15, впереди 45')),
+    ).toBe(true);
+    const oau = LETTER_LESSONS.slice(60).map((l) => l.title);
+    const list = await titles(big);
+    expect(list).toEqual([...before.slice(0, 15), ...oau, ...before.slice(15)]);
+    // Четыре года: буквы есть, а блока из садика — нет (он с 5 лет).
+    expect((await titles(small)).filter((x) => oau.includes(x))).toEqual([]);
+    expect(await titles(small)).toHaveLength(60);
+    expect(await titles(other)).toEqual(LETTER_LESSONS.slice(0, 40).map((l) => l.title));
+
+    await run(true, LETTERS_OAU_CATALOG);
+    expect(await titles(big)).toEqual(list);
+    expect(await count("select count(*) as n from interactives where category = 'letters'")).toBe(
+      70,
+    );
   });
 
   it('«Счёт»: 20 уроков в «Математике» только старшему семьи владельца, по порядку, без дублей', async () => {

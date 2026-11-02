@@ -142,7 +142,9 @@ export function makeRound(spec: Spec, prevKey?: string): LetterRound {
         spec.words.find((x) => x.word === prevKey),
       );
       const a = w.word[0]!;
-      const pool = [...spec.words.map((x) => x.word[0]!), ...ALPHABET];
+      // Обманки — буквы урока (А, О, У), а не хватит на варианты — из всего алфавита.
+      const own = [...new Set(spec.words.map((x) => x.word[0]!))];
+      const pool = own.length >= spec.choices ? own : [...own, ...ALPHABET];
       return {
         key: w.word,
         show: { emoji: w.emoji },

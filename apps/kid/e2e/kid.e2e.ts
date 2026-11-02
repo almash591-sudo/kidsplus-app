@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test as base, type Page } from '@playwright/test';
 import type { AppErrorReport } from '@kidsplus/shared/app-errors';
 import { BOOK_CODES, BOOKS } from '@kidsplus/shared/books';
+import { LETTER_LESSONS } from '@kidsplus/shared/letters-lessons';
 import type { KidBedtime } from '@kidsplus/shared/bedtime';
 import type { KidHabit, KidHabits } from '@kidsplus/shared/habits';
 import type { EyeBreak } from '@kidsplus/shared/schedule';
@@ -4904,6 +4905,45 @@ test.describe('буквы О, А, У (этап 56)', () => {
     expect(said.some((t) => /^Найди букву [АОУ]\.$/u.test(t))).toBe(true);
     expect(said.some((t) => /^Где звук ооо в слове (лодка|метро|кот)\?$/u.test(t))).toBe(true);
     expect(said.join(' ')).not.toContain('\u0301');
+  });
+
+  test('«Повторяем О, А, У»: «С какой буквы?» — на кнопках только А, О, У; «Прочитай АУ»', async ({
+    page,
+    backend,
+  }) => {
+    const lesson = (topic: string) => {
+      const l = LETTER_LESSONS.find((x) => x.title.endsWith(topic))!;
+      return { ...l.spec, rounds: 2 } as typeof l.spec;
+    };
+    backend.items = [
+      game(1, lesson('с какой буквы?'), 'letters'),
+      game(2, lesson('прочитай АУ и УА'), 'letters'),
+    ];
+    await page.goto('/');
+    await expect(page.getByTestId('lesson-path')).toBeVisible();
+    const field = page.getByTestId('game-letters');
+    const play = async (check?: () => Promise<void>) => {
+      for (let round = 0; round < 2; round++) {
+        await check?.();
+        const answer = (await field.getAttribute('data-answer'))!;
+        const option = page.locator(`[data-testid=letters-option][data-value="${answer}"]`);
+        await option.click();
+        await expect(option).toHaveClass(/picked/);
+        if (round === 0)
+          await expect(page.locator('.letters-option.picked')).toHaveCount(0, { timeout: 5000 });
+      }
+      await expect(page.getByTestId('lesson-path')).toBeVisible({ timeout: 8000 });
+    };
+    await page.getByTestId('tile').nth(0).click();
+    await play(async () => {
+      const labels = await page.getByTestId('letters-option').allInnerTexts();
+      expect([...labels].sort().join('')).toBe('АОУ');
+    });
+    await shot(page, 'oau-path');
+    await page.getByTestId('tile').nth(1).click();
+    await play();
+    const said = (await spoken(page)).map((s) => s.text);
+    expect(said.some((t) => /^С какой буквы /u.test(t))).toBe(true);
   });
 });
 
