@@ -15,6 +15,8 @@ const SPECS = [
   { kind: 'puzzle', imageIds: [ID], cols: 2, rows: 2 },
   { kind: 'maze', heroId: ID, goalId: ID2, size: 5, rounds: 2 },
   { kind: 'balloons', count: 6, target: null },
+  { kind: 'balloons', count: 6, letters: { find: 'О', others: ['А', 'У'], lower: false } },
+  { kind: 'tracing', shapes: ['О', 'о'], guides: ['dots'] },
   { kind: 'moles', imageIds: [ID], target: null, prompt: null, count: 6, speed: 'slow' },
   { kind: 'pattern', imageIds: [ID, ID2], patterns: ['AB'], rounds: 3 },
   { kind: 'shapes', shapes: ['circle', 'square'], rotate: false },
@@ -30,6 +32,7 @@ const SPECS = [
   { kind: 'staff', keys: 3, rounds: 4 },
   { kind: 'orchestra', players: 3, rounds: 4 },
   { kind: 'letter', letters: ['А', 'О'], choices: 2, rounds: 4 },
+  { kind: 'letter', letters: ['А', 'О'], choices: 2, rounds: 4, letterCase: 'lower' },
   { kind: 'syllable', syllables: ['МА', 'ПА'], choices: 2, rounds: 4 },
   { kind: 'clock', half: false, choices: 3, rounds: 3 },
   { kind: 'shop', imageIds: [ID], max: 5, coins: [1], rounds: 3 },
@@ -159,5 +162,63 @@ describe('игры этапа 41', () => {
     expect(
       gameSpec.safeParse({ kind: 'differences', scenes: [], count: 3, rounds: 1 }).success,
     ).toBe(false);
+  });
+
+  it('буквы этапа 56: обводка — ступенью выше, шарики — и маленькие', () => {
+    const trace = gameSpec.parse({
+      kind: 'tracing',
+      shapes: ['А', 'а'],
+      guides: ['dots', 'line'],
+    }) as GameSpec;
+    expect(specAtLevel(trace, 2)).toMatchObject({ guides: ['line', 'start'] });
+    expect(specAtLevel(trace, 4)).toMatchObject({ guides: ['start'] });
+    const shapes = gameSpec.parse({ kind: 'tracing', shapes: ['circle'] }) as GameSpec;
+    expect(specAtLevel(shapes, 4)).toEqual(shapes);
+    const balls = gameSpec.parse({
+      kind: 'balloons',
+      count: 6,
+      letters: { find: 'О', others: ['А'], lower: false },
+    }) as GameSpec;
+    expect(specAtLevel(balls, 2)).toMatchObject({
+      count: 9,
+      target: null,
+      letters: { find: 'О', lower: true },
+    });
+  });
+
+  it('буквы этапа 56: проверки схемы', () => {
+    const bad = [
+      { kind: 'tracing', shapes: ['А'], guides: ['dots', 'dots'] },
+      { kind: 'tracing', shapes: ['А', 'О', 'У', 'а', 'о'], guides: ['dots', 'line', 'start'] },
+      { kind: 'balloons', count: 6, letters: { find: 'О', others: ['О'], lower: false } },
+      {
+        kind: 'balloons',
+        count: 6,
+        target: 'red',
+        letters: { find: 'О', others: ['А'], lower: false },
+      },
+      { kind: 'letter', letters: ['А', 'О'], choices: 2, rounds: 4, letterCase: 'small' },
+      {
+        kind: 'soundPlace',
+        sound: 'О',
+        words: [
+          { emoji: '⛵', word: "ЛО'ДКА" },
+          { emoji: '🐱', word: 'КОТ' },
+        ],
+        rounds: 2,
+      },
+    ];
+    for (const raw of bad) expect(gameSpec.safeParse(raw).success, JSON.stringify(raw)).toBe(false);
+    expect(
+      gameSpec.safeParse({
+        kind: 'soundPlace',
+        sound: 'О',
+        words: [
+          { emoji: '⛵', word: 'ЛО́ДКА' },
+          { emoji: '🐱', word: 'КОТ' },
+        ],
+        rounds: 2,
+      }).success,
+    ).toBe(true);
   });
 });

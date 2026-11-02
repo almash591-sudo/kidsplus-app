@@ -101,8 +101,8 @@ describe('библиотека книжек', () => {
   });
 
   it('картинки для работы без сети — только нарисованные, каждая один раз', () => {
-    expect(bookPictures(BOOKS.kotPetuh)).toEqual([]);
-    const drawn = bookPictures({ ...BOOKS.kotPetuh, drawn: true });
+    expect(bookPictures({ ...BOOKS.kotPetuh, drawn: false })).toEqual([]);
+    const drawn = bookPictures(BOOKS.kotPetuh);
     expect(drawn[0]).toBe('/books/kot-happy.webp');
     expect(new Set(drawn).size).toBe(drawn.length);
     expect(drawn.sort()).toEqual(

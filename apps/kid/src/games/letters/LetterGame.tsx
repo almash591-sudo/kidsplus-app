@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { LetterCase } from '@kidsplus/shared/games';
 import {
   SOUND_PLACES,
   soundPlace,
@@ -68,6 +69,10 @@ function pick<T>(xs: readonly T[], prev?: T): T {
 }
 
 /** Ответ и (choices − 1) других вариантов, перемешанные. */
+/** Буква на кнопке (этап 56): большая, маленькая или наугад; ответ — всё равно большая. */
+const inCase = (l: string, letterCase: LetterCase | undefined) =>
+  letterCase === 'lower' || (letterCase === 'mixed' && Math.random() < 0.5) ? l.toLowerCase() : l;
+
 function withDistractors(answer: string, pool: readonly string[], choices: number): string[] {
   const others = shuffled([...new Set(pool)].filter((x) => x !== answer)).slice(0, choices - 1);
   return shuffled([answer, ...others]);
@@ -103,12 +108,16 @@ const claps = (n: number) => '👏'.repeat(n);
 export function makeRound(spec: Spec, prevKey?: string): LetterRound {
   switch (spec.kind) {
     case 'letter': {
-      const a = pick(spec.letters, prevKey);
+      // ask (этап 56, «Буквы из садика»): спрашиваем только её, похожие — обманки.
+      const a = pick(spec.ask ?? spec.letters, prevKey);
       const pool = spec.letters.length >= spec.choices ? spec.letters : ALPHABET;
       return {
         key: a,
         show: null,
-        options: withDistractors(a, pool, spec.choices).map((l) => ({ id: l, label: l })),
+        options: withDistractors(a, pool, spec.choices).map((l) => ({
+          id: l,
+          label: inCase(l, spec.letterCase),
+        })),
         answer: a,
         askText: findLetter(a),
         rightText: isLetter(a),
@@ -134,7 +143,9 @@ export function makeRound(spec: Spec, prevKey?: string): LetterRound {
         spec.words.find((x) => x.word === prevKey),
       );
       const a = w.word[0]!;
-      const pool = [...spec.words.map((x) => x.word[0]!), ...ALPHABET];
+      // Обманки — буквы урока (А, О, У), а не хватит на варианты — из всего алфавита.
+      const own = [...new Set(spec.words.map((x) => x.word[0]!))];
+      const pool = own.length >= spec.choices ? own : [...own, ...ALPHABET];
       return {
         key: w.word,
         show: { emoji: w.emoji },

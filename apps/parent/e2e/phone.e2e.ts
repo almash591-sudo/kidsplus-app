@@ -531,6 +531,19 @@ test('«Дети» (этап 47): касание — профиль; там «И
   const sheet = page.locator('.mantine-Modal-content');
   await expect(sheet).toContainText('Профиль ребёнка');
   await expect(sheet.getByLabel('Прозвище')).toHaveValue('Ёжик');
+  // «Буквы из садика» (этап 56): отметили — видно, какие уроки появятся; после сохранения помнится.
+  const letters = sheet.getByTestId('kindergarten-letters');
+  await letters.getByText('М', { exact: true }).click();
+  await expect(sheet.getByTestId('kindergarten-fresh')).toHaveText(
+    'После сохранения появятся уроки: М',
+  );
+  expect(await layoutProblems(page)).toEqual([]);
+  await save.scrollIntoViewIfNeeded();
+  await save.click();
+  await expect(sheet).toBeHidden();
+  await child.getByRole('button', { name: 'Изменить' }).click();
+  await expect(letters.getByRole('checkbox', { name: 'М', exact: true })).toBeChecked();
+  await expect(sheet.getByTestId('kindergarten-fresh')).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect(sheet).toBeHidden();
   expect(await layoutProblems(page)).toEqual([]);

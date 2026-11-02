@@ -1,7 +1,7 @@
 // Контракты HTTP API: Zod-схемы запросов и типы ответов.
 // Сервер проверяет запросы этими схемами; фронтенды импортируют отсюда только типы.
 import { z } from 'zod';
-import { gameSpec, type GameSpec } from './games';
+import { CAPITAL_LETTERS, gameSpec, type GameSpec } from './games';
 
 // ─── Общее ───────────────────────────────────────────────────────────────────
 
@@ -109,6 +109,15 @@ export const childInput = z.object({
    */
   eyeBreakEvery: z.number().int().min(5).max(60).nullable().default(null),
   eyeBreakRest: z.number().int().min(1).max(60).default(15),
+  /**
+   * «Буквы из садика» (этап 56): какие буквы ребёнок прошёл в садике. Новая буква — блок уроков
+   * в «Буквах» сразу после пройденного; снятая отметка уроки не убирает.
+   */
+  kindergartenLetters: z
+    .array(z.enum(CAPITAL_LETTERS))
+    .max(CAPITAL_LETTERS.length)
+    .default([])
+    .transform((ls) => CAPITAL_LETTERS.filter((l) => ls.includes(l))),
 });
 export type ChildInput = z.input<typeof childInput>;
 
@@ -555,6 +564,8 @@ export interface KidPlaylist {
   lullabies?: { label: string; url: string }[];
   /** Этап 34: уровни сложности игр — с какого начинать и где ребёнок уже сейчас. */
   levels?: { start: number; byKind: Partial<Record<GameSpec['kind'], number>> };
+  /** Пол — для фраз совёнка (этап 55: «Ты это уже прошла!»). Имени нет. */
+  gender?: 'f' | 'm';
 }
 
 /** Фразы приложения для серверной озвучки (задания игр, разделы, «Где …?»). */
@@ -582,6 +593,8 @@ export const KID_EVENT_TYPES = [
   'deck_exit',
   'interactive_start',
   'interactive_exit',
+  // Этап 55: пройденное открыто ещё раз после пяти заданий — для журнала дня.
+  'review_pass',
 ] as const;
 
 /** Языки голосов синтеза речи на телефоне — для предупреждения родителю. Только коды языков. */

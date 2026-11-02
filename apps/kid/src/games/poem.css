@@ -258,6 +258,11 @@
   }
 }
 
+/* Повтор пройденного (этап 55): снизу — звёзды пяти заданий, варианты на них не наезжают. */
+.game.poem.review {
+  padding-bottom: calc(max(6px, env(safe-area-inset-bottom)) + 40px);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .poem-pic-img,
   .poem-owl.listen img,
