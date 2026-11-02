@@ -3148,9 +3148,10 @@ test.describe('новые игры', () => {
     backend,
   }) => {
     test.setTimeout(180_000);
-    // Голос «говорит» по 700 мс — успеваем увидеть подсветку предложения.
+    // Голос «говорит» по 1,5 с — успеваем увидеть подсветку предложения и под нагрузкой, когда
+    // страница с картинкой рисуется дольше.
     await page.addInitScript(
-      () => ((window as unknown as { __speechMs: number }).__speechMs = 700),
+      () => ((window as unknown as { __speechMs: number }).__speechMs = 1500),
     );
     backend.items = [
       game(
@@ -3181,6 +3182,18 @@ test.describe('новые игры', () => {
     });
     expect(w).toBe(buttonW);
     expect(h).toBe(buttonH);
+    // Нарисованная обложка загрузилась и закрывает плитку целиком, а не как значок игры.
+    const cover = tile.locator('.poem-pic-img');
+    await expect
+      .poll(() => cover.evaluate((el) => (el as HTMLImageElement).naturalWidth))
+      .toBeGreaterThan(0);
+    expect(
+      await cover.evaluate((el) => [
+        (el as HTMLElement).offsetWidth,
+        (el as HTMLElement).offsetHeight,
+        getComputedStyle(el).objectFit,
+      ]),
+    ).toEqual([w, h, 'cover']);
     await shot(page, 'book-shelf');
     await page.getByTestId('tile').first().click();
     const g = page.getByTestId('game-book');
@@ -3191,6 +3204,15 @@ test.describe('новые игры', () => {
     await expect(g).toHaveAttribute('data-step', 'page', { timeout: 10_000 });
     await expect(g).toHaveAttribute('data-page', '0');
     await expect(g.getByTestId('book-line-now')).toContainText('Жил-был старик');
+    // Сцена нарисована: картинка загрузилась, отдаётся как webp — иначе не попадёт в кэш книжек.
+    const pic = g.locator('[data-picture=kot-home] .poem-pic-img');
+    await expect(pic).toHaveAttribute('src', '/books/kot-home.webp');
+    await expect
+      .poll(() => pic.evaluate((el) => (el as HTMLImageElement).naturalWidth))
+      .toBeGreaterThan(0);
+    expect((await page.request.get('/books/kot-home.webp')).headers()['content-type']).toBe(
+      'image/webp',
+    );
     await shot(page, 'book-page');
     // Дочитали — стрелка зовёт листать.
     await expect(g.getByTestId('book-next')).toHaveClass(/ready/, { timeout: 15_000 });
