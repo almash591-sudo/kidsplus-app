@@ -307,12 +307,19 @@ function Option(props: {
   );
 }
 
+/** Повтор пройденного (этап 55): ошибки и решённые раунды — наружу, для счёта и звёздочек. */
+export interface ChoiceWatch {
+  onWrong: () => void;
+  onSolved: () => void;
+}
+
 /** Раунды выбора — «Договори» и вопросы: неверно — «попробуй ещё», верно — похвала и ответ. */
 export function useChoice<R extends { answer: PoemChoice }>(
   rounds: R[],
   phrases: KidPhrases,
   answer: (r: R) => string[],
   onDone: () => void,
+  watch?: ChoiceWatch,
 ) {
   const [n, setN] = useState(0);
   const [wrong, setWrong] = useState<string[]>([]);
@@ -329,10 +336,12 @@ export function useChoice<R extends { answer: PoemChoice }>(
     if (solved || wrong.includes(c[0])) return;
     if (c[0] !== round.answer[0]) {
       setWrong([...wrong, c[0]]);
+      watch?.onWrong();
       void retry(phrases);
       return;
     }
     setSolved(true);
+    watch?.onSolved();
     void afterSpeech(praise(phrases, undefined, answer(round)).then(whenQuiet), 1800, 30000).then(
       () => {
         if (!alive.current) return;
@@ -372,17 +381,19 @@ export function Options<R extends { answer: PoemChoice; options: PoemChoice[] }>
 }
 
 /** 3. Договори словечко: голос замолкает перед словом — ребёнок выбирает картинку. */
-function Blanks(props: {
+export function Blanks(props: {
   poem: PoemData;
   rounds: BlankRound[];
   phrases: KidPhrases;
   onDone: () => void;
+  watch?: ChoiceWatch;
 }) {
   const c = useChoice(
     props.rounds,
     props.phrases,
     (r) => partSpeech(props.poem.parts[Math.max(0, r.part)]!),
     props.onDone,
+    props.watch,
   );
   const { blank, part } = c.round;
   const cue = withoutStress(blank.cue).trim();
@@ -418,8 +429,15 @@ export function Questions(props: {
   rounds: QuestionRound[];
   phrases: KidPhrases;
   onDone: () => void;
+  watch?: ChoiceWatch;
 }) {
-  const c = useChoice(props.rounds, props.phrases, (r) => [poemAnswer(r.answer[0])], props.onDone);
+  const c = useChoice(
+    props.rounds,
+    props.phrases,
+    (r) => [poemAnswer(r.answer[0])],
+    props.onDone,
+    props.watch,
+  );
   const { question } = c.round;
   useScript(
     async (alive) => {

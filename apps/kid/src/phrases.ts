@@ -993,6 +993,24 @@ export const BREAK_ASK_FAILED = 'Не получилось спросить. О�
 export const REST_TODAY = 'Это уже пройдено сегодня! Выбери что-нибудь новое.';
 export const REST_LEARNED = 'Это ты уже знаешь! Давай что-нибудь новое.';
 
+/**
+ * Повтор пройденного (этап 55): бледная плитка открывается ещё раз после пяти заданий по теме;
+ * игра без темы — сразу, на уровень сложнее. Обращение — по полу ребёнка из профиля.
+ */
+export type Gender = 'f' | 'm';
+const passed = (g: Gender) => (g === 'f' ? 'прошла' : 'прошёл');
+export const reviewAsk = (g: Gender) =>
+  `Ты это уже ${passed(g)}! Если интересно ещё раз — выполни пять заданий.`;
+export const reviewHarder = (g: Gender) => `Ты уже это ${passed(g)} — давай посложнее!`;
+export const reviewAgain = (g: Gender) => `Ты уже это ${passed(g)} — давай ещё раз!`;
+export const REVIEW_DONE = 'Все пять заданий! Открываю ещё раз.';
+export const reviewPhrases = (g: Gender) => [
+  reviewAsk(g),
+  reviewHarder(g),
+  reviewAgain(g),
+  REVIEW_DONE,
+];
+
 /** Наклейка за задание (этап 17) и её имя в альбоме. */
 export const stickerNew = (name: string) => `Новая наклейка — ${name}!`;
 export const stickerAgain = (name: string) => `Ещё ${name}!`;
@@ -1051,6 +1069,7 @@ export function appPhrases(playlist: KidPlaylist): Phrase[] {
     BREAK_ASK_FAILED,
     REST_TODAY,
     REST_LEARNED,
+    ...reviewPhrases(playlist.gender ?? 'm'),
     CAMERA_ENOUGH,
     HINT_TODAY,
     HINT_PICK,

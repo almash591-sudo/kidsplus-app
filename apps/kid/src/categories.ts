@@ -1,4 +1,5 @@
 import type { KidCategory, KidItem } from '@kidsplus/shared/api';
+import { reviewed } from './review';
 
 /** Порядок разделов на главном экране. */
 export const CATEGORY_ORDER: readonly KidCategory[] = [
@@ -74,9 +75,12 @@ export function freshFirst(list: KidItem[], lesson = false): KidItem[] {
   return [...path, ...rest.filter((i) => !i.rest), ...rest.filter((i) => i.rest)];
 }
 
-/** Пункт отдыхает и открыть его нельзя: в разделе есть что-то новое (иначе — повторяем). */
+/**
+ * Пункт отдыхает и сразу его не открыть: в разделе есть что-то новое (иначе — повторяем).
+ * Этап 55: открыт сегодня после пяти заданий — уже не отдыхает (место в конце — то же).
+ */
 export const restingIn = (list: readonly KidItem[], item: KidItem) =>
-  Boolean(item.rest) && list.some((i) => !i.rest);
+  Boolean(item.rest) && !reviewed.has(item) && list.some((i) => !i.rest);
 
 /** Нужен ли экран выбора раздела: разделов больше одного и раздел ещё не выбран. */
 export const needsCategoryPick = (items: readonly KidItem[], category: KidCategory | null) =>
