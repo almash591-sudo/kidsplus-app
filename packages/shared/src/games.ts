@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { BOOK_CODES } from './books';
 import { POEM_CODES } from './poems';
 import { SONG_IDS } from './songs';
-import { SOUND_LETTERS, soundProblem, syllablesIn, wordScheme } from './sounds';
+import { SOUND_LETTERS, soundProblem, syllablesIn, unstressed, wordScheme } from './sounds';
 
 const uuid = z.uuid();
 const phrase = z.string().trim().min(1).max(200);
@@ -38,7 +38,13 @@ export const TANGRAM_FIGURES = [
 ] as const;
 export type TangramFigure = (typeof TANGRAM_FIGURES)[number];
 
-/** Фигуры и цифры для обводки по точкам. */
+/** Буквы для обводки (этап 56): большие и маленькие — печатные, как пишут в садике. */
+export const TRACE_LETTERS = ['А', 'О', 'У', 'а', 'о', 'у'] as const;
+export type TraceLetter = (typeof TRACE_LETTERS)[number];
+export const isTraceLetter = (s: string): s is TraceLetter =>
+  (TRACE_LETTERS as readonly string[]).includes(s);
+
+/** Фигуры, цифры и буквы для обводки по точкам. */
 export const TRACE_SHAPES = [
   'line',
   'wave',
@@ -58,8 +64,15 @@ export const TRACE_SHAPES = [
   '7',
   '8',
   '9',
+  ...TRACE_LETTERS,
 ] as const;
 export type TraceShape = (typeof TRACE_SHAPES)[number];
+/**
+ * Ступени обводки (этап 56), как в прописях: по точкам → по бледной линии → только точка начала
+ * и образец рядом.
+ */
+export const TRACE_GUIDES = ['dots', 'line', 'start'] as const;
+export type TraceGuide = (typeof TRACE_GUIDES)[number];
 
 export const BALLOON_COLORS = ['red', 'yellow', 'blue', 'green'] as const;
 export type BalloonColor = (typeof BALLOON_COLORS)[number];
@@ -104,6 +117,9 @@ const keys = z.number().int().min(3).max(8);
 
 // ─── Буквы (этап 15ж) ───
 const letter = z.string().regex(/^[А-ЯЁ]$/u, 'одна заглавная буква');
+/** Какими показывать буквы (этап 56): большими, маленькими или вперемешку. */
+export const LETTER_CASES = ['upper', 'lower', 'mixed'] as const;
+export type LetterCase = (typeof LETTER_CASES)[number];
 /** Слово заглавными и эмодзи-картинка к нему (рисует сам телефон — файлы не нужны). */
 const picWord = z.object({
   emoji: z.string().min(1).max(16),
@@ -112,6 +128,13 @@ const picWord = z.object({
 const choices = z.number().int().min(2).max(4);
 const letterRounds = z.number().int().min(2).max(12);
 const plainWord = z.string().regex(/^[А-ЯЁ]{2,10}$/u, 'слово заглавными, 2–10 букв');
+/** Слово «Где звук?»: можно отметить ударную гласную знаком ударения (этап 56) — ЛО́ДКА. */
+const soundWord = picWord.extend({
+  word: z
+    .string()
+    .regex(/^[А-ЯЁ]+(?:(?<=[АОУЫЭИЯЁЮЕ])\u0301[А-ЯЁ]*)?$/u, 'слово заглавными, ударение — одно')
+    .refine((w) => /^[А-ЯЁ]{2,10}$/u.test(unstressed(w)), 'слово заглавными, 2–10 букв'),
+});
 /** Эмодзи-картинка из одной или нескольких эмодзи («🍄🍄🍄»). */
 const emojis = z.string().min(1).max(24);
 
@@ -181,17 +204,40 @@ export const gameSpec = z.discriminatedUnion('kind', [
     cols: z.number().int().min(1).max(4),
     rows: z.number().int().min(1).max(4),
   }),
-  /** Обведи пальцем по точкам. */
-  z.object({
-    kind: z.literal('tracing'),
-    shapes: z.array(z.enum(TRACE_SHAPES)).min(1).max(12),
-  }),
-  /** Лопни шарики; target — лопать только шарики этого цвета. */
-  z.object({
-    kind: z.literal('balloons'),
-    count: z.number().int().min(3).max(20),
-    target: z.enum(BALLOON_COLORS).nullable().default(null),
-  }),
+  /** Обведи пальцем по точкам; guides — ступени, каждую фигуру обводим на каждой по очереди. */
+  z
+    .object({
+      kind: z.literal('tracing'),
+      shapes: z.array(z.enum(TRACE_SHAPES)).min(1).max(12),
+      /** Нет — по точкам, как до этапа 56. */
+      guides: z
+        .array(z.enum(TRACE_GUIDES))
+        .min(1)
+        .max(3)
+        .refine((g) => new Set(g).size === g.length, 'ступени не повторяются')
+        .optional(),
+    })
+    .refine((g) => g.shapes.length * (g.guides?.length ?? 1) <= 12, {
+      message: 'не больше 12 обводок за игру',
+      path: ['guides'],
+    }),
+  /** Лопни шарики; target — лопать только шарики этого цвета, letters — только с буквой find. */
+  z
+    .object({
+      kind: z.literal('balloons'),
+      count: z.number().int().min(3).max(20),
+      target: z.enum(BALLOON_COLORS).nullable().default(null),
+      /** Буквы на шариках (этап 56); lower — и маленькие тоже. */
+      letters: z
+        .object({
+          find: letter,
+          others: z.array(letter).min(1).max(5),
+          lower: z.boolean(),
+        })
+        .refine((l) => !l.others.includes(l.find), 'буква для поиска — не среди других')
+        .optional(),
+    })
+    .refine((g) => !(g.letters && g.target), 'шарики — или по цвету, или по букве'),
   /** Посчитай предметы и нажми цифру. */
   z.object({
     kind: z.literal('counting'),
@@ -385,6 +431,8 @@ export const gameSpec = z.discriminatedUnion('kind', [
     letters: z.array(letter).min(2).max(33),
     choices,
     rounds: letterRounds,
+    /** Нет — большими, как до этапа 56. */
+    letterCase: z.enum(LETTER_CASES).optional(),
   }),
   /** Найди слог: звучит слог («ма») — выбрать написанный. */
   z.object({
@@ -430,7 +478,7 @@ export const gameSpec = z.discriminatedUnion('kind', [
     .object({
       kind: z.literal('soundPlace'),
       sound: z.enum(SOUND_LETTERS),
-      words: z.array(picWord).min(2).max(30),
+      words: z.array(soundWord).min(2).max(30),
       rounds: letterRounds,
     })
     .superRefine((g, ctx) =>
