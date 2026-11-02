@@ -560,6 +560,34 @@ describe('пульт родителя (этап 29)', () => {
     expect(kid.statusCode).not.toBe(200);
   });
 
+  it('журнал: повтор пройденного — после проверки и «посложнее» (этап 55)', async () => {
+    const game = await addGame('Обводка цифр', 'math');
+    const event = (type: string, payload: object) =>
+      t.app.inject({
+        method: 'POST',
+        url: '/api/kid/events',
+        cookies: device,
+        payload: { type, interactiveId: game, payload },
+      });
+    await event('review_pass', { tasks: 5, mistakes: 1 });
+    t.advance(60_000);
+    await event('interactive_complete', { kind: 'maze', level: 3, review: true, mistakes: 0 });
+    const log = await get<{ entries: { kind: string; text: string }[] }>(
+      `/api/parent/children/${child}/activity`,
+      parent,
+    );
+    expect(log.entries).toEqual([
+      expect.objectContaining({
+        kind: 'game',
+        text: 'Повторил игру «Обводка цифр» посложнее, уровень 3',
+      }),
+      expect.objectContaining({
+        kind: 'game',
+        text: 'Повторил «Обводка цифр» после проверки: 5 заданий, ошибок — 1',
+      }),
+    ]);
+  });
+
   it('журнал: стих — какую часть учил, выучил ли наизусть (этап 45)', async () => {
     const game = await addGame('Осень', 'poems');
     const done = (payload: object) =>
