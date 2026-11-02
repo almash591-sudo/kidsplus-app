@@ -1,8 +1,9 @@
 // «Пора спать» (этап 31): время отбоя по дням недели, предупреждение заранее, ночной экран
 // со сказкой или колыбельной, утром — «Доброе утро!». Сказки — готовые или от модели; ребёнок
-// слышит только одобренные родителем.
+// слышит только одобренные родителем. «Книжка на ночь» (этап 52) — по главе встроенной книжки за ночь.
 import { z } from 'zod';
 import type { Speech } from './api';
+import { BOOK_CODES, bookOf, type BookCode } from './books';
 import { WEEKDAYS, type LocalClock, type Weekday } from './schedule';
 
 const hhmm = (re: RegExp, message: string) => z.string().regex(re, message);
@@ -10,10 +11,11 @@ const hhmm = (re: RegExp, message: string) => z.string().regex(re, message);
 const bedAt = hhmm(/^(1[7-9]|2[0-3]):[0-5]\d$/, 'отбой — с 17:00 до 23:59');
 const wakeAt = hhmm(/^(0[4-9]|1[01]):[0-5]\d$/, 'подъём — с 04:00 до 11:59');
 
-export const BEDTIME_COMPANIONS = ['story', 'lullaby', 'track', 'none'] as const;
+export const BEDTIME_COMPANIONS = ['story', 'book', 'lullaby', 'track', 'none'] as const;
 export type BedtimeCompanion = (typeof BEDTIME_COMPANIONS)[number];
 export const BEDTIME_COMPANION_LABELS: Record<BedtimeCompanion, string> = {
   story: 'Сказка и колыбельная',
+  book: 'Книжка на ночь и колыбельная',
   lullaby: 'Колыбельная',
   track: 'Запись из аудиотеки',
   none: 'Тишина',
@@ -29,10 +31,16 @@ export const bedtimeInput = z
     warnMinutes: z.number().int().min(5).max(30),
     companion: z.enum(BEDTIME_COMPANIONS),
     trackId: z.string().uuid().nullable().default(null),
+    /** «Книжка на ночь»: какая книжка; глава — своя у каждой ночи, двигает её телефон. */
+    bookCode: z.enum(BOOK_CODES).nullable().default(null),
   })
   .refine((b) => b.companion !== 'track' || b.trackId, {
     message: 'выберите запись',
     path: ['trackId'],
+  })
+  .refine((b) => b.companion !== 'book' || b.bookCode, {
+    message: 'выберите книжку',
+    path: ['bookCode'],
   });
 export type BedtimeInput = z.input<typeof bedtimeInput>;
 export type BedtimeSettings = z.output<typeof bedtimeInput>;
@@ -45,6 +53,7 @@ export const DEFAULT_BEDTIME: BedtimeSettings = {
   warnMinutes: 15,
   companion: 'story',
   trackId: null,
+  bookCode: null,
 };
 
 const minutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
@@ -132,6 +141,23 @@ export interface ParentSleep {
   library: LibraryStoryInfo[];
   /** Записи аудиотеки семьи для колыбельной. */
   tracks: { id: string; title: string }[];
+  /** «Книжка на ночь»: следующая глава и ночь, когда звучала прошлая (null — ещё не звучала). */
+  book: { chapter: number; night: string | null };
+}
+
+/** Новая глава «Книжки на ночь»: родитель вернулся назад или пропустил главу. */
+export const bookChapterInput = z.object({ chapter: z.number().int().min(0).max(19) });
+
+/** Глава книжки, которая звучит этой ночью: next — следующая непрочитанная. */
+export function nightChapter(
+  code: BookCode,
+  progress: { chapter: number; night: string | null },
+  tonight: string | null,
+): number {
+  const n = bookOf(code).chapters.length;
+  // Глава этой ночи уже дочитана (телефон перезапустился) — та же глава, а не следующая.
+  const back = tonight !== null && progress.night === tonight ? 1 : 0;
+  return (((progress.chapter - back) % n) + n) % n;
 }
 
 /** Ночной экран на телефоне ребёнка. */
@@ -142,7 +168,23 @@ export interface KidBedtime {
   /** Сказка этой ночи — по очереди из одобренных. */
   story: { id: string; title: Speech; parts: Speech[] } | null;
   track: { id: string; title: string; url: string } | null;
+  /** «Книжка на ночь»: глава этой ночи — объявление и страницы по предложениям. */
+  book: {
+    code: BookCode;
+    chapter: number;
+    chapters: number;
+    head: Speech[];
+    pages: Speech[][];
+  } | null;
 }
+
+/** Глава «Книжки на ночь» дослушана — следующей ночью будет следующая. */
+export const bookPlayedInput = z.object({
+  book: z.enum(BOOK_CODES),
+  chapter: z.number().int().min(0).max(19),
+  night: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+export type BookPlayed = z.infer<typeof bookPlayedInput>;
 
 /** Примерно минут чтения вслух (~110 слов в минуту — спокойно, для малышей). */
 export const readingMinutes = (paragraphs: readonly string[]) =>

@@ -1,7 +1,9 @@
 // «Пора спать» (этап 31): ночной экран — сказка, колыбельная, потом темнота до утра.
 // За несколько минут до отбоя — «Скоро спать!» с вечерними делами; утром — «Доброе утро!».
+// «Книжка на ночь» (этап 52): вместо сказки — глава книжки, голос без картинок, экран тёмный.
 import type { KidBedtime } from '@kidsplus/shared/bedtime';
 import type { BedtimeNow } from '@kidsplus/shared/bedtime';
+import { bookOf } from '@kidsplus/shared/books';
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { kidApi } from '../api';
 import { playSequence, stopAudio } from '../audio';
@@ -11,8 +13,11 @@ import { setNightMode } from '../kiosk';
 import {
   BEDTIME_SOON,
   BEDTIME_SOON_PLAIN,
+  BOOK_END,
+  BOOK_TOMORROW,
   MORNING,
   MORNING_PLAIN,
+  NIGHT_BOOK,
   NIGHT_HUSH,
   NIGHT_LULLABY,
   NIGHT_QUIET,
@@ -25,7 +30,7 @@ export const LULLABY_S = 20 * 60;
 /** Разбуженный касанием экран снова темнеет через столько. */
 const HUSH_MS = 9000;
 
-type Stage = 'intro' | 'story' | 'lullaby' | 'track' | 'asleep';
+type Stage = 'intro' | 'story' | 'book' | 'lullaby' | 'track' | 'asleep';
 
 const memory = {
   get(key: string) {
@@ -72,7 +77,14 @@ export function NightScreen({ night }: { night: BedtimeNow }) {
       .catch(
         () =>
           !off &&
-          setPlan({ now: null, wakeAt: '', companion: 'lullaby', story: null, track: null }),
+          setPlan({
+            now: null,
+            wakeAt: '',
+            companion: 'lullaby',
+            story: null,
+            track: null,
+            book: null,
+          }),
       );
     return () => {
       off = true;
@@ -99,15 +111,33 @@ export function NightScreen({ night }: { night: BedtimeNow }) {
     };
     const run = async () => {
       const story = plan.companion === 'story' ? plan.story : null;
+      const book = plan.companion === 'book' ? plan.book : null;
       const intro = story
         ? NIGHT_STORY
-        : plan.companion === 'lullaby' || plan.companion === 'story'
-          ? NIGHT_LULLABY
-          : plan.companion === 'track' && plan.track
+        : book
+          ? NIGHT_BOOK
+          : plan.companion === 'lullaby' || plan.companion === 'story' || plan.companion === 'book'
             ? NIGHT_LULLABY
-            : NIGHT_QUIET;
+            : plan.companion === 'track' && plan.track
+              ? NIGHT_LULLABY
+              : NIGHT_QUIET;
       await playSequence([ru(intro)]);
       if (stopped) return;
+      if (book) {
+        setStage('book');
+        for (let i = -1; i < book.pages.length; i++) {
+          if (stopped) return;
+          setPart(i);
+          await playSequence(i < 0 ? book.head : book.pages[i]!);
+        }
+        if (stopped) return;
+        void kidApi
+          .bookPlayed({ book: book.code, chapter: book.chapter, night: night.night })
+          .catch(() => {});
+        const more = book.chapter + 1 < book.chapters;
+        await playSequence([ru(more ? BOOK_TOMORROW : BOOK_END[bookOf(book.code).genre])]);
+        return lullaby(LULLABY_S);
+      }
       if (story) {
         setStage('story');
         for (let i = -1; i < story.parts.length; i++) {
@@ -141,6 +171,8 @@ export function NightScreen({ night }: { night: BedtimeNow }) {
       stopAudio();
       setNightMode(false);
     };
+    // Ночь та же, пока тот же план: дата ночи приходит вместе с ним.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plan]);
 
   // Ребёнок коснулся тёмного экрана — совёнок шепчет «спи» и снова темнеет.
@@ -193,6 +225,27 @@ export function NightScreen({ night }: { night: BedtimeNow }) {
           <p className="night-title">{plan.story.title.text}</p>
           <div className="night-pages" aria-hidden="true">
             {[-1, ...plan.story.parts.map((_, i) => i)].map((i) => (
+              <span key={i} className={i <= part ? 'on' : ''} />
+            ))}
+          </div>
+        </div>
+      )}
+      {stage === 'book' && plan?.book && (
+        <div
+          className="night-story"
+          data-testid="night-book"
+          data-book={plan.book.code}
+          data-chapter={plan.book.chapter}
+          data-page={part}
+        >
+          <p className="night-title">{bookOf(plan.book.code).title}</p>
+          {plan.book.chapters > 1 && (
+            <p className="night-chapter">
+              Глава {plan.book.chapter + 1} из {plan.book.chapters}
+            </p>
+          )}
+          <div className="night-pages" aria-hidden="true">
+            {plan.book.pages.map((_, i) => (
               <span key={i} className={i <= part ? 'on' : ''} />
             ))}
           </div>

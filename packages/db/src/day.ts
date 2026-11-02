@@ -4,6 +4,7 @@ import type { Db } from './index';
 import * as schema from './schema';
 import { gameCategory } from '@kidsplus/shared/api';
 import { bedtimeAt, DEFAULT_BEDTIME, type BedtimeSettings } from '@kidsplus/shared/bedtime';
+import { BOOK_CODES } from '@kidsplus/shared/books';
 import { stems, type FillMaterial } from '@kidsplus/shared/plan-fill';
 import {
   computeToday,
@@ -177,9 +178,16 @@ export interface Day {
 export async function loadBedtime(
   db: Db,
   childId: string,
-): Promise<{ settings: BedtimeSettings; skipNight: string | null }> {
+): Promise<{
+  settings: BedtimeSettings;
+  skipNight: string | null;
+  book: { chapter: number; night: string | null };
+}> {
   const [row] = await db.select().from(schema.bedtimes).where(eq(schema.bedtimes.childId, childId));
-  if (!row) return { settings: DEFAULT_BEDTIME, skipNight: null };
+  if (!row)
+    return { settings: DEFAULT_BEDTIME, skipNight: null, book: { chapter: 0, night: null } };
+  // Книжку убрали из библиотеки — как будто не выбрана.
+  const bookCode = BOOK_CODES.find((c) => c === row.bookCode) ?? null;
   return {
     settings: {
       enabled: row.enabled,
@@ -189,8 +197,10 @@ export async function loadBedtime(
       warnMinutes: row.warnMinutes,
       companion: row.companion as BedtimeSettings['companion'],
       trackId: row.trackId,
+      bookCode,
     },
     skipNight: row.skipNight,
+    book: { chapter: row.bookChapter, night: row.bookNight },
   };
 }
 

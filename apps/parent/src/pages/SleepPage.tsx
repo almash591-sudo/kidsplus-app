@@ -1,5 +1,5 @@
 // «Пора спать» (этап 31): время отбоя и подъёма, предупреждение, сказки на ночь — готовые и
-// придуманные моделью (ребёнок слышит только одобренные).
+// придуманные моделью (ребёнок слышит только одобренные). «Книжка на ночь» (этап 52) — по главе.
 import {
   BEDTIME_COMPANION_LABELS,
   BEDTIME_COMPANIONS,
@@ -9,6 +9,7 @@ import {
   type ParentSleep,
   type Story,
 } from '@kidsplus/shared/bedtime';
+import { bookOf, type BookCode } from '@kidsplus/shared/books';
 import { WEEKDAYS, type Weekday } from '@kidsplus/shared/schedule';
 import {
   Alert,
@@ -30,6 +31,7 @@ import { useState } from 'react';
 import { api, errorMessage } from '../api';
 import { queryClient } from '../queries';
 import { KidSwitch } from '../components/KidSwitch';
+import { bookOptions, chapterLabel } from '../lib/books';
 import { useCurrentChild } from '../lib/currentChild';
 
 const DAY_LABELS: Record<Weekday, string> = {
@@ -69,8 +71,8 @@ export function SleepPage() {
       <Title order={2}>Сон</Title>
       <Text size="sm" c="dimmed">
         За несколько минут до отбоя совёнок зовёт ребёнка делать вечерние дела. В отбой занятия
-        заканчиваются: тёмный экран, сказка и колыбельная, потом экран гаснет. Утром — «Доброе
-        утро!». Снять ночь можно кнопкой «Разбудить» в «Пульте».
+        заканчиваются: тёмный экран, сказка или глава книжки и колыбельная, потом экран гаснет.
+        Утром — «Доброе утро!». Снять ночь можно кнопкой «Разбудить» в «Пульте».
       </Text>
       <KidSwitch />
       {childId && <ChildSleep key={childId} childId={childId} />}
@@ -106,6 +108,16 @@ function ChildSleep({ childId }: { childId: string }) {
         saving={run.isPending}
         onSave={(s) => run.mutate(() => api.put(`${base}/sleep`, s))}
       />
+      {d.settings.companion === 'book' && d.settings.bookCode && (
+        <BookProgress
+          code={d.settings.bookCode}
+          book={d.book}
+          busy={run.isPending}
+          onChapter={(chapter) =>
+            run.mutate(() => api.put(`${base}/sleep/book-chapter`, { chapter }))
+          }
+        />
+      )}
       <Stories d={d} base={base} run={(f) => run.mutate(f)} busy={run.isPending} />
     </Stack>
   );
@@ -211,14 +223,75 @@ function Settings({
             data={tracks.map((t) => ({ value: t.id, label: t.title }))}
           />
         )}
+        {s.companion === 'book' && (
+          <Select
+            label="Книжка"
+            description="Каждую ночь — следующая глава, голосом, без картинок. Другая книжка начнётся с первой главы."
+            placeholder="Выберите"
+            value={s.bookCode}
+            onChange={(v) => set({ bookCode: v as BookCode | null })}
+            data={BOOK_NIGHT_OPTIONS}
+            allowDeselect={false}
+            searchable
+            data-testid="sleep-book"
+          />
+        )}
         <Button
           onClick={() => onSave(s)}
-          disabled={!changed || (s.companion === 'track' && !s.trackId)}
+          disabled={
+            !changed ||
+            (s.companion === 'track' && !s.trackId) ||
+            (s.companion === 'book' && !s.bookCode)
+          }
           loading={saving}
           data-testid="sleep-save"
         >
           Сохранить
         </Button>
+      </Stack>
+    </Card>
+  );
+}
+
+const BOOK_NIGHT_OPTIONS = bookOptions({ chapters: true });
+
+/** «Книжка на ночь»: какая глава следующей ночью; можно вернуться или пропустить. */
+function BookProgress({
+  code,
+  book,
+  busy,
+  onChapter,
+}: {
+  code: BookCode;
+  book: ParentSleep['book'];
+  busy: boolean;
+  onChapter: (chapter: number) => void;
+}) {
+  const b = bookOf(code);
+  const n = b.chapters.length;
+  return (
+    <Card withBorder data-testid="sleep-book-progress">
+      <Stack gap="sm">
+        <Title order={4}>Книжка на ночь — «{b.title}»</Title>
+        {n === 1 ? (
+          <Text size="sm">Книжка короткая — каждую ночь звучит целиком.</Text>
+        ) : (
+          <>
+            <Text size="sm" data-testid="sleep-book-next">
+              Следующей ночью — глава {book.chapter + 1} из {n}.
+              {book.chapter === 0 && book.night && ' Книжку дочитали — начнётся сначала.'}
+            </Text>
+            <Select
+              label="Читать дальше с главы"
+              value={String(book.chapter)}
+              onChange={(v) => v !== null && Number(v) !== book.chapter && onChapter(Number(v))}
+              data={b.chapters.map((_, i) => ({ value: String(i), label: chapterLabel(code, i) }))}
+              allowDeselect={false}
+              disabled={busy}
+              data-testid="sleep-book-chapter"
+            />
+          </>
+        )}
       </Stack>
     </Card>
   );
