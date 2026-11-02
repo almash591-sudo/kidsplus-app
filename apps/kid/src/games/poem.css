@@ -57,7 +57,8 @@
   border-radius: 22px;
   background: rgb(255 255 255 / 0.92);
   box-shadow: 0 6px 0 #e8d9bd;
-  color: var(--ink);
+  /* Подпись всегда на светлом — и в тёмном режиме телефона текст тёмный. */
+  color: #1c1b29;
   font-size: clamp(20px, 5.6vw, 34px);
   font-weight: 800;
   line-height: 1.25;
@@ -180,7 +181,7 @@
   border-radius: 24px;
   background: #fff;
   box-shadow: 0 6px 0 #e8d9bd;
-  color: var(--ink);
+  color: #1c1b29;
 }
 .poem-option img {
   width: 72%;
