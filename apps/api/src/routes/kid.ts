@@ -169,6 +169,7 @@ export function kidRoutes(app: FastifyInstance, ctx: Ctx) {
           return { start, byKind: await loadGameLevels(db, childId, ctx.now(), start) };
         })(),
         phrasesEn: await kidPhrases(db, ctx.config.tts, child.gender, 'en'),
+        gender: child.gender,
       };
     },
   );

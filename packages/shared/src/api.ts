@@ -564,6 +564,8 @@ export interface KidPlaylist {
   lullabies?: { label: string; url: string }[];
   /** Этап 34: уровни сложности игр — с какого начинать и где ребёнок уже сейчас. */
   levels?: { start: number; byKind: Partial<Record<GameSpec['kind'], number>> };
+  /** Пол — для фраз совёнка (этап 55: «Ты это уже прошла!»). Имени нет. */
+  gender?: 'f' | 'm';
 }
 
 /** Фразы приложения для серверной озвучки (задания игр, разделы, «Где …?»). */
@@ -591,6 +593,8 @@ export const KID_EVENT_TYPES = [
   'deck_exit',
   'interactive_start',
   'interactive_exit',
+  // Этап 55: пройденное открыто ещё раз после пяти заданий — для журнала дня.
+  'review_pass',
 ] as const;
 
 /** Языки голосов синтеза речи на телефоне — для предупреждения родителю. Только коды языков. */

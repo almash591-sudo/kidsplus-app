@@ -2,7 +2,7 @@ import type { KidCategory, KidItem, KidPlaylist } from '@kidsplus/shared/api';
 import type { Activity, KidToday, Subject } from '@kidsplus/shared/schedule';
 import { startAutoUpdate } from '@kidsplus/shared/app-update';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { kidApi, NotPairedError } from './api';
+import { kidApi, NotPairedError, sendEvent } from './api';
 import { setErrorScreen } from './errors';
 import { playSequence, speechLanguages } from './audio';
 import {
@@ -38,6 +38,8 @@ import {
   CATEGORY_DONE,
   LESSON_DONE,
   QUIZ_FIRST,
+  reviewAgain,
+  reviewHarder,
   VIDEOS_REST,
 } from './phrases';
 import {
@@ -61,6 +63,8 @@ import { fromKidQuestion } from './quiz/engine';
 import { QuizScreen } from './quiz/QuizScreen';
 import { DeckScreen } from './screens/DeckScreen';
 import { CategoryScreen, HomeScreen } from './screens/HomeScreen';
+import { ReviewScreen, type Check } from './screens/ReviewScreen';
+import { levelOf, REVIEW_TASKS, reviewed, reviewOf } from './review';
 import { PairScreen } from './screens/PairScreen';
 import { calledStore, RestScreen } from './screens/RestScreen';
 import { BreakScreen } from './screens/BreakScreen';
@@ -79,11 +83,15 @@ import {
 /** Где ребёнок в списке раздела: пункт и этап (видео → его квиз). */
 /** seq — номер шага по порядку: урок идёт по кругу, и тот же пункт должен начаться заново. */
 /** late — ушёл с видео после половины: вопросы всё равно, совёнок объясняет (этап 50). */
+/** check — пять заданий перед повтором пройденного, review — какие (этап 55). */
+/** boost — пройденная игра ещё раз, на этом уровне («посложнее», этап 55). */
 type Step = {
   index: number;
-  phase: 'video' | 'quiz' | 'deck' | 'game';
+  phase: 'video' | 'quiz' | 'deck' | 'game' | 'check';
   seq: number;
   late?: boolean;
+  review?: Check;
+  boost?: number;
 };
 
 /** Досмотрел больше этой доли — «Домой» ведёт не домой, а к вопросам (этап 50). */
@@ -893,6 +901,29 @@ export function App() {
                 lesson: null,
               })
             }
+            onReview={(index) => {
+              // Этап 55: пройденное — после пяти заданий; игра без темы — сразу, посложнее.
+              const item = items[index]!;
+              const review = reviewOf(item, playlist);
+              if (!review) return false;
+              const run = (step: Omit<Step, 'index' | 'seq'>) =>
+                setState({
+                  screen: 'run',
+                  playlist,
+                  category,
+                  step: { index, seq: 0, ...step },
+                  lesson: null,
+                });
+              const gender = playlist.gender ?? 'm';
+              if (review.kind === 'harder') {
+                void playSequence([ru(reviewHarder(gender))]);
+                run({ phase: 'game', boost: review.level });
+              } else if (review.kind === 'again') {
+                void playSequence([ru(reviewAgain(gender))]);
+                run({ phase: 'game' });
+              } else run({ phase: 'check', review });
+              return true;
+            }}
           />
           {corner}
           {owl}
@@ -904,6 +935,44 @@ export function App() {
       const item = itemsOf(playlist.items, state.category, Boolean(state.lesson))[step.index]!;
       // Этап 44: урок «Сегодня» или сам выбрал — для «Что нравится» в «Прогрессе».
       const from = state.lesson ? 'lesson' : 'free';
+      if (step.phase === 'check' && step.review) {
+        const english =
+          item.kind === 'deck' && playlist.immersion && item.cards[0]?.word.lang === 'en';
+        const ref =
+          item.kind === 'segment'
+            ? { segmentId: item.id }
+            : item.kind === 'deck'
+              ? { deckId: item.id }
+              : { interactiveId: item.id };
+        return (
+          <ReviewScreen
+            key={`${step.seq}-check`}
+            review={step.review}
+            source={item.kind === 'deck' ? { deckId: item.id } : { segmentId: item.id }}
+            settings={playlist.quiz}
+            phrases={english ? playlist.phrasesEn : playlist.phrases}
+            gender={playlist.gender ?? 'm'}
+            onPass={(mistakes) => {
+              reviewed.add(item);
+              sendEvent({
+                type: 'review_pass',
+                ...ref,
+                payload: { tasks: REVIEW_TASKS, mistakes },
+              });
+              // Открыто — то же занятие с начала, как обычное касание плитки.
+              setState((s) =>
+                s.screen === 'run'
+                  ? {
+                      ...s,
+                      step: { index: step.index, phase: firstPhase(item), seq: step.seq + 1 },
+                    }
+                  : s,
+              );
+            }}
+            onExit={goHome}
+          />
+        );
+      }
       if (item.kind === 'deck') {
         return (
           <DeckScreen
@@ -927,11 +996,8 @@ export function App() {
             id={item.id}
             spec={item.spec}
             phrases={playlist.phrases}
-            level={
-              playlist.levels
-                ? (playlist.levels.byKind[item.spec.kind] ?? playlist.levels.start)
-                : undefined
-            }
+            level={step.boost ?? levelOf(playlist, item.spec.kind)}
+            review={step.boost !== undefined}
             from={from}
             onDone={() => void advance()}
             onExit={goHome}

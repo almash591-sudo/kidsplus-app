@@ -49,6 +49,11 @@ export function QuizScreen(props: {
   onDone: () => void;
   /** Нет — нет и «Домой» (этап 50: вопросы после видео обязательны). */
   onExit?: () => void;
+  /**
+   * Проверка перед повтором пройденного (этап 55): ответы не в аналитику, ошибки — в onWrong,
+   * в конце — своя фраза.
+   */
+  review?: { onWrong: () => void; done: Speech };
 }) {
   const { source, settings, phrases, onDone } = props;
   const [queue] = useState(() => pickQuestions(props.questions, props.count ?? settings.questions));
@@ -68,8 +73,13 @@ export function QuizScreen(props: {
   const onCorrect = () => {
     if (index + 1 < queue.length) return setIndex(index + 1);
     // «Молодец!» и наклейку говорит праздник — по очереди, не перебивая друг друга.
-    setDone({ say: vary('done', phrases.done) ?? null });
-    sendEvent({ type: 'quiz_complete', ...eventRef(source), payload: { questions: queue.length } });
+    setDone({ say: props.review?.done ?? vary('done', phrases.done) ?? null });
+    if (!props.review)
+      sendEvent({
+        type: 'quiz_complete',
+        ...eventRef(source),
+        payload: { questions: queue.length },
+      });
   };
 
   const question = queue[index];
@@ -87,6 +97,7 @@ export function QuizScreen(props: {
           optionCount={settings.options}
           phrases={phrases}
           intro={index === 0 ? props.intro : undefined}
+          review={props.review}
           onCorrect={onCorrect}
         />
       )}
@@ -126,6 +137,7 @@ function QuestionRound(props: {
   optionCount: number;
   phrases: KidPhrases;
   intro?: Speech;
+  review?: { onWrong: () => void } | undefined;
   onCorrect: () => void;
 }) {
   const { question, phrases } = props;
@@ -173,16 +185,17 @@ function QuestionRound(props: {
       fx.success();
       setPhase('correct');
       setChosen(optionId);
-      sendEvent({
-        type: 'quiz_answer',
-        ...eventRef(props.source, question),
-        payload: {
-          ...(question.cardId ? { cardId: question.cardId } : {}),
-          firstTry: attempts.current === 1,
-          attempts: attempts.current,
-          timeMs: now() - shownAt.current,
-        },
-      });
+      if (!props.review)
+        sendEvent({
+          type: 'quiz_answer',
+          ...eventRef(props.source, question),
+          payload: {
+            ...(question.cardId ? { cardId: question.cardId } : {}),
+            firstTry: attempts.current === 1,
+            attempts: attempts.current,
+            timeMs: now() - shownAt.current,
+          },
+        });
       const phrase = praisePhrase(phrases);
       if (streak.get() % STREAK_EVERY === 0) burst(undefined, 24);
       // Этап 39: за похвалой — сам ответ («Молодец! Это кошка.»), чтобы закрепить.
@@ -194,6 +207,7 @@ function QuestionRound(props: {
 
     // Неверно: вариант трясётся и гаснет, телефон вздрагивает, ответы на миг закрыты.
     fx.wrong();
+    props.review?.onWrong();
     setFaded((f) => new Set(f).add(optionId));
     setPhase('wrong');
     wrongTaps.current.push(now());

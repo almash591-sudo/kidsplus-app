@@ -53,6 +53,25 @@ describe('уровни сложности игр (этап 34)', () => {
     await play(6);
     expect((await levels()).byKind.counting).toBe(start);
   });
+
+  it('этап 55: повтор пройденного «посложнее» уровень не двигает; пол — для фраз совёнка', async () => {
+    const play = (mistakes: number, review: boolean) =>
+      t.app.inject({
+        method: 'POST',
+        url: '/api/kid/events',
+        cookies: device,
+        payload: { type: 'interactive_complete', payload: { kind: 'maze', mistakes, review } },
+      });
+    const list = await playlist();
+    expect(list.gender).toBe('f');
+    await play(0, true);
+    await play(0, true);
+    await play(9, true);
+    expect((await playlist()).levels!.byKind.maze).toBeUndefined();
+    await play(0, false);
+    await play(0, false);
+    expect((await playlist()).levels!.byKind.maze).toBe(list.levels!.start + 1);
+  });
 });
 
 describe('пройденное отдыхает (этап 34)', () => {
