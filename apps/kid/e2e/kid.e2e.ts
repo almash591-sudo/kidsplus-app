@@ -3182,6 +3182,18 @@ test.describe('новые игры', () => {
     });
     expect(w).toBe(buttonW);
     expect(h).toBe(buttonH);
+    // Нарисованная обложка загрузилась и закрывает плитку целиком, а не как значок игры.
+    const cover = tile.locator('.poem-pic-img');
+    await expect
+      .poll(() => cover.evaluate((el) => (el as HTMLImageElement).naturalWidth))
+      .toBeGreaterThan(0);
+    expect(
+      await cover.evaluate((el) => [
+        (el as HTMLElement).offsetWidth,
+        (el as HTMLElement).offsetHeight,
+        getComputedStyle(el).objectFit,
+      ]),
+    ).toEqual([w, h, 'cover']);
     await shot(page, 'book-shelf');
     await page.getByTestId('tile').first().click();
     const g = page.getByTestId('game-book');
