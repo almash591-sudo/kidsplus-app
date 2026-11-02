@@ -3169,6 +3169,19 @@ test.describe('новые игры', () => {
     await expect(tile).toHaveAttribute('data-shelf', 'new');
     await expect(tile.locator('.book-new')).toBeVisible();
     await expect(tile.locator('[data-picture]')).toHaveAttribute('data-picture', 'kot-happy');
+    // Обложка — во всю плитку, а не по размеру содержимого (иначе «новая» обрезана).
+    // Размеры без transform: плитка ещё выезжает.
+    const [w, h, buttonW, buttonH] = await tile.evaluate((el) => {
+      const b = el.closest('button')!;
+      return [
+        (el as HTMLElement).offsetWidth,
+        (el as HTMLElement).offsetHeight,
+        b.clientWidth,
+        b.clientHeight,
+      ];
+    });
+    expect(w).toBe(buttonW);
+    expect(h).toBe(buttonH);
     await shot(page, 'book-shelf');
     await page.getByTestId('tile').first().click();
     const g = page.getByTestId('game-book');

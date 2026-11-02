@@ -131,9 +131,10 @@
   }
 }
 
-/* Плитка книжки на полке: обложка во всю плитку, «новая» и закладка. */
+/* Плитка книжки на полке: обложка во всю плитку, «новая» и закладка. Без своего position:
+   .game-tile уже absolute во всю кнопку — иначе плитка сжимается до содержимого, а overflow
+   обрезает обложку и «новая». */
 .game-tile.book-tile {
-  position: relative;
   overflow: hidden;
   border-radius: inherit;
 }
@@ -147,6 +148,15 @@
 }
 .game-tile.book-tile .book-draft {
   font-size: clamp(26px, 9vw, 52px);
+  animation: none;
+}
+/* Нарисованная обложка — тоже во всю плитку (не как значок игры) и без наезда камеры. */
+.tile.game .game-tile.book-tile img {
+  width: 100%;
+  height: 100%;
+}
+.game-tile.book-tile .poem-pic-img {
+  object-fit: cover;
   animation: none;
 }
 .book-new {
