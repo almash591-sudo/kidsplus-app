@@ -440,7 +440,7 @@ export const BOOKS = {
       'zayka-rooster': '🐓🌾🐰',
       'zayka-happy': '🐰🐓🏡',
     },
-    drawn: false,
+    drawn: true,
     source: {
       wikisource: 'Народные русские сказки (Афанасьев)/Лиса, заяц и петух',
       note: 'Народная сказка «Лиса, заяц и петух» в записи А. Н. Афанасьева (№ 14), общественное достояние.',
@@ -605,7 +605,7 @@ export const BOOKS = {
       'zhuravl-jug': '🦊🏺🐦',
       'zhuravl-home': '🦊😤🌲',
     },
-    drawn: false,
+    drawn: true,
     source: {
       wikisource: 'Народные русские сказки (Афанасьев)/Лиса и журавль',
       note: 'Народная сказка в записи А. Н. Афанасьева (№ 33), общественное достояние.',
@@ -720,7 +720,7 @@ export const BOOKS = {
       'zimovye-horns': '🐂🐏🦊🐺',
       'zimovye-chase': '🐻🦊🐺💨',
     },
-    drawn: false,
+    drawn: true,
     source: {
       wikisource: 'Народные русские сказки (Афанасьев)/Зимовье зверей',
       note: 'Народная сказка в записи А. Н. Афанасьева (№ 64), общественное достояние.',
@@ -888,7 +888,7 @@ export const BOOKS = {
       'kozlyata-pit': '🐺🔥🐐',
       'kozlyata-joy': '🐐🐐🐐🎉',
     },
-    drawn: false,
+    drawn: true,
     source: {
       wikisource: 'Народные русские сказки (Афанасьев)/Волк и коза',
       note: 'Народная сказка «Волк и коза» в записи А. Н. Афанасьева (№ 53), общественное достояние.',
