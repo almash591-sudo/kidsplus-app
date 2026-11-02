@@ -70,7 +70,7 @@ export const BOOKS = {
       'kot-gusli': '🐈🎶🦊',
       'kot-happy': '🐈🐓🏠',
     },
-    drawn: false,
+    drawn: true,
     source: {
       wikisource: 'Народные русские сказки (Афанасьев)/Кот, петух и лиса',
       note: 'Народная сказка в записи А. Н. Афанасьева (№ 37, конец — по № 38 и 39), общественное достояние.',
@@ -243,7 +243,7 @@ export const BOOKS = {
       'zayac-jump': '🐰🤸🐺',
       'zayac-found': '🐇🐰🐇🎉',
     },
-    drawn: false,
+    drawn: true,
     source: {
       wikisource:
         'Сказка про храброго Зайца — длинные уши, косые глаза, короткий хвост (Мамин-Сибиряк)',

@@ -161,12 +161,13 @@ describe('книжки: озвучка и картинки', () => {
     const file = (url: string) => fileURLToPath(new URL(`../../public${url}`, import.meta.url));
     for (const code of BOOK_CODES)
       for (const url of bookPictures(bookOf(code))) expect(existsSync(file(url)), url).toBe(true);
-    // Ещё не нарисована — качать нечего.
+    // Книжка в плейлисте — все её сцены качаются заранее.
     const playlist = {
       items: [{ kind: 'interactive', id: 'b1', category: 'books', spec }],
       phrases: { correct: [], retry: [], done: [] },
       phrasesEn: { correct: [], retry: [], done: [] },
     } as unknown as KidPlaylist;
     expect(playlistMedia(playlist)).toEqual(bookPictures(kot));
+    expect(bookPictures(kot)).toHaveLength(Object.keys(kot.art).length);
   });
 });
