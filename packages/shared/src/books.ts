@@ -2673,7 +2673,7 @@ export const BOOKS = {
       'sheika-hunter-fox': '👴🦊🧊',
       'sheika-saved': '👴🐥💕',
     },
-    drawn: false,
+    drawn: true,
     source: {
       wikisource: 'Серая шейка (Мамин-Сибиряк)',
       note: 'Рассказ Д. Н. Мамина-Сибиряка (1891), автор умер в 1912 году — общественное достояние.',
@@ -3113,7 +3113,7 @@ export const BOOKS = {
       'dyuim-elf': '👑🌸👧',
       'dyuim-wings': '🧚🌸🎉',
     },
-    drawn: false,
+    drawn: true,
     source: {
       wikisource: 'Дюймовочка (Андерсен; Ганзен)',
       note: 'Сказка Г. Х. Андерсена в переводе А. В. Ганзен, переводчица умерла в 1942 году — общественное достояние.',
@@ -3675,7 +3675,7 @@ export const BOOKS = {
       'alenkiy-prince': '🤴👸⚡',
       'alenkiy-wedding': '💒🎉👑',
     },
-    drawn: false,
+    drawn: true,
     source: {
       wikisource: 'Аленький цветочек (Аксаков)',
       note: 'Сказка С. Т. Аксакова (1858), автор умер в 1859 году — общественное достояние.',
@@ -4295,7 +4295,7 @@ export const BOOKS = {
       'rybak-tail': '🐠💦',
       'rybak-end': '🛖👵🛁',
     },
-    drawn: false,
+    drawn: true,
     source: {
       wikisource: 'Сказка о рыбаке и рыбке (Пушкин)',
       note: 'Сказка А. С. Пушкина (1833) в сокращении, автор умер в 1837 году — общественное достояние.',
@@ -4696,7 +4696,7 @@ export const BOOKS = {
       'zhit-doors': '🚪🚇✨',
       'zhit-street': '🏙️☀️👦',
     },
-    drawn: false,
+    drawn: true,
     source: {
       wikisource: 'Что я видел (Житков)',
       note: 'Главы из книги Б. С. Житкова (1939) в сокращении, автор умер в 1938 году — общественное достояние.',
