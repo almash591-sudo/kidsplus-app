@@ -1047,7 +1047,7 @@ export const BOOKS = {
       'frog-pond': '🐸🐸🐸',
       'frog-south': '🦆🦆🌅',
     },
-    drawn: false,
+    drawn: true,
     source: {
       wikisource: 'Лягушка-путешественница (Гаршин)',
       note: 'Сказка В. М. Гаршина (1887), автор умер в 1888 году — общественное достояние.',
@@ -1292,7 +1292,7 @@ export const BOOKS = {
       'moroz-kitchen': '🍲🧓',
       'moroz-icicle': '🧊💧🐓',
     },
-    drawn: false,
+    drawn: true,
     source: {
       wikisource: 'Мороз Иванович (Одоевский)',
       note: 'Сказка В. Ф. Одоевского из «Сказок дедушки Иринея» (1841), автор умер в 1869 году — общественное достояние.',
@@ -1642,7 +1642,7 @@ export const BOOKS = {
       'puss-mouse': '🐭🐈',
       'puss-castle': '🏰👸🤵🐈',
     },
-    drawn: false,
+    drawn: true,
     source: {
       wikisource: 'Кот в сапогах (Перро; Тургенев)/1867 (ВТ:Ё)',
       note: 'Сказка Ш. Перро в переводе И. С. Тургенева (1867); переводчик умер в 1883 году — общественное достояние.',
@@ -1881,7 +1881,7 @@ export const BOOKS = {
       'bremen-robber': '🥷🐈🔥',
       'bremen-robbers': '🥷🥷🌲🌙',
     },
-    drawn: false,
+    drawn: true,
     source: {
       wikisource: 'Бременские уличные музыканты (Гримм; Полевой)',
       note: 'Сказка братьев Гримм в переводе под редакцией П. Н. Полевого (издан в 1890-х, редактор умер в 1902 году) — общественное достояние.',
@@ -2123,7 +2123,7 @@ export const BOOKS = {
       'duck-mirror': '🦢💧✨',
       'duck-kids': '👧👦🍞🦢',
     },
-    drawn: false,
+    drawn: true,
     source: {
       wikisource: 'Гадкий утёнок (Андерсен; Ганзен)',
       note: 'Сказка Г. Х. Андерсена в переводе А. В. Ганзен, переводчица умерла в 1942 году — общественное достояние.',
@@ -2458,7 +2458,7 @@ export const BOOKS = {
       'filip-class': '🏫👨‍🏫👧👦',
       'filip-letters': '🔤👦✨',
     },
-    drawn: false,
+    drawn: true,
     source: {
       wikisource: 'Филипок (Толстой)',
       note: 'Быль Л. Н. Толстого из «Новой азбуки» (1875), автор умер в 1910 году — общественное достояние.',
