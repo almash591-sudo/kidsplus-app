@@ -48,6 +48,8 @@ interface Backend {
   eyeBreaks?: ('start' | 'ask')[];
   /** Уровни сложности игр (этап 34). */
   levels?: { start: number; byKind: Record<string, number> };
+  /** Пол ребёнка — для фраз совёнка (этап 55). */
+  gender?: 'f' | 'm';
   /** Аудиотека: треки «детям». */
   audio?: { id: string; title: string; url: string; video?: boolean }[];
   /** «Мои дела» (этап 30). */
@@ -71,6 +73,7 @@ interface Backend {
     segmentId?: string;
     questionId?: string;
     deckId?: string;
+    interactiveId?: string;
     payload?: Record<string, unknown>;
   }[];
   /** Плейлист ребёнка; по умолчанию — два видео без вопросов. */
@@ -360,6 +363,7 @@ async function mockBackend(page: Page, backend: Backend) {
                 baby: backend.baby ?? false,
                 lullabies: backend.lullabies ?? [],
                 ...(backend.levels ? { levels: backend.levels } : {}),
+                ...(backend.gender ? { gender: backend.gender } : {}),
               },
             })
           : unauthorized();
@@ -1071,7 +1075,7 @@ test.describe('плеер', () => {
     await expect(tiles).toHaveCount(0);
   });
 
-  test('пройденное отдыхает (этап 34): в конце, бледное, не открывается, пока есть новое', async ({
+  test('пройденное отдыхает (этап 34): в конце, бледное; нечем проверить — не открывается', async ({
     page,
     backend,
   }) => {
@@ -5693,5 +5697,169 @@ test.describe('плеер RuTube (этап 54)', () => {
       .poll(() => backend.events.find((e) => e.type === 'segment_error')?.payload?.code)
       .toBe('rutube');
     await expect.poll(() => playerSrc(page), { timeout: 4000 }).toContain(RT2);
+  });
+});
+
+test.describe('повтор пройденного (этап 55)', () => {
+  const stars = (page: Page) => page.locator('.quiz-progress .star.on');
+
+  test('видео: пять заданий, ошибка гаснет — и видео открыто до конца дня', async ({
+    page,
+    backend,
+  }) => {
+    backend.gender = 'f';
+    backend.quiz = { options: 2, questions: 1 };
+    backend.items = [
+      {
+        ...SEGMENTS[0]!,
+        kind: 'segment',
+        questions: [question('q1', 2), question('q2', 2)],
+        rest: 'today',
+      },
+      { ...SEGMENTS[1]!, kind: 'segment', questions: [] },
+    ];
+    await page.goto('/');
+    const rested = page.locator('[data-testid=tile][data-rest]');
+    await expect(rested).toHaveCount(1);
+    await rested.click();
+    await expect(page.getByTestId('review')).toHaveAttribute('data-review', 'quiz');
+    await expect
+      .poll(async () => (await spoken(page)).map((s) => s.text))
+      .toContain('Ты это уже прошла! Если интересно ещё раз — выполни пять заданий.');
+    await expect(page.locator('.quiz-progress .star')).toHaveCount(5);
+    await shot(page, 'review-quiz');
+    for (let i = 0; i < 5; i++) {
+      await answering(page);
+      if (i === 0) {
+        // Ошибся — вариант гаснет, можно снова.
+        await wrong(page).dispatchEvent('pointerdown');
+        await expect(page.locator('.quiz-option.faded')).toHaveCount(1);
+        await answering(page);
+      }
+      await correct(page).dispatchEvent('pointerdown');
+      await expect(stars(page)).toHaveCount(i + 1, { timeout: 6000 });
+    }
+    await expect(page.getByTestId('quiz-done')).toBeVisible();
+    await expect
+      .poll(async () => (await spoken(page)).map((s) => s.text))
+      .toContain('Все пять заданий! Открываю ещё раз.');
+    // Открыто — то же видео с начала.
+    await expect(page.getByTestId('pause')).toBeVisible({ timeout: 8000 });
+    expect(await yt<string>(page, 'opts.videoId')).toBe('aaaaaaaaaaa');
+    const pass = backend.events.find((e) => e.type === 'review_pass')!;
+    expect(pass).toMatchObject({ segmentId: SEGMENTS[0]!.id, payload: { tasks: 5, mistakes: 1 } });
+    // Проверка — не ответы на вопросы видео: в аналитику не идёт.
+    expect(backend.events.some((e) => e.type.startsWith('quiz_'))).toBe(false);
+
+    // До конца дня — не бледное, открывается сразу.
+    await page.getByTestId('go-home').click();
+    await expect(page.getByTestId('home')).toBeVisible();
+    await expect(page.locator('[data-rest]')).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByTestId('tile')).toHaveCount(2);
+    await expect(page.locator('[data-rest]')).toHaveCount(0);
+  });
+
+  test('«Домой» посреди проверки — пункт по-прежнему отдыхает', async ({ page, backend }) => {
+    backend.items = [
+      { ...SEGMENTS[0]!, kind: 'segment', questions: [question('q1', 2)], rest: 'learned' },
+      { ...SEGMENTS[1]!, kind: 'segment', questions: [] },
+    ];
+    await page.goto('/');
+    await page.locator('[data-testid=tile][data-rest]').click();
+    await expect(page.getByTestId('review')).toBeVisible();
+    await expect
+      .poll(async () => (await spoken(page)).map((s) => s.text))
+      .toContain('Ты это уже прошёл! Если интересно ещё раз — выполни пять заданий.');
+    await page.getByTestId('go-home').click();
+    await expect(page.locator('[data-testid=tile][data-rest]')).toHaveAttribute(
+      'data-rest',
+      'learned',
+    );
+    expect(backend.events.some((e) => e.type === 'review_pass')).toBe(false);
+  });
+
+  test('игра без темы — сразу, на уровень сложнее; уровень ребёнка не двигает', async ({
+    page,
+    backend,
+  }) => {
+    backend.levels = { start: 1, byKind: { maze: 2 } };
+    backend.items = [
+      {
+        ...game(1, { kind: 'maze', heroId: RABBIT, goalId: CARROT, size: 4, rounds: 1 }),
+        rest: 'today',
+      },
+      game(2, { kind: 'balloons', count: 5, target: null }),
+    ];
+    await gameMedia(page);
+    await page.goto('/');
+    await page.locator('[data-testid=tile][data-rest]').click();
+    await expect(page.getByTestId('game')).toHaveAttribute('data-level', '3');
+    await expect
+      .poll(async () => (await spoken(page)).map((s) => s.text))
+      .toContain('Ты уже это прошёл — давай посложнее!');
+    await expect
+      .poll(() => backend.events.find((e) => e.type === 'interactive_start')?.payload)
+      .toMatchObject({ kind: 'maze', level: 3, review: true });
+    // Игра «посложнее» не запоминается: дома плитка снова бледная.
+    await page.getByTestId('go-home').click();
+    await expect(page.locator('[data-testid=tile][data-rest]')).toHaveCount(1);
+  });
+
+  test('стих: «Договори» и вопросы, потом — сам стих', async ({ page, backend }) => {
+    test.setTimeout(120_000);
+    backend.gender = 'f';
+    backend.items = [
+      {
+        ...game(
+          1,
+          {
+            kind: 'poem',
+            poem: 'petushok',
+            repeat: true,
+            blanks: true,
+            questions: true,
+            choices: 3,
+          },
+          'poems',
+        ),
+        rest: 'learned',
+      },
+      game(
+        2,
+        { kind: 'poem', poem: 'osen', repeat: false, blanks: true, questions: true, choices: 3 },
+        'poems',
+      ),
+    ];
+    await gameMedia(page);
+    await page.goto('/');
+    // Фраза совёнка длится 3 с — успеваем увидеть, что он говорит.
+    await slowSpeech(page, 3000);
+    await page.locator('[data-testid=tile][data-rest]').click();
+    const r = page.getByTestId('review');
+    await expect(r).toHaveAttribute('data-review', 'poem');
+    await expect(r.getByTestId('poem-text')).toContainText('Ты это уже прошла!');
+    await shot(page, 'review-intro');
+    await slowSpeech(page, 50);
+    await expect(r).toHaveAttribute('data-step', 'blanks', { timeout: 15_000 });
+    await shot(page, 'review-poem');
+    for (let i = 0; i < 5; i++) {
+      await expect(r.locator('.poem-option.answer')).toHaveCount(0, { timeout: 15_000 });
+      if (i === 0) {
+        await r.locator('[data-testid=poem-option]:not([data-hint])').first().click();
+        await expect(r.locator('.poem-option.off')).toHaveCount(1);
+      }
+      await r.locator('[data-testid=poem-option][data-hint]').click();
+      await expect(stars(page)).toHaveCount(i + 1);
+    }
+    await expect(page.getByTestId('review-done')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('game-poem')).toHaveAttribute('data-step', 'listen', {
+      timeout: 15_000,
+    });
+    const pass = backend.events.find((e) => e.type === 'review_pass')!;
+    expect(pass).toMatchObject({
+      interactiveId: game(1, {}).id,
+      payload: { tasks: 5, mistakes: 1 },
+    });
   });
 });
