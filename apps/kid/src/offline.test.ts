@@ -1,4 +1,5 @@
 import type { KidPlaylist } from '@kidsplus/shared/api';
+import { BOOKS, bookPictures } from '@kidsplus/shared/books';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushOutbox, playlistMedia, sendEventQueued } from './offline';
 
@@ -42,7 +43,7 @@ describe('файлы занятий для работы без сети', () => 
           category: 'games',
           spec: { kind: 'memory', imageIds: ['00000000-0000-4000-8000-000000000001'] },
         },
-        // Книжка без картинок (ещё рисуются) — качать нечего.
+        // Нарисованная книжка — все её сцены.
         {
           kind: 'interactive',
           id: 'b',
@@ -62,6 +63,7 @@ describe('файлы занятий для работы без сети', () => 
         '/api/media/opt',
         '/api/media/00000000-0000-4000-8000-000000000001',
         '/api/media/p1',
+        ...bookPictures(BOOKS.kotPetuh),
       ].sort(),
     );
   });
