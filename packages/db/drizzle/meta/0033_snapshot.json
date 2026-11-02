@@ -1,5 +1,5 @@
 {
-  "id": "732aaf60-eda8-4101-ac49-3218486eae4a",
+  "id": "a55eb2b4-96cc-4e8a-84ce-cc030865b2e0",
   "prevId": "9fd032f2-cc5e-4944-805d-11de514f3af4",
   "version": "7",
   "dialect": "postgresql",
@@ -239,25 +239,6 @@
         },
         "skip_night": {
           "name": "skip_night",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "book_code": {
-          "name": "book_code",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "book_chapter": {
-          "name": "book_chapter",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "book_night": {
-          "name": "book_night",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -956,6 +937,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "kindergarten_letters": {
+          "name": "kindergarten_letters",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::text[]"
         },
         "created_at": {
           "name": "created_at",

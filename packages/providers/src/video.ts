@@ -1,4 +1,4 @@
-export type VideoProviderId = 'youtube';
+export type VideoProviderId = 'youtube' | 'rutube';
 
 export interface VideoMetadata {
   provider: VideoProviderId;

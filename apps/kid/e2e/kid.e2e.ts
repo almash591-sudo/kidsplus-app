@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 import { expect, test as base, type Page } from '@playwright/test';
 import type { AppErrorReport } from '@kidsplus/shared/app-errors';
 import { BOOK_CODES, bookAnnounce, BOOKS, chapterAnnounce } from '@kidsplus/shared/books';
+import { LETTER_LESSONS } from '@kidsplus/shared/letters-lessons';
+import type { TraceShape } from '@kidsplus/shared/games';
 import type { BookPlayed, KidBedtime } from '@kidsplus/shared/bedtime';
 import type { KidHabit, KidHabits } from '@kidsplus/shared/habits';
 import type { EyeBreak } from '@kidsplus/shared/schedule';
@@ -14,6 +16,7 @@ import {
 } from '@kidsplus/shared/calls';
 
 const FAKE_YT = readFileSync(new URL('./fake-youtube.js', import.meta.url), 'utf8');
+const FAKE_RUTUBE = readFileSync(new URL('./fake-rutube.html', import.meta.url), 'utf8');
 // 1×1 PNG вместо превью с i.ytimg.com — тесты не ходят в интернет.
 const PIXEL = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
@@ -47,6 +50,8 @@ interface Backend {
   eyeBreaks?: ('start' | 'ask')[];
   /** Уровни сложности игр (этап 34). */
   levels?: { start: number; byKind: Record<string, number> };
+  /** Пол ребёнка — для фраз совёнка (этап 55). */
+  gender?: 'f' | 'm';
   /** Аудиотека: треки «детям». */
   audio?: { id: string; title: string; url: string; video?: boolean }[];
   /** «Мои дела» (этап 30). */
@@ -71,6 +76,7 @@ interface Backend {
     segmentId?: string;
     questionId?: string;
     deckId?: string;
+    interactiveId?: string;
     payload?: Record<string, unknown>;
   }[];
   /** Плейлист ребёнка; по умолчанию — два видео без вопросов. */
@@ -320,14 +326,16 @@ data: ${JSON.stringify({ type: 'monitor', state: { on, sensitivity: 'high' } })}
   }
 }
 
-/** Подменённый сервер: /api/kid/*, YouTube IFrame API и картинки. */
+/** Подменённый сервер: /api/kid/*, плееры YouTube и RuTube, картинки. */
 async function mockBackend(page: Page, backend: Backend) {
   await page.route('https://www.youtube.com/iframe_api', (r) =>
     r.fulfill({ contentType: 'text/javascript', body: FAKE_YT }),
   );
-  await page.route('https://i.ytimg.com/**', (r) =>
-    r.fulfill({ contentType: 'image/png', body: PIXEL }),
+  await page.route('https://rutube.ru/play/embed/**', (r) =>
+    r.fulfill({ contentType: 'text/html', body: FAKE_RUTUBE }),
   );
+  for (const host of ['https://i.ytimg.com/**', 'https://pic.rtbcdn.ru/**'])
+    await page.route(host, (r) => r.fulfill({ contentType: 'image/png', body: PIXEL }));
   // Картинки и «озвучка»: в тестах звук не играет — плеер сразу считает его законченным.
   await page.route('**/api/media/**', (r) => r.fulfill({ contentType: 'image/png', body: PIXEL }));
   await page.route(/\/api\/(kid|calls)(\/|\?|$)/, async (route) => {
@@ -358,6 +366,7 @@ async function mockBackend(page: Page, backend: Backend) {
                 baby: backend.baby ?? false,
                 lullabies: backend.lullabies ?? [],
                 ...(backend.levels ? { levels: backend.levels } : {}),
+                ...(backend.gender ? { gender: backend.gender } : {}),
               },
             })
           : unauthorized();
@@ -1153,7 +1162,7 @@ test.describe('плеер', () => {
     await expect(tiles).toHaveCount(0);
   });
 
-  test('пройденное отдыхает (этап 34): в конце, бледное, не открывается, пока есть новое', async ({
+  test('пройденное отдыхает (этап 34): в конце, бледное; нечем проверить — не открывается', async ({
     page,
     backend,
   }) => {
@@ -3224,9 +3233,10 @@ test.describe('новые игры', () => {
     backend,
   }) => {
     test.setTimeout(180_000);
-    // Голос «говорит» по 700 мс — успеваем увидеть подсветку предложения.
+    // Голос «говорит» по 1,5 с — успеваем увидеть подсветку предложения и под нагрузкой, когда
+    // страница с картинкой рисуется дольше.
     await page.addInitScript(
-      () => ((window as unknown as { __speechMs: number }).__speechMs = 700),
+      () => ((window as unknown as { __speechMs: number }).__speechMs = 1500),
     );
     backend.items = [
       game(
@@ -3244,6 +3254,31 @@ test.describe('новые игры', () => {
     await expect(tile).toHaveAttribute('data-shelf', 'new');
     await expect(tile.locator('.book-new')).toBeVisible();
     await expect(tile.locator('[data-picture]')).toHaveAttribute('data-picture', 'kot-happy');
+    // Обложка — во всю плитку, а не по размеру содержимого (иначе «новая» обрезана).
+    // Размеры без transform: плитка ещё выезжает.
+    const [w, h, buttonW, buttonH] = await tile.evaluate((el) => {
+      const b = el.closest('button')!;
+      return [
+        (el as HTMLElement).offsetWidth,
+        (el as HTMLElement).offsetHeight,
+        b.clientWidth,
+        b.clientHeight,
+      ];
+    });
+    expect(w).toBe(buttonW);
+    expect(h).toBe(buttonH);
+    // Нарисованная обложка загрузилась и закрывает плитку целиком, а не как значок игры.
+    const cover = tile.locator('.poem-pic-img');
+    await expect
+      .poll(() => cover.evaluate((el) => (el as HTMLImageElement).naturalWidth))
+      .toBeGreaterThan(0);
+    expect(
+      await cover.evaluate((el) => [
+        (el as HTMLElement).offsetWidth,
+        (el as HTMLElement).offsetHeight,
+        getComputedStyle(el).objectFit,
+      ]),
+    ).toEqual([w, h, 'cover']);
     await shot(page, 'book-shelf');
     await page.getByTestId('tile').first().click();
     const g = page.getByTestId('game-book');
@@ -3254,6 +3289,15 @@ test.describe('новые игры', () => {
     await expect(g).toHaveAttribute('data-step', 'page', { timeout: 10_000 });
     await expect(g).toHaveAttribute('data-page', '0');
     await expect(g.getByTestId('book-line-now')).toContainText('Жил-был старик');
+    // Сцена нарисована: картинка загрузилась, отдаётся как webp — иначе не попадёт в кэш книжек.
+    const pic = g.locator('[data-picture=kot-home] .poem-pic-img');
+    await expect(pic).toHaveAttribute('src', '/books/kot-home.webp');
+    await expect
+      .poll(() => pic.evaluate((el) => (el as HTMLImageElement).naturalWidth))
+      .toBeGreaterThan(0);
+    expect((await page.request.get('/books/kot-home.webp')).headers()['content-type']).toBe(
+      'image/webp',
+    );
     await shot(page, 'book-page');
     // Дочитали — стрелка зовёт листать.
     await expect(g.getByTestId('book-next')).toHaveClass(/ready/, { timeout: 15_000 });
@@ -4840,6 +4884,208 @@ test.describe('буквы', () => {
   });
 });
 
+test.describe('буквы О, А, У (этап 56)', () => {
+  /** Провести пальцем по штрихам фигуры (координаты поля 100×100 → экран). */
+  async function traceStrokes(page: Page, shape: TraceShape) {
+    const { TRACES, resample } = await import('../src/games/traceShapes');
+    for (const stroke of TRACES[shape].strokes) {
+      const pts = await fieldPoints(page, resample(stroke));
+      await page.mouse.move(pts[0]!.x, pts[0]!.y);
+      await page.mouse.down();
+      for (const p of pts) await page.mouse.move(p.x, p.y);
+      await page.mouse.up();
+    }
+  }
+  async function fieldPoints(page: Page, pts: readonly (readonly [number, number])[]) {
+    const box = (await page.getByTestId('trace').boundingBox())!;
+    const s = Math.min(box.width, box.height) / 100;
+    const ox = box.x + (box.width - 100 * s) / 2;
+    const oy = box.y + (box.height - 100 * s) / 2;
+    return pts.map(([x, y]) => ({ x: ox + x * s, y: oy + y * s }));
+  }
+
+  test('обведи букву: по точкам со стрелкой и номерами, потом сама по образцу; промахи — подсказка', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [game(1, { kind: 'tracing', shapes: ['А'], guides: ['dots', 'start'] })];
+    await openGame(page);
+    const field = page.getByTestId('game-tracing');
+    await expect(field).toHaveAttribute('data-guide', 'dots');
+    await expect(page.getByTestId('trace-arrow')).toBeVisible();
+    await expect(page.locator('.trace-number')).toHaveCount(3);
+    await expect(page.locator('.trace-rule')).toHaveCount(3);
+    await shot(page, 'tracing-letter');
+    await traceStrokes(page, 'А');
+    // Вторая ступень — без пунктира: образец в углу, только точка начала.
+    await expect(field).toHaveAttribute('data-guide', 'start', { timeout: 5000 });
+    await expect(page.getByTestId('trace-sample')).toBeVisible();
+    await expect(page.locator('.trace-dash')).toHaveCount(0);
+    await expect(page.locator('.trace-end')).toHaveCount(0);
+    // Касание мимо начала штриха — промах; после второго — линия-подсказка.
+    const [miss] = await fieldPoints(page, [[92, 92]]);
+    for (let i = 0; i < 2; i++) {
+      await page.mouse.move(miss!.x, miss!.y);
+      await page.mouse.down();
+      await page.mouse.up();
+    }
+    await expect(page.getByTestId('trace-hint')).toBeVisible();
+    await shot(page, 'tracing-letter-self');
+    await traceStrokes(page, 'А');
+    await expectFinished(page, backend);
+    const said = (await spoken(page)).map((s) => s.text);
+    expect(said).toContain('Обведи большую букву А.');
+    expect(said).toContain('Напиши большую букву А по образцу. Начни с зелёной точки.');
+    expect(said).toContain('Подскажу: веди вот так.');
+  });
+
+  test('весь алфавит: Б по номерам штрихов, точки Ё — касанием, мягкий знак', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(60_000);
+    backend.items = [game(1, { kind: 'tracing', shapes: ['Б', 'Ё', 'ь'] })];
+    await openGame(page);
+    await expect(page.locator('.trace-number')).toHaveCount(3);
+    await shot(page, 'tracing-alphabet');
+    await traceStrokes(page, 'Б');
+    // У Ё номера только у четырёх палочек — точки ставят касанием.
+    await expect(page.locator('.trace-number')).toHaveCount(4, { timeout: 5000 });
+    await traceStrokes(page, 'Ё');
+    await expect(page.locator('.trace-number')).toHaveCount(2, { timeout: 5000 });
+    await traceStrokes(page, 'ь');
+    await expectFinished(page, backend);
+    const said = (await spoken(page)).map((s) => s.text);
+    expect(said).toContain('Обведи большую букву Б.');
+    expect(said).toContain('Обведи большую букву Ё.');
+    expect(said).toContain('Обведи маленький мягкий знак.');
+  });
+
+  test('шарики с буквой О: другая буква не считается и совёнок подсказывает', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(60_000);
+    backend.items = [
+      game(1, {
+        kind: 'balloons',
+        count: 3,
+        letters: { find: 'О', others: ['А', 'У'], lower: false },
+      }),
+    ];
+    await openGame(page);
+    const wrong = page.locator('.balloon[data-letter]:not([data-letter="О"]):not(.popped)');
+    await expect(wrong.first()).toBeAttached({ timeout: 15000 });
+    const letter = (await wrong.first().getAttribute('data-letter'))!;
+    // Для снимка — дать шарикам подняться.
+    if (process.env.SHOTS) await page.waitForTimeout(3000);
+    await shot(page, 'balloons-letter');
+    await wrong.first().dispatchEvent('pointerdown');
+    await expect(page.locator('.balloon-score .on')).toHaveCount(0);
+    for (let i = 0; i < 3; i++) {
+      const right = page.locator('.balloon[data-letter="О"]:not(.popped)').first();
+      await expect(right).toBeAttached({ timeout: 15000 });
+      await right.dispatchEvent('pointerdown');
+    }
+    await expectFinished(page, backend);
+    const said = (await spoken(page)).map((s) => s.text);
+    expect(said).toContain('Лопни шарики с буквой О!');
+    expect(said).toContain(`Это буква ${letter}. Ищи букву О!`);
+  });
+
+  test('найди букву среди маленьких; «Где звук?» для О — ударение не мешает', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [
+      game(
+        1,
+        { kind: 'letter', letters: ['А', 'О', 'У'], choices: 3, rounds: 2, letterCase: 'lower' },
+        'letters',
+      ),
+      game(
+        2,
+        {
+          kind: 'soundPlace',
+          sound: 'О',
+          words: [
+            { emoji: '⛵', word: 'ЛО\u0301ДКА' },
+            { emoji: '🚇', word: 'МЕТРО\u0301' },
+            { emoji: '🐱', word: 'КОТ' },
+          ],
+          rounds: 2,
+        },
+        'letters',
+      ),
+    ];
+    await page.goto('/');
+    await expect(page.getByTestId('lesson-path')).toBeVisible();
+    const field = page.getByTestId('game-letters');
+    const play = async (check?: () => Promise<void>) => {
+      for (let round = 0; round < 2; round++) {
+        await check?.();
+        const answer = (await field.getAttribute('data-answer'))!;
+        const option = page.locator(`[data-testid=letters-option][data-value="${answer}"]`);
+        await option.click();
+        await expect(option).toHaveClass(/picked/);
+        if (round === 0)
+          await expect(page.locator('.letters-option.picked')).toHaveCount(0, { timeout: 5000 });
+      }
+      await expect(page.getByTestId('lesson-path')).toBeVisible({ timeout: 8000 });
+    };
+    await page.getByTestId('tile').nth(0).click();
+    await play(async () => {
+      const labels = await page.getByTestId('letters-option').allInnerTexts();
+      expect(labels.join('')).toMatch(/^[аоу]{3}$/u);
+    });
+    await page.getByTestId('tile').nth(1).click();
+    await play();
+    const said = (await spoken(page)).map((s) => s.text);
+    expect(said.some((t) => /^Найди букву [АОУ]\.$/u.test(t))).toBe(true);
+    expect(said.some((t) => /^Где звук ооо в слове (лодка|метро|кот)\?$/u.test(t))).toBe(true);
+    expect(said.join(' ')).not.toContain('\u0301');
+  });
+
+  test('«Повторяем О, А, У»: «С какой буквы?» — на кнопках только А, О, У; «Прочитай АУ»', async ({
+    page,
+    backend,
+  }) => {
+    const lesson = (topic: string) => {
+      const l = LETTER_LESSONS.find((x) => x.title.endsWith(topic))!;
+      return { ...l.spec, rounds: 2 } as typeof l.spec;
+    };
+    backend.items = [
+      game(1, lesson('с какой буквы?'), 'letters'),
+      game(2, lesson('прочитай АУ и УА'), 'letters'),
+    ];
+    await page.goto('/');
+    await expect(page.getByTestId('lesson-path')).toBeVisible();
+    const field = page.getByTestId('game-letters');
+    const play = async (check?: () => Promise<void>) => {
+      for (let round = 0; round < 2; round++) {
+        await check?.();
+        const answer = (await field.getAttribute('data-answer'))!;
+        const option = page.locator(`[data-testid=letters-option][data-value="${answer}"]`);
+        await option.click();
+        await expect(option).toHaveClass(/picked/);
+        if (round === 0)
+          await expect(page.locator('.letters-option.picked')).toHaveCount(0, { timeout: 5000 });
+      }
+      await expect(page.getByTestId('lesson-path')).toBeVisible({ timeout: 8000 });
+    };
+    await page.getByTestId('tile').nth(0).click();
+    await play(async () => {
+      const labels = await page.getByTestId('letters-option').allInnerTexts();
+      expect([...labels].sort().join('')).toBe('АОУ');
+    });
+    await shot(page, 'oau-path');
+    await page.getByTestId('tile').nth(1).click();
+    await play();
+    const said = (await spoken(page)).map((s) => s.text);
+    expect(said.some((t) => /^С какой буквы /u.test(t))).toBe(true);
+  });
+});
+
 test.describe('счёт к школе', () => {
   test('«Математика»: «Счёт» — дорожкой сверху, другие игры — под ней; четыре игры до конца', async ({
     page,
@@ -5520,5 +5766,279 @@ test.describe('сбои — родителю (этап 51)', () => {
     await page.context().setOffline(false);
     await expect.poll(() => backend.appErrors?.length, { timeout: 10_000 }).toBe(2);
     expect(backend.appErrors![1]).toMatchObject({ kind: 'rejection', message: 'Error: Без связи' });
+  });
+});
+
+test.describe('плеер RuTube (этап 54)', () => {
+  const RT1 = 'c9be5e8850ddc8583c71a986284ac6ef';
+  const RT2 = '0123456789abcdef0123456789abcdef';
+  const rutube = (id: string, n: number) => ({
+    id: `${n}${n}${n}${n}${n}${n}${n}${n}-${n}${n}${n}${n}-4${n}${n}${n}-8${n}${n}${n}-${String(n).repeat(12)}`,
+    kind: 'segment',
+    provider: 'rutube',
+    externalId: id,
+    startSec: 10,
+    endSec: 90,
+    thumbnailUrl: `https://pic.rtbcdn.ru/video/${id}.jpg`,
+    questions: [],
+  });
+  const frame = (page: Page) => page.frameLocator('iframe[src^="https://rutube.ru/"]');
+  /** Вызов в поддельном плеере RuTube (он с origin rutube.ru, как настоящий). */
+  const rt = async <T>(page: Page, fn: string): Promise<T> => {
+    const f = page.frames().find((x) => x.url().startsWith('https://rutube.ru/play/embed/'));
+    if (!f) throw new Error('нет плеера RuTube');
+    return (await f.evaluate(`(() => window.__rt.${fn})()`)) as T;
+  };
+  const playerSrc = (page: Page) =>
+    page.locator('iframe[src^="https://rutube.ru/"]').getAttribute('src');
+
+  test.beforeEach(({ backend }) => {
+    backend.items = [rutube(RT1, 3), rutube(RT2, 4)];
+  });
+
+  test('видео играет в плеере rutube.ru: свой старт и конец, касания не доходят, пауза закрыта', async ({
+    page,
+    backend,
+  }) => {
+    await startFirst(page);
+    expect(await playerSrc(page)).toBe(`https://rutube.ru/play/embed/${RT1}/?t=10&stopTime=90`);
+    await expect(frame(page).locator('body')).toBeAttached();
+    expect(await rt<string[]>(page, 'calls')).toContain('player:play');
+    expect(backend.events.map((e) => e.type)).toEqual(['segment_start']);
+
+    // Поверх iframe — наш слой: касание в центр до RuTube не доходит и паузу не ставит.
+    const box = (await page.locator('iframe').boundingBox())!;
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    expect(await rt<number>(page, 'hits')).toBe(0);
+    expect(await rt<string>(page, 'state')).toBe('playing');
+
+    await page.getByTestId('pause').click();
+    await expect(page.getByTestId('play')).toBeVisible();
+    expect(await rt<string>(page, 'state')).toBe('pause');
+    await page.getByTestId('play').click();
+    await expect(page.getByTestId('pause')).toBeVisible();
+  });
+
+  test('конец фрагмента по времени: плеер уничтожается до рекомендаций, дальше — следующее', async ({
+    page,
+    backend,
+  }) => {
+    await startFirst(page);
+    await rt(page, 'at(89.8)');
+    await expect(page.locator('iframe')).toHaveCount(0, { timeout: 600 });
+    await expect(page.getByTestId('celebrate')).toBeVisible();
+    expect(backend.events.map((e) => e.type)).toEqual(['segment_start', 'segment_complete']);
+    await expect.poll(() => playerSrc(page), { timeout: 4000 }).toContain(RT2);
+  });
+
+  test('время между сообщениями плеера досчитывается — конец не проскакивает', async ({ page }) => {
+    await startFirst(page);
+    // Последнее сообщение — за секунду до конца; дальше RuTube молчит, а видео идёт.
+    await rt(page, 'at(89)');
+    await expect(page.locator('iframe')).toHaveCount(0, { timeout: 2000 });
+    await expect(page.getByTestId('celebrate')).toBeVisible();
+  });
+
+  test('«видео закончилось» от RuTube тоже сразу убирает плеер', async ({ page }) => {
+    await startFirst(page);
+    await rt(page, 'complete()');
+    await expect(page.locator('iframe')).toHaveCount(0);
+  });
+
+  test('iPhone: кнопка не запустила RuTube — открывается центр плеера, касание запускает', async ({
+    page,
+  }) => {
+    await page.route('https://rutube.ru/play/embed/**', (r) =>
+      r.fulfill({
+        contentType: 'text/html',
+        body: FAKE_RUTUBE.replace('const needsFrameTap = false;', 'const needsFrameTap = true;'),
+      }),
+    );
+    await page.goto('/');
+    await page.getByTestId('tile').first().click();
+    await page.getByTestId('play').click({ timeout: 4000 });
+    await expect(page.getByTestId('tap-video')).toBeVisible({ timeout: 4000 });
+    const box = (await page.getByTestId('player').boundingBox())!;
+    await page.mouse.click(box.x + box.width / 2, box.y + 30);
+    expect(await rt<number>(page, 'hits')).toBe(0);
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(page.getByTestId('pause')).toBeVisible();
+    await expect(page.getByTestId('tap-video')).toHaveCount(0);
+  });
+
+  test('ошибка RuTube: событие без кода YouTube и переход к следующему', async ({
+    page,
+    backend,
+  }) => {
+    await startFirst(page);
+    await rt(page, "fail('Видео недоступно в вашей стране')");
+    await expect
+      .poll(() => backend.events.find((e) => e.type === 'segment_error')?.payload?.code)
+      .toBe('rutube');
+    await expect.poll(() => playerSrc(page), { timeout: 4000 }).toContain(RT2);
+  });
+});
+
+test.describe('повтор пройденного (этап 55)', () => {
+  const stars = (page: Page) => page.locator('.quiz-progress .star.on');
+
+  test('видео: пять заданий, ошибка гаснет — и видео открыто до конца дня', async ({
+    page,
+    backend,
+  }) => {
+    backend.gender = 'f';
+    backend.quiz = { options: 2, questions: 1 };
+    backend.items = [
+      {
+        ...SEGMENTS[0]!,
+        kind: 'segment',
+        questions: [question('q1', 2), question('q2', 2)],
+        rest: 'today',
+      },
+      { ...SEGMENTS[1]!, kind: 'segment', questions: [] },
+    ];
+    await page.goto('/');
+    const rested = page.locator('[data-testid=tile][data-rest]');
+    await expect(rested).toHaveCount(1);
+    await rested.click();
+    await expect(page.getByTestId('review')).toHaveAttribute('data-review', 'quiz');
+    await expect
+      .poll(async () => (await spoken(page)).map((s) => s.text))
+      .toContain('Ты это уже прошла! Если интересно ещё раз — выполни пять заданий.');
+    await expect(page.locator('.quiz-progress .star')).toHaveCount(5);
+    await shot(page, 'review-quiz');
+    for (let i = 0; i < 5; i++) {
+      await answering(page);
+      if (i === 0) {
+        // Ошибся — вариант гаснет, можно снова.
+        await wrong(page).dispatchEvent('pointerdown');
+        await expect(page.locator('.quiz-option.faded')).toHaveCount(1);
+        await answering(page);
+      }
+      await correct(page).dispatchEvent('pointerdown');
+      await expect(stars(page)).toHaveCount(i + 1, { timeout: 6000 });
+    }
+    await expect(page.getByTestId('quiz-done')).toBeVisible();
+    await expect
+      .poll(async () => (await spoken(page)).map((s) => s.text))
+      .toContain('Все пять заданий! Открываю ещё раз.');
+    // Открыто — то же видео с начала.
+    await expect(page.getByTestId('pause')).toBeVisible({ timeout: 8000 });
+    expect(await yt<string>(page, 'opts.videoId')).toBe('aaaaaaaaaaa');
+    const pass = backend.events.find((e) => e.type === 'review_pass')!;
+    expect(pass).toMatchObject({ segmentId: SEGMENTS[0]!.id, payload: { tasks: 5, mistakes: 1 } });
+    // Проверка — не ответы на вопросы видео: в аналитику не идёт.
+    expect(backend.events.some((e) => e.type.startsWith('quiz_'))).toBe(false);
+
+    // До конца дня — не бледное, открывается сразу.
+    await page.getByTestId('go-home').click();
+    await expect(page.getByTestId('home')).toBeVisible();
+    await expect(page.locator('[data-rest]')).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByTestId('tile')).toHaveCount(2);
+    await expect(page.locator('[data-rest]')).toHaveCount(0);
+  });
+
+  test('«Домой» посреди проверки — пункт по-прежнему отдыхает', async ({ page, backend }) => {
+    backend.items = [
+      { ...SEGMENTS[0]!, kind: 'segment', questions: [question('q1', 2)], rest: 'learned' },
+      { ...SEGMENTS[1]!, kind: 'segment', questions: [] },
+    ];
+    await page.goto('/');
+    await page.locator('[data-testid=tile][data-rest]').click();
+    await expect(page.getByTestId('review')).toBeVisible();
+    await expect
+      .poll(async () => (await spoken(page)).map((s) => s.text))
+      .toContain('Ты это уже прошёл! Если интересно ещё раз — выполни пять заданий.');
+    await page.getByTestId('go-home').click();
+    await expect(page.locator('[data-testid=tile][data-rest]')).toHaveAttribute(
+      'data-rest',
+      'learned',
+    );
+    expect(backend.events.some((e) => e.type === 'review_pass')).toBe(false);
+  });
+
+  test('игра без темы — сразу, на уровень сложнее; уровень ребёнка не двигает', async ({
+    page,
+    backend,
+  }) => {
+    backend.levels = { start: 1, byKind: { maze: 2 } };
+    backend.items = [
+      {
+        ...game(1, { kind: 'maze', heroId: RABBIT, goalId: CARROT, size: 4, rounds: 1 }),
+        rest: 'today',
+      },
+      game(2, { kind: 'balloons', count: 5, target: null }),
+    ];
+    await gameMedia(page);
+    await page.goto('/');
+    await page.locator('[data-testid=tile][data-rest]').click();
+    await expect(page.getByTestId('game')).toHaveAttribute('data-level', '3');
+    await expect
+      .poll(async () => (await spoken(page)).map((s) => s.text))
+      .toContain('Ты уже это прошёл — давай посложнее!');
+    await expect
+      .poll(() => backend.events.find((e) => e.type === 'interactive_start')?.payload)
+      .toMatchObject({ kind: 'maze', level: 3, review: true });
+    // Игра «посложнее» не запоминается: дома плитка снова бледная.
+    await page.getByTestId('go-home').click();
+    await expect(page.locator('[data-testid=tile][data-rest]')).toHaveCount(1);
+  });
+
+  test('стих: «Договори» и вопросы, потом — сам стих', async ({ page, backend }) => {
+    test.setTimeout(120_000);
+    backend.gender = 'f';
+    backend.items = [
+      {
+        ...game(
+          1,
+          {
+            kind: 'poem',
+            poem: 'petushok',
+            repeat: true,
+            blanks: true,
+            questions: true,
+            choices: 3,
+          },
+          'poems',
+        ),
+        rest: 'learned',
+      },
+      game(
+        2,
+        { kind: 'poem', poem: 'osen', repeat: false, blanks: true, questions: true, choices: 3 },
+        'poems',
+      ),
+    ];
+    await gameMedia(page);
+    await page.goto('/');
+    // Фраза совёнка длится 3 с — успеваем увидеть, что он говорит.
+    await slowSpeech(page, 3000);
+    await page.locator('[data-testid=tile][data-rest]').click();
+    const r = page.getByTestId('review');
+    await expect(r).toHaveAttribute('data-review', 'poem');
+    await expect(r.getByTestId('poem-text')).toContainText('Ты это уже прошла!');
+    await shot(page, 'review-intro');
+    await slowSpeech(page, 50);
+    await expect(r).toHaveAttribute('data-step', 'blanks', { timeout: 15_000 });
+    await shot(page, 'review-poem');
+    for (let i = 0; i < 5; i++) {
+      await expect(r.locator('.poem-option.answer')).toHaveCount(0, { timeout: 15_000 });
+      if (i === 0) {
+        await r.locator('[data-testid=poem-option]:not([data-hint])').first().click();
+        await expect(r.locator('.poem-option.off')).toHaveCount(1);
+      }
+      await r.locator('[data-testid=poem-option][data-hint]').click();
+      await expect(stars(page)).toHaveCount(i + 1);
+    }
+    await expect(page.getByTestId('review-done')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('game-poem')).toHaveAttribute('data-step', 'listen', {
+      timeout: 15_000,
+    });
+    const pass = backend.events.find((e) => e.type === 'review_pass')!;
+    expect(pass).toMatchObject({
+      interactiveId: game(1, {}).id,
+      payload: { tasks: 5, mistakes: 1 },
+    });
   });
 });

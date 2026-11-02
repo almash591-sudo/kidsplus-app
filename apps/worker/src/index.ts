@@ -100,12 +100,12 @@ await boss.start();
 await registerJobs(
   boss,
   log,
-  youtube ? () => checkAvailability(db, youtube, new Date(), notify) : undefined,
+  () => checkAvailability(db, { youtube, fetch, region: env.VIDEO_REGION }, new Date(), notify),
   () => buildWeeklyReports({ db, llm, log, limits, notify }),
   drive ? () => runBackup(backupDeps) : undefined,
   () => checkOffline({ db, notify }),
 );
-if (!youtube) log.warn('YOUTUBE_API_KEY не задан — ежедневная проверка видео отключена');
+if (!youtube) log.warn('YOUTUBE_API_KEY не задан — видео YouTube каждый день не проверяются');
 let stopTts: (() => void) | undefined;
 /** Провайдер серверной озвучки по TTS_PROVIDER; без ключа — null. */
 function ttsProvider(): TtsProvider | null {

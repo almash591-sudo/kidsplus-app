@@ -80,6 +80,16 @@ public class VlessTest {
                 first.getJSONObject("tls").getJSONObject("reality").getString("short_id"));
         assertEquals("urltest", c.getJSONArray("outbounds").getJSONObject(3).getString("type"));
         assertEquals("proxy", c.getJSONObject("route").getString("final"));
+        // RuTube — мимо VPN и со своим DNS (этап 54); остальное по-прежнему через VPN.
+        JSONObject rutube = c.getJSONObject("route").getJSONArray("rules").getJSONObject(3);
+        assertEquals("direct", rutube.getString("outbound"));
+        assertEquals("rutube.ru", rutube.getJSONArray("domain_suffix").getString(0));
+        assertEquals("rtbcdn.ru", rutube.getJSONArray("domain_suffix").getString(1));
+        JSONObject dnsRule = c.getJSONObject("dns").getJSONArray("rules").getJSONObject(0);
+        assertEquals("local", dnsRule.getString("server"));
+        assertEquals(rutube.getJSONArray("domain_suffix").toString(),
+                dnsRule.getJSONArray("domain_suffix").toString());
+        assertEquals("remote", c.getJSONObject("dns").getString("final"));
         // Для проверки настоящим sing-box (`sing-box check -c …`), если задан путь.
         String out = System.getenv("SINGBOX_CONFIG_OUT");
         if (out != null) Files.write(Paths.get(out), json.getBytes(StandardCharsets.UTF_8));

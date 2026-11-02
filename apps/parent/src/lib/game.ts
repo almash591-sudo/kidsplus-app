@@ -21,6 +21,12 @@ export function problem(v: GameInput): string | null {
     return 'Выберите картинку.';
   if (spec.kind === 'tracing' && !spec.shapes.length) return 'Выберите, что обводить.';
   if (spec.kind === 'tracing' && spec.shapes.length > 12) return 'Не больше 12 фигур.';
+  if (spec.kind === 'tracing' && spec.guides && !spec.guides.length)
+    return 'Выберите, как обводить.';
+  if (spec.kind === 'tracing' && spec.shapes.length * (spec.guides?.length ?? 1) > 12)
+    return 'Не больше 12 обводок: фигур × ступеней.';
+  if (spec.kind === 'balloons' && spec.letters && !spec.letters.others.length)
+    return 'Добавьте другие буквы на шарики.';
   switch (spec.kind) {
     case 'maze':
       if (!spec.heroId || !spec.goalId) return 'Выберите, кто идёт и куда.';

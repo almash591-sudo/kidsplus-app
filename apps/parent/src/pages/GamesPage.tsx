@@ -31,6 +31,9 @@ export const PIANO_MODE_LABELS = {
   ear: 'узнай на слух',
 } as const;
 
+/** Какими показывать буквы в «Найди букву» (этап 56). */
+const LETTER_CASE_NOTES = { upper: '', lower: ' · маленькие', mixed: ' · большие и маленькие' };
+
 export function gameSummary(spec: GameSpec): string {
   switch (spec.kind) {
     case 'drawing':
@@ -43,9 +46,14 @@ export function gameSummary(spec: GameSpec): string {
       return `пар: ${spec.imageIds.length}`;
     case 'puzzle':
       return `${spec.cols}×${spec.rows}, картинок: ${spec.imageIds.length}`;
-    case 'tracing':
-      return spec.shapes.length > 6 ? `${spec.shapes.length} фигур` : spec.shapes.join(', ');
+    case 'tracing': {
+      const what = spec.shapes.length > 6 ? `${spec.shapes.length} фигур` : spec.shapes.join(', ');
+      const guides = spec.guides ?? ['dots'];
+      return guides.join() === 'dots' ? what : `${what} · ступеней: ${guides.length}`;
+    }
     case 'balloons':
+      if (spec.letters)
+        return `шариков: ${spec.count} · с буквой ${spec.letters.find}${spec.letters.lower ? ' (и маленькой)' : ''}`;
       return `шариков: ${spec.count}${spec.target ? ' · только одного цвета' : ''}`;
     case 'counting':
       return `до ${spec.max} · раундов: ${spec.rounds}`;
@@ -97,7 +105,7 @@ export function gameSummary(spec: GameSpec): string {
     case 'orchestra':
       return `зверят: ${spec.players} · раундов: ${spec.rounds}`;
     case 'letter':
-      return `${spec.letters.join(' ')} · раундов: ${spec.rounds}`;
+      return `${spec.ask ? `ищем ${spec.ask.join(' ')} среди ` : ''}${spec.letters.join(' ')}${LETTER_CASE_NOTES[spec.letterCase ?? 'upper']} · раундов: ${spec.rounds}`;
     case 'syllable':
       return `${spec.syllables.join(', ')} · раундов: ${spec.rounds}`;
     case 'firstLetter':

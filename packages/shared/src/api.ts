@@ -1,7 +1,7 @@
 // Контракты HTTP API: Zod-схемы запросов и типы ответов.
 // Сервер проверяет запросы этими схемами; фронтенды импортируют отсюда только типы.
 import { z } from 'zod';
-import { gameSpec, type GameSpec } from './games';
+import { CAPITAL_LETTERS, gameSpec, type GameSpec } from './games';
 
 // ─── Общее ───────────────────────────────────────────────────────────────────
 
@@ -109,6 +109,15 @@ export const childInput = z.object({
    */
   eyeBreakEvery: z.number().int().min(5).max(60).nullable().default(null),
   eyeBreakRest: z.number().int().min(1).max(60).default(15),
+  /**
+   * «Буквы из садика» (этап 56): какие буквы ребёнок прошёл в садике. Новая буква — блок уроков
+   * в «Буквах» сразу после пройденного; снятая отметка уроки не убирает.
+   */
+  kindergartenLetters: z
+    .array(z.enum(CAPITAL_LETTERS))
+    .max(CAPITAL_LETTERS.length)
+    .default([])
+    .transform((ls) => CAPITAL_LETTERS.filter((l) => ls.includes(l))),
 });
 export type ChildInput = z.input<typeof childInput>;
 
@@ -160,6 +169,8 @@ export function quizSettings(
 export const pairingCreateRequest = z.object({
   childId: uuid,
   deviceName: z.string().trim().min(1).max(40),
+  /** Код для настройки по QR-коду (этап 53): сброс и установка киоска дольше 10 минут. */
+  forSetup: z.boolean().optional(),
 });
 export type PairingCreateRequest = z.input<typeof pairingCreateRequest>;
 
@@ -187,14 +198,20 @@ export interface Device {
 
 // ─── Видео ───────────────────────────────────────────────────────────────────
 
+/** Откуда видео: встраиваемый плеер YouTube или RuTube (этап 54). */
+export const VIDEO_PROVIDERS = ['youtube', 'rutube'] as const;
+export type VideoProvider = (typeof VIDEO_PROVIDERS)[number];
+
 export interface VideoLookup {
-  provider: 'youtube';
+  provider: VideoProvider;
   externalId: string;
   title: string;
   channelTitle: string | null;
   thumbnailUrl: string | null;
   /** Время из ссылки (`?t=`), подсказка для начала фрагмента. */
   suggestedStartSec: number | null;
+  /** Страны, где видео можно смотреть (коды ISO, RuTube); null — ограничений нет или неизвестны. */
+  onlyIn?: string[] | null;
 }
 
 /** Разделы главного экрана ребёнка для наборов карточек (видео — отдельный раздел). */
@@ -252,7 +269,7 @@ export type SegmentCreateRequest = z.input<typeof segmentCreateRequest>;
 export type SegmentUpdateRequest = z.input<typeof segmentUpdateRequest>;
 
 export interface VideoSourceInfo {
-  provider: 'youtube';
+  provider: VideoProvider;
   externalId: string;
   title: string;
   channelTitle: string | null;
@@ -465,7 +482,7 @@ export const pairClaimRequest = z.object({
 
 export interface KidSegment {
   id: string;
-  provider: 'youtube';
+  provider: VideoProvider;
   externalId: string;
   startSec: number;
   endSec: number;
@@ -547,6 +564,8 @@ export interface KidPlaylist {
   lullabies?: { label: string; url: string }[];
   /** Этап 34: уровни сложности игр — с какого начинать и где ребёнок уже сейчас. */
   levels?: { start: number; byKind: Partial<Record<GameSpec['kind'], number>> };
+  /** Пол — для фраз совёнка (этап 55: «Ты это уже прошла!»). Имени нет. */
+  gender?: 'f' | 'm';
 }
 
 /** Фразы приложения для серверной озвучки (задания игр, разделы, «Где …?»). */
@@ -574,6 +593,8 @@ export const KID_EVENT_TYPES = [
   'deck_exit',
   'interactive_start',
   'interactive_exit',
+  // Этап 55: пройденное открыто ещё раз после пяти заданий — для журнала дня.
+  'review_pass',
 ] as const;
 
 /** Языки голосов синтеза речи на телефоне — для предупреждения родителю. Только коды языков. */

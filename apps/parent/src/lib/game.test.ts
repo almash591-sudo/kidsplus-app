@@ -56,6 +56,25 @@ describe('конструктор игр: почему нельзя сохран�
       /картинку/,
     );
     expect(problem({ ...base, spec: { kind: 'tracing', shapes: [] } })).toMatch(/обводить/);
+    expect(
+      problem({
+        ...base,
+        spec: {
+          kind: 'tracing',
+          shapes: ['А', 'О', 'У', 'а', 'о'],
+          guides: ['dots', 'line', 'start'],
+        },
+      }),
+    ).toMatch(/12 обводок/);
+    expect(problem({ ...base, spec: { kind: 'tracing', shapes: ['А'], guides: [] } })).toMatch(
+      /как обводить/,
+    );
+    expect(
+      problem({
+        ...base,
+        spec: { kind: 'balloons', count: 5, letters: { find: 'О', others: [], lower: false } },
+      }),
+    ).toMatch(/другие буквы/);
     expect(problem({ ...base, spec: { kind: 'coloring', picture: 'sun' } })).toBeNull();
   });
 

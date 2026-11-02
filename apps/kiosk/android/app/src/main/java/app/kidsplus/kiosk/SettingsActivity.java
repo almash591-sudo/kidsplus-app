@@ -7,11 +7,13 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
+import android.net.Uri;
 import android.net.VpnService;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.PowerManager;
 import android.provider.Settings;
 import android.text.InputType;
 import android.view.Gravity;
@@ -23,8 +25,9 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 /**
- * Настройки телефона для родителя: PIN (свой, на телефоне — работает и без связи), подписка VPN,
- * Wi-Fi, выход из киоска. Без PIN и VPN киоск открывает этот экран сам (первая настройка).
+ * Настройки телефона для родителя: PIN (свой, на телефоне — работает и без связи), подписка VPN
+ * или «VPN не нужен» (этап 53), Wi-Fi, выход из киоска. Без PIN и VPN киоск открывает этот экран
+ * сам (первая настройка).
  */
 public class SettingsActivity extends Activity {
     private final Handler main = new Handler(Looper.getMainLooper());
@@ -65,7 +68,7 @@ public class SettingsActivity extends Activity {
     /** Без PIN и VPN назад к ребёнку нельзя — сначала настройка. */
     @Override
     public void onBackPressed() {
-        if (store.hasPin() && store.hasVpnConfig()) super.onBackPressed();
+        if (!store.needsSetup()) super.onBackPressed();
     }
 
     // ─── Экраны ─────────────────────────────────────────────────────────────
@@ -101,7 +104,7 @@ public class SettingsActivity extends Activity {
                 err.setText("Неверный PIN.");
             }
         });
-        if (store.hasVpnConfig()) button("Назад к ребёнку", v -> finish());
+        if (!store.needsSetup()) button("Назад к ребёнку", v -> finish());
     }
 
     private void showMenu() {
@@ -114,24 +117,18 @@ public class SettingsActivity extends Activity {
                 : "Детский режим не включён: киоск не назначен владельцем устройства (см. инструкцию).");
 
         section("VPN");
-        text("Ссылка vless://… или адрес подписки https://… Ключ хранится только на этом телефоне.");
-        EditText input = new EditText(this);
-        input.setHint("vless://… или https://…");
-        input.setText(store.vpnSource());
-        input.setMinLines(2);
-        input.setTextColor(Color.WHITE);
-        input.setHintTextColor(Color.GRAY);
-        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE
-                | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
-        root.addView(input);
-        button("Вставить из буфера", v -> {
-            ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-            ClipData clip = cm.getPrimaryClip();
-            if (clip != null && clip.getItemCount() > 0)
-                input.setText(clip.getItemAt(0).coerceToText(this));
-        });
-        TextView result = text("");
-        button("Подключить", v -> connect(input.getText().toString(), result));
+        if (store.isVpnOff()) {
+            text("VPN не нужен: телефон ходит в интернет напрямую. Так — только если семья не в "
+                    + "России: там без VPN KidsPlus и видео не открываются.");
+            button("Включить VPN", v -> {
+                store.setVpnOff(false);
+                KeepAlive.stop(this);
+                Policy.applyVpn(this);
+                VpnState.ensureRunning(this);
+                showMenu();
+            });
+        } else vpnForm();
+        batteryHint();
 
         section("Связь");
         // Панель Wi-Fi — системный экран: на время выбора сети снимаем блокировку задачи,
@@ -165,9 +162,11 @@ public class SettingsActivity extends Activity {
         button("Вернуть телефон в обычный режим", v -> new AlertDialog.Builder(this)
                 .setTitle("Вернуть обычный режим?")
                 .setMessage("Киоск перестанет управлять телефоном: снимутся запреты и постоянный VPN. "
-                        + "Чтобы снова включить детский режим, нужен компьютер (инструкция).")
+                        + "Чтобы снова включить детский режим, телефон придётся сбросить и "
+                        + "настроить по QR-коду из кабинета (или по кабелю с компьютера).")
                 .setPositiveButton("Вернуть", (d, w) -> {
                     VpnState.stop(this);
+                    KeepAlive.stop(this);
                     Policy.release(this);
                     finishAffinity();
                 })
@@ -189,15 +188,71 @@ public class SettingsActivity extends Activity {
                 s = "VPN: ошибка — " + VpnState.error();
                 break;
             default:
-                s = store.hasVpnConfig() ? "VPN: выключен" : "VPN: не настроен";
+                s = store.isVpnOff()
+                        ? "VPN: не нужен"
+                        : store.hasVpnConfig() ? "VPN: выключен" : "VPN: не настроен";
         }
         vpnStatus.setText(s);
     }
 
     // ─── Подключение VPN ────────────────────────────────────────────────────
 
+    /** Ссылка или подписка VPN; «VPN не нужен» — для семей не в России (этап 53). */
+    private void vpnForm() {
+        text("Ссылка vless://… или адрес подписки https://… Ключ хранится только на этом телефоне.");
+        EditText input = new EditText(this);
+        input.setHint("vless://… или https://…");
+        input.setText(store.vpnSource());
+        input.setMinLines(2);
+        input.setTextColor(Color.WHITE);
+        input.setHintTextColor(Color.GRAY);
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE
+                | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        root.addView(input);
+        button("Вставить из буфера", v -> {
+            ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+            ClipData clip = cm.getPrimaryClip();
+            if (clip != null && clip.getItemCount() > 0)
+                input.setText(clip.getItemAt(0).coerceToText(this));
+        });
+        TextView result = text("");
+        button("Подключить", v -> connect(input.getText().toString(), result));
+        button("VPN не нужен (семья не в России)", v -> new AlertDialog.Builder(this)
+                .setTitle("Обойтись без VPN?")
+                .setMessage("Телефон будет ходить в интернет напрямую. В России без VPN KidsPlus и "
+                        + "видео не откроются. Запрет ставить свой VPN для ребёнка остаётся.")
+                .setPositiveButton("Без VPN", (d, w) -> new Thread(() -> {
+                    store.setVpnOff(true);
+                    // Сначала снять постоянный VPN — иначе система поднимет его снова.
+                    Policy.applyVpn(this);
+                    VpnState.stop(this);
+                    KeepAlive.ensure(this);
+                    main.post(this::showMenu);
+                }).start())
+                .setNegativeButton("Отмена", null)
+                .show());
+    }
+
+    /**
+     * Без компьютера (этап 53) киоск не внесён в список «не экономить батарею» — One UI может
+     * выгрузить VPN и звонки в фоне. Системный вопрос — один раз, кнопкой.
+     */
+    private void batteryHint() {
+        PowerManager pm = getSystemService(PowerManager.class);
+        if (pm == null || pm.isIgnoringBatteryOptimizations(getPackageName())) return;
+        section("Батарея");
+        text("Разрешите KidsPlus работать в фоне — иначе телефон может отключать VPN и звонки.");
+        button("Разрешить работу в фоне", v -> {
+            Policy.unlockTask(this);
+            startActivity(new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                    Uri.parse("package:" + getPackageName())));
+        });
+    }
+
     private void connect(String input, TextView result) {
         result.setText("Подключаю…");
+        store.setVpnOff(false);
+        KeepAlive.stop(this);
         new Thread(() -> {
             String msg;
             try {

@@ -309,3 +309,13 @@ describe('расход токенов', () => {
     });
   });
 });
+
+describe('RuTube (этап 54)', () => {
+  it('видео RuTube ИИ не проверяет — 400 с подсказкой', async () => {
+    const { parent } = await start();
+    const res = await add(parent, 'https://rutube.ru/video/c9be5e8850ddc8583c71a986284ac6ef/');
+    expect(res.statusCode).toBe(400);
+    expect(res.json<{ message: string }>().message).toContain('RuTube');
+    expect(await list(parent)).toEqual([]);
+  });
+});

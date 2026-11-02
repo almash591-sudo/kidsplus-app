@@ -15,15 +15,16 @@
 	}
 }
 
-# Детское приложение: только свой origin и плеер YouTube (youtube-nocookie).
+# Детское приложение: только свой origin и плееры YouTube (youtube-nocookie) и RuTube (этап 54).
 # script-src www.youtube.com — скрипт IFrame Player API (iframe_api и www-widgetapi.js).
 # img-src blob: — фото ребёнка в галерее берутся из памяти телефона (этап 9).
 (csp-kid) {
-	header Content-Security-Policy "default-src 'self'; script-src 'self' https://www.youtube.com; style-src 'self'; img-src 'self' data: blob: https://i.ytimg.com; media-src 'self' blob:; connect-src 'self'; frame-src https://www.youtube-nocookie.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+	header Content-Security-Policy "default-src 'self'; script-src 'self' https://www.youtube.com; style-src 'self'; img-src 'self' data: blob: https://i.ytimg.com https://pic.rtbcdn.ru; media-src 'self' blob:; connect-src 'self'; frame-src https://www.youtube-nocookie.com https://rutube.ru; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 }
 
+# Кабинет: предпросмотр видео YouTube и RuTube (этап 54: плеер rutube.ru, превью pic.rtbcdn.ru).
 (csp-parent) {
-	header Content-Security-Policy "default-src 'self'; script-src 'self' https://www.youtube.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://i.ytimg.com; media-src 'self' blob:; connect-src 'self'; frame-src https://www.youtube-nocookie.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+	header Content-Security-Policy "default-src 'self'; script-src 'self' https://www.youtube.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://i.ytimg.com https://pic.rtbcdn.ru; media-src 'self' blob:; connect-src 'self'; frame-src https://www.youtube-nocookie.com https://rutube.ru; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
 }
 
 :{$PORT:8080} {

@@ -47,18 +47,13 @@ function poemDone(p: Record<string, unknown>): string | null {
 }
 
 /** 1 слово, 2 слова, 5 слов. */
-function words(n: number): string {
+function plural(n: number, [one, few, many]: readonly [string, string, string]): string {
   const ten = n % 10;
   const form =
-    n % 100 >= 11 && n % 100 <= 14
-      ? 'слов'
-      : ten === 1
-        ? 'слово'
-        : ten >= 2 && ten <= 4
-          ? 'слова'
-          : 'слов';
+    n % 100 >= 11 && n % 100 <= 14 ? many : ten === 1 ? one : ten >= 2 && ten <= 4 ? few : many;
   return `${n} ${form}`;
 }
+const words = (n: number) => plural(n, ['слово', 'слова', 'слов']);
 
 /**
  * Книжка (этап 52): «Слушал книжку «Кот, петух и лиса»», длинная — «…: глава 2 из 4»;
@@ -191,9 +186,32 @@ export async function childActivity(
           'game',
           poemDone(p) ??
             bookDone(p) ??
-            `Прошёл игру ${q(gameTitle.get(p.interactiveId as string))}`.trim(),
+            (p.review === true
+              ? `Повторил игру ${q(gameTitle.get(p.interactiveId as string))} посложнее${p.level ? `, уровень ${Number(p.level)}` : ''}`
+              : `Прошёл игру ${q(gameTitle.get(p.interactiveId as string))}`
+            )
+              .replace(/\s+/g, ' ')
+              .trim(),
         );
         break;
+      // Этап 55: пройденное открыто ещё раз после пяти заданий.
+      case 'review_pass': {
+        const [kind, title]: [ActivityEntry['kind'], string] = e.segmentId
+          ? ['video', video]
+          : p.deckId
+            ? ['deck', q(deckTitle.get(p.deckId as string))]
+            : ['game', q(gameTitle.get(p.interactiveId as string))];
+        const tasks = Number(p.tasks) || 0;
+        const mistakes = Number(p.mistakes) || 0;
+        add(
+          e.createdAt,
+          kind,
+          `Повторил ${title} после проверки${tasks ? `: ${plural(tasks, ['задание', 'задания', 'заданий'])}, ошибок — ${mistakes}` : ''}`
+            .replace(/\s+/g, ' ')
+            .trim(),
+        );
+        break;
+      }
       // Этап 44: открыл и ушёл, не пройдя.
       case 'deck_exit':
         add(

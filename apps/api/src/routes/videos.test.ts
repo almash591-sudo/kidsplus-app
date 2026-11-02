@@ -9,6 +9,11 @@ import {
   makeApp,
   MISSING_ID,
   pairDevice,
+  RUTUBE_ADULT_ID,
+  RUTUBE_DOWN_ID,
+  RUTUBE_ID,
+  RUTUBE_MISSING_ID,
+  rutubeUrl,
   setupParent,
   videoUrl,
   type TestApp,
@@ -29,7 +34,7 @@ afterEach(() => t.close());
 /** Видео из плейлиста устройства. */
 const kidSegments = async (device: Record<string, string>) =>
   (await t.app.inject({ url: '/api/kid/playlist', cookies: device }))
-    .json<{ items: { kind: string; id: string; externalId: string }[] }>()
+    .json<{ items: { kind: string; id: string; externalId: string; provider: string }[] }>()
     .items.filter((i) => i.kind === 'segment');
 
 const childItemIds = async (childId: string) =>
@@ -50,6 +55,7 @@ describe('поиск видео по ссылке (oEmbed)', () => {
       channelTitle: 'Канал',
       thumbnailUrl: 'https://i.ytimg.com/vi/abcdefghijk/hqdefault.jpg',
       suggestedStartSec: 65,
+      onlyIn: null,
     });
   });
 
@@ -70,12 +76,80 @@ describe('поиск видео по ссылке (oEmbed)', () => {
     expect(res.json()).toMatchObject({ error: 'video_not_found' });
   });
 
-  it('не YouTube — 400', async () => {
+  it('не YouTube и не RuTube — 400', async () => {
     const res = await t.app.inject({
       url: '/api/parent/videos/lookup?url=https://vimeo.com/1',
       cookies: parent,
     });
     expect(res.statusCode).toBe(400);
+  });
+});
+
+describe('RuTube (этап 54)', () => {
+  const lookup = (url: string) =>
+    t.app.inject({
+      url: `/api/parent/videos/lookup?url=${encodeURIComponent(url)}`,
+      cookies: parent,
+    });
+
+  it('поиск: название, канал, превью с pic.rtbcdn.ru и страны', async () => {
+    const res = await lookup(`${rutubeUrl(RUTUBE_ID)}?t=42`);
+    expect(res.json()).toEqual({
+      provider: 'rutube',
+      externalId: RUTUBE_ID,
+      title: 'Видео RuTube c9be',
+      channelTitle: 'Канал RuTube',
+      thumbnailUrl: `https://pic.rtbcdn.ru/video/${RUTUBE_ID}.jpg`,
+      suggestedStartSec: 42,
+      onlyIn: ['RU'],
+    });
+  });
+
+  it('18+, удалённое, RuTube не отвечает — понятные ошибки', async () => {
+    const adult = await lookup(rutubeUrl(RUTUBE_ADULT_ID));
+    expect(adult.statusCode).toBe(422);
+    expect(adult.json()).toMatchObject({ error: 'not_for_kids' });
+    expect((await lookup(rutubeUrl(RUTUBE_MISSING_ID))).json()).toMatchObject({
+      error: 'video_not_found',
+    });
+    expect((await lookup(rutubeUrl(RUTUBE_DOWN_ID))).statusCode).toBe(502);
+  });
+
+  it('фрагмент сохраняется с провайдером и приходит на телефон', async () => {
+    const res = await t.app.inject({
+      method: 'POST',
+      url: '/api/parent/segments',
+      cookies: parent,
+      payload: {
+        url: rutubeUrl(RUTUBE_ID),
+        title: 'Ёжик',
+        startSec: 0,
+        endSec: 120,
+        childIds: [younger],
+      },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.json()).toMatchObject({ source: { provider: 'rutube', externalId: RUTUBE_ID } });
+    const youtube = await createSegment(t, parent, { videoId: 'abcdefghijk', childIds: [younger] });
+    const device = await pairDevice(t, parent, younger);
+    const phone = await kidSegments(device);
+    expect(phone).toHaveLength(2);
+    expect(phone.find((s) => s.id === youtube)).toMatchObject({ provider: 'youtube' });
+    expect(phone.find((s) => s.id !== youtube)).toMatchObject({
+      provider: 'rutube',
+      externalId: RUTUBE_ID,
+      thumbnailUrl: `https://pic.rtbcdn.ru/video/${RUTUBE_ID}.jpg`,
+    });
+
+    // Перепроверка ходит в RuTube, а не в YouTube.
+    const segmentId = res.json<{ id: string }>().id;
+    const recheck = await t.app.inject({
+      method: 'POST',
+      url: `/api/parent/segments/${segmentId}/recheck`,
+      cookies: parent,
+    });
+    expect(recheck.statusCode).toBe(200);
+    expect(recheck.json()).toMatchObject({ source: { provider: 'rutube', status: 'available' } });
   });
 });
 

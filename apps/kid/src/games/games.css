@@ -438,6 +438,14 @@
 }
 
 /* Обведи по точкам */
+.trace-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+}
+
 .trace-svg {
   flex: 1;
   min-height: 0;
@@ -447,9 +455,25 @@
   touch-action: none;
 }
 
+/* Образец буквы (этап 56) — в свободном углу поля, пальцу не мешает. */
+.trace-sample {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: min(24%, 24vh, 130px);
+  aspect-ratio: 1;
+  background: #fff8e6;
+  border: 2px solid #f0e0b8;
+  border-radius: 14px;
+  pointer-events: none;
+}
+
 .trace-guide,
 .trace-dash,
-.trace-ink {
+.trace-line,
+.trace-ink,
+.trace-sample-ink,
+.trace-arrow {
   fill: none;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -469,6 +493,35 @@
 .trace-ink {
   stroke: #3b82f6;
   stroke-width: 7;
+}
+
+/* Ступень «по бледной линии» и подсказка на ступени «сама». */
+.trace-line {
+  stroke: #d9c9a6;
+  stroke-width: 2.4;
+}
+
+.trace-rule {
+  stroke: #cfe0f5;
+  stroke-width: 0.8;
+}
+
+.trace-sample-ink {
+  stroke: #2f6fd6;
+  stroke-width: 6;
+}
+
+.trace-arrow {
+  stroke: #e8453c;
+  stroke-width: 1.8;
+}
+
+.trace-number {
+  fill: #9a7f4c;
+  font:
+    700 7px system-ui,
+    sans-serif;
+  text-anchor: middle;
 }
 
 .trace-start {
@@ -515,6 +568,22 @@
   object-position: bottom;
   pointer-events: none;
   filter: drop-shadow(0 8px 10px rgb(0 0 0 / 0.15));
+}
+
+/* Буква на шарике (этап 56) — посреди круглой части. */
+.balloon-letter {
+  position: absolute;
+  top: 34%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font:
+    800 13vmin/1 system-ui,
+    sans-serif;
+  color: #fff;
+  text-shadow:
+    0 0 3px rgb(0 0 0 / 0.55),
+    0 2px 4px rgb(0 0 0 / 0.35);
+  pointer-events: none;
 }
 
 .balloon.popped {

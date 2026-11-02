@@ -37,7 +37,7 @@ import {
 import { MAX_LEVEL, specAtLevel } from '@kidsplus/shared/levels';
 import { lineStart, partSpeech, poemAnnounce, poemOf, type PoemCode } from '@kidsplus/shared/poems';
 import { SONGS } from '@kidsplus/shared/songs';
-import { soundPlace, syllablesIn, wordScheme } from '@kidsplus/shared/sounds';
+import { soundPlace, syllablesIn, unstressed, wordScheme } from '@kidsplus/shared/sounds';
 import { NUMBERS, paint, PALETTE } from './games/common';
 import { SORTER } from './games/sorterShapes';
 import { PICTURES } from './games/pictures';
@@ -78,6 +78,10 @@ export const coloringTask = (picture: ColoringPicture, i: number) => {
 export const needColor = (id: Parameters<typeof paint>[0]) => `Нужен ${paint(id).name} цвет.`;
 
 export const tracePrompt = (shape: TraceShape) => `Обведи ${TRACES[shape].name}.`;
+/** Ступень «сама» (этап 56): только точка начала и образец рядом. */
+export const traceSelfPrompt = (shape: TraceShape) =>
+  `Напиши ${TRACES[shape].name} по образцу. Начни с зелёной точки.`;
+export const TRACE_HINT = 'Подскажу: веди вот так.';
 
 export const BALLOON_NAMES: Record<BalloonColor, { name: string; plural: string }> = {
   red: { name: 'красный', plural: 'красные' },
@@ -89,6 +93,18 @@ export const balloonsPrompt = (target: BalloonColor | null) =>
   target ? `Лопни ${BALLOON_NAMES[target].plural} шарики!` : 'Лопай шарики!';
 export const balloonsWrong = (color: BalloonColor, target: BalloonColor) =>
   `Это ${BALLOON_NAMES[color].name}. Ищи ${BALLOON_NAMES[target].plural}!`;
+/** Ъ и Ь — знаки (этап 56): голос называет их «мягкий знак», а не «буква Ь». */
+const SIGN_NAMES: Record<string, string> = { Ъ: 'твёрдый знак', Ь: 'мягкий знак' };
+const SIGN_WITH: Record<string, string> = { Ъ: 'твёрдым знаком', Ь: 'мягким знаком' };
+/** Шарики с буквами (этап 56): буква — заглавной, так голос читает её как букву. */
+export const balloonLetterPrompt = (find: string, lower: boolean) => {
+  const sign = SIGN_WITH[find];
+  const what = sign ?? `буквой ${find}`;
+  if (!lower) return `Лопни шарики с ${what}!`;
+  return `Лопни шарики с ${what} — ${sign ? 'большим и маленьким' : 'большой и маленькой'}!`;
+};
+export const balloonLetterWrong = (letter: string, find: string) =>
+  `Это ${SIGN_NAMES[letter] ?? `буква ${letter}`}. Ищи ${SIGN_NAMES[find] ?? `букву ${find}`}!`;
 
 export const MAZE_PROMPT = 'Веди пальчиком по дорожке до цели!';
 export const SHADOWS_PROMPT = 'Найди, чья это тень! Перетащи картинку на тень.';
@@ -177,8 +193,9 @@ export const PLAYER_NAMES = [
 // ─── Буквы ───────────────────────────────────────────────────────────────────
 
 const low = (s: string) => s.toLowerCase();
-export const findLetter = (l: string) => `Найди букву ${l}.`;
-export const isLetter = (l: string) => `Буква ${l}!`;
+export const findLetter = (l: string) =>
+  SIGN_NAMES[l] ? `Найди ${SIGN_NAMES[l]}.` : `Найди букву ${l}.`;
+export const isLetter = (l: string) => (SIGN_NAMES[l] ? `Это ${SIGN_NAMES[l]}!` : `Буква ${l}!`);
 export const findSyllable = (s: string) => `Найди слог ${low(s)}.`;
 export const firstLetterAsk = (word: string) => `С какой буквы начинается слово ${low(word)}?`;
 export const firstLetterIs = (word: string) => `${low(word)} — на букву ${word[0]}!`;
@@ -193,11 +210,12 @@ export const SYLLABLE_COUNT_INTRO = 'Хлопай на каждый слог и 
 export const syllablesAsk = (word: string) => `Сколько слогов в слове ${low(word)}? Похлопай!`;
 export const syllablesAre = (word: string, n: number) => `${low(word)} — ${SYLLABLE_NUMS[n]}!`;
 export const SOUND_PLACE_INTRO = 'Слушай слово. Где звук: в начале, в середине или в конце?';
+// Знак ударения (этап 56) нужен проверке слова, голосу — нет.
 export const soundAsk = (letter: string, word: string) =>
-  `Где звук ${sound(letter)} в слове ${low(word)}?`;
+  `Где звук ${sound(letter)} в слове ${low(unstressed(word))}?`;
 const PLACE_NAMES = { start: 'в начале', middle: 'в середине', end: 'в конце' } as const;
 export const soundIs = (letter: string, word: string, place: keyof typeof PLACE_NAMES) =>
-  `${low(word)} — звук ${sound(letter)} ${PLACE_NAMES[place]}!`;
+  `${low(unstressed(word))} — звук ${sound(letter)} ${PLACE_NAMES[place]}!`;
 export const WORD_SCHEME_INTRO = 'Красная фишка — гласный звук, синяя — согласный.';
 export const schemeAsk = (word: string) => `Найди схему слова ${low(word)}.`;
 export const schemeIs = (word: string, chips: readonly ('v' | 'c')[]) =>
@@ -682,11 +700,21 @@ export function gamePhrases(spec: GameSpec): string[] {
           ])
         : [];
     case 'tracing':
-      return spec.shapes.map(tracePrompt);
+      return [
+        ...spec.shapes.map(tracePrompt),
+        ...(spec.guides?.includes('start')
+          ? [...spec.shapes.map(traceSelfPrompt), TRACE_HINT]
+          : []),
+      ];
     case 'sorting':
       return [spec.prompt, ...spec.bins.map((b) => b.name)];
     case 'balloons': {
-      const { target } = spec;
+      const { target, letters } = spec;
+      if (letters)
+        return [
+          balloonLetterPrompt(letters.find, letters.lower),
+          ...letters.others.map((l) => balloonLetterWrong(l, letters.find)),
+        ];
       const wrong = target
         ? (Object.keys(BALLOON_NAMES) as BalloonColor[])
             .filter((c) => c !== target)
@@ -751,7 +779,8 @@ export function gamePhrases(spec: GameSpec): string[] {
     case 'orchestra':
       return [ORCHESTRA_INTRO, ...PLAYER_NAMES.slice(0, spec.players).map(orchestraNow)];
     case 'letter':
-      return spec.letters.flatMap((l) => [findLetter(l), isLetter(l)]);
+      // Остальные буквы (этап 56: ask) — только на кнопках, их не называют.
+      return (spec.ask ?? spec.letters).flatMap((l) => [findLetter(l), isLetter(l)]);
     case 'syllable':
       return spec.syllables.flatMap((s) => [findSyllable(s), sayWord(s)]);
     case 'firstLetter':
@@ -995,6 +1024,24 @@ export const BREAK_ASK_FAILED = 'Не получилось спросить. О�
 export const REST_TODAY = 'Это уже пройдено сегодня! Выбери что-нибудь новое.';
 export const REST_LEARNED = 'Это ты уже знаешь! Давай что-нибудь новое.';
 
+/**
+ * Повтор пройденного (этап 55): бледная плитка открывается ещё раз после пяти заданий по теме;
+ * игра без темы — сразу, на уровень сложнее. Обращение — по полу ребёнка из профиля.
+ */
+export type Gender = 'f' | 'm';
+const passed = (g: Gender) => (g === 'f' ? 'прошла' : 'прошёл');
+export const reviewAsk = (g: Gender) =>
+  `Ты это уже ${passed(g)}! Если интересно ещё раз — выполни пять заданий.`;
+export const reviewHarder = (g: Gender) => `Ты уже это ${passed(g)} — давай посложнее!`;
+export const reviewAgain = (g: Gender) => `Ты уже это ${passed(g)} — давай ещё раз!`;
+export const REVIEW_DONE = 'Все пять заданий! Открываю ещё раз.';
+export const reviewPhrases = (g: Gender) => [
+  reviewAsk(g),
+  reviewHarder(g),
+  reviewAgain(g),
+  REVIEW_DONE,
+];
+
 /** Наклейка за задание (этап 17) и её имя в альбоме. */
 export const stickerNew = (name: string) => `Новая наклейка — ${name}!`;
 export const stickerAgain = (name: string) => `Ещё ${name}!`;
@@ -1056,6 +1103,7 @@ export function appPhrases(playlist: KidPlaylist): Phrase[] {
     BREAK_ASK_FAILED,
     REST_TODAY,
     REST_LEARNED,
+    ...reviewPhrases(playlist.gender ?? 'm'),
     CAMERA_ENOUGH,
     HINT_TODAY,
     HINT_PICK,
