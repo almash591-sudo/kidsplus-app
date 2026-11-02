@@ -1,4 +1,5 @@
 // Профиль ребёнка — форма и окно (этап 47: открываются и из «Детей», и со страницы ребёнка).
+import { CAPITAL_LETTERS } from '@kidsplus/shared/games';
 import { EYE_BREAK_EVERY, EYE_BREAK_REST } from '@kidsplus/shared/schedule';
 import {
   LANGUAGES,
@@ -10,6 +11,7 @@ import {
 import {
   Button,
   Checkbox,
+  Chip,
   Group,
   Modal,
   NumberInput,
@@ -88,6 +90,7 @@ export function ChildForm({ child, onDone }: { child: Child | null; onDone: () =
           repeatMode: child.repeatMode,
           eyeBreakEvery: child.eyeBreakEvery,
           eyeBreakRest: child.eyeBreakRest,
+          kindergartenLetters: child.kindergartenLetters,
         }
       : {
           nickname: '',
@@ -102,6 +105,7 @@ export function ChildForm({ child, onDone }: { child: Child | null; onDone: () =
           repeatMode: 'weekly',
           eyeBreakEvery: null,
           eyeBreakRest: 15,
+          kindergartenLetters: [],
         },
     validate: {
       nickname: (v) => (v.trim() ? null : 'укажите прозвище'),
@@ -196,6 +200,11 @@ export function ChildForm({ child, onDone }: { child: Child | null; onDone: () =
           onEvery={(v) => form.setFieldValue('eyeBreakEvery', v)}
           onRest={(v) => form.setFieldValue('eyeBreakRest', v)}
         />
+        <KindergartenLetters
+          saved={child?.kindergartenLetters ?? []}
+          value={form.values.kindergartenLetters ?? []}
+          onChange={(v) => form.setFieldValue('kindergartenLetters', v)}
+        />
         <QuizSettingsFields
           birthYear={form.values.birthYear}
           birthMonth={form.values.birthMonth}
@@ -261,6 +270,54 @@ function EyeBreakFields(p: {
             />
           </div>
         </Group>
+      )}
+    </Stack>
+  );
+}
+
+type Letter = (typeof CAPITAL_LETTERS)[number];
+
+/**
+ * «Буквы из садика» (этап 56): отметили букву — после сохранения в «Буквах» сразу за пройденным
+ * встаёт блок уроков для неё. Снятая отметка уроки не убирает.
+ */
+function KindergartenLetters(p: {
+  saved: readonly string[];
+  value: readonly string[];
+  onChange: (v: Letter[]) => void;
+}) {
+  const fresh = p.value.filter((l) => !p.saved.includes(l));
+  const oau = fresh.some((l) => ['А', 'О', 'У'].includes(l));
+  return (
+    <Stack gap={4} data-testid="kindergarten-letters">
+      <Text size="sm" fw={500}>
+        Буквы из садика
+      </Text>
+      <Text size="xs" c="dimmed">
+        Отметьте буквы, которые прошли в садике. Для новой буквы в «Буквах» сразу после пройденного
+        появятся уроки: обвести, найти среди похожих, услышать звук, прочитать слоги, написать без
+        подсказки. А, О, У — общим блоком «Повторяем О, А, У».
+      </Text>
+      <Chip.Group
+        multiple
+        value={[...p.value]}
+        onChange={(v) => p.onChange(CAPITAL_LETTERS.filter((l) => v.includes(l)))}
+      >
+        <Group gap={4}>
+          {CAPITAL_LETTERS.map((l) => (
+            <Chip key={l} value={l} size="sm" data-testid="kindergarten-letter">
+              {l}
+            </Chip>
+          ))}
+        </Group>
+      </Chip.Group>
+      {fresh.length > 0 && (
+        <Text size="xs" c="teal" data-testid="kindergarten-fresh">
+          После сохранения появятся уроки:{' '}
+          {[...(oau ? ['О, А, У'] : []), ...fresh.filter((l) => !['А', 'О', 'У'].includes(l))].join(
+            ', ',
+          )}
+        </Text>
       )}
     </Stack>
   );

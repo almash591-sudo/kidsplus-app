@@ -93,11 +93,18 @@ export const balloonsPrompt = (target: BalloonColor | null) =>
   target ? `Лопни ${BALLOON_NAMES[target].plural} шарики!` : 'Лопай шарики!';
 export const balloonsWrong = (color: BalloonColor, target: BalloonColor) =>
   `Это ${BALLOON_NAMES[color].name}. Ищи ${BALLOON_NAMES[target].plural}!`;
+/** Ъ и Ь — знаки (этап 56): голос называет их «мягкий знак», а не «буква Ь». */
+const SIGN_NAMES: Record<string, string> = { Ъ: 'твёрдый знак', Ь: 'мягкий знак' };
+const SIGN_WITH: Record<string, string> = { Ъ: 'твёрдым знаком', Ь: 'мягким знаком' };
 /** Шарики с буквами (этап 56): буква — заглавной, так голос читает её как букву. */
-export const balloonLetterPrompt = (find: string, lower: boolean) =>
-  lower ? `Лопни шарики с буквой ${find} — большой и маленькой!` : `Лопни шарики с буквой ${find}!`;
+export const balloonLetterPrompt = (find: string, lower: boolean) => {
+  const sign = SIGN_WITH[find];
+  const what = sign ?? `буквой ${find}`;
+  if (!lower) return `Лопни шарики с ${what}!`;
+  return `Лопни шарики с ${what} — ${sign ? 'большим и маленьким' : 'большой и маленькой'}!`;
+};
 export const balloonLetterWrong = (letter: string, find: string) =>
-  `Это буква ${letter}. Ищи букву ${find}!`;
+  `Это ${SIGN_NAMES[letter] ?? `буква ${letter}`}. Ищи ${SIGN_NAMES[find] ?? `букву ${find}`}!`;
 
 export const MAZE_PROMPT = 'Веди пальчиком по дорожке до цели!';
 export const SHADOWS_PROMPT = 'Найди, чья это тень! Перетащи картинку на тень.';
@@ -186,8 +193,9 @@ export const PLAYER_NAMES = [
 // ─── Буквы ───────────────────────────────────────────────────────────────────
 
 const low = (s: string) => s.toLowerCase();
-export const findLetter = (l: string) => `Найди букву ${l}.`;
-export const isLetter = (l: string) => `Буква ${l}!`;
+export const findLetter = (l: string) =>
+  SIGN_NAMES[l] ? `Найди ${SIGN_NAMES[l]}.` : `Найди букву ${l}.`;
+export const isLetter = (l: string) => (SIGN_NAMES[l] ? `Это ${SIGN_NAMES[l]}!` : `Буква ${l}!`);
 export const findSyllable = (s: string) => `Найди слог ${low(s)}.`;
 export const firstLetterAsk = (word: string) => `С какой буквы начинается слово ${low(word)}?`;
 export const firstLetterIs = (word: string) => `${low(word)} — на букву ${word[0]}!`;
@@ -771,7 +779,8 @@ export function gamePhrases(spec: GameSpec): string[] {
     case 'orchestra':
       return [ORCHESTRA_INTRO, ...PLAYER_NAMES.slice(0, spec.players).map(orchestraNow)];
     case 'letter':
-      return spec.letters.flatMap((l) => [findLetter(l), isLetter(l)]);
+      // Остальные буквы (этап 56: ask) — только на кнопках, их не называют.
+      return (spec.ask ?? spec.letters).flatMap((l) => [findLetter(l), isLetter(l)]);
     case 'syllable':
       return spec.syllables.flatMap((s) => [findSyllable(s), sayWord(s)]);
     case 'firstLetter':

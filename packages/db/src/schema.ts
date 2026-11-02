@@ -135,6 +135,14 @@ export const children = pgTable(
     eyeBreakUntil: timestamp({ withTimezone: true }),
     /** asked — ребёнок попросил ещё; yes / no — ответ родителя. */
     eyeBreakAsk: text(),
+    /**
+     * «Буквы из садика» (этап 56): буквы, которые ребёнок прошёл в садике. Отметили новую —
+     * в дорожку «Букв» сразу после пройденного встаёт блок уроков для неё.
+     */
+    kindergartenLetters: text()
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
     createdAt: createdAt(),
   },
   (t) => [

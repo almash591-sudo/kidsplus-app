@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { gameSpec } from './games';
-import { LETTER_LESSONS } from './letters-lessons';
+import {
+  GARDEN_LETTERS,
+  GARDEN_OAU,
+  GARDEN_TITLE,
+  gardenLessons,
+  LETTER_LESSONS,
+} from './letters-lessons';
 import {
   soundProblem,
   SOUND_PLACES,
@@ -185,6 +191,115 @@ describe('уроки «Буквы»', () => {
             expect(places.filter((x) => x === p).length, `${spec.sound} ${p}`).toBeGreaterThan(0);
         }
       expect(sounds).toEqual(['А', 'У', 'О']);
+    });
+  });
+
+  describe('этап 56: буквы из садика', () => {
+    const others = GARDEN_LETTERS.filter((l) => !GARDEN_OAU.includes(l));
+
+    it('у каждой буквы — свой блок: схема, уникальные названия, от обводки к письму', () => {
+      expect(GARDEN_LETTERS).toHaveLength(33);
+      const titles: string[] = [];
+      for (const l of others) {
+        const block = gardenLessons(l);
+        expect(block.length, l).toBeGreaterThanOrEqual(5);
+        for (const x of block) {
+          expect(x.title.startsWith(`${GARDEN_TITLE} · ${l}: `), x.title).toBe(true);
+          expect(gameSpec.safeParse(x.spec).success, x.title).toBe(true);
+          titles.push(x.title);
+        }
+        const first = block[0]!.spec;
+        const last = block.at(-1)!.spec;
+        expect(first).toMatchObject({
+          kind: 'tracing',
+          shapes: [l],
+          guides: ['dots', 'line', 'start'],
+        });
+        expect(last).toMatchObject({
+          kind: 'tracing',
+          shapes: [l, l.toLowerCase()],
+          guides: ['start'],
+        });
+      }
+      expect(new Set(titles).size).toBe(titles.length);
+      expect(titles.some((t) => LETTER_LESSONS.some((x) => x.title === t))).toBe(false);
+    });
+
+    it('А, О, У — общий блок «Повторяем О, А, У»', () => {
+      for (const l of GARDEN_OAU)
+        expect(gardenLessons(l).map((x) => x.title)).toEqual(
+          LETTER_LESSONS.slice(60, 70).map((x) => x.title),
+        );
+      expect(gardenLessons('Q')).toEqual([]);
+    });
+
+    it('«Найди букву» спрашивает только эту букву, остальные — похожие обманки', () => {
+      for (const l of others) {
+        const spec = gardenLessons(l).find((x) => x.spec.kind === 'letter')!.spec;
+        if (spec.kind !== 'letter') throw new Error(l);
+        expect(spec.ask).toEqual([l]);
+        expect(spec.letters[0]).toBe(l);
+        expect(new Set(spec.letters).size).toBe(4);
+        expect(spec.letterCase).toBe('mixed');
+        const balloons = gardenLessons(l).find((x) => x.spec.kind === 'balloons')!.spec;
+        expect(balloons).toMatchObject({ letters: { find: l, others: spec.letters.slice(1) } });
+      }
+    });
+
+    it('«С какой буквы?»: все слова на эту букву, слова и картинки не повторяются', () => {
+      const without: string[] = [];
+      for (const l of others) {
+        const spec = gardenLessons(l).find((x) => x.spec.kind === 'firstLetter')?.spec;
+        if (!spec) {
+          without.push(l);
+          continue;
+        }
+        if (spec.kind !== 'firstLetter') throw new Error(l);
+        expect(spec.words.length, l).toBeGreaterThanOrEqual(3);
+        for (const w of spec.words) expect(w.word[0], w.word).toBe(l);
+        expect(new Set(spec.words.map((w) => w.word)).size).toBe(spec.words.length);
+        expect(new Set(spec.words.map((w) => w.emoji)).size).toBe(spec.words.length);
+      }
+      expect(without).toEqual(['Й', 'Ъ', 'Ы', 'Ь', 'Ю']);
+    });
+
+    it('«Где звук?»: звук слышен как написан; звонкие — без конца слова', () => {
+      const withSound: string[] = [];
+      for (const l of others) {
+        const spec = gardenLessons(l).find((x) => x.spec.kind === 'soundPlace')?.spec;
+        if (!spec || spec.kind !== 'soundPlace') continue;
+        withSound.push(l);
+        expect(spec.sound).toBe(l);
+        expect(new Set(spec.words.map((w) => w.word)).size).toBe(spec.words.length);
+        expect(new Set(spec.words.map((w) => w.emoji)).size).toBe(spec.words.length);
+        for (const w of spec.words) expect(soundProblem(w.word, l), w.word).toBeNull();
+        const places = new Set(spec.words.map((w) => soundPlace(w.word, l)));
+        expect(places.has('start') && places.has('middle'), l).toBe(true);
+      }
+      expect(withSound.sort()).toEqual([...'ВЖЗЛМНРСФХШЩ'].sort());
+    });
+
+    it('«Прочитай слоги»: с О, А, У; у звонких — только прямые, у знаков и гласных — нет', () => {
+      const syllables = (l: string) => {
+        const spec = gardenLessons(l).find((x) => x.spec.kind === 'syllable')?.spec;
+        return spec?.kind === 'syllable' ? spec.syllables : [];
+      };
+      expect(syllables('М')).toEqual(['МА', 'МО', 'МУ', 'АМ', 'ОМ', 'УМ']);
+      expect(syllables('Ж')).toEqual(['ЖА', 'ЖО', 'ЖУ']);
+      expect(syllables('Й')).toEqual(['АЙ', 'ОЙ', 'УЙ']);
+      for (const l of ['Ъ', 'Ь', 'Ы', 'Е', 'Ё', 'И', 'Э', 'Ю', 'Я'])
+        expect(syllables(l), l).toEqual([]);
+    });
+
+    it('Ъ и Ь называются знаками', () => {
+      expect(gardenLessons('Ь').map((x) => x.title)).toEqual([
+        `${GARDEN_TITLE} · Ь: обведи большой знак`,
+        `${GARDEN_TITLE} · Ь: найди среди похожих`,
+        `${GARDEN_TITLE} · Ь: обведи маленький знак`,
+        `${GARDEN_TITLE} · Ь: шарики с мягким знаком`,
+        `${GARDEN_TITLE} · Ь: напиши без подсказки`,
+      ]);
+      expect(gardenLessons('Ъ')[3]!.title).toBe(`${GARDEN_TITLE} · Ъ: шарики с твёрдым знаком`);
     });
   });
 });

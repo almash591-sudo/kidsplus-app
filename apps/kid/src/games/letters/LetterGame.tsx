@@ -108,7 +108,8 @@ const claps = (n: number) => '👏'.repeat(n);
 export function makeRound(spec: Spec, prevKey?: string): LetterRound {
   switch (spec.kind) {
     case 'letter': {
-      const a = pick(spec.letters, prevKey);
+      // ask (этап 56, «Буквы из садика»): спрашиваем только её, похожие — обманки.
+      const a = pick(spec.ask ?? spec.letters, prevKey);
       const pool = spec.letters.length >= spec.choices ? spec.letters : ALPHABET;
       return {
         key: a,
