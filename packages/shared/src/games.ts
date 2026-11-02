@@ -38,9 +38,12 @@ export const TANGRAM_FIGURES = [
 ] as const;
 export type TangramFigure = (typeof TANGRAM_FIGURES)[number];
 
-/** Буквы для обводки (этап 56): большие и маленькие — печатные, как пишут в садике. */
-export const TRACE_LETTERS = ['А', 'О', 'У', 'а', 'о', 'у'] as const;
-export type TraceLetter = (typeof TRACE_LETTERS)[number];
+/** Буквы для обводки (этап 56): весь алфавит, большие и маленькие — печатные, как пишут в садике. */
+const UPPER = 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ';
+const LOWER = 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя';
+type Chars<S extends string> = S extends `${infer C}${infer R}` ? C | Chars<R> : never;
+export type TraceLetter = Chars<typeof UPPER | typeof LOWER>;
+export const TRACE_LETTERS = [...UPPER, ...LOWER] as readonly TraceLetter[];
 export const isTraceLetter = (s: string): s is TraceLetter =>
   (TRACE_LETTERS as readonly string[]).includes(s);
 

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { fx } from '../fx';
 import { ask, bump, praise, say, svgPoint, type GameProps } from './common';
 import { TRACE_HINT, tracePrompt, traceSelfPrompt } from '../phrases';
-import { advance, LETTER_RULES, resample, TRACES, type Stroke } from './traceShapes';
+import { advance, LETTER_RULES, resample, strokeNumbers, TRACES } from './traceShapes';
 
 type Pt = readonly [number, number];
 const toPath = (pts: readonly Pt[]) =>
@@ -60,17 +60,17 @@ function Arrow({ points }: { points: readonly Pt[] }) {
   );
 }
 
-/** Номера штрихов у буквы из нескольких штрихов: у начала штриха или там, где задано у буквы. */
-function StrokeNumbers({ strokes, at }: { strokes: readonly Stroke[]; at?: readonly Pt[] }) {
-  if (strokes.length < 2) return null;
-  return strokes.map((pts, i) => {
-    const [x, y] = at?.[i] ?? [pts[0]![0] - 7, pts[0]![1] + 2];
-    return (
-      <text key={i} x={x} y={y} className="trace-number">
-        {i + 1}
-      </text>
-    );
-  });
+/** Номера штрихов у буквы из нескольких штрихов — у начала штриха (у точек номера нет). */
+function StrokeNumbers({ def }: { def: (typeof TRACES)[keyof typeof TRACES] }) {
+  const at = useMemo(() => strokeNumbers(def), [def]);
+  return at.map(
+    (p, i) =>
+      p && (
+        <text key={i} x={p[0]} y={p[1]} className="trace-number" data-testid="trace-number">
+          {i + 1}
+        </text>
+      ),
+  );
 }
 
 /** Линейки букв — как строка в прописи. */
@@ -158,7 +158,7 @@ function TraceOne({
           {hint && current && (
             <path d={toPath(current)} className="trace-line" data-testid="trace-hint" />
           )}
-          {def.letter && !self && <StrokeNumbers strokes={strokes} at={def.numbers} />}
+          {def.letter && !self && <StrokeNumbers def={def} />}
           {strokes.slice(0, stroke).map((pts, i) => (
             <path key={i} d={toPath(pts)} className="trace-ink" />
           ))}
@@ -189,7 +189,7 @@ function TraceOne({
             {strokes.map((pts, i) => (
               <path key={i} d={toPath(pts)} className="trace-sample-ink" />
             ))}
-            {def.letter && <StrokeNumbers strokes={strokes} at={def.numbers} />}
+            {def.letter && <StrokeNumbers def={def} />}
           </svg>
         )}
       </div>

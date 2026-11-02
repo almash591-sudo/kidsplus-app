@@ -3,6 +3,7 @@ import { expect, test as base, type Page } from '@playwright/test';
 import type { AppErrorReport } from '@kidsplus/shared/app-errors';
 import { BOOK_CODES, BOOKS } from '@kidsplus/shared/books';
 import { LETTER_LESSONS } from '@kidsplus/shared/letters-lessons';
+import type { TraceShape } from '@kidsplus/shared/games';
 import type { KidBedtime } from '@kidsplus/shared/bedtime';
 import type { KidHabit, KidHabits } from '@kidsplus/shared/habits';
 import type { EyeBreak } from '@kidsplus/shared/schedule';
@@ -4769,7 +4770,7 @@ test.describe('буквы', () => {
 
 test.describe('буквы О, А, У (этап 56)', () => {
   /** Провести пальцем по штрихам фигуры (координаты поля 100×100 → экран). */
-  async function traceStrokes(page: Page, shape: 'А' | 'О' | 'а') {
+  async function traceStrokes(page: Page, shape: TraceShape) {
     const { TRACES, resample } = await import('../src/games/traceShapes');
     for (const stroke of TRACES[shape].strokes) {
       const pts = await fieldPoints(page, resample(stroke));
@@ -4820,6 +4821,28 @@ test.describe('буквы О, А, У (этап 56)', () => {
     expect(said).toContain('Обведи большую букву А.');
     expect(said).toContain('Напиши большую букву А по образцу. Начни с зелёной точки.');
     expect(said).toContain('Подскажу: веди вот так.');
+  });
+
+  test('весь алфавит: Б по номерам штрихов, точки Ё — касанием, мягкий знак', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(60_000);
+    backend.items = [game(1, { kind: 'tracing', shapes: ['Б', 'Ё', 'ь'] })];
+    await openGame(page);
+    await expect(page.locator('.trace-number')).toHaveCount(3);
+    await shot(page, 'tracing-alphabet');
+    await traceStrokes(page, 'Б');
+    // У Ё номера только у четырёх палочек — точки ставят касанием.
+    await expect(page.locator('.trace-number')).toHaveCount(4, { timeout: 5000 });
+    await traceStrokes(page, 'Ё');
+    await expect(page.locator('.trace-number')).toHaveCount(2, { timeout: 5000 });
+    await traceStrokes(page, 'ь');
+    await expectFinished(page, backend);
+    const said = (await spoken(page)).map((s) => s.text);
+    expect(said).toContain('Обведи большую букву Б.');
+    expect(said).toContain('Обведи большую букву Ё.');
+    expect(said).toContain('Обведи маленький мягкий знак.');
   });
 
   test('шарики с буквой О: другая буква не считается и совёнок подсказывает', async ({
