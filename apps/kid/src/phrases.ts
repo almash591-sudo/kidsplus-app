@@ -650,6 +650,44 @@ export function trainPhrases(spec: SpecOf<'train'>) {
   ];
 }
 
+// ─── «Весы» (этап 57) ───
+export const SCALES_COMPARE = 'Какая чаша тяжелее? Нажми на неё — и весы покажут!';
+export const SCALES_COMPARE_AGAIN = 'А здесь какая чаша тяжелее?';
+export const SCALES_COUNT = 'Посчитай: где больше — та чаша и тяжелее.';
+export const SCALES_NUMBERS = 'Посмотри на числа: где больше — та чаша и тяжелее.';
+export const SCALES_OVER = 'Ой, перевесило! Уберём лишнее.';
+export const SCALES_LIGHT = 'Легковато! Нужно тяжелее.';
+export const SCALES_HEAVY = 'Тяжеловато! Нужно полегче.';
+export const SCALES_EVEN = 'Поровну!';
+export const SCALES_END = 'Всё взвесили! Спасибо, помощник!';
+type ScalesLook = SpecOf<'scales'>['look'];
+export const scalesBalance = (look: ScalesLook) =>
+  `Уравновесь весы! Клади ${look === 'cubes' ? 'кубики' : 'гирьки'} на пустую чашу, пока стрелка не встанет посередине.`;
+export const SCALES_BALANCE_AGAIN = 'Уравновесь ещё раз!';
+export const scalesSum = (look: ScalesLook) =>
+  `Поставь на пустую чашу ${look === 'cubes' ? 'одну башенку' : 'одну гирю'} — чтобы стало поровну!`;
+export const scalesSumAgain = (look: ScalesLook) =>
+  look === 'cubes' ? 'Какую башенку поставим?' : 'Какую гирю поставим?';
+export function scalesPhrases(spec: SpecOf<'scales'>) {
+  const has = (t: SpecOf<'scales'>['tasks'][number]) => spec.tasks.includes(t);
+  return [
+    SCALES_END,
+    SCALES_EVEN,
+    ...(has('compare')
+      ? [
+          SCALES_COMPARE,
+          SCALES_COMPARE_AGAIN,
+          spec.look === 'digits' ? SCALES_NUMBERS : SCALES_COUNT,
+          MORE_THAN,
+        ]
+      : []),
+    ...(has('balance') ? [scalesBalance(spec.look), SCALES_BALANCE_AGAIN, SCALES_OVER] : []),
+    ...(has('sum')
+      ? [scalesSum(spec.look), scalesSumAgain(spec.look), SCALES_LIGHT, SCALES_HEAVY, PLUS, WILL_BE]
+      : []),
+  ];
+}
+
 // ─── Этап 45: стихи и сказки ───
 export const POEM_INTRO = 'Послушай и повторяй за мной!';
 export const POEM_REPEAT = 'Повторяй за мной!';
@@ -775,6 +813,7 @@ export const GAME_INTRO: Record<GameKind, string> = {
   differences: DIFF_PROMPT,
   paints: PAINTS_PROMPT,
   train: TRAIN_PROMPT,
+  scales: SCALES_COMPARE,
   poem: POEM_INTRO,
   book: BOOK_INTRO,
 };
@@ -1021,6 +1060,8 @@ export function gamePhrases(spec: GameSpec): string[] {
       return paintsPhrases(spec);
     case 'train':
       return trainPhrases(spec);
+    case 'scales':
+      return scalesPhrases(spec);
     case 'poem':
       return poemPhrases(spec.poem);
     case 'book':

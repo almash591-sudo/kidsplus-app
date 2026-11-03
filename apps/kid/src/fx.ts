@@ -206,6 +206,14 @@ export const fx = {
   chug(gain = 0.2) {
     noise(0, 0.11, { from: 1100, to: 500, gain, q: 0.7 });
   },
+  /** Груз лёг на чашу весов (этап 57): медный «дзынь» — чем тяжелее, тем ниже. */
+  clink(weight = 1) {
+    const f = 1500 / (1 + Math.min(10, weight) * 0.08);
+    tone(f, 0, 0.32, { type: 'triangle', gain: 0.22 });
+    tone(f * 2.76, 0, 0.14, { gain: 0.07 });
+    noise(0, 0.03, { from: 4200, to: 2600, gain: 0.14, q: 2 });
+    vibrate(12);
+  },
   /** Праздник в конце: арпеджио и искорки. */
   fanfare() {
     [C5, E5, G5, C6, E6].forEach((f, i) => tone(f, i * 0.09, 0.3, { type: 'triangle', gain: 0.4 }));
