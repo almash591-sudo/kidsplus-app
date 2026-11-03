@@ -2347,3 +2347,28 @@
   display: none;
   pointer-events: none;
 }
+
+/* ─── «Шестерёнки» (этап 57) ─── */
+.game.gears {
+  padding: 0;
+  inset: 0;
+  background: #e2a868;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.gears-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+/* Невидимые цели для пальца подсказки: нужная шестерёнка и пустой гвоздик, ручка или стрелка. */
+.gears-hint {
+  position: absolute;
+  display: none;
+  pointer-events: none;
+}

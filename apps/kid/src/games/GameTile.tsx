@@ -77,6 +77,7 @@ export const ICON: Record<GameKind, string> = {
   paints: '🎨',
   train: '🚂',
   scales: '⚖️',
+  gears: '⚙️',
   poem: '📖',
   book: '📚',
 };
