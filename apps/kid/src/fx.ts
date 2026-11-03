@@ -189,6 +189,23 @@ export const fx = {
   step() {
     tone(880 + Math.random() * 200, 0, 0.04, { type: 'triangle', gain: 0.15 });
   },
+  /** Гудок паровоза (этап 57): «ту-ту» — аккорд с шипением пара. */
+  toot() {
+    for (const [at, dur] of [
+      [0, 0.36],
+      [0.46, 0.8],
+    ] as const) {
+      tone(587, at, dur, { type: 'triangle', gain: 0.3 });
+      tone(740, at, dur, { type: 'triangle', gain: 0.24 });
+      tone(880, at, dur, { gain: 0.16 });
+      noise(at, dur, { from: 2400, to: 1800, gain: 0.1, q: 0.8 });
+    }
+    vibrate([30, 120, 60]);
+  },
+  /** «Чух» паровоза: короткий выдох пара. */
+  chug(gain = 0.2) {
+    noise(0, 0.11, { from: 1100, to: 500, gain, q: 0.7 });
+  },
   /** Праздник в конце: арпеджио и искорки. */
   fanfare() {
     [C5, E5, G5, C6, E6].forEach((f, i) => tone(f, i * 0.09, 0.3, { type: 'triangle', gain: 0.4 }));

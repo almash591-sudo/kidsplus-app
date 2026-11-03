@@ -45,6 +45,7 @@ import { SONGS } from '@kidsplus/shared/songs';
 import { soundPlace, syllablesIn, unstressed, wordScheme } from '@kidsplus/shared/sounds';
 import { NUMBERS, paint, PALETTE, type SpecOf } from './games/common';
 import { PAINT_OBJECTS } from './games/paintsLogic';
+import { topOf } from './games/trainLogic';
 import { SORTER } from './games/sorterShapes';
 import { PICTURES } from './games/pictures';
 import { TRACES } from './games/traceShapes';
@@ -619,6 +620,36 @@ export function paintsPhrases(spec: SpecOf<'paints'>) {
   ];
 }
 
+// ─── «Поезд» (этап 57) ───
+export const TRAIN_PROMPT =
+  'Поезд приехал! Посади зверят в вагоны: у вагона такой же номер, как на билете.';
+export const TRAIN_NEXT = 'Новая станция! Кто поедет дальше?';
+export const TRAIN_LOST = 'Ой, один вагон потерялся! Найди его на запасном пути.';
+export const TRAIN_WHICH = 'А какой вагон дальше?';
+export const TRAIN_GO = 'Ту-ту! Поехали!';
+export const TRAIN_END = 'Приехали! Все зверята довольны.';
+export const trainTicket = (n: number) => `На билете — ${NUMBERS[n]}.`;
+export const trainWagon = (n: number) => `Это вагон ${NUMBERS[n]}.`;
+export const trainFind = (n: number) => `Найди вагон ${NUMBERS[n]}!`;
+/** Счёт вагонов до потерявшегося: «Один!», «Два!» */
+export const trainCount = (n: number) => `${NUMBERS[n]![0]!.toUpperCase()}${NUMBERS[n]!.slice(1)}!`;
+export function trainPhrases(spec: SpecOf<'train'>) {
+  const top = topOf(spec);
+  const upTo = (n: number) => Array.from({ length: n }, (_, i) => i + 1);
+  const tickets = spec.task !== 'missing';
+  const missing = spec.task !== 'tickets';
+  return [
+    TRAIN_GO,
+    TRAIN_END,
+    ...(tickets
+      ? [TRAIN_PROMPT, TRAIN_NEXT, ...upTo(top).flatMap((n) => [trainTicket(n), trainFind(n)])]
+      : []),
+    ...(missing ? [TRAIN_LOST, TRAIN_WHICH, ...upTo(top).map(trainCount)] : []),
+    // На запасном пути бывают вагоны и с номерами больше самого большого.
+    ...upTo(missing ? 10 : top).map(trainWagon),
+  ];
+}
+
 // ─── Этап 45: стихи и сказки ───
 export const POEM_INTRO = 'Послушай и повторяй за мной!';
 export const POEM_REPEAT = 'Повторяй за мной!';
@@ -743,6 +774,7 @@ export const GAME_INTRO: Record<GameKind, string> = {
   race: RACE_PROMPT,
   differences: DIFF_PROMPT,
   paints: PAINTS_PROMPT,
+  train: TRAIN_PROMPT,
   poem: POEM_INTRO,
   book: BOOK_INTRO,
 };
@@ -987,6 +1019,8 @@ export function gamePhrases(spec: GameSpec): string[] {
       return diffPhrases();
     case 'paints':
       return paintsPhrases(spec);
+    case 'train':
+      return trainPhrases(spec);
     case 'poem':
       return poemPhrases(spec.poem);
     case 'book':
