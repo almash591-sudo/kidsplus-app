@@ -174,6 +174,14 @@ export type PaintTarget = (typeof PAINT_TARGETS)[number];
 /** Задания «Весов» (этап 57): какая чаша тяжелее, уравновесь, сложи два груза. */
 export const SCALES_TASKS = ['compare', 'balance', 'sum'] as const;
 export type ScalesTask = (typeof SCALES_TASKS)[number];
+/** Задания «Шестерёнок» (этап 57): собери цепочку, в какую сторону закрутится. */
+export const GEARS_TASKS = ['build', 'direction'] as const;
+export type GearsTask = (typeof GEARS_TASKS)[number];
+/** Как задания «Шестерёнок» называются в кабинете. */
+export const GEARS_TASK_LABELS: Record<GearsTask, string> = {
+  build: 'Собери цепочку',
+  direction: 'В какую сторону',
+};
 /** Как задания «Весов» называются в кабинете. */
 export const SCALES_TASK_LABELS: Record<ScalesTask, string> = {
   compare: 'Какая тяжелее',
@@ -889,6 +897,22 @@ export const gameSpec = z.discriminatedUnion('kind', [
     rounds: z.number().int().min(2).max(8),
   }),
   /**
+   * Шестерёнки (этап 57): в мастерской игрушек ручка крутит цепочку шестерёнок, а последняя —
+   * мельницу, колесо обозрения или вертушку. Собери цепочку (build): на пустые гвоздики ставятся
+   * шестерёнки из коробки, пока зубчики не сцепятся от ручки до машины, — и ребёнок крутит ручку.
+   * В какую сторону (direction): цепочка собрана, ручка показывает, куда крутится, — куда
+   * повернётся машина? tasks — какие задания (по очереди). gaps — сколько шестерёнок поставить
+   * (в «какую сторону» — сколько их между ручкой и машиной). sizes — шестерёнки разного размера:
+   * подобрать подходящую.
+   */
+  z.object({
+    kind: z.literal('gears'),
+    tasks: z.array(z.enum(GEARS_TASKS)).min(1).max(GEARS_TASKS.length).default(['build']),
+    gaps: z.number().int().min(1).max(4).default(2),
+    sizes: z.boolean().default(false),
+    rounds: z.number().int().min(2).max(6),
+  }),
+  /**
    * Стих или сказка (этап 45) из встроенной библиотеки: послушать под глиняные картинки, повторять
    * за голосом по частям (repeat), «Договори словечко» (blanks) и вопросы по смыслу (questions) —
    * choices вариантов-картинок. Выученную часть телефон помнит: в следующий раз учим следующую.
@@ -1023,6 +1047,7 @@ export const GAME_KINDS: Record<GameKind, string> = {
   paints: 'Смешай краски',
   train: 'Поезд',
   scales: 'Весы',
+  gears: 'Шестерёнки',
   poem: 'Стих или сказка',
   book: 'Книжка',
 };
@@ -1103,6 +1128,7 @@ export function gameImageIds(g: GameSpec): string[] {
     case 'paints':
     case 'train':
     case 'scales':
+    case 'gears':
     case 'poem':
     case 'book':
       return [];

@@ -214,6 +214,18 @@ export const fx = {
     noise(0, 0.03, { from: 4200, to: 2600, gain: 0.14, q: 2 });
     vibrate(12);
   },
+  /** Зубец шестерёнки проскочил (этап 57): деревянный «тик» храповика, чуть разный. */
+  tick(gain = 0.12) {
+    noise(0, 0.018, { from: 3400 + Math.random() * 600, to: 2200, gain, q: 4 });
+    tone(1300 + Math.random() * 150, 0, 0.025, { type: 'triangle', gain: gain * 0.6 });
+  },
+  /** Машина заработала: музыкальная шкатулка — пять нот вверх. */
+  tinkle() {
+    [E5, G5, C6, E6, G5 * 2].forEach((f, i) =>
+      tone(f, i * 0.11, 0.42, { type: 'triangle', gain: 0.22 }),
+    );
+    vibrate([15, 40, 15]);
+  },
   /** Праздник в конце: арпеджио и искорки. */
   fanfare() {
     [C5, E5, G5, C6, E6].forEach((f, i) => tone(f, i * 0.09, 0.3, { type: 'triangle', gain: 0.4 }));

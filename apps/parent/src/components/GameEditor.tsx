@@ -14,6 +14,8 @@ import {
   FISHING_LETTERS,
   FLASHLIGHT_SCENES,
   GAME_KINDS,
+  GEARS_TASK_LABELS,
+  GEARS_TASKS,
   isTraceLetter,
   MOLE_SPEEDS,
   NEIGHBOR_MODES,
@@ -30,6 +32,7 @@ import {
   TRACE_SHAPES,
   type GameKind,
   type GameSpec,
+  type GearsTask,
   type NeighborMode,
   type PaintTarget,
   type PaintTube,
@@ -419,6 +422,13 @@ const DEFAULTS: { [K in GameKind]: Extract<GameSpec, { kind: K }> } = {
     look: 'cubes',
     max: 5,
     rounds: 4,
+  },
+  gears: {
+    kind: 'gears',
+    tasks: ['build'],
+    gaps: 2,
+    sizes: false,
+    rounds: 3,
   },
   poem: {
     kind: 'poem',
@@ -2926,6 +2936,62 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
             пустую чашу, пока стрелка не встанет посередине; лишнее весы вернут. «Сложи» — слева два
             груза, справа одна гиря из трёх, сколько это вместе. Сложность растёт сама: точки, потом
             цифры, «уравновесь», «сложи», вес до десяти.
+          </Text>
+        </Stack>
+      );
+    case 'gears':
+      return (
+        <Stack gap="xs">
+          <Text size="sm" fw={500}>
+            Задания (по очереди)
+          </Text>
+          <Chip.Group
+            multiple
+            value={spec.tasks}
+            onChange={(v) =>
+              v.length &&
+              onChange({
+                ...spec,
+                // В том же порядке, что в списке: «собери» → «в какую сторону».
+                tasks: GEARS_TASKS.filter((t) => v.includes(t)) as GearsTask[],
+              })
+            }
+          >
+            <Group gap="xs">
+              {GEARS_TASKS.map((t) => (
+                <Chip key={t} value={t}>
+                  {GEARS_TASK_LABELS[t]}
+                </Chip>
+              ))}
+            </Group>
+          </Chip.Group>
+          <Group grow>
+            <NumberInput
+              label="Шестерёнок между ручкой и машиной"
+              min={1}
+              max={4}
+              value={spec.gaps}
+              onChange={(v) => onChange({ ...spec, gaps: num(v, 2) })}
+            />
+            <NumberInput
+              label="Машин"
+              min={2}
+              max={6}
+              value={spec.rounds}
+              onChange={(v) => onChange({ ...spec, rounds: num(v, 3) })}
+            />
+          </Group>
+          <Switch
+            label="Разного размера — подобрать подходящую (для старших)"
+            checked={spec.sizes}
+            onChange={(e) => onChange({ ...spec, sizes: e.currentTarget.checked })}
+          />
+          <Text size="xs" c="dimmed">
+            Мастерская игрушек: от ручки до мельницы, колеса обозрения или вертушки — цепочка
+            шестерёнок, в ней пустые места. «Собери» — ребёнок ставит шестерёнки из ящика на
+            гвоздики и крутит ручку, машина оживает. С разными размерами большая не помещается,
+            маленькая не достаёт — пунктир подскажет. «В какую сторону» — ручку крутят по стрелке,
+            куда закрутится машина: соседние шестерёнки крутятся в разные стороны.
           </Text>
         </Stack>
       );

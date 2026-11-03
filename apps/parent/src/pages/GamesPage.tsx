@@ -1,6 +1,7 @@
 import type { Game } from '@kidsplus/shared/api';
 import {
   GAME_KINDS,
+  GEARS_TASK_LABELS,
   SCALES_TASK_LABELS,
   type GameKind,
   type GameSpec,
@@ -165,6 +166,8 @@ export function gameSummary(spec: GameSpec): string {
       return `${{ tickets: 'по билетам', missing: 'потерялся вагон', mixed: 'билеты и потерялся вагон' }[spec.task]} · ${{ dots: 'точки', digits: 'цифры', count: 'посчитать точки' }[spec.look]} до ${Math.max(spec.max, spec.wagons)} · вагонов: ${spec.wagons} · станций: ${spec.rounds}`;
     case 'scales':
       return `${spec.tasks.map((t) => SCALES_TASK_LABELS[t].toLowerCase()).join(', ')} · ${{ cubes: 'кубики', dots: 'точки', digits: 'цифры' }[spec.look]} до ${spec.max} · заданий: ${spec.rounds}`;
+    case 'gears':
+      return `${spec.tasks.map((t) => GEARS_TASK_LABELS[t].toLowerCase()).join(', ')} · шестерёнок: ${spec.gaps}${spec.sizes ? ' разного размера' : ''} · машин: ${spec.rounds}`;
     case 'differences':
       return `отличий: ${spec.count} · картинок: ${spec.rounds}${spec.hint ? ' · с лупой' : ''}`;
     case 'race':

@@ -1901,6 +1901,81 @@ class ScalesPilot {
   }
 }
 
+/** Автопилот «Шестерёнок»: где гвоздики, шестерёнки в ящике, ручка и стрелки (px от угла игры). */
+class GearsPilot {
+  constructor(private page: Page) {}
+  private get g() {
+    return this.page.getByTestId('game-gears');
+  }
+  async read<T>(attr: string) {
+    return JSON.parse((await this.g.getAttribute(attr)) ?? 'null') as T;
+  }
+  /** Задание готово: шестерёнки на местах, ничего не летит, касания открыты. */
+  async ready() {
+    await expect(this.g).toHaveAttribute('data-phase', 'play', { timeout: 25_000 });
+    await expect(this.g).toHaveAttribute('data-busy', '0', { timeout: 8000 });
+    await expect(this.page.getByTestId('game')).toHaveAttribute('data-lock', 'none', {
+      timeout: 8000,
+    });
+  }
+  private async at(p: { x: number; y: number }) {
+    const b = (await this.g.boundingBox())!;
+    return { x: b.x + p.x, y: b.y + p.y };
+  }
+  pegs() {
+    return this.read<{ i: number; x: number; y: number; need: number; filled: boolean }[]>(
+      'data-pegs',
+    );
+  }
+  tray() {
+    return this.read<{ teeth: number; x: number; y: number; used: boolean }[]>('data-tray');
+  }
+  async places() {
+    return Number(await this.g.getAttribute('data-places'));
+  }
+  async turns() {
+    return Number(await this.g.getAttribute('data-turns'));
+  }
+  /** Первый пустой гвоздик — шестерёнки летят на него по нажатию. */
+  async firstPeg() {
+    return (await this.pegs()).find((p) => !p.filled)!;
+  }
+  /** Шестерёнку teeth — на первый пустой гвоздик нажатием или на гвоздик peg перетаскиванием. */
+  async put(teeth: number, drag?: { x: number; y: number }) {
+    const piece = (await this.tray()).find((x) => x.teeth === teeth && !x.used)!;
+    const from = await this.at(piece);
+    if (drag) await dragTo(this.page, from, await this.at(drag));
+    else await this.page.mouse.click(from.x, from.y);
+  }
+  /** Нажать на ручку, не крутя, — толчок. */
+  async push() {
+    const d = await this.read<{ x: number; y: number; r: number }>('data-driver');
+    const p = await this.at({ x: d.x, y: d.y + d.r * 0.5 });
+    await this.page.mouse.click(p.x, p.y);
+  }
+  /** Покрутить ручку пальцем: turns оборотов по часовой стрелке (или против). */
+  async crank(turns: number, dir: 1 | -1 = 1) {
+    const d = await this.read<{ x: number; y: number; r: number }>('data-driver');
+    const c = await this.at(d);
+    const r = d.r * 0.7;
+    const steps = Math.round(turns * 28);
+    await this.page.mouse.move(c.x + r, c.y);
+    await this.page.mouse.down();
+    for (let k = 1; k <= steps; k++) {
+      const a = (dir * k * 2 * Math.PI) / 28;
+      await this.page.mouse.move(c.x + Math.cos(a) * r, c.y + Math.sin(a) * r);
+    }
+    await this.page.mouse.up();
+  }
+  async tapArrow(dir: 1 | -1) {
+    const b = (await this.read<{ dir: number; x: number; y: number }[]>('data-buttons')).find(
+      (x) => x.dir === dir,
+    )!;
+    const p = await this.at(b);
+    await this.page.mouse.click(p.x, p.y);
+  }
+}
+
 async function expectFinished(page: Page, backend: Backend) {
   await expect(page.getByTestId('game-finished')).toBeVisible({ timeout: 6000 });
   await expect
@@ -3506,6 +3581,147 @@ test.describe('новые игры', () => {
     const said = (await spoken(page)).map((x) => x.text);
     expect(said).toContain('Поставь на пустую чашу одну башенку — чтобы стало поровну!');
     expect(said).toContain('Какую башенку поставим?');
+  });
+
+  test('шестерёнки (этап 57): собрать цепочку нажатием и перетаскиванием, покрутить ручку', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(150_000);
+    backend.items = [
+      game(1, { kind: 'gears', tasks: ['build'], gaps: 2, sizes: false, rounds: 2 }),
+    ];
+    await openGame(page);
+    const g = page.getByTestId('game-gears');
+    const gears = new GearsPilot(page);
+    await gears.ready();
+    await expect(g).toHaveAttribute('data-kind', 'build');
+    expect((await gears.pegs()).map((p) => p.need)).toEqual([12, 12]);
+    expect((await gears.tray()).map((p) => p.teeth)).toEqual([12, 12]);
+    await page.waitForTimeout(500);
+    await shot(page, 'gears-build');
+    // Ручка не дотягивается до машины — совёнок подсказывает.
+    await gears.push();
+    await expect
+      .poll(async () =>
+        (await spoken(page)).some(
+          (x) => x.text === 'Не дотягивается! Поставь шестерёнку на пустое место.',
+        ),
+      )
+      .toBe(true);
+    await expect(g).toHaveAttribute('data-ready', '0');
+    // Первую — нажатием (летит на первый пустой гвоздик), вторую — перетаскиванием.
+    await gears.put(12);
+    await expect.poll(() => gears.places()).toBe(1);
+    await gears.ready();
+    await gears.put(12, await gears.firstPeg());
+    await expect.poll(() => gears.places()).toBe(2);
+    await expect(g).toHaveAttribute('data-ready', '1');
+    await expect
+      .poll(async () => (await spoken(page)).some((x) => x.text === 'Готово! Покрути ручку!'))
+      .toBe(true);
+    await gears.ready();
+    await page.waitForTimeout(300);
+    await shot(page, 'gears-ready');
+    // Нажали на ручку — толчок, цепочка проворачивается, машина заработала.
+    await gears.push();
+    await expect.poll(() => gears.turns(), { timeout: 10_000 }).toBe(1);
+    await expect(g).toHaveAttribute('data-phase', /done|finish/);
+    await page.waitForTimeout(900);
+    await shot(page, 'gears-works');
+    // Вторая машина — крутим ручку пальцем.
+    await expect(g).toHaveAttribute('data-round', '1', { timeout: 25_000 });
+    await gears.ready();
+    for (let k = 0; k < 2; k++) {
+      await gears.put(12);
+      await expect.poll(() => gears.places()).toBe(3 + k);
+      await gears.ready();
+    }
+    await expect(g).toHaveAttribute('data-ready', '1');
+    await page.waitForTimeout(300);
+    await shot(page, 'gears-ready-2');
+    await gears.crank(1.3);
+    await expect.poll(() => gears.turns(), { timeout: 10_000 }).toBe(2);
+    await expect(g).toHaveAttribute('data-phase', 'finish', { timeout: 20_000 });
+    await page.waitForTimeout(600);
+    await shot(page, 'gears-finish');
+    await expectFinished(page, backend);
+    const done = backend.events.find((e) => e.type === 'interactive_complete')!;
+    expect(done.payload).toMatchObject({ mistakes: 0 });
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(
+      said.some((x) => x.endsWith('Поставь шестерёнки на пустые места — чтобы зубчики сцепились.')),
+    ).toBe(true);
+    expect(said.some((x) => x.endsWith('Поставь шестерёнки!'))).toBe(true);
+    expect(said).toContain('Все машины работают! Ты настоящий механик!');
+  });
+
+  test('шестерёнки (этап 57): разного размера — не та не встаёт, потом «в какую сторону»', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(150_000);
+    backend.items = [
+      game(1, { kind: 'gears', tasks: ['build', 'direction'], gaps: 3, sizes: true, rounds: 2 }),
+    ];
+    await openGame(page);
+    const g = page.getByTestId('game-gears');
+    const gears = new GearsPilot(page);
+    await gears.ready();
+    await expect(g).toHaveAttribute('data-kind', 'build');
+    const pegs = await gears.pegs();
+    const tray = (await gears.tray()).map((p) => p.teeth);
+    // В ящике — нужные и лишние: всех трёх размеров.
+    expect(new Set(tray)).toEqual(new Set([8, 12, 16]));
+    expect(tray.length).toBeGreaterThan(pegs.length);
+    await page.waitForTimeout(500);
+    await shot(page, 'gears-sizes');
+    // Не тот размер — шестерёнка трясётся на гвоздике и возвращается в ящик.
+    const need = pegs[0]!.need;
+    const wrong = tray.find((t) => t !== need)!;
+    await gears.put(wrong);
+    await page.waitForTimeout(450);
+    await shot(page, 'gears-wrong');
+    const why = wrong > need ? 'Великовата! Не помещается.' : 'Маловата! Не достаёт до соседок.';
+    await expect.poll(async () => (await spoken(page)).some((x) => x.text === why)).toBe(true);
+    await gears.ready();
+    expect(await gears.places()).toBe(0);
+    expect((await gears.tray()).every((p) => !p.used)).toBe(true);
+    for (let k = 0; k < pegs.length; k++) {
+      await gears.put((await gears.firstPeg()).need);
+      await expect.poll(() => gears.places()).toBe(k + 1);
+      await gears.ready();
+    }
+    await expect(g).toHaveAttribute('data-ready', '1');
+    await gears.crank(1.3, -1);
+    await expect.poll(() => gears.turns(), { timeout: 10_000 }).toBe(1);
+    // «В какую сторону»: ручку крутят по стрелке; сначала не та стрелка — цепочка показывает.
+    await expect(g).toHaveAttribute('data-round', '1', { timeout: 25_000 });
+    await gears.ready();
+    await expect(g).toHaveAttribute('data-kind', 'direction');
+    const dir = Number(await g.getAttribute('data-dir')) as 1 | -1;
+    await page.waitForTimeout(500);
+    await shot(page, 'gears-direction');
+    await gears.tapArrow(-dir as 1 | -1);
+    await expect
+      .poll(async () =>
+        (await spoken(page)).some(
+          (x) => x.text === 'Посмотри: каждая шестерёнка крутит соседку в обратную сторону!',
+        ),
+      )
+      .toBe(true);
+    await page.waitForTimeout(2200);
+    await shot(page, 'gears-direction-shown');
+    await gears.ready();
+    await gears.tapArrow(dir);
+    await expect(g).toHaveAttribute('data-phase', /done|finish/);
+    await expect(g).toHaveAttribute('data-phase', 'finish', { timeout: 20_000 });
+    await expectFinished(page, backend);
+    const done = backend.events.find((e) => e.type === 'interactive_complete')!;
+    expect(done.payload).toMatchObject({ mistakes: 2 });
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain(dir > 0 ? 'По часовой стрелке!' : 'Против часовой стрелки!');
+    expect(said).toContain('Соседние шестерёнки крутятся в разные стороны.');
   });
 
   test('стих (этап 45): послушать, повторять за голосом, «Договори словечко», вопросы — часть выучена', async ({

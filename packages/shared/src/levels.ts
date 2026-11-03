@@ -3,11 +3,13 @@
 // выше — те же картинки, но больше счёт, крупнее пазл, длиннее мелодия (в пределах схемы игры).
 import type { GameKind, GameSpec } from './games';
 import {
+  GEARS_TASKS,
   isTraceLetter,
   PAINT_TARGETS,
   PATTERNS,
   SCALES_TASKS,
   TRACE_GUIDES,
+  type GearsTask,
   type PaintTarget,
   type ScalesTask,
 } from './games';
@@ -250,6 +252,18 @@ export function specAtLevel(spec: GameSpec, level: number): GameSpec {
         look: looks[clamp(looks.indexOf(spec.look) + up, 0, 2)]!,
         tasks: SCALES_TASKS.filter((t) => tasks.has(t)),
         max: up >= 3 ? 10 : clamp(spec.max + up, 3, 10),
+      };
+    }
+    case 'gears': {
+      // Со второго шага — шестерёнкой больше, с третьего — разного размера, с четвёртого — ещё
+      // одна и «в какую сторону».
+      const tasks = new Set<GearsTask>(spec.tasks);
+      if (up >= 3) tasks.add('direction');
+      return {
+        ...spec,
+        tasks: GEARS_TASKS.filter((t) => tasks.has(t)),
+        gaps: clamp(spec.gaps + (up >= 1 ? 1 : 0) + (up >= 3 ? 1 : 0), 1, 4),
+        sizes: spec.sizes || up >= 2,
       };
     }
     case 'poem':

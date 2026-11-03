@@ -688,6 +688,67 @@ export function scalesPhrases(spec: SpecOf<'scales'>) {
   ];
 }
 
+// ─── «Шестерёнки» (этап 57) ───
+type GearsMachine = 'mill' | 'wheel' | 'pinwheel';
+const GEARS_MACHINES: GearsMachine[] = ['mill', 'wheel', 'pinwheel'];
+const GEARS_BROKEN: Record<GearsMachine, string> = {
+  mill: 'Мельница не крутится!',
+  wheel: 'Колесо обозрения не едет!',
+  pinwheel: 'Вертушка не крутится!',
+};
+const GEARS_WORKS: Record<GearsMachine, string> = {
+  mill: 'Мельница закрутилась!',
+  wheel: 'Колесо обозрения поехало!',
+  pinwheel: 'Вертушка закрутилась!',
+};
+const GEARS_WHICH: Record<GearsMachine, string> = {
+  mill: 'закрутится мельница',
+  wheel: 'поедет колесо',
+  pinwheel: 'закрутится вертушка',
+};
+export const gearsBuild = (m: GearsMachine) =>
+  `${GEARS_BROKEN[m]} Поставь шестерёнки на пустые места — чтобы зубчики сцепились.`;
+export const gearsBuildAgain = (m: GearsMachine) => `${GEARS_BROKEN[m]} Поставь шестерёнки!`;
+/** Машина заработала. */
+export const gearsWorks = (m: GearsMachine) => GEARS_WORKS[m];
+export const gearsWhich = (m: GearsMachine) =>
+  `Ручку крутят по стрелке. А в какую сторону ${GEARS_WHICH[m]}? Нажми на стрелку!`;
+export const gearsWhichAgain = (m: GearsMachine) => `А здесь в какую сторону ${GEARS_WHICH[m]}?`;
+export const GEARS_BIG = 'Великовата! Не помещается.';
+export const GEARS_SMALL = 'Маловата! Не достаёт до соседок.';
+export const GEARS_TURN = 'Готово! Покрути ручку!';
+export const GEARS_GAP = 'Не дотягивается! Поставь шестерёнку на пустое место.';
+export const GEARS_RIGHT = 'Соседние шестерёнки крутятся в разные стороны.';
+export const GEARS_LOOK = 'Посмотри: каждая шестерёнка крутит соседку в обратную сторону!';
+/** Куда закрутилась машина: 1 — по часовой стрелке. */
+export const gearsDir = (dir: 1 | -1) =>
+  dir === 1 ? 'По часовой стрелке!' : 'Против часовой стрелки!';
+export const GEARS_END = 'Все машины работают! Ты настоящий механик!';
+export function gearsPhrases(spec: SpecOf<'gears'>) {
+  const build = spec.tasks.includes('build');
+  const direction = spec.tasks.includes('direction');
+  return [
+    GEARS_END,
+    ...(build
+      ? [
+          ...GEARS_MACHINES.flatMap((m) => [gearsBuild(m), gearsBuildAgain(m), gearsWorks(m)]),
+          GEARS_TURN,
+          GEARS_GAP,
+          ...(spec.sizes ? [GEARS_BIG, GEARS_SMALL] : []),
+        ]
+      : []),
+    ...(direction
+      ? [
+          ...GEARS_MACHINES.flatMap((m) => [gearsWhich(m), gearsWhichAgain(m)]),
+          gearsDir(1),
+          gearsDir(-1),
+          GEARS_RIGHT,
+          GEARS_LOOK,
+        ]
+      : []),
+  ];
+}
+
 // ─── Этап 45: стихи и сказки ───
 export const POEM_INTRO = 'Послушай и повторяй за мной!';
 export const POEM_REPEAT = 'Повторяй за мной!';
@@ -814,6 +875,7 @@ export const GAME_INTRO: Record<GameKind, string> = {
   paints: PAINTS_PROMPT,
   train: TRAIN_PROMPT,
   scales: SCALES_COMPARE,
+  gears: gearsBuild('mill'),
   poem: POEM_INTRO,
   book: BOOK_INTRO,
 };
@@ -1062,6 +1124,8 @@ export function gamePhrases(spec: GameSpec): string[] {
       return trainPhrases(spec);
     case 'scales':
       return scalesPhrases(spec);
+    case 'gears':
+      return gearsPhrases(spec);
     case 'poem':
       return poemPhrases(spec.poem);
     case 'book':
