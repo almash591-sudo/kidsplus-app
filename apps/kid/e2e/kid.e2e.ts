@@ -1784,6 +1784,29 @@ const center = async (locator: ReturnType<Page['locator']>) => {
   return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
 };
 
+/** Автопилот «Смешай краски»: где тюбики, сколько капель, капнуть и дождаться капли в баночке. */
+class PaintsPilot {
+  constructor(private page: Page) {}
+  private get g() {
+    return this.page.getByTestId('game-paints');
+  }
+  async read<T>(attr: string) {
+    return JSON.parse((await this.g.getAttribute(attr)) ?? 'null') as T;
+  }
+  tubes() {
+    return this.read<{ tube: string; x: number; y: number }[]>('data-tubes');
+  }
+  async drip(tube: string) {
+    await expect(this.g).toHaveAttribute('data-flying', '0');
+    const before = (await this.read<Record<string, number>>('data-drops'))[tube] ?? 0;
+    const t = (await this.tubes()).find((x) => x.tube === tube)!;
+    await this.page.mouse.click(t.x, t.y);
+    await expect
+      .poll(async () => (await this.read<Record<string, number>>('data-drops'))[tube])
+      .toBe(before + 1);
+  }
+}
+
 async function expectFinished(page: Page, backend: Backend) {
   await expect(page.getByTestId('game-finished')).toBeVisible({ timeout: 6000 });
   await expect
@@ -2980,6 +3003,119 @@ test.describe('новые игры', () => {
     expect(said).toContain('Посмотри сюда, где лупа!');
     expect(said).toContain('Осталось два отличия.');
     expect(said).toContain('Все отличия нашли! Вот новая картинка.');
+  });
+
+  test('смешай краски (этап 57): лишняя краска выливается, капли смешиваются, кисточка красит, финиш', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(180_000);
+    backend.items = [
+      game(1, { kind: 'paints', colors: ['orange', 'green'], tubes: 'primary', rounds: 2 }),
+    ];
+    await openGame(page);
+    const g = page.getByTestId('game-paints');
+    await expect(g).toHaveAttribute('data-phase', 'mix', { timeout: 8000 });
+    const paints = new PaintsPilot(page);
+    // Три тюбика на столе, ничего не нажимаем — совёнок подсказывает, что смешать.
+    expect((await paints.tubes()).map((t) => t.tube)).toEqual(['red', 'yellow', 'blue']);
+    await expect
+      .poll(
+        async () => (await spoken(page)).some((x) => /^Смешай (красную|жёлтую) и /.test(x.text)),
+        {
+          timeout: 20_000,
+        },
+      )
+      .toBe(true);
+    await shot(page, 'paints-start');
+    for (let round = 0; round < 2; round++) {
+      await expect(g).toHaveAttribute('data-round', String(round), { timeout: 15_000 });
+      await expect(g).toHaveAttribute('data-phase', 'mix', { timeout: 8000 });
+      const need = await paints.read<string[]>('data-need');
+      if (round === 0) {
+        // Нужная, потом чужая краска — другой цвет, баночка выливается и пустеет.
+        await paints.drip(need[0]!);
+        await page.waitForTimeout(400);
+        await shot(page, 'paints-drop');
+        const other = (await paints.tubes()).find((t) => !need.includes(t.tube))!;
+        await paints.drip(other.tube);
+        await expect(g).toHaveAttribute('data-phase', 'drain');
+        await page.waitForTimeout(1700);
+        await shot(page, 'paints-drain');
+        await expect(g).toHaveAttribute('data-phase', 'mix', { timeout: 8000 });
+        await expect
+          .poll(() => paints.read('data-drops'))
+          .toEqual({ red: 0, yellow: 0, blue: 0, white: 0 });
+      }
+      for (const c of need) await paints.drip(c);
+      await expect(g).toHaveAttribute('data-phase', 'paint');
+      if (round === 0) {
+        await page.waitForTimeout(2300);
+        await shot(page, 'paints-brush');
+      }
+      await expect(g).toHaveAttribute('data-phase', /alive|next|finish/, { timeout: 8000 });
+      if (round === 0) await shot(page, 'paints-alive');
+    }
+    await expect(g).toHaveAttribute('data-phase', 'finish', { timeout: 15_000 });
+    await expectFinished(page, backend);
+    const done = backend.events.find((e) => e.type === 'interactive_complete')!;
+    expect(done.payload).toMatchObject({ mistakes: 1 });
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain('Смешай краски! Нажимай на тюбики — краска капнет в баночку.');
+    expect(
+      said.some((x) => /^(Тыква|Морковка) оранжевая\. Сделай оранжевую краску!$/.test(x)),
+    ).toBe(true);
+    expect(
+      said.some((x) => /^(Лягушка|Огурец) зелён(ая|ый)\. Сделай зелёную краску!$/.test(x)),
+    ).toBe(true);
+    expect(
+      said.some((x) => /^А нужна (оранжевая|зелёная)\. Выльем и попробуем ещё!$/.test(x)),
+    ).toBe(true);
+    expect(said).toContain('Получилась оранжевая!');
+    expect(said).toContain('Получилась зелёная!');
+  });
+
+  test('смешай краски (этап 57): «что получится?», коричневый из трёх красок и розовый с белой', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(150_000);
+    backend.items = [
+      game(1, { kind: 'paints', colors: ['brown', 'pink'], tubes: 'all', guess: true, rounds: 2 }),
+    ];
+    await openGame(page);
+    const g = page.getByTestId('game-paints');
+    const paints = new PaintsPilot(page);
+    for (let round = 0; round < 2; round++) {
+      await expect(g).toHaveAttribute('data-round', String(round), { timeout: 15_000 });
+      await expect(g).toHaveAttribute('data-phase', 'guess', { timeout: 8000 });
+      const target = await g.getAttribute('data-target');
+      const choices = g.locator('.paints-choice');
+      await expect(choices).toHaveCount(3);
+      if (round === 0) {
+        await page.waitForTimeout(600);
+        await shot(page, 'paints-guess');
+        // Не тот цвет — не засчитано, ещё раз.
+        await g
+          .locator(`.paints-choice:not([data-testid=paints-choice-${target}])`)
+          .first()
+          .click();
+        await expect(g).toHaveAttribute('data-phase', 'guess');
+        await page.waitForTimeout(1500);
+      }
+      await g.getByTestId(`paints-choice-${target}`).click();
+      await expect(g).toHaveAttribute('data-phase', 'mix');
+      expect((await paints.tubes()).map((t) => t.tube)).toEqual(['red', 'yellow', 'blue', 'white']);
+      for (const c of await paints.read<string[]>('data-need')) await paints.drip(c);
+      await expect(g).toHaveAttribute('data-phase', 'paint');
+    }
+    await expect(g).toHaveAttribute('data-phase', 'finish', { timeout: 15_000 });
+    await expectFinished(page, backend);
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain('Что получится, если смешать красную, жёлтую и синюю?');
+    expect(said).toContain('Что получится, если смешать красную и белую?');
+    expect(said).toContain('Правильно, коричневая! Проверим — капай краски.');
+    expect(said).toContain('Получилась розовая!');
   });
 
   test('стих (этап 45): послушать, повторять за голосом, «Договори словечко», вопросы — часть выучена', async ({
