@@ -49,6 +49,7 @@ import { Sudoku } from './Sudoku';
 import { ColorNumbers } from './ColorNumbers';
 import { Differences } from './Differences';
 import { Paints } from './Paints';
+import { Scales } from './Scales';
 import { Train } from './Train';
 import { Dive } from './Dive';
 import { Race } from './Race';
@@ -147,6 +148,7 @@ const OWN_SCENE: GameKind[] = [
   'differences',
   'paints',
   'train',
+  'scales',
   'poem',
   'book',
 ];
@@ -244,6 +246,7 @@ const GAMES: { [K in GameKind]: ComponentType<GameProps<K>> } = {
   differences: Differences,
   paints: Paints,
   train: Train,
+  scales: Scales,
   poem: Poem,
   book: Book,
 };

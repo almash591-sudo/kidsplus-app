@@ -2322,3 +2322,28 @@
   display: none;
   pointer-events: none;
 }
+
+/* ─── «Весы» (этап 57) ─── */
+.game.scales {
+  padding: 0;
+  inset: 0;
+  background: #e9b77a;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.scales-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+/* Невидимые цели для пальца подсказки: тяжёлая чаша или нужная гирька и пустая чаша. */
+.scales-hint {
+  position: absolute;
+  display: none;
+  pointer-events: none;
+}
