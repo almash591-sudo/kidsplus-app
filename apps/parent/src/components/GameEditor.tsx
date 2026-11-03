@@ -402,6 +402,14 @@ const DEFAULTS: { [K in GameKind]: Extract<GameSpec, { kind: K }> } = {
     guess: false,
     rounds: 3,
   },
+  train: {
+    kind: 'train',
+    task: 'tickets',
+    look: 'dots',
+    max: 3,
+    wagons: 3,
+    rounds: 3,
+  },
   poem: {
     kind: 'poem',
     poem: 'petushok',
@@ -2790,6 +2798,62 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
             серый предмет: тыкву, лягушку, мишку. Лишняя краска — баночка выливается, и совёнок
             подсказывает. Сложность растёт сама: тюбики на выбор, потом «что получится?», оттенки с
             белой и коричневый из трёх красок.
+          </Text>
+        </Stack>
+      );
+    case 'train':
+      return (
+        <Stack gap="xs">
+          <Select
+            label="Что делать на станции"
+            allowDeselect={false}
+            value={spec.task}
+            data={[
+              { value: 'tickets', label: 'Рассадить зверят по билетам' },
+              { value: 'missing', label: 'Найти потерявшийся вагон (порядок чисел)' },
+              { value: 'mixed', label: 'По очереди: билеты и потерявшийся вагон' },
+            ]}
+            onChange={(v) => v && onChange({ ...spec, task: v as typeof spec.task })}
+          />
+          <Select
+            label="Билеты"
+            allowDeselect={false}
+            value={spec.look}
+            data={[
+              { value: 'dots', label: 'Точки, на вагонах — точки и цифра' },
+              { value: 'digits', label: 'Цифры' },
+              { value: 'count', label: 'Точки на билете, цифры на вагонах — посчитать' },
+            ]}
+            onChange={(v) => v && onChange({ ...spec, look: v as typeof spec.look })}
+          />
+          <Group grow>
+            <NumberInput
+              label="Числа до"
+              min={2}
+              max={10}
+              value={spec.max}
+              onChange={(v) => onChange({ ...spec, max: num(v, 3) })}
+            />
+            <NumberInput
+              label="Вагонов"
+              min={2}
+              max={5}
+              value={spec.wagons}
+              onChange={(v) => onChange({ ...spec, wagons: num(v, 3) })}
+            />
+            <NumberInput
+              label="Станций"
+              min={2}
+              max={6}
+              value={spec.rounds}
+              onChange={(v) => onChange({ ...spec, rounds: num(v, 3) })}
+            />
+          </Group>
+          <Text size="xs" c="dimmed">
+            Паровозик едет через тоннель к станции, там ждут зверята с билетами — ребёнок ведёт
+            каждого к вагону с тем же числом. «Потерялся вагон» — номера идут по порядку, одного
+            нет: нужный выбрать из трёх на запасном пути. Сложность растёт сама: цифры вместо точек,
+            больше вагонов, «потерялся вагон», числа до десяти.
           </Text>
         </Stack>
       );

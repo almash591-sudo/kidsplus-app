@@ -61,6 +61,7 @@ const SPECS = [
   { kind: 'race', quiz: 'numbers', max: 5, gates: 4, rivals: true, cones: 'few', speed: 'slow' },
   { kind: 'differences', scenes: ['sea'], count: 3, rounds: 2, hint: true },
   { kind: 'paints', colors: ['orange'], tubes: 'needed', guess: false, rounds: 3 },
+  { kind: 'train', task: 'tickets', look: 'dots', max: 3, wagons: 3, rounds: 3 },
 ] as const;
 
 describe('уровни сложности (этап 34)', () => {
@@ -188,6 +189,24 @@ describe('игры этапа 41', () => {
     expect(specAtLevel(all, 2)).toMatchObject({ tubes: 'all' });
     expect(gameSpec.safeParse({ kind: 'paints', colors: [], rounds: 3 }).success).toBe(false);
     expect(gameSpec.safeParse({ kind: 'paints', rounds: 9 }).success).toBe(false);
+  });
+
+  it('поезд (этап 57): точки → цифры → посчитай; вагонов больше; «потерялся вагон»; до десяти', () => {
+    const train = gameSpec.parse({ kind: 'train', rounds: 3 }) as GameSpec;
+    expect(train).toMatchObject({ task: 'tickets', look: 'dots', max: 3, wagons: 3 });
+    expect(specAtLevel(train, 2)).toMatchObject({ look: 'digits', max: 5, wagons: 4 });
+    expect(specAtLevel(train, 3)).toMatchObject({
+      look: 'count',
+      max: 7,
+      wagons: 5,
+      task: 'mixed',
+    });
+    expect(specAtLevel(train, 4)).toMatchObject({ look: 'count', max: 10, wagons: 5 });
+    // Только «потерялся вагон» — так и остаётся.
+    const lost = gameSpec.parse({ kind: 'train', task: 'missing', rounds: 2 }) as GameSpec;
+    expect(specAtLevel(lost, 3)).toMatchObject({ task: 'missing' });
+    expect(gameSpec.safeParse({ kind: 'train', wagons: 6, rounds: 3 }).success).toBe(false);
+    expect(gameSpec.safeParse({ kind: 'train', rounds: 7 }).success).toBe(false);
   });
 
   it('буквы этапа 56: обводка — ступенью выше, шарики — и маленькие', () => {
