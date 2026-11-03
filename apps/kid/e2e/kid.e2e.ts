@@ -1850,6 +1850,57 @@ class TrainPilot {
   }
 }
 
+/** Автопилот «Весов»: где чаши и гирьки на прилавке (px от угла игры), сколько на чашах. */
+class ScalesPilot {
+  constructor(private page: Page) {}
+  private get g() {
+    return this.page.getByTestId('game-scales');
+  }
+  async read<T>(attr: string) {
+    return JSON.parse((await this.g.getAttribute(attr)) ?? 'null') as T;
+  }
+  /** Задание готово: грузы легли, ничего не летит, касания открыты. */
+  async ready() {
+    await expect(this.g).toHaveAttribute('data-phase', 'play', { timeout: 25_000 });
+    await expect(this.g).toHaveAttribute('data-busy', '0', { timeout: 8000 });
+    await expect(this.page.getByTestId('game')).toHaveAttribute('data-lock', 'none', {
+      timeout: 8000,
+    });
+  }
+  private async at(p: { x: number; y: number }) {
+    const b = (await this.g.boundingBox())!;
+    return { x: b.x + p.x, y: b.y + p.y };
+  }
+  pans() {
+    return this.read<{ x: number; y: number; total: number }[]>('data-pans');
+  }
+  tray() {
+    return this.read<{ v: number; x: number; y: number; used: boolean }[]>('data-tray');
+  }
+  async right() {
+    return Number(await this.g.getAttribute('data-right'));
+  }
+  async puts() {
+    return Number(await this.g.getAttribute('data-puts'));
+  }
+  async tapPan(side: 0 | 1) {
+    const p = await this.at((await this.pans())[side]!);
+    await this.page.mouse.click(p.x, p.y);
+  }
+  /**
+   * Гирьку v — на пустую чашу: нажатием или перетаскиванием; wait — ждём, пока ляжет. Ждём по
+   * счётчику положенного: чаша после верного ответа опустеет раньше, чем тест успеет её прочитать.
+   */
+  async put(v: number, drag = false, wait = true) {
+    const before = await this.puts();
+    const piece = (await this.tray()).find((x) => x.v === v && !x.used)!;
+    const from = await this.at(piece);
+    if (drag) await dragTo(this.page, from, await this.at((await this.pans())[1]!));
+    else await this.page.mouse.click(from.x, from.y);
+    if (wait) await expect.poll(() => this.puts()).toBe(before + 1);
+  }
+}
+
 async function expectFinished(page: Page, backend: Backend) {
   await expect(page.getByTestId('game-finished')).toBeVisible({ timeout: 6000 });
   await expect
@@ -3277,6 +3328,184 @@ test.describe('новые игры', () => {
     expect(done.payload).toMatchObject({ mistakes: 1 });
     const said = (await spoken(page)).map((x) => x.text);
     expect(said).toContain('Ой, один вагон потерялся! Найди его на запасном пути.');
+  });
+
+  test('весы (этап 57): какая чаша тяжелее — не та «Посчитай», подставки опускаются, два задания', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(150_000);
+    backend.items = [
+      game(1, { kind: 'scales', tasks: ['compare'], look: 'cubes', max: 5, rounds: 2 }),
+    ];
+    await openGame(page);
+    const g = page.getByTestId('game-scales');
+    const scales = new ScalesPilot(page);
+    const names = ['', 'один', 'два', 'три', 'четыре', 'пять'];
+    for (let round = 0; round < 2; round++) {
+      await expect(g).toHaveAttribute('data-round', String(round), { timeout: 25_000 });
+      await scales.ready();
+      await expect(g).toHaveAttribute('data-kind', 'compare');
+      const [l, r] = (await scales.pans()).map((p) => p.total) as [number, number];
+      expect(l).not.toBe(r);
+      expect(Math.max(l, r)).toBeLessThanOrEqual(5);
+      const heavy = l > r ? 0 : 1;
+      if (round === 0) {
+        await page.waitForTimeout(500);
+        await shot(page, 'scales-compare');
+        // Не та чаша — весы вздрагивают на подставках, совёнок: «Посчитай…».
+        await scales.tapPan(heavy ? 0 : 1);
+        await expect
+          .poll(
+            async () =>
+              (await spoken(page)).some(
+                (x) => x.text === 'Посчитай: где больше — та чаша и тяжелее.',
+              ),
+            {
+              timeout: 12_000,
+            },
+          )
+          .toBe(true);
+        await scales.ready();
+      }
+      await scales.tapPan(heavy);
+      await expect(g).toHaveAttribute('data-phase', /done|finish/);
+      if (round === 0) {
+        // Подставки ушли — тяжёлая чаша опустилась.
+        await page.waitForTimeout(1200);
+        await shot(page, 'scales-compare-done');
+      }
+      const big = Math.max(l, r);
+      await expect
+        .poll(async () => (await spoken(page)).some((x) => x.text === names[big]), {
+          timeout: 12_000,
+        })
+        .toBe(true);
+    }
+    await expect(g).toHaveAttribute('data-phase', 'finish', { timeout: 15_000 });
+    // Снимок большой и под нагрузкой долгий, а «Готово» висит недолго — ждём его параллельно.
+    await Promise.all([shot(page, 'scales-finish'), expectFinished(page, backend)]);
+    const done = backend.events.find((e) => e.type === 'interactive_complete')!;
+    expect(done.payload).toMatchObject({ mistakes: 1 });
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain('Какая чаша тяжелее? Нажми на неё — и весы покажут!');
+    expect(said).toContain('А здесь какая чаша тяжелее?');
+    expect(said).toContain('больше, чем');
+    expect(said).toContain('Всё взвесили! Спасибо, помощник!');
+  });
+
+  test('весы (этап 57): уравновесь гирьками с цифрами — перевес возвращается, потом «сложи»', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(180_000);
+    backend.items = [
+      game(1, { kind: 'scales', tasks: ['balance', 'sum'], look: 'digits', max: 6, rounds: 2 }),
+    ];
+    await openGame(page);
+    const g = page.getByTestId('game-scales');
+    const scales = new ScalesPilot(page);
+    await scales.ready();
+    await expect(g).toHaveAttribute('data-kind', 'balance');
+    const target = Number(await g.getAttribute('data-left'));
+    expect(target >= 3 && target <= 6).toBe(true);
+    expect((await scales.tray()).map((p) => p.v)).toEqual([1, 2, 3]);
+    await page.waitForTimeout(400);
+    await shot(page, 'scales-balance');
+    // Сначала — с перевесом: лишняя гирька сама уезжает на прилавок.
+    while (target - (await scales.right()) > 2) {
+      await scales.put(2);
+      await scales.ready();
+    }
+    const over = target - (await scales.right()) + 1;
+    await scales.put(over, true, false);
+    await page.waitForTimeout(500);
+    await shot(page, 'scales-over');
+    await expect
+      .poll(
+        async () => (await spoken(page)).some((x) => x.text === 'Ой, перевесило! Уберём лишнее.'),
+        {
+          timeout: 12_000,
+        },
+      )
+      .toBe(true);
+    await expect.poll(() => scales.right(), { timeout: 8000 }).toBeLessThan(target);
+    await scales.ready();
+    for (
+      let rem = target - (await scales.right());
+      rem > 0;
+      rem = target - (await scales.right())
+    ) {
+      await scales.put(Math.min(3, rem));
+      if (rem > 3) await scales.ready();
+    }
+    await page.waitForTimeout(700);
+    await shot(page, 'scales-even');
+    // «Сложи»: не та гиря — весы показывают перевес, гиря возвращается.
+    await expect(g).toHaveAttribute('data-round', '1', { timeout: 25_000 });
+    await scales.ready();
+    await expect(g).toHaveAttribute('data-kind', 'sum');
+    const need = Number(await g.getAttribute('data-left'));
+    const choices = (await scales.tray()).map((p) => p.v);
+    expect(choices).toHaveLength(3);
+    expect(choices).toContain(need);
+    await page.waitForTimeout(400);
+    await shot(page, 'scales-sum');
+    const wrong = choices.find((v) => v !== need)!;
+    await scales.put(wrong);
+    await expect
+      .poll(
+        async () =>
+          (await spoken(page)).some(
+            (x) =>
+              x.text ===
+              (wrong < need ? 'Легковато! Нужно тяжелее.' : 'Тяжеловато! Нужно полегче.'),
+          ),
+        { timeout: 12_000 },
+      )
+      .toBe(true);
+    await expect.poll(() => scales.right(), { timeout: 8000 }).toBe(0);
+    await scales.ready();
+    await scales.put(need, true);
+    await expect(g).toHaveAttribute('data-phase', 'finish', { timeout: 15_000 });
+    await expectFinished(page, backend);
+    const done = backend.events.find((e) => e.type === 'interactive_complete')!;
+    expect(done.payload).toMatchObject({ mistakes: 2 });
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain(
+      'Уравновесь весы! Клади гирьки на пустую чашу, пока стрелка не встанет посередине.',
+    );
+    expect(said).toContain('Поровну!');
+    expect(said).toContain('Поставь на пустую чашу одну гирю — чтобы стало поровну!');
+    expect(said).toContain('плюс');
+    expect(said).toContain('будет');
+  });
+
+  test('весы (этап 57): «сложи» башенками из кубиков', async ({ page, backend }) => {
+    test.setTimeout(120_000);
+    backend.items = [game(1, { kind: 'scales', tasks: ['sum'], look: 'cubes', max: 8, rounds: 2 })];
+    await openGame(page);
+    const g = page.getByTestId('game-scales');
+    const scales = new ScalesPilot(page);
+    for (let round = 0; round < 2; round++) {
+      await expect(g).toHaveAttribute('data-round', String(round), { timeout: 25_000 });
+      await scales.ready();
+      const need = Number(await g.getAttribute('data-left'));
+      if (round === 0) {
+        await page.waitForTimeout(400);
+        await shot(page, 'scales-towers');
+      }
+      await scales.put(need);
+      if (round === 0) {
+        await page.waitForTimeout(900);
+        await shot(page, 'scales-towers-done');
+      }
+    }
+    await expect(g).toHaveAttribute('data-phase', 'finish', { timeout: 15_000 });
+    await expectFinished(page, backend);
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain('Поставь на пустую чашу одну башенку — чтобы стало поровну!');
+    expect(said).toContain('Какую башенку поставим?');
   });
 
   test('стих (этап 45): послушать, повторять за голосом, «Договори словечко», вопросы — часть выучена', async ({
