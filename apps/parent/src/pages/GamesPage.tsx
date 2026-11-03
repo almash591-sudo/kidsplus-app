@@ -154,6 +154,8 @@ export function gameSummary(spec: GameSpec): string {
       const chapters = b.chapters.length > 1 ? ` · ${b.chapters.length} глав, по главе в день` : '';
       return `«${b.title}»${chapters} · ${spec.autoTurn ? 'листается сама' : 'листает ребёнок'}${spec.questions ? ' · вопросы' : ''}${spec.readSelf ? ' · прочитай сам' : ''}`;
     }
+    case 'paints':
+      return `цветов: ${spec.colors.length} · ${{ needed: 'нужные тюбики', primary: 'три тюбика', all: 'четыре тюбика' }[spec.tubes]}${spec.guess ? ' · что получится?' : ''} · предметов: ${spec.rounds}`;
     case 'differences':
       return `отличий: ${spec.count} · картинок: ${spec.rounds}${spec.hint ? ' · с лупой' : ''}`;
     case 'race':

@@ -17,6 +17,8 @@ import {
   isTraceLetter,
   MOLE_SPEEDS,
   NEIGHBOR_MODES,
+  PAINT_RECIPES,
+  PAINT_TARGETS,
   PATTERNS,
   PIANO_MODES,
   SORTER_SHAPES,
@@ -27,6 +29,8 @@ import {
   type GameKind,
   type GameSpec,
   type NeighborMode,
+  type PaintTarget,
+  type PaintTube,
 } from '@kidsplus/shared/games';
 import {
   bookAnnounce,
@@ -391,6 +395,13 @@ const DEFAULTS: { [K in GameKind]: Extract<GameSpec, { kind: K }> } = {
     rounds: 2,
     hint: true,
   },
+  paints: {
+    kind: 'paints',
+    colors: ['orange', 'green', 'purple'],
+    tubes: 'needed',
+    guess: false,
+    rounds: 3,
+  },
   poem: {
     kind: 'poem',
     poem: 'petushok',
@@ -439,6 +450,23 @@ const DIFF_SCENE_LABELS: Record<(typeof DIFF_SCENES)[number], string> = {
   sea: 'Море',
   space: 'Космос',
 };
+
+/** «Смешай краски» (этап 57): цвета-задания и краски в тюбиках. */
+const PAINT_LABELS: Record<PaintTarget, string> = {
+  orange: 'Оранжевый',
+  green: 'Зелёный',
+  purple: 'Фиолетовый',
+  pink: 'Розовый',
+  lightblue: 'Голубой',
+  brown: 'Коричневый',
+};
+const TUBE_LABELS: Record<PaintTube, string> = {
+  red: 'красная',
+  yellow: 'жёлтая',
+  blue: 'синяя',
+  white: 'белая',
+};
+const recipeOf = (t: PaintTarget) => PAINT_RECIPES[t].map((c) => TUBE_LABELS[c]).join(' + ');
 
 /** Числа на крыше «Домика числа» (этап 49). */
 const HOUSE_NUMBERS = ['2', '3', '4', '5', '6', '7', '8', '9', '10'] as const;
@@ -2709,6 +2737,59 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
             Две живые картинки — ребёнок нажимает, где по-другому: чего-то нет, другой цвет, другая
             картинка, смотрит в другую сторону, больше. Сложность растёт сама: больше отличий, потом
             без лупы и больше картинок.
+          </Text>
+        </Stack>
+      );
+    case 'paints':
+      return (
+        <Stack gap="xs">
+          <Text size="sm" fw={500}>
+            Какие цвета смешивать
+          </Text>
+          <Chip.Group
+            multiple
+            value={spec.colors}
+            onChange={(v) => v.length && onChange({ ...spec, colors: v as PaintTarget[] })}
+          >
+            <Group gap="xs">
+              {PAINT_TARGETS.map((c) => (
+                <Chip key={c} value={c} title={recipeOf(c)}>
+                  {PAINT_LABELS[c]}
+                </Chip>
+              ))}
+            </Group>
+          </Chip.Group>
+          <Text size="xs" c="dimmed">
+            {spec.colors.map((c) => `${PAINT_LABELS[c]} = ${recipeOf(c)}`).join(' · ')}
+          </Text>
+          <Select
+            label="Тюбики на столе"
+            allowDeselect={false}
+            value={spec.tubes}
+            data={[
+              { value: 'needed', label: 'Только нужные — и подсказка, что смешать' },
+              { value: 'primary', label: 'Красная, жёлтая и синяя — выбрать самому' },
+              { value: 'all', label: 'Все четыре, с белой' },
+            ]}
+            onChange={(v) => v && onChange({ ...spec, tubes: v as typeof spec.tubes })}
+          />
+          <Switch
+            label="Сначала угадать, что получится"
+            checked={spec.guess}
+            onChange={(e) => onChange({ ...spec, guess: e.currentTarget.checked })}
+          />
+          <NumberInput
+            label="Предметов за игру"
+            min={2}
+            max={8}
+            value={spec.rounds}
+            onChange={(v) => onChange({ ...spec, rounds: num(v, 3) })}
+          />
+          <Text size="xs" c="dimmed">
+            Ребёнок капает краски из тюбиков в баночку — они смешиваются, и кисточка раскрашивает
+            серый предмет: тыкву, лягушку, мишку. Лишняя краска — баночка выливается, и совёнок
+            подсказывает. Сложность растёт сама: тюбики на выбор, потом «что получится?», оттенки с
+            белой и коричневый из трёх красок.
           </Text>
         </Stack>
       );
