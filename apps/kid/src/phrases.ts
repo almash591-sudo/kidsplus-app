@@ -19,9 +19,14 @@ import {
   ROCKET_COLORS,
   RACE_COLORS,
   NOTE_NAMES,
+  PAINT_RECIPES,
+  PAINT_TARGETS,
+  PAINT_TUBES,
   SPACE_LETTERS,
   type BuilderBlock,
   type DiveFish,
+  type PaintTarget,
+  type PaintTube,
   type RaceColor,
   type RocketColor,
   type RocketPart,
@@ -38,7 +43,8 @@ import { MAX_LEVEL, specAtLevel } from '@kidsplus/shared/levels';
 import { lineStart, partSpeech, poemAnnounce, poemOf, type PoemCode } from '@kidsplus/shared/poems';
 import { SONGS } from '@kidsplus/shared/songs';
 import { soundPlace, syllablesIn, unstressed, wordScheme } from '@kidsplus/shared/sounds';
-import { NUMBERS, paint, PALETTE } from './games/common';
+import { NUMBERS, paint, PALETTE, type SpecOf } from './games/common';
+import { PAINT_OBJECTS } from './games/paintsLogic';
 import { SORTER } from './games/sorterShapes';
 import { PICTURES } from './games/pictures';
 import { TRACES } from './games/traceShapes';
@@ -558,6 +564,61 @@ export const diffPhrases = () => [
   ...LEFT.slice(1).map((_, i) => diffLeft(i + 1)),
 ];
 
+// ─── «Смешай краски» (этап 57) ───
+export const PAINTS_PROMPT = 'Смешай краски! Нажимай на тюбики — краска капнет в баночку.';
+export const PAINTS_OTHER = 'Ой, получился совсем другой цвет!';
+/** Цвет: какой (м. и ж. род), какую краску, какой краски добавить. */
+const PAINT_WORD: Record<PaintTarget | PaintTube, readonly [string, string, string, string]> = {
+  red: ['красный', 'красная', 'красную', 'красной'],
+  yellow: ['жёлтый', 'жёлтая', 'жёлтую', 'жёлтой'],
+  blue: ['синий', 'синяя', 'синюю', 'синей'],
+  white: ['белый', 'белая', 'белую', 'белой'],
+  orange: ['оранжевый', 'оранжевая', 'оранжевую', 'оранжевой'],
+  green: ['зелёный', 'зелёная', 'зелёную', 'зелёной'],
+  purple: ['фиолетовый', 'фиолетовая', 'фиолетовую', 'фиолетовой'],
+  pink: ['розовый', 'розовая', 'розовую', 'розовой'],
+  lightblue: ['голубой', 'голубая', 'голубую', 'голубой'],
+  brown: ['коричневый', 'коричневая', 'коричневую', 'коричневой'],
+};
+const capital = (w: string) => w[0]!.toUpperCase() + w.slice(1);
+const listOf = (ws: string[]) =>
+  ws.length > 1 ? `${ws.slice(0, -1).join(', ')} и ${ws.at(-1)}` : (ws[0] ?? '');
+/** «Тыква оранжевая. Сделай оранжевую краску!» */
+export const paintsTask = (o: { name: string; fem: boolean }, t: PaintTarget) =>
+  `${o.name} ${PAINT_WORD[t][o.fem ? 1 : 0]}. Сделай ${PAINT_WORD[t][2]} краску!`;
+/** «Смешай красную и жёлтую!» */
+export const paintsRecipe = (t: PaintTarget) =>
+  `Смешай ${listOf(PAINT_RECIPES[t].map((c) => PAINT_WORD[c][2]))}!`;
+/** «Что получится, если смешать красную и жёлтую?» */
+export const paintsGuess = (t: PaintTarget) =>
+  `Что получится, если смешать ${listOf(PAINT_RECIPES[t].map((c) => PAINT_WORD[c][2]))}?`;
+export const paintsYes = (t: PaintTarget) =>
+  `Правильно, ${PAINT_WORD[t][1]}! Проверим — капай краски.`;
+/** Первая капля: «Красная!» */
+export const paintsIs = (c: PaintTube) => `${capital(PAINT_WORD[c][1])}!`;
+export const paintsGot = (t: PaintTarget) => `Получилась ${PAINT_WORD[t][1]}!`;
+export const paintsNeed = (t: PaintTarget) =>
+  `А нужна ${PAINT_WORD[t][1]}. Выльем и попробуем ещё!`;
+export const paintsMore = (c: PaintTube) => `Добавь ${PAINT_WORD[c][3]}!`;
+export const paintsOver = (c: PaintTube) =>
+  `Ой, много ${PAINT_WORD[c][3]}! Выльем и попробуем ещё.`;
+/** Название цвета для «Что получится?» — на кнопке. */
+export const paintName = (c: PaintTarget | PaintTube) => PAINT_WORD[c][1];
+export function paintsPhrases(spec: SpecOf<'paints'>) {
+  return [
+    PAINTS_PROMPT,
+    PAINTS_OTHER,
+    ...spec.colors.flatMap((t) => [
+      ...PAINT_OBJECTS[t].map((o) => paintsTask(o, t)),
+      paintsRecipe(t),
+      paintsNeed(t),
+      ...(spec.guess ? [paintsGuess(t), paintsYes(t)] : []),
+    ]),
+    ...PAINT_TARGETS.map(paintsGot),
+    ...PAINT_TUBES.flatMap((c) => [paintsIs(c), paintsMore(c), paintsOver(c)]),
+  ];
+}
+
 // ─── Этап 45: стихи и сказки ───
 export const POEM_INTRO = 'Послушай и повторяй за мной!';
 export const POEM_REPEAT = 'Повторяй за мной!';
@@ -681,6 +742,7 @@ export const GAME_INTRO: Record<GameKind, string> = {
   rocket: ROCKET_PROMPT,
   race: RACE_PROMPT,
   differences: DIFF_PROMPT,
+  paints: PAINTS_PROMPT,
   poem: POEM_INTRO,
   book: BOOK_INTRO,
 };
@@ -923,6 +985,8 @@ export function gamePhrases(spec: GameSpec): string[] {
       return racePhrases(spec.quiz);
     case 'differences':
       return diffPhrases();
+    case 'paints':
+      return paintsPhrases(spec);
     case 'poem':
       return poemPhrases(spec.poem);
     case 'book':

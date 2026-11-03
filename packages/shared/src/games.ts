@@ -168,6 +168,22 @@ export const problemAnswer = (p: Pick<WordProblem, 'a' | 'op' | 'b'>) =>
 export const DIFF_SCENES = ['meadow', 'forest', 'sea', 'space'] as const;
 export type DiffScene = (typeof DIFF_SCENES)[number];
 
+/** Цвета «Смешай краски» (этап 57): что можно получить из красок в тюбиках. */
+export const PAINT_TARGETS = ['orange', 'green', 'purple', 'pink', 'lightblue', 'brown'] as const;
+export type PaintTarget = (typeof PAINT_TARGETS)[number];
+/** Краски в тюбиках. */
+export const PAINT_TUBES = ['red', 'yellow', 'blue', 'white'] as const;
+export type PaintTube = (typeof PAINT_TUBES)[number];
+/** Из чего получается цвет — поровну каждой краски. */
+export const PAINT_RECIPES: Record<PaintTarget, readonly PaintTube[]> = {
+  orange: ['red', 'yellow'],
+  green: ['yellow', 'blue'],
+  purple: ['red', 'blue'],
+  pink: ['red', 'white'],
+  lightblue: ['blue', 'white'],
+  brown: ['red', 'yellow', 'blue'],
+};
+
 export const gameSpec = z.discriminatedUnion('kind', [
   /** Рисовалка: кисть, цвета, наклейки. */
   z.object({
@@ -817,6 +833,23 @@ export const gameSpec = z.discriminatedUnion('kind', [
     hint: z.boolean().default(true),
   }),
   /**
+   * Смешай краски (этап 57): ребёнок капает из тюбиков в баночку и получает цвет предмета —
+   * оранжевую тыкву, зелёную лягушку. colors — какие цвета получать; tubes — какие тюбики на
+   * столе: только нужные (needed), красный, жёлтый, синий (primary, белый — если нужен) или все
+   * четыре (all). guess — сначала угадать, что получится. rounds — предметов за игру.
+   */
+  z.object({
+    kind: z.literal('paints'),
+    colors: z
+      .array(z.enum(PAINT_TARGETS))
+      .min(1)
+      .max(PAINT_TARGETS.length)
+      .default(['orange', 'green', 'purple']),
+    tubes: z.enum(['needed', 'primary', 'all']).default('needed'),
+    guess: z.boolean().default(false),
+    rounds: z.number().int().min(2).max(8),
+  }),
+  /**
    * Стих или сказка (этап 45) из встроенной библиотеки: послушать под глиняные картинки, повторять
    * за голосом по частям (repeat), «Договори словечко» (blanks) и вопросы по смыслу (questions) —
    * choices вариантов-картинок. Выученную часть телефон помнит: в следующий раз учим следующую.
@@ -948,6 +981,7 @@ export const GAME_KINDS: Record<GameKind, string> = {
   rocket: 'Ракета: собери и лети',
   race: 'Гонки',
   differences: 'Найди отличия',
+  paints: 'Смешай краски',
   poem: 'Стих или сказка',
   book: 'Книжка',
 };
@@ -1025,6 +1059,7 @@ export function gameImageIds(g: GameSpec): string[] {
     case 'rocket':
     case 'race':
     case 'differences':
+    case 'paints':
     case 'poem':
     case 'book':
       return [];
