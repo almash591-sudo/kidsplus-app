@@ -62,6 +62,7 @@ const SPECS = [
   { kind: 'differences', scenes: ['sea'], count: 3, rounds: 2, hint: true },
   { kind: 'paints', colors: ['orange'], tubes: 'needed', guess: false, rounds: 3 },
   { kind: 'train', task: 'tickets', look: 'dots', max: 3, wagons: 3, rounds: 3 },
+  { kind: 'scales', tasks: ['compare'], look: 'cubes', max: 5, rounds: 4 },
 ] as const;
 
 describe('уровни сложности (этап 34)', () => {
@@ -207,6 +208,28 @@ describe('игры этапа 41', () => {
     expect(specAtLevel(lost, 3)).toMatchObject({ task: 'missing' });
     expect(gameSpec.safeParse({ kind: 'train', wagons: 6, rounds: 3 }).success).toBe(false);
     expect(gameSpec.safeParse({ kind: 'train', rounds: 7 }).success).toBe(false);
+  });
+
+  it('весы (этап 57): кубики → точки → цифры; «уравновесь», потом «сложи»; до десяти', () => {
+    const scales = gameSpec.parse({ kind: 'scales', rounds: 4 }) as GameSpec;
+    expect(scales).toMatchObject({ tasks: ['compare'], look: 'cubes', max: 5 });
+    expect(specAtLevel(scales, 2)).toMatchObject({
+      tasks: ['compare', 'balance'],
+      look: 'dots',
+      max: 6,
+    });
+    expect(specAtLevel(scales, 3)).toMatchObject({
+      tasks: ['compare', 'balance', 'sum'],
+      look: 'digits',
+      max: 7,
+    });
+    expect(specAtLevel(scales, 4)).toMatchObject({ look: 'digits', max: 10 });
+    // Только «сложи» — к нему добавляются остальные по порядку.
+    const sum = gameSpec.parse({ kind: 'scales', tasks: ['sum'], rounds: 3 }) as GameSpec;
+    expect(specAtLevel(sum, 2)).toMatchObject({ tasks: ['balance', 'sum'] });
+    expect(gameSpec.safeParse({ kind: 'scales', tasks: [], rounds: 3 }).success).toBe(false);
+    expect(gameSpec.safeParse({ kind: 'scales', max: 11, rounds: 3 }).success).toBe(false);
+    expect(gameSpec.safeParse({ kind: 'scales', rounds: 9 }).success).toBe(false);
   });
 
   it('буквы этапа 56: обводка — ступенью выше, шарики — и маленькие', () => {

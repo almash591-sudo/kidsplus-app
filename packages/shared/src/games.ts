@@ -171,6 +171,9 @@ export type DiffScene = (typeof DIFF_SCENES)[number];
 /** Цвета «Смешай краски» (этап 57): что можно получить из красок в тюбиках. */
 export const PAINT_TARGETS = ['orange', 'green', 'purple', 'pink', 'lightblue', 'brown'] as const;
 export type PaintTarget = (typeof PAINT_TARGETS)[number];
+/** Задания «Весов» (этап 57): какая чаша тяжелее, уравновесь, сложи два груза. */
+export const SCALES_TASKS = ['compare', 'balance', 'sum'] as const;
+export type ScalesTask = (typeof SCALES_TASKS)[number];
 /** Краски в тюбиках. */
 export const PAINT_TUBES = ['red', 'yellow', 'blue', 'white'] as const;
 export type PaintTube = (typeof PAINT_TUBES)[number];
@@ -865,6 +868,21 @@ export const gameSpec = z.discriminatedUnion('kind', [
     rounds: z.number().int().min(2).max(6),
   }),
   /**
+   * Весы (этап 57): старинные весы на прилавке, чаши качаются на цепочках. Какая чаша тяжелее
+   * (compare): весы стоят на подставках, ребёнок нажимает на тяжёлую чашу — подставки уходят,
+   * весы качаются. Уравновесь (balance): слева груз, ребёнок кладёт на правую чашу кубики или
+   * гирьки, пока стрелка не встанет посередине. Сложи (sum): слева два груза, справа — одна гиря
+   * из трёх, сколько это вместе. tasks — какие задания (по очереди). look — как показан вес:
+   * кубики (cubes), гири с точками (dots) или с цифрами (digits). max — самый большой вес.
+   */
+  z.object({
+    kind: z.literal('scales'),
+    tasks: z.array(z.enum(SCALES_TASKS)).min(1).max(SCALES_TASKS.length).default(['compare']),
+    look: z.enum(['cubes', 'dots', 'digits']).default('cubes'),
+    max: z.number().int().min(3).max(10).default(5),
+    rounds: z.number().int().min(2).max(8),
+  }),
+  /**
    * Стих или сказка (этап 45) из встроенной библиотеки: послушать под глиняные картинки, повторять
    * за голосом по частям (repeat), «Договори словечко» (blanks) и вопросы по смыслу (questions) —
    * choices вариантов-картинок. Выученную часть телефон помнит: в следующий раз учим следующую.
@@ -998,6 +1016,7 @@ export const GAME_KINDS: Record<GameKind, string> = {
   differences: 'Найди отличия',
   paints: 'Смешай краски',
   train: 'Поезд',
+  scales: 'Весы',
   poem: 'Стих или сказка',
   book: 'Книжка',
 };
@@ -1077,6 +1096,7 @@ export function gameImageIds(g: GameSpec): string[] {
     case 'differences':
     case 'paints':
     case 'train':
+    case 'scales':
     case 'poem':
     case 'book':
       return [];

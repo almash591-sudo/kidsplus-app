@@ -2,7 +2,15 @@
 // подряд без ошибок — уровень выше, много ошибок — ниже. Уровень 1 — игра как её настроил родитель;
 // выше — те же картинки, но больше счёт, крупнее пазл, длиннее мелодия (в пределах схемы игры).
 import type { GameKind, GameSpec } from './games';
-import { isTraceLetter, PAINT_TARGETS, PATTERNS, TRACE_GUIDES, type PaintTarget } from './games';
+import {
+  isTraceLetter,
+  PAINT_TARGETS,
+  PATTERNS,
+  SCALES_TASKS,
+  TRACE_GUIDES,
+  type PaintTarget,
+  type ScalesTask,
+} from './games';
 
 export const MAX_LEVEL = 4;
 /** Без ошибок столько раз подряд — уровень выше. */
@@ -228,6 +236,20 @@ export function specAtLevel(spec: GameSpec, level: number): GameSpec {
         max: up >= 3 ? 10 : clamp(spec.max + 2 * up, 2, 10),
         wagons: clamp(spec.wagons + up, 2, 5),
         task: up >= 2 && spec.task === 'tickets' ? 'mixed' : spec.task,
+      };
+    }
+    case 'scales': {
+      // Вес: кубики → гири с точками → с цифрами; со второго шага — и «уравновесь», с третьего —
+      // «сложи два груза», с четвёртого — веса до десяти.
+      const looks = ['cubes', 'dots', 'digits'] as const;
+      const tasks = new Set<ScalesTask>(spec.tasks);
+      if (up >= 1) tasks.add('balance');
+      if (up >= 2) tasks.add('sum');
+      return {
+        ...spec,
+        look: looks[clamp(looks.indexOf(spec.look) + up, 0, 2)]!,
+        tasks: SCALES_TASKS.filter((t) => tasks.has(t)),
+        max: up >= 3 ? 10 : clamp(spec.max + up, 3, 10),
       };
     }
     case 'poem':
