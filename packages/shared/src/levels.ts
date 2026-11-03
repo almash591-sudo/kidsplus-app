@@ -2,7 +2,7 @@
 // подряд без ошибок — уровень выше, много ошибок — ниже. Уровень 1 — игра как её настроил родитель;
 // выше — те же картинки, но больше счёт, крупнее пазл, длиннее мелодия (в пределах схемы игры).
 import type { GameKind, GameSpec } from './games';
-import { isTraceLetter, PATTERNS, TRACE_GUIDES } from './games';
+import { isTraceLetter, PAINT_TARGETS, PATTERNS, TRACE_GUIDES, type PaintTarget } from './games';
 
 export const MAX_LEVEL = 4;
 /** Без ошибок столько раз подряд — уровень выше. */
@@ -203,6 +203,21 @@ export function specAtLevel(spec: GameSpec, level: number): GameSpec {
         hint: spec.hint && up < 1,
         rounds: clamp(spec.rounds + Math.max(0, up - 1), 1, 4),
       };
+    case 'paints': {
+      // Тюбики: все три основных → со второго шага ещё и оттенки с белым и «угадай» → с третьего
+      // — все четыре тюбика и коричневый из трёх красок.
+      const tubes = ['needed', 'primary', 'all'] as const;
+      const colors = new Set(spec.colors);
+      if (up >= 2) ['pink', 'lightblue'].forEach((c) => colors.add(c as PaintTarget));
+      if (up >= 3) colors.add('brown');
+      return {
+        ...spec,
+        tubes: tubes[Math.max(tubes.indexOf(spec.tubes), up >= 3 ? 2 : 1)]!,
+        colors: PAINT_TARGETS.filter((c) => colors.has(c)),
+        guess: up >= 2 || spec.guess,
+        rounds: clamp(spec.rounds + up, 2, 8),
+      };
+    }
     case 'poem':
       // Больше вариантов в «Договори» и вопросах.
       return { ...spec, choices: clamp(spec.choices + up, 2, 4) };

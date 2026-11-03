@@ -60,6 +60,7 @@ const SPECS = [
   { kind: 'rocket', parts: 3, memory: false, quiz: 'sums', max: 5, asteroids: 'few', rounds: 2 },
   { kind: 'race', quiz: 'numbers', max: 5, gates: 4, rivals: true, cones: 'few', speed: 'slow' },
   { kind: 'differences', scenes: ['sea'], count: 3, rounds: 2, hint: true },
+  { kind: 'paints', colors: ['orange'], tubes: 'needed', guess: false, rounds: 3 },
 ] as const;
 
 describe('уровни сложности (этап 34)', () => {
@@ -162,6 +163,31 @@ describe('игры этапа 41', () => {
     expect(
       gameSpec.safeParse({ kind: 'differences', scenes: [], count: 3, rounds: 1 }).success,
     ).toBe(false);
+  });
+
+  it('краски (этап 57): все основные тюбики → оттенки с белым и «угадай» → все четыре и коричневый', () => {
+    const paints = gameSpec.parse({ kind: 'paints', rounds: 3 }) as GameSpec;
+    expect(paints).toMatchObject({
+      colors: ['orange', 'green', 'purple'],
+      tubes: 'needed',
+      guess: false,
+    });
+    expect(specAtLevel(paints, 2)).toMatchObject({ tubes: 'primary', guess: false, rounds: 4 });
+    expect(specAtLevel(paints, 3)).toMatchObject({
+      tubes: 'primary',
+      guess: true,
+      colors: ['orange', 'green', 'purple', 'pink', 'lightblue'],
+    });
+    expect(specAtLevel(paints, 4)).toMatchObject({
+      tubes: 'all',
+      colors: ['orange', 'green', 'purple', 'pink', 'lightblue', 'brown'],
+      rounds: 6,
+    });
+    // Родитель уже поставил все тюбики — легче не становится.
+    const all = gameSpec.parse({ kind: 'paints', tubes: 'all', rounds: 2 }) as GameSpec;
+    expect(specAtLevel(all, 2)).toMatchObject({ tubes: 'all' });
+    expect(gameSpec.safeParse({ kind: 'paints', colors: [], rounds: 3 }).success).toBe(false);
+    expect(gameSpec.safeParse({ kind: 'paints', rounds: 9 }).success).toBe(false);
   });
 
   it('буквы этапа 56: обводка — ступенью выше, шарики — и маленькие', () => {
