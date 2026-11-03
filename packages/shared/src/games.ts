@@ -850,6 +850,21 @@ export const gameSpec = z.discriminatedUnion('kind', [
     rounds: z.number().int().min(2).max(8),
   }),
   /**
+   * Поезд (этап 57): поезд выезжает из туннеля и едет по полям к станции. На платформе ждут
+   * зверята с билетами — ребёнок сажает каждого в вагон с тем же номером (tickets); или вагон
+   * потерялся, и его надо найти среди трёх на запасном пути (missing); mixed — по очереди. look —
+   * как показан номер: точки на билете и на вагоне (dots), цифры там и там (digits), на билете
+   * точки, на вагоне цифра (count). max — самый большой номер, wagons — вагонов, rounds — станций.
+   */
+  z.object({
+    kind: z.literal('train'),
+    task: z.enum(['tickets', 'missing', 'mixed']).default('tickets'),
+    look: z.enum(['dots', 'digits', 'count']).default('dots'),
+    max: z.number().int().min(2).max(10).default(3),
+    wagons: z.number().int().min(2).max(5).default(3),
+    rounds: z.number().int().min(2).max(6),
+  }),
+  /**
    * Стих или сказка (этап 45) из встроенной библиотеки: послушать под глиняные картинки, повторять
    * за голосом по частям (repeat), «Договори словечко» (blanks) и вопросы по смыслу (questions) —
    * choices вариантов-картинок. Выученную часть телефон помнит: в следующий раз учим следующую.
@@ -982,6 +997,7 @@ export const GAME_KINDS: Record<GameKind, string> = {
   race: 'Гонки',
   differences: 'Найди отличия',
   paints: 'Смешай краски',
+  train: 'Поезд',
   poem: 'Стих или сказка',
   book: 'Книжка',
 };
@@ -1060,6 +1076,7 @@ export function gameImageIds(g: GameSpec): string[] {
     case 'race':
     case 'differences':
     case 'paints':
+    case 'train':
     case 'poem':
     case 'book':
       return [];

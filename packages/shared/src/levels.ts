@@ -218,6 +218,18 @@ export function specAtLevel(spec: GameSpec, level: number): GameSpec {
         rounds: clamp(spec.rounds + up, 2, 8),
       };
     }
+    case 'train': {
+      // Номер: точки → цифры → «посчитай точки на билете и найди цифру»; номера больше и вагонов
+      // больше; со второго шага — и «потерялся вагон», с третьего — номера до десяти.
+      const looks = ['dots', 'digits', 'count'] as const;
+      return {
+        ...spec,
+        look: looks[clamp(looks.indexOf(spec.look) + up, 0, 2)]!,
+        max: up >= 3 ? 10 : clamp(spec.max + 2 * up, 2, 10),
+        wagons: clamp(spec.wagons + up, 2, 5),
+        task: up >= 2 && spec.task === 'tickets' ? 'mixed' : spec.task,
+      };
+    }
     case 'poem':
       // Больше вариантов в «Договори» и вопросах.
       return { ...spec, choices: clamp(spec.choices + up, 2, 4) };
