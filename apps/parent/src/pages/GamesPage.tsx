@@ -1,5 +1,10 @@
 import type { Game } from '@kidsplus/shared/api';
-import { GAME_KINDS, type GameKind, type GameSpec } from '@kidsplus/shared/games';
+import {
+  GAME_KINDS,
+  SCALES_TASK_LABELS,
+  type GameKind,
+  type GameSpec,
+} from '@kidsplus/shared/games';
 import { bookOf } from '@kidsplus/shared/books';
 import { poemOf } from '@kidsplus/shared/poems';
 import { SONGS } from '@kidsplus/shared/songs';
@@ -158,6 +163,8 @@ export function gameSummary(spec: GameSpec): string {
       return `цветов: ${spec.colors.length} · ${{ needed: 'нужные тюбики', primary: 'три тюбика', all: 'четыре тюбика' }[spec.tubes]}${spec.guess ? ' · что получится?' : ''} · предметов: ${spec.rounds}`;
     case 'train':
       return `${{ tickets: 'по билетам', missing: 'потерялся вагон', mixed: 'билеты и потерялся вагон' }[spec.task]} · ${{ dots: 'точки', digits: 'цифры', count: 'посчитать точки' }[spec.look]} до ${Math.max(spec.max, spec.wagons)} · вагонов: ${spec.wagons} · станций: ${spec.rounds}`;
+    case 'scales':
+      return `${spec.tasks.map((t) => SCALES_TASK_LABELS[t].toLowerCase()).join(', ')} · ${{ cubes: 'кубики', dots: 'точки', digits: 'цифры' }[spec.look]} до ${spec.max} · заданий: ${spec.rounds}`;
     case 'differences':
       return `отличий: ${spec.count} · картинок: ${spec.rounds}${spec.hint ? ' · с лупой' : ''}`;
     case 'race':

@@ -21,6 +21,8 @@ import {
   PAINT_TARGETS,
   PATTERNS,
   PIANO_MODES,
+  SCALES_TASK_LABELS,
+  SCALES_TASKS,
   SORTER_SHAPES,
   TANGRAM_FIGURES,
   TRACE_GUIDES,
@@ -31,6 +33,7 @@ import {
   type NeighborMode,
   type PaintTarget,
   type PaintTube,
+  type ScalesTask,
 } from '@kidsplus/shared/games';
 import {
   bookAnnounce,
@@ -409,6 +412,13 @@ const DEFAULTS: { [K in GameKind]: Extract<GameSpec, { kind: K }> } = {
     max: 3,
     wagons: 3,
     rounds: 3,
+  },
+  scales: {
+    kind: 'scales',
+    tasks: ['compare'],
+    look: 'cubes',
+    max: 5,
+    rounds: 4,
   },
   poem: {
     kind: 'poem',
@@ -2854,6 +2864,68 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
             каждого к вагону с тем же числом. «Потерялся вагон» — номера идут по порядку, одного
             нет: нужный выбрать из трёх на запасном пути. Сложность растёт сама: цифры вместо точек,
             больше вагонов, «потерялся вагон», числа до десяти.
+          </Text>
+        </Stack>
+      );
+    case 'scales':
+      return (
+        <Stack gap="xs">
+          <Text size="sm" fw={500}>
+            Задания (по очереди)
+          </Text>
+          <Chip.Group
+            multiple
+            value={spec.tasks}
+            onChange={(v) =>
+              v.length &&
+              onChange({
+                ...spec,
+                // В том же порядке, что в списке: «тяжелее» → «уравновесь» → «сложи».
+                tasks: SCALES_TASKS.filter((t) => v.includes(t)) as ScalesTask[],
+              })
+            }
+          >
+            <Group gap="xs">
+              {SCALES_TASKS.map((t) => (
+                <Chip key={t} value={t}>
+                  {SCALES_TASK_LABELS[t]}
+                </Chip>
+              ))}
+            </Group>
+          </Chip.Group>
+          <Select
+            label="Как показан вес"
+            allowDeselect={false}
+            value={spec.look}
+            data={[
+              { value: 'cubes', label: 'Кубики — посчитать' },
+              { value: 'dots', label: 'Гири с точками' },
+              { value: 'digits', label: 'Гири с цифрами' },
+            ]}
+            onChange={(v) => v && onChange({ ...spec, look: v as typeof spec.look })}
+          />
+          <Group grow>
+            <NumberInput
+              label="Вес до"
+              min={3}
+              max={10}
+              value={spec.max}
+              onChange={(v) => onChange({ ...spec, max: num(v, 5) })}
+            />
+            <NumberInput
+              label="Заданий"
+              min={2}
+              max={8}
+              value={spec.rounds}
+              onChange={(v) => onChange({ ...spec, rounds: num(v, 4) })}
+            />
+          </Group>
+          <Text size="xs" c="dimmed">
+            Старинные весы в лавке. «Какая тяжелее» — весы стоят на подставках, ребёнок нажимает на
+            чашу, где больше, подставки уходят — весы показывают. «Уравновесь» — кладёт гирьки на
+            пустую чашу, пока стрелка не встанет посередине; лишнее весы вернут. «Сложи» — слева два
+            груза, справа одна гиря из трёх, сколько это вместе. Сложность растёт сама: точки, потом
+            цифры, «уравновесь», «сложи», вес до десяти.
           </Text>
         </Stack>
       );
