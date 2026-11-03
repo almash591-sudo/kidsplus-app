@@ -156,6 +156,8 @@ export function gameSummary(spec: GameSpec): string {
     }
     case 'paints':
       return `цветов: ${spec.colors.length} · ${{ needed: 'нужные тюбики', primary: 'три тюбика', all: 'четыре тюбика' }[spec.tubes]}${spec.guess ? ' · что получится?' : ''} · предметов: ${spec.rounds}`;
+    case 'train':
+      return `${{ tickets: 'по билетам', missing: 'потерялся вагон', mixed: 'билеты и потерялся вагон' }[spec.task]} · ${{ dots: 'точки', digits: 'цифры', count: 'посчитать точки' }[spec.look]} до ${Math.max(spec.max, spec.wagons)} · вагонов: ${spec.wagons} · станций: ${spec.rounds}`;
     case 'differences':
       return `отличий: ${spec.count} · картинок: ${spec.rounds}${spec.hint ? ' · с лупой' : ''}`;
     case 'race':
