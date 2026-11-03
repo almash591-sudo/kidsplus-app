@@ -1807,6 +1807,49 @@ class PaintsPilot {
   }
 }
 
+/** Автопилот «Поезда»: где зверята, вагоны и запасные вагоны (px от угла игры), отвести к вагону. */
+class TrainPilot {
+  constructor(private page: Page) {}
+  private get g() {
+    return this.page.getByTestId('game-train');
+  }
+  async read<T>(attr: string) {
+    return JSON.parse((await this.g.getAttribute(attr)) ?? 'null') as T;
+  }
+  /** Поезд встал у станции: ждём фазу и что он больше не едет. */
+  async stopped(phase: 'board' | 'fix') {
+    await expect(this.g).toHaveAttribute('data-phase', phase, { timeout: 25_000 });
+    await expect(this.g).toHaveAttribute('data-moving', '0');
+  }
+  private async at(p: { x: number; y: number }) {
+    const b = (await this.g.boundingBox())!;
+    return { x: b.x + p.x, y: b.y + p.y };
+  }
+  passengers() {
+    return this.read<{ ticket: number; x: number; y: number; seated: boolean }[]>(
+      'data-passengers',
+    );
+  }
+  wagons() {
+    return this.read<{ n: number; x: number; y: number; filled: boolean }[]>('data-wagons');
+  }
+  async seated(ticket: number) {
+    return (await this.passengers()).find((x) => x.ticket === ticket)!.seated;
+  }
+  /** Отвести зверька с билетом ticket к вагону wagon (по умолчанию — к своему). */
+  async seat(ticket: number, wagon = ticket) {
+    const p = (await this.passengers()).find((x) => x.ticket === ticket && !x.seated)!;
+    const w = (await this.wagons()).find((x) => x.n === wagon)!;
+    await dragTo(this.page, await this.at(p), await this.at(w));
+  }
+  /** Поставить запасной вагон n в дырку. */
+  async fill(n: number) {
+    const spare = await this.read<{ n: number; x: number; y: number }[]>('data-spare');
+    const gap = (await this.read<{ x: number; y: number; need: number }>('data-gap'))!;
+    await dragTo(this.page, await this.at(spare.find((x) => x.n === n)!), await this.at(gap));
+  }
+}
+
 async function expectFinished(page: Page, backend: Backend) {
   await expect(page.getByTestId('game-finished')).toBeVisible({ timeout: 6000 });
   await expect
@@ -3116,6 +3159,124 @@ test.describe('новые игры', () => {
     expect(said).toContain('Что получится, если смешать красную и белую?');
     expect(said).toContain('Правильно, коричневая! Проверим — капай краски.');
     expect(said).toContain('Получилась розовая!');
+  });
+
+  test('поезд (этап 57): зверята по билетам с точками, не тот вагон — «Это вагон …», две станции', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(180_000);
+    backend.items = [
+      game(1, { kind: 'train', task: 'tickets', look: 'dots', max: 3, wagons: 3, rounds: 2 }),
+    ];
+    await openGame(page);
+    const g = page.getByTestId('game-train');
+    const train = new TrainPilot(page);
+    await page.waitForTimeout(1200);
+    await shot(page, 'train-ride');
+    const names = ['', 'один', 'два', 'три'];
+    for (let round = 0; round < 2; round++) {
+      await expect(g).toHaveAttribute('data-round', String(round), { timeout: 25_000 });
+      await train.stopped('board');
+      const wagons = (await train.wagons()).map((w) => w.n);
+      expect(wagons).toEqual([1, 2, 3]);
+      const tickets = (await train.passengers()).map((p) => p.ticket);
+      expect([...tickets].sort()).toEqual([1, 2, 3]);
+      if (round === 0) {
+        await page.waitForTimeout(600);
+        await shot(page, 'train-board');
+        // Не в тот вагон — зверёк возвращается на платформу, совёнок подсказывает номер.
+        const t = tickets[0]!;
+        await train.seat(
+          t,
+          wagons.find((n) => n !== t)!,
+        );
+        await expect
+          .poll(
+            async () => (await spoken(page)).some((x) => x.text === `Найди вагон ${names[t]}!`),
+            {
+              timeout: 12_000,
+            },
+          )
+          .toBe(true);
+        expect(await train.seated(t)).toBe(false);
+        // После ошибки касания на миг закрыты.
+        await expect(page.getByTestId('game')).toHaveAttribute('data-lock', 'none');
+      }
+      for (const [k, t] of tickets.entries()) {
+        await train.seat(t);
+        await expect.poll(() => train.seated(t)).toBe(true);
+        if (round === 0 && k === 0) {
+          await page.waitForTimeout(700);
+          await shot(page, 'train-seated');
+        }
+      }
+      if (round === 0) {
+        await expect(g).toHaveAttribute('data-phase', 'ride', { timeout: 12_000 });
+        await page.waitForTimeout(900);
+        await shot(page, 'train-tunnel');
+      }
+    }
+    await expect(g).toHaveAttribute('data-phase', 'finish', { timeout: 15_000 });
+    await page.waitForTimeout(800);
+    await shot(page, 'train-finish');
+    await expectFinished(page, backend);
+    const done = backend.events.find((e) => e.type === 'interactive_complete')!;
+    expect(done.payload).toMatchObject({ mistakes: 1 });
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain(
+      'Поезд приехал! Посади зверят в вагоны: у вагона такой же номер, как на билете.',
+    );
+    expect(said).toContain('Новая станция! Кто поедет дальше?');
+    expect(said).toContain('Ту-ту! Поехали!');
+    expect(said).toContain('Приехали! Все зверята довольны.');
+    expect(said.some((x) => /^Это вагон (один|два|три)\.$/.test(x))).toBe(true);
+  });
+
+  test('поезд (этап 57): посчитай точки — найди цифру, потом «вагон потерялся» на запасном пути', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(180_000);
+    backend.items = [
+      game(1, { kind: 'train', task: 'mixed', look: 'count', max: 10, wagons: 4, rounds: 2 }),
+    ];
+    await openGame(page);
+    const g = page.getByTestId('game-train');
+    const train = new TrainPilot(page);
+    await train.stopped('board');
+    await expect(g).toHaveAttribute('data-kind', 'tickets');
+    await page.waitForTimeout(600);
+    await shot(page, 'train-count');
+    for (const p of await train.passengers()) {
+      await train.seat(p.ticket);
+      await expect.poll(() => train.seated(p.ticket)).toBe(true);
+    }
+    await expect(g).toHaveAttribute('data-round', '1', { timeout: 25_000 });
+    await train.stopped('fix');
+    await expect(g).toHaveAttribute('data-kind', 'missing');
+    const gap = (await train.read<{ need: number }>('data-gap'))!;
+    const spare = (await train.read<{ n: number }[]>('data-spare')).map((x) => x.n);
+    expect(spare).toHaveLength(3);
+    expect(spare).toContain(gap.need);
+    await page.waitForTimeout(600);
+    await shot(page, 'train-lost');
+    // Не тот вагон — уезжает обратно на запасной путь.
+    await train.fill(spare.find((n) => n !== gap.need)!);
+    await expect
+      .poll(async () => (await spoken(page)).some((x) => x.text === 'А какой вагон дальше?'), {
+        timeout: 12_000,
+      })
+      .toBe(true);
+    await expect(page.getByTestId('game')).toHaveAttribute('data-lock', 'none');
+    await train.fill(gap.need);
+    await expect.poll(async () => (await train.wagons()).every((w) => w.filled)).toBe(true);
+    await expect(g).toHaveAttribute('data-phase', 'finish', { timeout: 15_000 });
+    await expectFinished(page, backend);
+    const done = backend.events.find((e) => e.type === 'interactive_complete')!;
+    expect(done.payload).toMatchObject({ mistakes: 1 });
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain('Ой, один вагон потерялся! Найди его на запасном пути.');
   });
 
   test('стих (этап 45): послушать, повторять за голосом, «Договори словечко», вопросы — часть выучена', async ({
