@@ -174,6 +174,12 @@ export type PaintTarget = (typeof PAINT_TARGETS)[number];
 /** Задания «Весов» (этап 57): какая чаша тяжелее, уравновесь, сложи два груза. */
 export const SCALES_TASKS = ['compare', 'balance', 'sum'] as const;
 export type ScalesTask = (typeof SCALES_TASKS)[number];
+/** Как задания «Весов» называются в кабинете. */
+export const SCALES_TASK_LABELS: Record<ScalesTask, string> = {
+  compare: 'Какая тяжелее',
+  balance: 'Уравновесь',
+  sum: 'Сложи два груза',
+};
 /** Краски в тюбиках. */
 export const PAINT_TUBES = ['red', 'yellow', 'blue', 'white'] as const;
 export type PaintTube = (typeof PAINT_TUBES)[number];
