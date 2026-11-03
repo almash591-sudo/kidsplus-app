@@ -63,6 +63,7 @@ const SPECS = [
   { kind: 'paints', colors: ['orange'], tubes: 'needed', guess: false, rounds: 3 },
   { kind: 'train', task: 'tickets', look: 'dots', max: 3, wagons: 3, rounds: 3 },
   { kind: 'scales', tasks: ['compare'], look: 'cubes', max: 5, rounds: 4 },
+  { kind: 'gears', tasks: ['build'], gaps: 2, sizes: false, rounds: 3 },
 ] as const;
 
 describe('уровни сложности (этап 34)', () => {
@@ -230,6 +231,25 @@ describe('игры этапа 41', () => {
     expect(gameSpec.safeParse({ kind: 'scales', tasks: [], rounds: 3 }).success).toBe(false);
     expect(gameSpec.safeParse({ kind: 'scales', max: 11, rounds: 3 }).success).toBe(false);
     expect(gameSpec.safeParse({ kind: 'scales', rounds: 9 }).success).toBe(false);
+  });
+
+  it('шестерёнки (этап 57): больше шестерёнок, разного размера, потом «в какую сторону»', () => {
+    const gears = gameSpec.parse({ kind: 'gears', rounds: 3 }) as GameSpec;
+    expect(gears).toMatchObject({ tasks: ['build'], gaps: 2, sizes: false });
+    expect(specAtLevel(gears, 2)).toMatchObject({ tasks: ['build'], gaps: 3, sizes: false });
+    expect(specAtLevel(gears, 3)).toMatchObject({ gaps: 3, sizes: true });
+    expect(specAtLevel(gears, 4)).toMatchObject({
+      tasks: ['build', 'direction'],
+      gaps: 4,
+      sizes: true,
+    });
+    const one = gameSpec.parse({ kind: 'gears', gaps: 1, rounds: 2 }) as GameSpec;
+    expect(specAtLevel(one, 4)).toMatchObject({ gaps: 3 });
+    const dir = gameSpec.parse({ kind: 'gears', tasks: ['direction'], rounds: 2 }) as GameSpec;
+    expect(specAtLevel(dir, 4)).toMatchObject({ tasks: ['direction'] });
+    expect(gameSpec.safeParse({ kind: 'gears', tasks: [], rounds: 3 }).success).toBe(false);
+    expect(gameSpec.safeParse({ kind: 'gears', gaps: 5, rounds: 3 }).success).toBe(false);
+    expect(gameSpec.safeParse({ kind: 'gears', rounds: 7 }).success).toBe(false);
   });
 
   it('буквы этапа 56: обводка — ступенью выше, шарики — и маленькие', () => {
