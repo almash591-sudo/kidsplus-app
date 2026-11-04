@@ -304,7 +304,9 @@ export function Cuckoo({ spec, phrases, onFinish }: GameProps<'cuckoo'>) {
       void say(...(k === 0 ? [CUCKOO_GO] : []), ...lines);
       // «Который час?» — стрелки бегут к загаданному времени; «Покажи» — с того, что на часах.
       const dur = spin(R.task === 'read' ? R.target : R.start);
-      later(Math.max(dur + 120, R.day ? 450 : 200), () => go('play'));
+      // Карточка появилась или ушла — часы переезжают; нажимать, когда доехали.
+      const moves = k > 0 && Boolean(rounds[k - 1]!.day) !== Boolean(R.day);
+      later(Math.max(dur + 120, moves ? MORPH_MS + 60 : R.day ? 450 : 200), () => go('play'));
     };
 
     const burst = (x: number, y: number, count: number, colors?: string[]) => {
