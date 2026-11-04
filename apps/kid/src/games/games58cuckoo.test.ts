@@ -32,6 +32,7 @@ import {
   OWL_RIGHT,
   planRounds,
   pointAt,
+  release,
   sameTime,
   settle,
   SMALL_LEN,
@@ -161,6 +162,21 @@ describe('часы (этап 58): стрелки', () => {
     expect(judge(t, { h: 3, m: 0 }, 'small')).toBe('needBig');
     expect(judge(t, { h: 3, m: 0 }, 'big')).toBe('minute');
     expect(judge(t, { h: 12, m: 30 }, 'big')).toBe('needSmall');
+  });
+
+  it('маленькая на «половину» нужного часа, большая ещё на «12» — засчитать час, дальше большая', () => {
+    const t = { h: 3, m: 30 } as const;
+    // Между 3 и 4 — для «половины четвёртого» верно; без поблажки было бы «четыре часа».
+    expect(settle(3.5 / 12, 0, true)).toEqual({ h: 4, m: 0 });
+    const now = release(t, 3.5 / 12, 0, true, 'small');
+    expect(now).toEqual({ h: 3, m: 0 });
+    expect(judge(t, now, 'small')).toBe('needBig');
+    // Большую — на «6»: маленькая уходит на полпути, и это ответ.
+    expect(settle(3 / 12 + 0.5 / 12, 0.5, true)).toEqual(t);
+    // Далеко от нужного часа и большая стрелка — как обычно.
+    expect(release(t, 6.5 / 12, 0, true, 'small')).toEqual(settle(6.5 / 12, 0, true));
+    expect(release(t, 3.5 / 12, 0.25, true, 'big')).toEqual(settle(3.5 / 12, 0.25, true));
+    expect(release({ h: 3, m: 0 }, 3 / 12, 0, false, 'small')).toEqual({ h: 3, m: 0 });
   });
 });
 

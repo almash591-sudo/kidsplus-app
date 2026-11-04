@@ -51,6 +51,22 @@ export const settle = (small: number, big: number, half: boolean): Time => {
   return { h: snapHour(small, m), m };
 };
 
+/**
+ * Стрелку отпустили — какое теперь время. Как settle, но маленькую, поставленную на нужный час
+ * «с половиной», когда большая ещё не там, засчитать за нужный час: ребёнок думает правильно,
+ * следующая — большая стрелка.
+ */
+export function release(target: Time, small: number, big: number, half: boolean, moved: Hand) {
+  const now = settle(small, big, half);
+  if (
+    moved === 'small' &&
+    now.m !== target.m &&
+    Math.abs(turnDelta(small, hourTurn(target))) * 12 < 0.3
+  )
+    return { h: target.h, m: now.m } as Time;
+  return now;
+}
+
 /** Число, на которое нажали (по углу), или null — нажали в середину или мимо циферблата. */
 export function numberAt(f: Face, x: number, y: number): number | null {
   const d = Math.hypot(x - f.x, y - f.y);
