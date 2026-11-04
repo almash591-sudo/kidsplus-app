@@ -64,6 +64,7 @@ const SPECS = [
   { kind: 'train', task: 'tickets', look: 'dots', max: 3, wagons: 3, rounds: 3 },
   { kind: 'scales', tasks: ['compare'], look: 'cubes', max: 5, rounds: 4 },
   { kind: 'dress', weathers: ['rain', 'sun'], items: 1, tasks: ['dress'], rounds: 3 },
+  { kind: 'figure', figures: ['house', 'fish'], pieces: 2, outlines: true, turn: false, rounds: 3 },
   { kind: 'gears', tasks: ['build'], gaps: 2, sizes: false, rounds: 3 },
 ] as const;
 
@@ -274,6 +275,30 @@ describe('игры этапа 41', () => {
     expect(gameSpec.safeParse({ kind: 'dress', weathers: [], rounds: 3 }).success).toBe(false);
     expect(gameSpec.safeParse({ kind: 'dress', items: 5, rounds: 3 }).success).toBe(false);
     expect(gameSpec.safeParse({ kind: 'dress', rounds: 7 }).success).toBe(false);
+  });
+
+  it('сложи фигуру (этап 58): две детали → четыре повёрнутые → все семь → только силуэт', () => {
+    const fig = gameSpec.parse({ kind: 'figure', rounds: 4 }) as GameSpec;
+    expect(fig).toMatchObject({
+      figures: ['house', 'fish', 'cat', 'boat'],
+      pieces: 2,
+      outlines: true,
+      turn: false,
+    });
+    expect(specAtLevel(fig, 2)).toMatchObject({ pieces: 4, turn: true, outlines: true });
+    expect(specAtLevel(fig, 3)).toMatchObject({ pieces: 7, turn: true, outlines: true });
+    expect(specAtLevel(fig, 4)).toMatchObject({ pieces: 7, turn: true, outlines: false });
+    // Фигуры уровни не трогают; шесть деталей — на втором шаге не больше семи.
+    const six = gameSpec.parse({
+      kind: 'figure',
+      figures: ['cat'],
+      pieces: 6,
+      rounds: 2,
+    }) as GameSpec;
+    expect(specAtLevel(six, 2)).toMatchObject({ figures: ['cat'], pieces: 7 });
+    expect(gameSpec.safeParse({ kind: 'figure', figures: [], rounds: 3 }).success).toBe(false);
+    expect(gameSpec.safeParse({ kind: 'figure', pieces: 1, rounds: 3 }).success).toBe(false);
+    expect(gameSpec.safeParse({ kind: 'figure', pieces: 8, rounds: 3 }).success).toBe(false);
   });
 
   it('буквы этапа 56: обводка — ступенью выше, шарики — и маленькие', () => {

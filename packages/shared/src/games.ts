@@ -200,6 +200,16 @@ export const DRESS_TASK_LABELS: Record<DressTask, string> = {
   dress: 'Одень по погоде',
   odd: 'Что не так?',
 };
+/** Фигуры «Сложи фигуру» (этап 58): все — из семи деталей танграма. */
+export const FIGURE_SHAPES = ['house', 'fish', 'cat', 'boat'] as const;
+export type FigureShape = (typeof FIGURE_SHAPES)[number];
+/** Как фигуры называются в кабинете. */
+export const FIGURE_SHAPE_LABELS: Record<FigureShape, string> = {
+  house: 'Домик',
+  fish: 'Рыбка',
+  cat: 'Кошка',
+  boat: 'Кораблик',
+};
 /** Как задания «Весов» называются в кабинете. */
 export const SCALES_TASK_LABELS: Record<ScalesTask, string> = {
   compare: 'Какая тяжелее',
@@ -950,6 +960,25 @@ export const gameSpec = z.discriminatedUnion('kind', [
     rounds: z.number().int().min(2).max(6),
   }),
   /**
+   * Сложи фигуру (этап 58): настоящий танграм из семи деталей — по тёмному силуэту собрать домик,
+   * рыбку, кошку или кораблик. Деталь тянут пальцем, на своём месте она защёлкивается; собранная
+   * фигура оживает (рыбка уплывает). figures — какие фигуры (по очереди). pieces — сколько деталей
+   * собрать, остальные уже стоят. outlines — у каждого места свой контур (без них — только
+   * силуэт). turn — детали лежат повёрнутыми, повернуть — нажать на деталь.
+   */
+  z.object({
+    kind: z.literal('figure'),
+    figures: z
+      .array(z.enum(FIGURE_SHAPES))
+      .min(1)
+      .max(FIGURE_SHAPES.length)
+      .default([...FIGURE_SHAPES]),
+    pieces: z.number().int().min(2).max(7).default(2),
+    outlines: z.boolean().default(true),
+    turn: z.boolean().default(false),
+    rounds: z.number().int().min(2).max(6),
+  }),
+  /**
    * Стих или сказка (этап 45) из встроенной библиотеки: послушать под глиняные картинки, повторять
    * за голосом по частям (repeat), «Договори словечко» (blanks) и вопросы по смыслу (questions) —
    * choices вариантов-картинок. Выученную часть телефон помнит: в следующий раз учим следующую.
@@ -1086,6 +1115,7 @@ export const GAME_KINDS: Record<GameKind, string> = {
   scales: 'Весы',
   gears: 'Шестерёнки',
   dress: 'Одень мишку',
+  figure: 'Сложи фигуру',
   poem: 'Стих или сказка',
   book: 'Книжка',
 };
@@ -1168,6 +1198,7 @@ export function gameImageIds(g: GameSpec): string[] {
     case 'scales':
     case 'gears':
     case 'dress':
+    case 'figure':
     case 'poem':
     case 'book':
       return [];

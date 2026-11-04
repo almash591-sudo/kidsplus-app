@@ -278,6 +278,15 @@ export function specAtLevel(spec: GameSpec, level: number): GameSpec {
         items: clamp(spec.items + (up >= 1 ? 1 : 0) + (up >= 2 ? 2 : 0), 1, 4),
       };
     }
+    case 'figure':
+      // Со второго шага — ещё две детали и повёрнутыми, с третьего — все семь, с четвёртого —
+      // только силуэт, без контуров.
+      return {
+        ...spec,
+        pieces: up >= 2 ? 7 : clamp(spec.pieces + (up >= 1 ? 2 : 0), 2, 7),
+        turn: spec.turn || up >= 1,
+        outlines: spec.outlines && up < 3,
+      };
     case 'poem':
       // Больше вариантов в «Договори» и вопросах.
       return { ...spec, choices: clamp(spec.choices + up, 2, 4) };

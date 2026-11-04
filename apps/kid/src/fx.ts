@@ -236,6 +236,26 @@ export const fx = {
     for (let i = 0; i < 7; i++)
       tone(165 + (i % 2) * 30, i * 0.045, 0.05, { type: 'triangle', gain: 0.14 });
   },
+  /** Деталь повернулась (этап 58): деревянный «клац» с призвуком вверх. */
+  click() {
+    noise(0, 0.03, { from: 2600, to: 1500, gain: 0.28, q: 3 });
+    tone(640, 0, 0.07, { slideTo: 960, type: 'triangle', gain: 0.18 });
+    vibrate(8);
+  },
+  /** Кошка ожила: «мяу» — вверх и плавно вниз. */
+  meow() {
+    tone(540, 0, 0.2, { slideTo: 820, type: 'triangle', gain: 0.24 });
+    tone(820, 0.19, 0.42, { slideTo: 420, type: 'triangle', gain: 0.24 });
+    tone(1640, 0.19, 0.3, { slideTo: 900, gain: 0.05 });
+  },
+  /** Рыбка выпустила пузырьки: три «буль» вверх. */
+  bubble() {
+    for (let i = 0; i < 3; i++)
+      tone(500 + i * 180 + Math.random() * 60, i * 0.09, 0.08, {
+        slideTo: 1100 + i * 200,
+        gain: 0.16,
+      });
+  },
   /** Праздник в конце: арпеджио и искорки. */
   fanfare() {
     [C5, E5, G5, C6, E6].forEach((f, i) => tone(f, i * 0.09, 0.3, { type: 'triangle', gain: 0.4 }));

@@ -2033,6 +2033,79 @@ class DressPilot {
   }
 }
 
+interface FigureTrayPiece {
+  n: number;
+  type: string;
+  x: number;
+  y: number;
+  ready: boolean;
+  taps: number;
+  tx: number;
+  ty: number;
+}
+/** Автопилот «Сложи фигуру»: что в лотке и куда, повернуть нажатием, перетащить на место. */
+class FigurePilot {
+  constructor(private page: Page) {}
+  private get g() {
+    return this.page.getByTestId('game-figure');
+  }
+  async read<T>(attr: string) {
+    return JSON.parse((await this.g.getAttribute(attr)) ?? 'null') as T;
+  }
+  /** Можно трогать: детали в лотке, ничего не летит и не качается, голос не держит. */
+  async ready() {
+    await expect(this.g).toHaveAttribute('data-phase', 'play', { timeout: 25_000 });
+    await expect(this.g).toHaveAttribute('data-busy', '0', { timeout: 8000 });
+    await expect(this.page.getByTestId('game')).toHaveAttribute('data-lock', 'none', {
+      timeout: 8000,
+    });
+  }
+  private async at(p: { x: number; y: number }) {
+    const b = (await this.g.boundingBox())!;
+    return { x: b.x + p.x, y: b.y + p.y };
+  }
+  async tray() {
+    return (await this.read<FigureTrayPiece[]>('data-tray')).filter((t) => t.ready);
+  }
+  slots() {
+    return this.read<{ j: number; type: string; x: number; y: number }[]>('data-slots');
+  }
+  async count(attr: 'data-snaps' | 'data-turns' | 'data-almost' | 'data-misses' | 'data-lift') {
+    return Number(await this.g.getAttribute(attr));
+  }
+  /** Нажать на деталь в лотке. */
+  async tap(n: number) {
+    const t = (await this.tray()).find((x) => x.n === n)!;
+    const p = await this.at(t);
+    await this.page.mouse.click(p.x, p.y);
+  }
+  /** Перетащить деталь так, чтобы её середина встала в точку (палец — чуть ниже детали). */
+  async drag(n: number, to: { x: number; y: number }) {
+    const t = (await this.tray()).find((x) => x.n === n)!;
+    const lift = await this.count('data-lift');
+    await dragTo(this.page, await this.at(t), await this.at({ x: to.x, y: to.y + lift }));
+  }
+  /** Деталь — на её место: повернуть сколько нужно, перетащить, дождаться щелчка. */
+  async place(n: number) {
+    const snaps = await this.count('data-snaps');
+    const taps = (await this.tray()).find((x) => x.n === n)!.taps;
+    for (let i = 0; i < taps; i++) await this.tap(n);
+    if (taps)
+      await expect.poll(async () => (await this.tray()).find((x) => x.n === n)!.taps).toBe(0);
+    const t = (await this.tray()).find((x) => x.n === n)!;
+    await this.drag(n, { x: t.tx, y: t.ty });
+    await expect.poll(() => this.count('data-snaps')).toBe(snaps + 1);
+  }
+  /** Собрать всё, что в лотке. */
+  async build() {
+    for (let t = (await this.tray())[0]; t; t = (await this.tray())[0]) {
+      await this.place(t.n);
+      if ((await this.g.getAttribute('data-phase')) !== 'play') return;
+      await this.ready();
+    }
+  }
+}
+
 async function expectFinished(page: Page, backend: Backend) {
   await expect(page.getByTestId('game-finished')).toBeVisible({ timeout: 6000 });
   await expect
@@ -3931,6 +4004,152 @@ test.describe('новые игры', () => {
     expect(said).toContain('Это подходит! Найди, что не так.');
     expect(said).toContain('Что надеть вместо?');
     expect(said).toContain('Теперь мишке не жарко!');
+  });
+
+  test('сложи фигуру (этап 58): две детали с контурами — мимо, на место; фигура оживает', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(150_000);
+    backend.items = [
+      game(1, { kind: 'figure', figures: ['fish', 'house'], pieces: 2, outlines: true, rounds: 2 }),
+    ];
+    await openGame(page);
+    const g = page.getByTestId('game-figure');
+    const fig = new FigurePilot(page);
+    await fig.ready();
+    const first = (await g.getAttribute('data-figure')) as 'fish' | 'house';
+    expect(['fish', 'house']).toContain(first);
+    await expect(g).toHaveAttribute('data-turn', '0');
+    // В лотке — две разные детали, у фигуры — два пустых места.
+    const tray = await fig.tray();
+    expect(tray).toHaveLength(2);
+    expect(tray[0]!.type).not.toBe(tray[1]!.type);
+    expect(tray.every((t) => t.taps === 0)).toBe(true);
+    expect(await fig.slots()).toHaveLength(2);
+    await page.waitForTimeout(900);
+    await shot(page, 'figure-start');
+    // Нажали — без поворотов деталь только качается и показывает своё место.
+    await fig.tap(tray[0]!.n);
+    await page.waitForTimeout(500);
+    await shot(page, 'figure-peek');
+    expect(await fig.count('data-turns')).toBe(0);
+    // Мимо фигуры — деталь тихо возвращается в лоток, это не ошибка.
+    await fig.ready();
+    await fig.drag(tray[0]!.n, tray[1]!);
+    await fig.ready();
+    expect(await fig.tray()).toHaveLength(2);
+    expect(await fig.count('data-misses')).toBe(0);
+    expect(await fig.count('data-snaps')).toBe(0);
+    await fig.place(tray[0]!.n);
+    expect(await fig.slots()).toHaveLength(1);
+    await fig.ready();
+    await shot(page, 'figure-one');
+    await fig.place(tray[1]!.n);
+    await expect(g).toHaveAttribute('data-phase', /done|finish/, { timeout: 8000 });
+    await page.waitForTimeout(1300);
+    await shot(page, 'figure-alive');
+    // Вторая фигура.
+    await expect(g).toHaveAttribute('data-round', '1', { timeout: 25_000 });
+    await fig.ready();
+    const second = await g.getAttribute('data-figure');
+    expect(second).not.toBe(first);
+    await page.waitForTimeout(900);
+    await shot(page, 'figure-second');
+    await fig.build();
+    await expect(g).toHaveAttribute('data-phase', /done|finish/, { timeout: 8000 });
+    await page.waitForTimeout(1300);
+    await shot(page, 'figure-second-alive');
+    await expect(g).toHaveAttribute('data-phase', 'finish', { timeout: 20_000 });
+    await expectFinished(page, backend);
+    const done = backend.events.find((e) => e.type === 'interactive_complete')!;
+    expect(done.payload).toMatchObject({ mistakes: 0 });
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain('Собери рыбку! Перетащи детальки на свои места.');
+    expect(said).toContain('Собери домик! Перетащи детальки на свои места.');
+    expect(said).toContain('Получилась рыбка! Плыви, рыбка!');
+    expect(said).toContain('Получился домик! В окошке зажёгся свет.');
+    expect(said).toContain('Все фигуры собраны! Ты настоящий мастер!');
+  });
+
+  test('сложи фигуру (этап 58): все семь повёрнутыми по силуэту — «поверни», «не отсюда»', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(240_000);
+    backend.items = [
+      game(1, {
+        kind: 'figure',
+        figures: ['boat', 'cat'],
+        pieces: 7,
+        outlines: false,
+        turn: true,
+        rounds: 2,
+      }),
+    ];
+    await openGame(page);
+    const g = page.getByTestId('game-figure');
+    const fig = new FigurePilot(page);
+    await fig.ready();
+    const first = (await g.getAttribute('data-figure')) as 'boat' | 'cat';
+    await expect(g).toHaveAttribute('data-turn', '1');
+    const tray = await fig.tray();
+    expect(tray).toHaveLength(7);
+    // Все детали, кроме квадрата, лежат не так — без поворота ни на одно своё место не встают.
+    expect(tray.filter((t) => t.type !== 'square').every((t) => t.taps > 0)).toBe(true);
+    await page.waitForTimeout(900);
+    await shot(page, 'figure-seven');
+    // Не повернули — над своим местом деталь качается: «Почти! Поверни».
+    const crooked = tray.find((t) => t.type !== 'square')!;
+    await fig.drag(crooked.n, { x: crooked.tx, y: crooked.ty });
+    await expect.poll(() => fig.count('data-almost')).toBe(1);
+    await page.waitForTimeout(250);
+    await shot(page, 'figure-almost');
+    await fig.ready();
+    expect(await fig.count('data-snaps')).toBe(0);
+    // На чужое место — «не отсюда»: деталь и место другого вида, своё место далеко.
+    const slots = await fig.slots();
+    const unit = Number(await g.getAttribute('data-unit'));
+    const far = (t: FigureTrayPiece, s: { type: string; x: number; y: number }) =>
+      s.type !== t.type &&
+      slots
+        .filter((o) => o.type === t.type)
+        .every((o) => Math.hypot(o.x - s.x, o.y - s.y) > 1.2 * unit);
+    const t = tray.find((x) => slots.some((s) => far(x, s)))!;
+    await fig.drag(
+      t.n,
+      slots.find((s) => far(t, s))!,
+    );
+    await expect.poll(() => fig.count('data-misses')).toBe(1);
+    await fig.ready();
+    expect(await fig.count('data-snaps')).toBe(0);
+    // Повернуть нажатием и собрать всё.
+    await fig.build();
+    expect(await fig.count('data-turns')).toBeGreaterThan(0);
+    await expect(g).toHaveAttribute('data-phase', /done|finish/, { timeout: 8000 });
+    await page.waitForTimeout(1300);
+    await shot(page, 'figure-seven-alive');
+    await expect(g).toHaveAttribute('data-round', '1', { timeout: 25_000 });
+    await fig.ready();
+    expect(await g.getAttribute('data-figure')).not.toBe(first);
+    await page.waitForTimeout(900);
+    await shot(page, 'figure-seven-second');
+    await fig.build();
+    await expect(g).toHaveAttribute('data-phase', 'finish', { timeout: 20_000 });
+    await page.waitForTimeout(1000);
+    await shot(page, 'figure-seven-finish');
+    await expectFinished(page, backend);
+    const done = backend.events.find((e) => e.type === 'interactive_complete')!;
+    // «Поверни» — не ошибка, «не отсюда» — ошибка.
+    expect(done.payload).toMatchObject({ mistakes: 1 });
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain(
+      'Собери кораблик! Перетащи детальки на свои места. Нажми на детальку — она повернётся.',
+    );
+    expect(said).toContain('Почти! Поверни детальку: нажми на неё.');
+    expect(said).toContain('Эта деталька не отсюда. Найди, где её место!');
+    expect(said).toContain('Получился кораблик! Счастливого плавания!');
+    expect(said).toContain('Получилась кошка! Мяу!');
   });
 
   test('стих (этап 45): послушать, повторять за голосом, «Договори словечко», вопросы — часть выучена', async ({
