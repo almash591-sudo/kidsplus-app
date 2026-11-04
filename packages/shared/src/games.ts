@@ -218,6 +218,15 @@ export const BOT_TASK_LABELS: Record<BotTask, string> = {
   go: 'Составь программу',
   fix: 'Найди ошибку в программе',
 };
+/** Задания «Часов с кукушкой» (этап 58): который час, покажи время стрелками, режим дня. */
+export const CUCKOO_TASKS = ['read', 'set', 'day'] as const;
+export type CuckooTask = (typeof CUCKOO_TASKS)[number];
+/** Как задания «Часов с кукушкой» называются в кабинете. */
+export const CUCKOO_TASK_LABELS: Record<CuckooTask, string> = {
+  read: 'Который час?',
+  set: 'Покажи время стрелками',
+  day: 'Режим дня',
+};
 /** Как задания «Весов» называются в кабинете. */
 export const SCALES_TASK_LABELS: Record<ScalesTask, string> = {
   compare: 'Какая тяжелее',
@@ -1002,6 +1011,19 @@ export const gameSpec = z.discriminatedUnion('kind', [
     rounds: z.number().int().min(2).max(6),
   }),
   /**
+   * Часы с кукушкой (этап 58): большие часы с маятником, на верный ответ из домика выскакивает
+   * кукушка и кукует столько раз, который час. tasks: read — «Который час?», нажать цифру, куда
+   * смотрит маленькая стрелка (целые часы); set — «Покажи три часа»: поставить стрелки пальцем;
+   * day — режим дня: «В восемь часов утра мишка завтракает» — поставить время, на карточке мишка.
+   * half — ещё и половины («половина четвёртого»): тогда двигается и большая стрелка.
+   */
+  z.object({
+    kind: z.literal('cuckoo'),
+    tasks: z.array(z.enum(CUCKOO_TASKS)).min(1).max(CUCKOO_TASKS.length).default(['read']),
+    half: z.boolean().default(false),
+    rounds: z.number().int().min(2).max(8),
+  }),
+  /**
    * Стих или сказка (этап 45) из встроенной библиотеки: послушать под глиняные картинки, повторять
    * за голосом по частям (repeat), «Договори словечко» (blanks) и вопросы по смыслу (questions) —
    * choices вариантов-картинок. Выученную часть телефон помнит: в следующий раз учим следующую.
@@ -1140,6 +1162,7 @@ export const GAME_KINDS: Record<GameKind, string> = {
   dress: 'Одень мишку',
   figure: 'Сложи фигуру',
   bot: 'Робот и батарейка',
+  cuckoo: 'Часы с кукушкой',
   poem: 'Стих или сказка',
   book: 'Книжка',
 };
@@ -1224,6 +1247,7 @@ export function gameImageIds(g: GameSpec): string[] {
     case 'dress':
     case 'figure':
     case 'bot':
+    case 'cuckoo':
     case 'poem':
     case 'book':
       return [];
