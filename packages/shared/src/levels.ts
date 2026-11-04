@@ -3,12 +3,14 @@
 // выше — те же картинки, но больше счёт, крупнее пазл, длиннее мелодия (в пределах схемы игры).
 import type { GameKind, GameSpec } from './games';
 import {
+  DRESS_TASKS,
   GEARS_TASKS,
   isTraceLetter,
   PAINT_TARGETS,
   PATTERNS,
   SCALES_TASKS,
   TRACE_GUIDES,
+  type DressTask,
   type GearsTask,
   type PaintTarget,
   type ScalesTask,
@@ -264,6 +266,16 @@ export function specAtLevel(spec: GameSpec, level: number): GameSpec {
         tasks: GEARS_TASKS.filter((t) => tasks.has(t)),
         gaps: clamp(spec.gaps + (up >= 1 ? 1 : 0) + (up >= 3 ? 1 : 0), 1, 4),
         sizes: spec.sizes || up >= 2,
+      };
+    }
+    case 'dress': {
+      // Со второго шага — вещью больше, с третьего — всё по погоде, с четвёртого — и «Что не так?».
+      const tasks = new Set<DressTask>(spec.tasks);
+      if (up >= 3) tasks.add('odd');
+      return {
+        ...spec,
+        tasks: DRESS_TASKS.filter((t) => tasks.has(t)),
+        items: clamp(spec.items + (up >= 1 ? 1 : 0) + (up >= 2 ? 2 : 0), 1, 4),
       };
     }
     case 'poem':
