@@ -7,6 +7,7 @@ import type {
   ColoringPicture,
   DotPicture,
   DressWeather,
+  FigureShape,
   GameKind,
   GameSpec,
   TangramFigure,
@@ -866,6 +867,35 @@ export function dressPhrases(spec: SpecOf<'dress'>) {
   ].filter((t, i, all) => all.indexOf(t) === i);
 }
 
+// ─── «Сложи фигуру» (этап 58) ───
+const FIGURE_BUILD: Record<FigureShape, string> = {
+  house: 'Собери домик!',
+  fish: 'Собери рыбку!',
+  cat: 'Собери кошку!',
+  boat: 'Собери кораблик!',
+};
+/** Задание: какую фигуру собрать; с поворотами — как повернуть детальку. */
+export const figureTask = (f: FigureShape, turn: boolean) =>
+  `${FIGURE_BUILD[f]} Перетащи детальки на свои места.${turn ? ' Нажми на детальку — она повернётся.' : ''}`;
+export const FIGURE_TURN = 'Почти! Поверни детальку: нажми на неё.';
+export const FIGURE_NOT_HERE = 'Эта деталька не отсюда. Найди, где её место!';
+/** Фигура собрана — и ожила. */
+export const FIGURE_DONE: Record<FigureShape, string> = {
+  house: 'Получился домик! В окошке зажёгся свет.',
+  fish: 'Получилась рыбка! Плыви, рыбка!',
+  cat: 'Получилась кошка! Мяу!',
+  boat: 'Получился кораблик! Счастливого плавания!',
+};
+export const FIGURE_END = 'Все фигуры собраны! Ты настоящий мастер!';
+export function figurePhrases(spec: SpecOf<'figure'>) {
+  return [
+    FIGURE_END,
+    FIGURE_NOT_HERE,
+    ...(spec.turn ? [FIGURE_TURN] : []),
+    ...spec.figures.flatMap((f) => [figureTask(f, spec.turn), FIGURE_DONE[f]]),
+  ];
+}
+
 // ─── Этап 45: стихи и сказки ───
 export const POEM_INTRO = 'Послушай и повторяй за мной!';
 export const POEM_REPEAT = 'Повторяй за мной!';
@@ -994,6 +1024,7 @@ export const GAME_INTRO: Record<GameKind, string> = {
   scales: SCALES_COMPARE,
   gears: gearsBuild('mill'),
   dress: dressTask('rain', 1),
+  figure: figureTask('house', false),
   poem: POEM_INTRO,
   book: BOOK_INTRO,
 };
@@ -1246,6 +1277,8 @@ export function gamePhrases(spec: GameSpec): string[] {
       return gearsPhrases(spec);
     case 'dress':
       return dressPhrases(spec);
+    case 'figure':
+      return figurePhrases(spec);
     case 'poem':
       return poemPhrases(spec.poem);
     case 'book':
