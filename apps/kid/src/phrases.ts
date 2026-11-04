@@ -6,6 +6,7 @@ import type {
   BalloonColor,
   ColoringPicture,
   DotPicture,
+  DressWeather,
   GameKind,
   GameSpec,
   TangramFigure,
@@ -44,6 +45,7 @@ import { lineStart, partSpeech, poemAnnounce, poemOf, type PoemCode } from '@kid
 import { SONGS } from '@kidsplus/shared/songs';
 import { soundPlace, syllablesIn, unstressed, wordScheme } from '@kidsplus/shared/sounds';
 import { NUMBERS, paint, PALETTE, type SpecOf } from './games/common';
+import { needCount, OUTFITS, SLOT, WRONG_IN, type ItemId } from './games/dressLogic';
 import { PAINT_OBJECTS } from './games/paintsLogic';
 import { topOf } from './games/trainLogic';
 import { SORTER } from './games/sorterShapes';
@@ -749,6 +751,121 @@ export function gearsPhrases(spec: SpecOf<'gears'>) {
   ];
 }
 
+// ─── «Одень мишку» (этап 58) ───
+const DRESS_OUTSIDE: Record<DressWeather, string> = {
+  rain: 'На улице дождик!',
+  snow: 'На улице снег!',
+  sun: 'На улице солнышко и жара!',
+  wind: 'На улице сильный ветер!',
+};
+const DRESS_COUNT = ['', 'одна вещь', 'две вещи', 'три вещи', 'четыре вещи'];
+/** Задание «Одень»: сколько вещей нужно. */
+export const dressTask = (w: DressWeather, n: number) =>
+  n === 1
+    ? `${DRESS_OUTSIDE[w]} Что нужно мишке на прогулку?`
+    : `${DRESS_OUTSIDE[w]} Одень мишку на прогулку! Нужны ${DRESS_COUNT[n]}.`;
+export const DRESS_MORE = 'Что ещё?';
+/** Задание «Что не так?». */
+export const dressOdd = (w: DressWeather) => `${DRESS_OUTSIDE[w]} Мишка оделся сам. Что не так?`;
+export const DRESS_INSTEAD = 'Что надеть вместо?';
+export const DRESS_FITS = 'Это подходит! Найди, что не так.';
+/** Мишка одет. */
+export const DRESS_DONE: Record<DressWeather, string> = {
+  rain: 'Теперь мишка не промокнет!',
+  snow: 'Теперь мишке тепло!',
+  sun: 'Теперь мишке не жарко!',
+  wind: 'Теперь ветер не страшен!',
+};
+/** Почему вещь подходит — после похвалы. */
+export const DRESS_GOOD: Record<DressWeather, Partial<Record<ItemId, string>>> = {
+  rain: {
+    umbrella: 'Зонтик — от дождя!',
+    boots: 'Сапожки — по лужам!',
+    raincoat: 'Дождевик не промокнет!',
+  },
+  snow: {
+    hat: 'Шапка — чтобы ушки не замёрзли!',
+    furcoat: 'Шуба тёплая!',
+    mittens: 'Варежки греют лапки!',
+    valenki: 'Валенки — по снегу!',
+  },
+  sun: {
+    panama: 'Панамка — от солнышка!',
+    glasses: 'Очки — от яркого солнца!',
+    tshirt: 'В футболке не жарко!',
+    sandals: 'Сандалики — по песочку!',
+  },
+  wind: {
+    scarf: 'Шарф — от ветра!',
+    jacket: 'Куртка — от ветра!',
+    hat: 'Шапка — чтобы ушки не продуло!',
+    shoes: 'Ботинки — по дорожке!',
+  },
+};
+/** Почему вещь не годится — после «попробуй ещё». */
+export const DRESS_WHY: Record<DressWeather, Partial<Record<ItemId, string>>> = {
+  rain: {
+    panama: 'Панамка промокнет!',
+    hat: 'Шапка промокнет!',
+    tshirt: 'В футболке мишка промокнет!',
+    furcoat: 'Шуба промокнет!',
+    sandals: 'В сандаликах ноги промокнут!',
+    valenki: 'Валенки промокнут!',
+    shoes: 'Ботинки промокнут!',
+    glasses: 'Очки от дождя не спасут!',
+    mittens: 'Варежки промокнут!',
+  },
+  snow: {
+    panama: 'В панамке холодно!',
+    tshirt: 'В футболке холодно!',
+    raincoat: 'В дождевике холодно!',
+    sandals: 'В сандаликах холодно!',
+    boots: 'В резиновых сапогах холодно!',
+    shoes: 'В ботинках по снегу холодно!',
+    umbrella: 'Зонтик не нужен — это снег, а не дождь!',
+  },
+  sun: {
+    hat: 'В шапке жарко!',
+    raincoat: 'В дождевике жарко!',
+    furcoat: 'В шубе жарко!',
+    jacket: 'В куртке жарко!',
+    boots: 'В сапогах жарко!',
+    valenki: 'В валенках жарко!',
+    shoes: 'В ботинках жарко!',
+    umbrella: 'Зонтик не нужен — дождя нет!',
+    mittens: 'В варежках жарко!',
+    scarf: 'В шарфе жарко!',
+  },
+  wind: {
+    panama: 'Панамку унесёт ветром!',
+    tshirt: 'В футболке холодно!',
+    sandals: 'В сандаликах холодно!',
+    umbrella: 'Зонтик сломает ветром!',
+  },
+};
+export const dressGood = (w: DressWeather, id: ItemId) => DRESS_GOOD[w][id] ?? '';
+export const dressWhy = (w: DressWeather, id: ItemId) => DRESS_WHY[w][id] ?? '';
+export const DRESS_END = 'Мишка оделся и идёт гулять! Спасибо за помощь!';
+export function dressPhrases(spec: SpecOf<'dress'>) {
+  const odd = spec.tasks.includes('odd');
+  const dress = spec.tasks.includes('dress');
+  const fixable = (w: DressWeather) =>
+    OUTFITS[w].filter((id) => ['head', 'body', 'feet'].includes(SLOT[id]));
+  return [
+    DRESS_END,
+    ...spec.weathers.flatMap((w) => [
+      DRESS_DONE[w],
+      ...WRONG_IN[w].map((id) => dressWhy(w, id)),
+      ...(dress
+        ? [dressTask(w, needCount(w, spec.items)), ...OUTFITS[w].map((id) => dressGood(w, id))]
+        : []),
+      ...(odd ? [dressOdd(w), ...fixable(w).map((id) => dressGood(w, id))] : []),
+    ]),
+    ...(dress && spec.items > 1 ? [DRESS_MORE] : []),
+    ...(odd ? [DRESS_INSTEAD, DRESS_FITS] : []),
+  ].filter((t, i, all) => all.indexOf(t) === i);
+}
+
 // ─── Этап 45: стихи и сказки ───
 export const POEM_INTRO = 'Послушай и повторяй за мной!';
 export const POEM_REPEAT = 'Повторяй за мной!';
@@ -876,6 +993,7 @@ export const GAME_INTRO: Record<GameKind, string> = {
   train: TRAIN_PROMPT,
   scales: SCALES_COMPARE,
   gears: gearsBuild('mill'),
+  dress: dressTask('rain', 1),
   poem: POEM_INTRO,
   book: BOOK_INTRO,
 };
@@ -1126,6 +1244,8 @@ export function gamePhrases(spec: GameSpec): string[] {
       return scalesPhrases(spec);
     case 'gears':
       return gearsPhrases(spec);
+    case 'dress':
+      return dressPhrases(spec);
     case 'poem':
       return poemPhrases(spec.poem);
     case 'book':
