@@ -2176,6 +2176,81 @@ class BotPilot {
   }
 }
 
+type CuckooNext = { x: number; y: number; what: string; to?: { x: number; y: number } };
+/** Автопилот «Часов с кукушкой»: числа на циферблате и стрелки — по кругу, как пальцем. */
+class CuckooPilot {
+  constructor(private page: Page) {}
+  private get g() {
+    return this.page.getByTestId('game-cuckoo');
+  }
+  async read<T>(attr: string) {
+    return JSON.parse((await this.g.getAttribute(attr)) ?? 'null') as T;
+  }
+  /** Можно нажимать: стрелки стоят, кукушка спряталась, голос не держит. */
+  async ready() {
+    await expect(this.g).toHaveAttribute('data-phase', 'play', { timeout: 30_000 });
+    await expect(this.g).toHaveAttribute('data-busy', '0', { timeout: 8000 });
+    await expect(this.page.getByTestId('game')).toHaveAttribute('data-lock', 'none', {
+      timeout: 8000,
+    });
+  }
+  async count(attr: 'data-taps' | 'data-drops' | 'data-misses' | 'data-wins' | 'data-cuckoos') {
+    return Number(await this.g.getAttribute(attr));
+  }
+  private face() {
+    return this.read<{ x: number; y: number; r: number }>('data-face');
+  }
+  /** Точка на циферблате: поворот от «12» по часовой, расстояние — доля радиуса. */
+  async point(turn: number, len: number) {
+    const f = (await this.face())!;
+    const a = turn * 2 * Math.PI - Math.PI / 2;
+    return { x: f.x + Math.cos(a) * len * f.r, y: f.y + Math.sin(a) * len * f.r };
+  }
+  async tap(p: { x: number; y: number }) {
+    const b = (await this.g.boundingBox())!;
+    await this.page.mouse.click(b.x + p.x, b.y + p.y);
+  }
+  async tapNumber(n: number) {
+    await this.tap(await this.point(n / 12, 0.74));
+  }
+  /** Провести пальцем по кругу от from до to: кратчайшим путём, полкруга — по часовой. */
+  async drag(from: { x: number; y: number }, to: { x: number; y: number }) {
+    const f = (await this.face())!;
+    const b = (await this.g.boundingBox())!;
+    const turn = (p: { x: number; y: number }) =>
+      (Math.atan2(p.y - f.y, p.x - f.x) / (2 * Math.PI) + 1.25) % 1;
+    const r = Math.hypot(from.x - f.x, from.y - f.y);
+    const t0 = turn(from);
+    let d = (turn(to) - t0 + 1) % 1;
+    if (d > 0.52) d -= 1;
+    const at = (t: number) => {
+      const a = t * 2 * Math.PI - Math.PI / 2;
+      return [b.x + f.x + Math.cos(a) * r, b.y + f.y + Math.sin(a) * r] as const;
+    };
+    await this.page.mouse.move(...at(t0));
+    await this.page.mouse.down();
+    const steps = Math.max(6, Math.ceil(Math.abs(d) * 40));
+    for (let i = 1; i <= steps; i++) await this.page.mouse.move(...at(t0 + (d * i) / steps));
+    await this.page.mouse.up();
+  }
+  /** Делать, что показывает подсказка, пока кукушка не выглянет. */
+  async solve() {
+    const wins = await this.count('data-wins');
+    for (let i = 0; i < 4 && (await this.count('data-wins')) === wins; i++) {
+      await this.ready();
+      const next = (await this.read<CuckooNext>('data-next'))!;
+      if (!next.to) {
+        await this.tap(next);
+        break;
+      }
+      const drops = await this.count('data-drops');
+      await this.drag(next, next.to);
+      await expect.poll(() => this.count('data-drops')).toBe(drops + 1);
+    }
+    await expect.poll(() => this.count('data-wins'), { timeout: 20_000 }).toBe(wins + 1);
+  }
+}
+
 async function expectFinished(page: Page, backend: Backend) {
   await expect(page.getByTestId('game-finished')).toBeVisible({ timeout: 6000 });
   await expect
@@ -4333,6 +4408,141 @@ test.describe('новые игры', () => {
     expect(said).toContain('Эта стрелка правильная. Ищи другую!');
     expect(said).toContain('Какая стрелка нужна здесь?');
     expect(said).toContain('Робот доехал и зарядился!');
+  });
+
+  test('часы с кукушкой (этап 58): «Который час?» — стрелки бегут, «12» — ошибка, кукушка кукует столько раз', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(150_000);
+    backend.items = [game(1, { kind: 'cuckoo', tasks: ['read'], half: false, rounds: 2 })];
+    await openGame(page);
+    const g = page.getByTestId('game-cuckoo');
+    const ck = new CuckooPilot(page);
+    await ck.ready();
+    await expect(g).toHaveAttribute('data-task', 'read');
+    const target = (await g.getAttribute('data-target'))!;
+    expect(target).toMatch(/^([1-9]|1[01]):00$/);
+    // Стрелки сами пришли к загаданному времени.
+    await expect(g).toHaveAttribute('data-time', target);
+    const h = Number(target.split(':')[0]);
+    await page.waitForTimeout(700);
+    await shot(page, 'cuckoo-read');
+    // На «12» показывает большая стрелка — это не ответ.
+    await ck.tapNumber(12);
+    await expect.poll(() => ck.count('data-misses')).toBe(1);
+    await page.waitForTimeout(250);
+    await shot(page, 'cuckoo-read-wrong');
+    await ck.ready();
+    const next = (await ck.read<CuckooNext>('data-next'))!;
+    expect(next.what).toBe(`num:${h}`);
+    await ck.tap(next);
+    await expect(g).toHaveAttribute('data-phase', 'cuckoo');
+    await expect.poll(() => ck.count('data-cuckoos'), { timeout: 5000 }).toBeGreaterThan(0);
+    await shot(page, 'cuckoo-bird');
+    // Кукует столько раз, который час.
+    await expect.poll(() => ck.count('data-cuckoos'), { timeout: 15_000 }).toBe(h);
+    await expect(g).toHaveAttribute('data-round', '1', { timeout: 25_000 });
+    await ck.ready();
+    const second = (await g.getAttribute('data-target'))!;
+    expect(second).not.toBe(target);
+    await expect(g).toHaveAttribute('data-time', second);
+    await ck.solve();
+    await expect(g).toHaveAttribute('data-phase', 'finish', { timeout: 30_000 });
+    await page.waitForTimeout(1000);
+    expect(await ck.count('data-taps')).toBe(2);
+    expect(await ck.count('data-cuckoos')).toBe(h + Number(second.split(':')[0]));
+    await shot(page, 'cuckoo-finish');
+    await expectFinished(page, backend);
+    const done = backend.events.find((e) => e.type === 'interactive_complete')!;
+    expect(done.payload).toMatchObject({ mistakes: 1 });
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain('Это часы с кукушкой! Ответишь правильно — кукушка выглянет.');
+    expect(said).toContain(
+      'Который час? Посмотри на маленькую стрелку и нажми на число, куда она показывает.',
+    );
+    expect(said).toContain('Большая стрелка показывает минуты. Смотри на маленькую стрелку!');
+    expect(said).toContain('Который час?');
+    expect(said.some((t) => t.startsWith('Сейчас '))).toBe(true);
+    expect(said).toContain('Ку-ку! Теперь ты знаешь, который час!');
+  });
+
+  test('часы с кукушкой (этап 58): «Покажи» с половинами — не тот час, бледная стрелка, большая, маленькая; режим дня', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(180_000);
+    backend.items = [game(1, { kind: 'cuckoo', tasks: ['set', 'day'], half: true, rounds: 2 })];
+    await openGame(page);
+    const g = page.getByTestId('game-cuckoo');
+    const ck = new CuckooPilot(page);
+    await ck.ready();
+    await expect(g).toHaveAttribute('data-task', 'set');
+    await expect(g).toHaveAttribute('data-time', '12:00');
+    const target = (await g.getAttribute('data-target'))!;
+    expect(target).toMatch(/^([1-9]|1[0-2]):30$/);
+    const h = Number(target.split(':')[0]);
+    await page.waitForTimeout(500);
+    await shot(page, 'cuckoo-set');
+    // Маленькую — не на тот час: ошибка, часы говорят, что показали.
+    const wrong = h <= 6 ? h + 3 : h - 3;
+    await ck.drag(await ck.point(0, 0.42), await ck.point(wrong / 12, 0.42));
+    await expect.poll(() => ck.count('data-misses')).toBe(1);
+    await expect(g).toHaveAttribute('data-time', `${wrong}:00`);
+    // Ещё раз не туда — бледная стрелка показывает, где ей быть.
+    await ck.ready();
+    await ck.drag(await ck.point(wrong / 12, 0.42), await ck.point((wrong + 1) / 12, 0.42));
+    await expect.poll(() => ck.count('data-misses')).toBe(2);
+    await ck.ready();
+    await page.waitForTimeout(400);
+    await shot(page, 'cuckoo-ghost');
+    // С половинами сначала большая: вниз, на «6»; маленькая едет за ней.
+    let next = (await ck.read<CuckooNext>('data-next'))!;
+    expect(next.what).toBe('big');
+    await ck.drag(next, next.to!);
+    await expect.poll(() => ck.count('data-drops')).toBe(3);
+    await expect(g).toHaveAttribute('data-time', `${wrong + 1}:30`);
+    await ck.ready();
+    next = (await ck.read<CuckooNext>('data-next'))!;
+    expect(next.what).toBe('small');
+    await page.waitForTimeout(300);
+    await shot(page, 'cuckoo-half');
+    await ck.drag(next, next.to!);
+    await expect(g).toHaveAttribute('data-phase', 'cuckoo');
+    await expect(g).toHaveAttribute('data-time', target);
+    // В половину кукушка кукует один раз.
+    await expect.poll(() => ck.count('data-cuckoos'), { timeout: 5000 }).toBe(1);
+    await page.waitForTimeout(400);
+    await shot(page, 'cuckoo-half-bird');
+    // Режим дня: карточка мишки, часы переехали.
+    await expect(g).toHaveAttribute('data-round', '1', { timeout: 25_000 });
+    await expect(g).toHaveAttribute('data-task', 'day');
+    expect(await g.getAttribute('data-day')).toMatch(
+      /^(wake|exercise|breakfast|walk|lunch|draw|bath|teeth|sleep)$/,
+    );
+    await ck.ready();
+    const day = (await g.getAttribute('data-target'))!;
+    await page.waitForTimeout(700);
+    await shot(page, 'cuckoo-day');
+    await ck.solve();
+    await expect(g).toHaveAttribute('data-phase', 'finish', { timeout: 30_000 });
+    expect(await ck.count('data-cuckoos')).toBe(
+      1 + (day.endsWith(':30') ? 1 : Number(day.split(':')[0])),
+    );
+    await page.waitForTimeout(1000);
+    await shot(page, 'cuckoo-day-finish');
+    await expectFinished(page, backend);
+    const done = backend.events.find((e) => e.type === 'interactive_complete')!;
+    expect(done.payload).toMatchObject({ mistakes: 2 });
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain(
+      'Маленькая стрелка показывает часы, большая — минуты. Двигай их пальцем.',
+    );
+    // Не тот час — часы называют, что показали, и ещё раз задание.
+    expect(said.filter((t) => t.startsWith('Сейчас ')).length).toBeGreaterThanOrEqual(2);
+    expect(said).toContain('А теперь маленькую стрелку!');
+    expect(said).toContain('Это день мишки. Помоги ему — покажи время на часах!');
+    expect(said).toContain('Ку-ку! Теперь ты знаешь, который час!');
   });
 
   test('стих (этап 45): послушать, повторять за голосом, «Договори словечко», вопросы — часть выучена', async ({
