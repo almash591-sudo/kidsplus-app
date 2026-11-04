@@ -15,6 +15,8 @@ import {
   DRESS_TASKS,
   DRESS_WEATHER_LABELS,
   DRESS_WEATHERS,
+  FIGURE_SHAPE_LABELS,
+  FIGURE_SHAPES,
   FISHING_LETTERS,
   FLASHLIGHT_SCENES,
   GAME_KINDS,
@@ -36,6 +38,7 @@ import {
   TRACE_SHAPES,
   type DressTask,
   type DressWeather,
+  type FigureShape,
   type GameKind,
   type GameSpec,
   type GearsTask,
@@ -441,6 +444,14 @@ const DEFAULTS: { [K in GameKind]: Extract<GameSpec, { kind: K }> } = {
     weathers: ['rain', 'snow', 'sun', 'wind'],
     items: 1,
     tasks: ['dress'],
+    rounds: 4,
+  },
+  figure: {
+    kind: 'figure',
+    figures: ['house', 'fish', 'cat', 'boat'],
+    pieces: 2,
+    outlines: true,
+    turn: false,
     rounds: 4,
   },
   poem: {
@@ -3077,6 +3088,66 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
             помотает головой, а голос скажет почему («В шубе жарко!»). Одна вещь — самая главная
             (зонтик от дождя), четыре — всё, что нужно. «Что не так?» — мишка оделся сам и одну вещь
             перепутал: ему жарко, холодно или он мокнет; её снять и надеть подходящую.
+          </Text>
+        </Stack>
+      );
+    case 'figure':
+      return (
+        <Stack gap="xs">
+          <Text size="sm" fw={500}>
+            Фигуры (по очереди)
+          </Text>
+          <Chip.Group
+            multiple
+            value={spec.figures}
+            onChange={(v) =>
+              v.length &&
+              onChange({
+                ...spec,
+                figures: FIGURE_SHAPES.filter((t) => v.includes(t)) as FigureShape[],
+              })
+            }
+          >
+            <Group gap="xs">
+              {FIGURE_SHAPES.map((t) => (
+                <Chip key={t} value={t}>
+                  {FIGURE_SHAPE_LABELS[t]}
+                </Chip>
+              ))}
+            </Group>
+          </Chip.Group>
+          <Group grow>
+            <NumberInput
+              label="Сколько деталей собрать"
+              min={2}
+              max={7}
+              value={spec.pieces}
+              onChange={(v) => onChange({ ...spec, pieces: num(v, 2) })}
+            />
+            <NumberInput
+              label="Фигур"
+              min={2}
+              max={6}
+              value={spec.rounds}
+              onChange={(v) => onChange({ ...spec, rounds: num(v, 4) })}
+            />
+          </Group>
+          <Switch
+            label="Контур у каждой детали"
+            checked={spec.outlines}
+            onChange={(e) => onChange({ ...spec, outlines: e.currentTarget.checked })}
+          />
+          <Switch
+            label="Детали лежат повёрнутыми — повернуть нажатием (для старших)"
+            checked={spec.turn}
+            onChange={(e) => onChange({ ...spec, turn: e.currentTarget.checked })}
+          />
+          <Text size="xs" c="dimmed">
+            Настоящий танграм: домик, рыбка, кошка и кораблик из семи деталей. Часть деталей уже
+            стоит на силуэте, остальные ребёнок перетаскивает из лотка на свои места — на месте
+            деталь защёлкивается. Собранная фигура оживает: рыбка уплывает, в домике загорается
+            окошко. Без контуров видно только тёмный силуэт — место детали надо найти самому. С
+            поворотами деталь сначала нужно повернуть нажатием, иначе она не встанет.
           </Text>
         </Stack>
       );
