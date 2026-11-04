@@ -1976,6 +1976,63 @@ class GearsPilot {
   }
 }
 
+/** Автопилот «Одень мишку»: что в шкафу и на мишке, надеть вещь, снять лишнюю. */
+class DressPilot {
+  constructor(private page: Page) {}
+  private get g() {
+    return this.page.getByTestId('game-dress');
+  }
+  async read<T>(attr: string) {
+    return JSON.parse((await this.g.getAttribute(attr)) ?? 'null') as T;
+  }
+  /** Можно трогать: вещи в шкафу, ничего не летит, мишка не мотает головой. */
+  async ready() {
+    await expect(this.g).toHaveAttribute('data-phase', 'play', { timeout: 25_000 });
+    await expect(this.g).toHaveAttribute('data-busy', '0', { timeout: 8000 });
+    await expect(this.page.getByTestId('game')).toHaveAttribute('data-lock', 'none', {
+      timeout: 8000,
+    });
+  }
+  private async at(p: { x: number; y: number }) {
+    const b = (await this.g.boundingBox())!;
+    return { x: b.x + p.x, y: b.y + p.y };
+  }
+  tray() {
+    return this.read<{ id: string; x: number; y: number; ready: boolean }[]>('data-tray');
+  }
+  worn() {
+    return this.read<{ id: string; x: number; y: number }[]>('data-worn');
+  }
+  need() {
+    return this.read<string[]>('data-need');
+  }
+  async count(attr: 'data-puts' | 'data-removed' | 'data-misses') {
+    return Number(await this.g.getAttribute(attr));
+  }
+  /** Вещь из шкафа — на мишку: нажатием или перетаскиванием. */
+  async take(id: string, drag = false) {
+    const piece = (await this.tray()).find((x) => x.id === id && x.ready)!;
+    const from = await this.at(piece);
+    if (drag) await dragTo(this.page, from, await this.at(await this.read('data-bear')));
+    else await this.page.mouse.click(from.x, from.y);
+  }
+  /** «Что не так?»: нажать на вещь на мишке. */
+  async tapWorn(id: string) {
+    const p = await this.at((await this.worn()).find((x) => x.id === id)!);
+    await this.page.mouse.click(p.x, p.y);
+  }
+  /** Надеть всё, что нужно (через одну — перетаскиванием), без ошибок. */
+  async dressAll() {
+    let k = 0;
+    for (let id = (await this.need())[0]; id; id = (await this.need())[0]) {
+      const puts = await this.count('data-puts');
+      await this.take(id, k++ % 2 === 1);
+      await expect.poll(() => this.count('data-puts')).toBe(puts + 1);
+      if ((await this.need()).length) await this.ready();
+    }
+  }
+}
+
 async function expectFinished(page: Page, backend: Backend) {
   await expect(page.getByTestId('game-finished')).toBeVisible({ timeout: 6000 });
   await expect
@@ -3722,6 +3779,133 @@ test.describe('новые игры', () => {
     const said = (await spoken(page)).map((x) => x.text);
     expect(said).toContain(dir > 0 ? 'По часовой стрелке!' : 'Против часовой стрелки!');
     expect(said).toContain('Соседние шестерёнки крутятся в разные стороны.');
+  });
+
+  test('одень мишку (этап 58): одна вещь, не та — мишка мотает головой, перетаскиванием', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(150_000);
+    backend.items = [
+      game(1, { kind: 'dress', weathers: ['rain', 'snow'], items: 1, tasks: ['dress'], rounds: 2 }),
+    ];
+    await openGame(page);
+    const g = page.getByTestId('game-dress');
+    const dress = new DressPilot(page);
+    await dress.ready();
+    await expect(g).toHaveAttribute('data-task', 'dress');
+    const first = (await g.getAttribute('data-weather')) as 'rain' | 'snow';
+    const main = { rain: 'umbrella', snow: 'hat' }[first];
+    expect(await dress.need()).toEqual([main]);
+    const tray = (await dress.tray()).map((x) => x.id);
+    // В шкафу — нужная вещь и одна неподходящая.
+    expect(tray).toHaveLength(2);
+    expect(tray).toContain(main);
+    await page.waitForTimeout(900);
+    await shot(page, 'dress-start');
+    // Не та — мишка мотает головой, голос говорит почему, вещь возвращается в шкаф.
+    const bad = tray.find((id) => id !== main)!;
+    await dress.take(bad);
+    await expect.poll(() => dress.count('data-misses')).toBe(1);
+    await page.waitForTimeout(180);
+    await shot(page, 'dress-shake');
+    await dress.ready();
+    expect((await dress.tray()).find((x) => x.id === bad)!.ready).toBe(true);
+    expect(await dress.worn()).toEqual([]);
+    await dress.take(main);
+    await expect(g).toHaveAttribute('data-phase', /done|finish/, { timeout: 8000 });
+    expect((await dress.worn()).map((x) => x.id)).toEqual([main]);
+    await page.waitForTimeout(700);
+    await shot(page, 'dress-done');
+    // Вторая погода — перетаскиванием.
+    await expect(g).toHaveAttribute('data-round', '1', { timeout: 25_000 });
+    await dress.ready();
+    const second = (await g.getAttribute('data-weather')) as 'rain' | 'snow';
+    expect(second).not.toBe(first);
+    await page.waitForTimeout(900);
+    await shot(page, 'dress-second');
+    await dress.take((await dress.need())[0]!, true);
+    await expect(g).toHaveAttribute('data-phase', 'finish', { timeout: 20_000 });
+    await page.waitForTimeout(600);
+    await shot(page, 'dress-finish');
+    await expectFinished(page, backend);
+    const done = backend.events.find((e) => e.type === 'interactive_complete')!;
+    expect(done.payload).toMatchObject({ mistakes: 1 });
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain('На улице дождик! Что нужно мишке на прогулку?');
+    expect(said).toContain('На улице снег! Что нужно мишке на прогулку?');
+    expect(said).toContain('Зонтик — от дождя!');
+    expect(said).toContain('Шапка — чтобы ушки не замёрзли!');
+    expect(said).toContain('Мишка оделся и идёт гулять! Спасибо за помощь!');
+  });
+
+  test('одень мишку (этап 58): весь наряд, потом «что не так?» — снять лишнее', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(180_000);
+    backend.items = [
+      game(1, { kind: 'dress', weathers: ['sun'], items: 4, tasks: ['dress', 'odd'], rounds: 2 }),
+    ];
+    await openGame(page);
+    const g = page.getByTestId('game-dress');
+    const dress = new DressPilot(page);
+    await dress.ready();
+    await expect(g).toHaveAttribute('data-weather', 'sun');
+    expect([...(await dress.need())].sort()).toEqual(['glasses', 'panama', 'sandals', 'tshirt']);
+    // Шкаф полный: четыре нужные и четыре лишние.
+    expect(await dress.tray()).toHaveLength(8);
+    await page.waitForTimeout(900);
+    await shot(page, 'dress-full');
+    await dress.dressAll();
+    await expect(g).toHaveAttribute('data-phase', /done|finish/, { timeout: 8000 });
+    expect(await dress.worn()).toHaveLength(4);
+    await page.waitForTimeout(700);
+    await shot(page, 'dress-full-done');
+    // «Что не так?»: мишка оделся сам, одна вещь — для холода.
+    await expect(g).toHaveAttribute('data-round', '1', { timeout: 25_000 });
+    await dress.ready();
+    await expect(g).toHaveAttribute('data-task', 'odd');
+    await expect(g).toHaveAttribute('data-step', 'see');
+    const wrong = (await g.getAttribute('data-wrong'))!;
+    const worn = (await dress.worn()).map((x) => x.id);
+    expect(worn).toHaveLength(4);
+    expect(worn).toContain(wrong);
+    expect((await dress.tray()).every((x) => !x.ready)).toBe(true);
+    await page.waitForTimeout(1500);
+    await shot(page, 'dress-odd');
+    // Подходящая вещь — «это подходит», не снимается.
+    const fine = worn.find((id) => id !== wrong && id !== 'glasses')!;
+    await dress.tapWorn(fine);
+    await expect.poll(() => dress.count('data-misses')).toBe(1);
+    await dress.ready();
+    expect(await dress.count('data-removed')).toBe(0);
+    await dress.tapWorn(wrong);
+    await expect.poll(() => dress.count('data-removed')).toBe(1);
+    await expect(g).toHaveAttribute('data-step', 'fix');
+    await dress.ready();
+    expect((await dress.worn()).map((x) => x.id)).not.toContain(wrong);
+    const need = await dress.need();
+    expect(need).toHaveLength(1);
+    await page.waitForTimeout(500);
+    await shot(page, 'dress-fix');
+    await dress.take(need[0]!, true);
+    await expect(g).toHaveAttribute('data-phase', 'finish', { timeout: 20_000 });
+    expect((await dress.worn()).map((x) => x.id).sort()).toEqual([
+      'glasses',
+      'panama',
+      'sandals',
+      'tshirt',
+    ]);
+    await page.waitForTimeout(600);
+    await shot(page, 'dress-odd-finish');
+    await expectFinished(page, backend);
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain('На улице солнышко и жара! Одень мишку на прогулку! Нужны четыре вещи.');
+    expect(said).toContain('На улице солнышко и жара! Мишка оделся сам. Что не так?');
+    expect(said).toContain('Это подходит! Найди, что не так.');
+    expect(said).toContain('Что надеть вместо?');
+    expect(said).toContain('Теперь мишке не жарко!');
   });
 
   test('стих (этап 45): послушать, повторять за голосом, «Договори словечко», вопросы — часть выучена', async ({
