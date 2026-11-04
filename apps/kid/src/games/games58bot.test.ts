@@ -24,6 +24,7 @@ import {
   isBlock,
   nextHint,
   OWL_RIGHT,
+  RIM,
   planField,
   planRounds,
   put,
@@ -157,7 +158,7 @@ describe('робот (этап 58): программа', () => {
     for (let seed = 1; seed <= 60; seed++) {
       const r = planRounds(spec({ steps: 5, turns: 2, blocks: seed % 2 === 0 }), seeded(seed))[0]!;
       const prog: Dir[] = [];
-      for (let h = nextHint(r.field, prog, r.slots); h.kind !== 'run'; ) {
+      for (let h = nextHint(r.field, prog, r.slots); h.kind !== 'run';) {
         expect(h.kind).toBe('add');
         if (h.kind === 'add') prog.push(h.dir);
         h = nextHint(r.field, prog, r.slots);
@@ -232,10 +233,18 @@ describe('робот (этап 58): на экране', () => {
             w: st.socket,
             h: st.socket,
           }));
-          const parts = [st.board, ...sockets, ...st.keys, st.go];
+          // Коврик вместе с войлочным краем.
+          const r = st.cell * RIM;
+          const mat = {
+            x: st.board.x - r,
+            y: st.board.y - r,
+            w: st.board.w + 2 * r,
+            h: st.board.h + 2 * r,
+          };
+          const parts = [mat, ...sockets, ...st.keys, st.go];
           for (const p of parts) expect(boxIn(p, screen), `${w}x${h} ${slots}`).toBe(true);
           for (const p of [...sockets, ...st.keys, st.go]) {
-            expect(boxHit(p, st.board), `${w}x${h} ${slots}`).toBe(false);
+            expect(boxHit(p, mat), `${w}x${h} ${slots}`).toBe(false);
             if (st.land) {
               expect(p.y).toBeGreaterThanOrEqual(TOP_BUTTONS - 1e-6);
             }
@@ -244,10 +253,11 @@ describe('робот (этап 58): на экране', () => {
             for (const s of sockets) expect(boxHit(k, s), `${w}x${h} ${slots}`).toBe(false);
           if (st.land) expect(st.board.x).toBeGreaterThanOrEqual(OWL_RIGHT);
           else expect(st.board.y).toBeGreaterThanOrEqual(TOP);
-          // Пальцем попасть: стрелка пульта и гнездо — не меньше 44 px, клетка — не меньше 48.
+          // Пальцем попасть: стрелка пульта — не меньше 44 px, гнездо — 40; клетки не нажимают,
+          // но робот на ней должен быть хорошо виден — не меньше 44.
           expect(st.keys[0]!.w, `${w}x${h}`).toBeGreaterThanOrEqual(44);
           expect(st.socket, `${w}x${h} ${slots}`).toBeGreaterThanOrEqual(40);
-          expect(st.cell, `${w}x${h} ${n}`).toBeGreaterThanOrEqual(48);
+          expect(st.cell, `${w}x${h} ${n}`).toBeGreaterThanOrEqual(44);
           expect(st.board.w).toBeCloseTo(st.cell * n);
         }
   });

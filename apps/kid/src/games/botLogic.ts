@@ -325,6 +325,15 @@ export interface BotStage {
   go: Box;
 }
 
+/** Войлочный край коврика вокруг клеток (доля клетки) — рисуется снаружи board. */
+export const RIM = 0.14;
+/** Коврик с краем и тенью в квадрате side: клетки — внутри, край не вылезает за квадрат. */
+const matIn = (x: number, y: number, side: number, n: number) => {
+  const cell = side / (n + 2 * (RIM + 0.04));
+  const inset = (side - cell * n) / 2;
+  return { board: { x: x + inset, y: y + inset, w: cell * n, h: cell * n }, cell };
+};
+
 /** Лёжа слева сидит сова: досюда (px) ничего не ставим. */
 export const OWL_RIGHT = 100;
 /** Сверху стоя — кнопки «домой» и «послушать»; лёжа справа сверху — «послушать». */
@@ -401,8 +410,8 @@ export function stageFor(w: number, h: number, n: number, slots: number): BotSta
       h - 2 * pad,
       w - OWL_RIGHT - 2 * pad - gap * 1.5 - Math.max(w * 0.38, 264),
     );
-    const board = { x: OWL_RIGHT + pad, y: (h - side) / 2, w: side, h: side };
-    const px = board.x + side + gap * 1.5;
+    const { board, cell } = matIn(OWL_RIGHT + pad, (h - side) / 2, side, n);
+    const px = OWL_RIGHT + pad + side + gap;
     const pw = w - pad - px;
     const ph = h - pad - TOP_BUTTONS;
     const keys = keysFor(pw, Math.min(84, ph * 0.3), true);
@@ -415,7 +424,7 @@ export function stageFor(w: number, h: number, n: number, slots: number): BotSta
     return {
       land,
       board,
-      cell: side / n,
+      cell,
       sockets: place(slots, st, strip),
       socket: st.socket,
       strip,
@@ -431,13 +440,13 @@ export function stageFor(w: number, h: number, n: number, slots: number): BotSta
   // Коврик и пульт — посередине свободного места.
   const used = side + gap * 1.5 + below - pad;
   const y0 = TOP + Math.max(0, (h - pad - TOP - used) / 2);
-  const board = { x: (w - side) / 2, y: y0, w: side, h: side };
-  const strip = { x: pad, y: y0 + side + gap * 1.5, w: W, h: st.h };
+  const { board, cell } = matIn((w - side) / 2, y0, side, n);
+  const strip = { x: pad, y: y0 + side + gap, w: W, h: st.h };
   const { keys: ks, go } = placeKeys(pad, strip.y + st.h + gap * 1.6, W, keys);
   return {
     land,
     board,
-    cell: side / n,
+    cell,
     sockets: place(slots, st, strip),
     socket: st.socket,
     strip,

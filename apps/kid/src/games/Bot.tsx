@@ -22,6 +22,7 @@ import {
 import { afterSpeech, bump, clayUrl, praise, retry, say, setTask, type GameProps } from './common';
 import {
   DIRS,
+  RIM,
   STEP,
   botSprites,
   cellCenter,
@@ -649,7 +650,7 @@ export function Bot({ spec, phrases, onFinish }: GameProps<'bot'>) {
     const drawMat = (a: number) => {
       const b = st.board;
       const c = st.cell;
-      const rim = c * 0.14;
+      const rim = c * RIM;
       ctx.globalAlpha = a;
       tile(b.x - rim, b.y - rim, b.w + rim * 2, b.h + rim * 2, '#6fb07e', 1.6);
       const n = s.R.field.n;
