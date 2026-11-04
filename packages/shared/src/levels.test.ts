@@ -65,6 +65,7 @@ const SPECS = [
   { kind: 'scales', tasks: ['compare'], look: 'cubes', max: 5, rounds: 4 },
   { kind: 'dress', weathers: ['rain', 'sun'], items: 1, tasks: ['dress'], rounds: 3 },
   { kind: 'figure', figures: ['house', 'fish'], pieces: 2, outlines: true, turn: false, rounds: 3 },
+  { kind: 'bot', tasks: ['go'], steps: 2, turns: 0, blocks: false, rounds: 3 },
   { kind: 'gears', tasks: ['build'], gaps: 2, sizes: false, rounds: 3 },
 ] as const;
 
@@ -299,6 +300,27 @@ describe('игры этапа 41', () => {
     expect(gameSpec.safeParse({ kind: 'figure', figures: [], rounds: 3 }).success).toBe(false);
     expect(gameSpec.safeParse({ kind: 'figure', pieces: 1, rounds: 3 }).success).toBe(false);
     expect(gameSpec.safeParse({ kind: 'figure', pieces: 8, rounds: 3 }).success).toBe(false);
+  });
+
+  it('робот (этап 58): 1–2 шага → поворот → коробки на пути → «Найди ошибку»', () => {
+    const bot = gameSpec.parse({ kind: 'bot', rounds: 4 }) as GameSpec;
+    expect(bot).toMatchObject({ tasks: ['go'], steps: 2, turns: 0, blocks: false });
+    expect(specAtLevel(bot, 2)).toMatchObject({ steps: 3, turns: 1, blocks: false, tasks: ['go'] });
+    expect(specAtLevel(bot, 3)).toMatchObject({ steps: 4, turns: 1, blocks: true, tasks: ['go'] });
+    expect(specAtLevel(bot, 4)).toMatchObject({ steps: 4, blocks: true, tasks: ['go', 'fix'] });
+    // Родитель уже задал больше — уровни не убавляют; восемь шагов — предел.
+    const big = gameSpec.parse({
+      kind: 'bot',
+      tasks: ['fix'],
+      steps: 7,
+      turns: 2,
+      rounds: 3,
+    }) as GameSpec;
+    expect(specAtLevel(big, 4)).toMatchObject({ steps: 8, turns: 2, tasks: ['fix'] });
+    expect(gameSpec.safeParse({ kind: 'bot', tasks: [], rounds: 3 }).success).toBe(false);
+    expect(gameSpec.safeParse({ kind: 'bot', steps: 0, rounds: 3 }).success).toBe(false);
+    expect(gameSpec.safeParse({ kind: 'bot', steps: 9, rounds: 3 }).success).toBe(false);
+    expect(gameSpec.safeParse({ kind: 'bot', turns: 4, rounds: 3 }).success).toBe(false);
   });
 
   it('буквы этапа 56: обводка — ступенью выше, шарики — и маленькие', () => {

@@ -287,6 +287,16 @@ export function specAtLevel(spec: GameSpec, level: number): GameSpec {
         turn: spec.turn || up >= 1,
         outlines: spec.outlines && up < 3,
       };
+    case 'bot':
+      // Со второго шага — поворот и путь длиннее, с третьего — коробки на пути, с четвёртого —
+      // ещё и «Найди ошибку в программе».
+      return {
+        ...spec,
+        steps: clamp(spec.steps + (up >= 1 ? 1 : 0) + (up >= 2 ? 1 : 0), 1, 8),
+        turns: Math.max(spec.turns, up >= 1 ? 1 : 0),
+        blocks: spec.blocks || up >= 2,
+        tasks: up >= 3 && !spec.tasks.includes('fix') ? [...spec.tasks, 'fix'] : spec.tasks,
+      };
     case 'poem':
       // Больше вариантов в «Договори» и вопросах.
       return { ...spec, choices: clamp(spec.choices + up, 2, 4) };

@@ -2106,6 +2106,76 @@ class FigurePilot {
   }
 }
 
+type BotDir = 'up' | 'down' | 'left' | 'right';
+const BOT_BACK: Record<BotDir, BotDir> = { up: 'down', down: 'up', left: 'right', right: 'left' };
+/** Автопилот «Робота»: пульт, лента, «Пуск» и куда показывает подсказка (data-next). */
+class BotPilot {
+  constructor(private page: Page) {}
+  private get g() {
+    return this.page.getByTestId('game-bot');
+  }
+  async read<T>(attr: string) {
+    return JSON.parse((await this.g.getAttribute(attr)) ?? 'null') as T;
+  }
+  /** Можно нажимать: робот стоит, голос не держит. */
+  async ready() {
+    await expect(this.g).toHaveAttribute('data-phase', 'play', { timeout: 30_000 });
+    await expect(this.g).toHaveAttribute('data-busy', '0', { timeout: 8000 });
+    await expect(this.page.getByTestId('game')).toHaveAttribute('data-lock', 'none', {
+      timeout: 8000,
+    });
+  }
+  async count(
+    attr: 'data-runs' | 'data-bumps' | 'data-shorts' | 'data-holes' | 'data-misses' | 'data-wins',
+  ) {
+    return Number(await this.g.getAttribute(attr));
+  }
+  prog() {
+    return this.read<(BotDir | null)[]>('data-prog');
+  }
+  /** Что изменилось в ленте после нажатия. */
+  private async state() {
+    return `${await this.g.getAttribute('data-prog')}|${await this.g.getAttribute('data-hole')}`;
+  }
+  private async click(p: { x: number; y: number }) {
+    const b = (await this.g.boundingBox())!;
+    await this.page.mouse.click(b.x + p.x, b.y + p.y);
+  }
+  /** Нажать и дождаться, пока лента поменяется. */
+  private async change(p: { x: number; y: number }) {
+    const was = await this.state();
+    await this.click(p);
+    await expect.poll(() => this.state()).not.toBe(was);
+  }
+  async key(dir: BotDir, changes = true) {
+    const k = (await this.read<{ dir: BotDir; x: number; y: number }[]>('data-keys')).find(
+      (x) => x.dir === dir,
+    )!;
+    await (changes ? this.change(k) : this.click(k));
+  }
+  async socket(i: number, changes = true) {
+    const p = (await this.read<{ x: number; y: number }[]>('data-sockets'))[i]!;
+    await (changes ? this.change(p) : this.click(p));
+  }
+  async go() {
+    await this.click(await this.read<{ x: number; y: number }>('data-go'));
+  }
+  /** Нажимать то, что показывает подсказка, пока робот не доедет до батарейки. */
+  async solve() {
+    const wins = await this.count('data-wins');
+    for (let i = 0; i < 30; i++) {
+      await this.ready();
+      const next = (await this.read<{ x: number; y: number; what: string }>('data-next'))!;
+      if (next.what === 'go') {
+        await this.click(next);
+        break;
+      }
+      await this.change(next);
+    }
+    await expect.poll(() => this.count('data-wins'), { timeout: 20_000 }).toBe(wins + 1);
+  }
+}
+
 async function expectFinished(page: Page, backend: Backend) {
   await expect(page.getByTestId('game-finished')).toBeVisible({ timeout: 6000 });
   await expect
@@ -4150,6 +4220,144 @@ test.describe('новые игры', () => {
     expect(said).toContain('Эта деталька не отсюда. Найди, где её место!');
     expect(said).toContain('Получился кораблик! Счастливого плавания!');
     expect(said).toContain('Получилась кошка! Мяу!');
+  });
+
+  test('робот (этап 58): пустой «Пуск», лента полна, упёрся в край — назад; по подсказкам до батарейки', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(150_000);
+    backend.items = [
+      game(1, { kind: 'bot', tasks: ['go'], steps: 2, turns: 1, blocks: false, rounds: 2 }),
+    ];
+    await openGame(page);
+    const g = page.getByTestId('game-bot');
+    const bot = new BotPilot(page);
+    await bot.ready();
+    await expect(g).toHaveAttribute('data-task', 'go');
+    await expect(g).toHaveAttribute('data-steps', '2');
+    await expect(g).toHaveAttribute('data-slots', '4');
+    expect(await bot.prog()).toEqual([]);
+    const path = (await bot.read<BotDir[]>('data-path'))!;
+    expect(path).toHaveLength(2);
+    expect(path[0]).not.toBe(path[1]);
+    await page.waitForTimeout(900);
+    await shot(page, 'bot-start');
+    // «Пуск» без стрелок — робот стоит.
+    await bot.go();
+    await page.waitForTimeout(400);
+    expect(await bot.count('data-runs')).toBe(0);
+    // Назад от батарейки до упора: робот обязательно упрётся в край коврика.
+    const back = BOT_BACK[path[0]!];
+    for (let i = 0; i < 4; i++) await bot.key(back);
+    expect(await bot.prog()).toEqual([back, back, back, back]);
+    // Пятая стрелка не помещается.
+    await bot.key(back, false);
+    await page.waitForTimeout(400);
+    expect(await bot.prog()).toHaveLength(4);
+    await shot(page, 'bot-full');
+    await bot.ready();
+    const start = await g.getAttribute('data-start');
+    await bot.go();
+    await expect(g).toHaveAttribute('data-phase', 'run');
+    await expect.poll(() => bot.count('data-bumps'), { timeout: 10_000 }).toBe(1);
+    await page.waitForTimeout(200);
+    await shot(page, 'bot-bump');
+    // Едет назад на старт.
+    await bot.ready();
+    await expect(g).toHaveAttribute('data-bot', start!);
+    expect(await bot.count('data-runs')).toBe(1);
+    // Подсказка: убрать неправильные стрелки, поставить нужные, «Пуск».
+    const next = (await bot.read<{ what: string }>('data-next'))!;
+    expect(next.what).toMatch(/^socket:/);
+    await bot.solve();
+    expect(await g.getAttribute('data-bot')).toBe(await g.getAttribute('data-goal'));
+    await page.waitForTimeout(500);
+    await shot(page, 'bot-charge');
+    // Второе поле.
+    await expect(g).toHaveAttribute('data-round', '1', { timeout: 25_000 });
+    await bot.ready();
+    await page.waitForTimeout(700);
+    await shot(page, 'bot-second');
+    await bot.solve();
+    await expect(g).toHaveAttribute('data-phase', 'finish', { timeout: 20_000 });
+    await page.waitForTimeout(1000);
+    await shot(page, 'bot-finish');
+    await expectFinished(page, backend);
+    const done = backend.events.find((e) => e.type === 'interactive_complete')!;
+    // Упёрся — одна ошибка; пустой «Пуск» и полная лента — не ошибки.
+    expect(done.payload).toMatchObject({ mistakes: 1 });
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain(
+      'Помоги роботу доехать до батарейки! Нажимай на стрелки, потом — на зелёную кнопку «Пуск».',
+    );
+    expect(said).toContain('Сначала нажми на стрелки!');
+    expect(said).toContain('Места больше нет. Нажми на стрелку в ленте — она уберётся.');
+    expect(said).toContain('Ой! Робот упёрся. Поправь программу!');
+    expect(said).toContain('Робот доехал и зарядился!');
+    expect(said).toContain('Все батарейки собраны! Ты настоящий программист!');
+  });
+
+  test('робот (этап 58): найди ошибку — робот показывает свою программу, правильная стрелка — ошибка', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(180_000);
+    backend.items = [
+      game(1, { kind: 'bot', tasks: ['fix'], steps: 5, turns: 1, blocks: true, rounds: 2 }),
+    ];
+    await openGame(page);
+    const g = page.getByTestId('game-bot');
+    const bot = new BotPilot(page);
+    // Сначала робот сам едет по своей программе и не доезжает.
+    await expect(g).toHaveAttribute('data-phase', 'run', { timeout: 15_000 });
+    await page.waitForTimeout(900);
+    await shot(page, 'bot-fix-demo');
+    await bot.ready();
+    await expect(g).toHaveAttribute('data-task', 'fix');
+    expect(await bot.count('data-runs')).toBe(0);
+    expect(await g.getAttribute('data-bot')).toBe(await g.getAttribute('data-start'));
+    const prog = await bot.prog();
+    expect(prog.length).toBeGreaterThanOrEqual(5);
+    expect(prog.every(Boolean)).toBe(true);
+    const fixable = (await bot.read<number[]>('data-fixable'))!;
+    expect(fixable.length).toBeGreaterThan(0);
+    await shot(page, 'bot-fix-start');
+    // Пульт без дырки — «сначала найди неправильную стрелку».
+    await bot.key('up', false);
+    await page.waitForTimeout(400);
+    expect(await bot.prog()).toEqual(prog);
+    // Правильная стрелка — ошибка, она остаётся на месте.
+    const right = prog.findIndex((_, i) => !fixable.includes(i));
+    expect(right).toBeGreaterThanOrEqual(0);
+    await bot.socket(right, false);
+    await expect.poll(() => bot.count('data-misses')).toBe(1);
+    expect(await bot.prog()).toEqual(prog);
+    // Неправильная — на её месте дырка.
+    await bot.ready();
+    await bot.socket(fixable[0]!);
+    await expect(g).toHaveAttribute('data-hole', String(fixable[0]));
+    await page.waitForTimeout(300);
+    await shot(page, 'bot-fix-hole');
+    await bot.solve();
+    await page.waitForTimeout(500);
+    await shot(page, 'bot-fix-charge');
+    await expect(g).toHaveAttribute('data-round', '1', { timeout: 25_000 });
+    await bot.ready();
+    await bot.solve();
+    // По дырке на каждое поле.
+    expect(await bot.count('data-holes')).toBe(2);
+    await expect(g).toHaveAttribute('data-phase', 'finish', { timeout: 20_000 });
+    await expectFinished(page, backend);
+    const done = backend.events.find((e) => e.type === 'interactive_complete')!;
+    expect(done.payload).toMatchObject({ mistakes: 1 });
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain('Робот сам составил программу, но в ней ошибка. Смотри!');
+    expect(said).toContain('Найди неправильную стрелку и нажми на неё.');
+    expect(said).toContain('Сначала найди неправильную стрелку и нажми на неё.');
+    expect(said).toContain('Эта стрелка правильная. Ищи другую!');
+    expect(said).toContain('Какая стрелка нужна здесь?');
+    expect(said).toContain('Робот доехал и зарядился!');
   });
 
   test('стих (этап 45): послушать, повторять за голосом, «Договори словечко», вопросы — часть выучена', async ({

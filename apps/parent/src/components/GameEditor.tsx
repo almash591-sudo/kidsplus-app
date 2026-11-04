@@ -8,6 +8,8 @@ import {
 } from '@kidsplus/shared/api';
 import {
   BALLOON_COLORS,
+  BOT_TASK_LABELS,
+  BOT_TASKS,
   COLORING_PICTURES,
   DIFF_SCENES,
   DOT_PICTURES,
@@ -36,6 +38,7 @@ import {
   TRACE_GUIDES,
   TRACE_LETTERS,
   TRACE_SHAPES,
+  type BotTask,
   type DressTask,
   type DressWeather,
   type FigureShape,
@@ -453,6 +456,14 @@ const DEFAULTS: { [K in GameKind]: Extract<GameSpec, { kind: K }> } = {
     outlines: true,
     turn: false,
     rounds: 4,
+  },
+  bot: {
+    kind: 'bot',
+    tasks: ['go'],
+    steps: 2,
+    turns: 0,
+    blocks: false,
+    rounds: 3,
   },
   poem: {
     kind: 'poem',
@@ -3148,6 +3159,66 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
             деталь защёлкивается. Собранная фигура оживает: рыбка уплывает, в домике загорается
             окошко. Без контуров видно только тёмный силуэт — место детали надо найти самому. С
             поворотами деталь сначала нужно повернуть нажатием, иначе она не встанет.
+          </Text>
+        </Stack>
+      );
+    case 'bot':
+      return (
+        <Stack gap="xs">
+          <Text size="sm" fw={500}>
+            Задания (по очереди)
+          </Text>
+          <Chip.Group
+            multiple
+            value={spec.tasks}
+            onChange={(v) =>
+              v.length &&
+              onChange({ ...spec, tasks: BOT_TASKS.filter((t) => v.includes(t)) as BotTask[] })
+            }
+          >
+            <Group gap="xs">
+              {BOT_TASKS.map((t) => (
+                <Chip key={t} value={t}>
+                  {BOT_TASK_LABELS[t]}
+                </Chip>
+              ))}
+            </Group>
+          </Chip.Group>
+          <Group grow>
+            <NumberInput
+              label="Шагов до батарейки"
+              min={1}
+              max={8}
+              value={spec.steps}
+              onChange={(v) => onChange({ ...spec, steps: num(v, 2) })}
+            />
+            <NumberInput
+              label="Поворотов"
+              min={0}
+              max={3}
+              value={spec.turns}
+              onChange={(v) => onChange({ ...spec, turns: num(v, 0) })}
+            />
+            <NumberInput
+              label="Полей"
+              min={2}
+              max={6}
+              value={spec.rounds}
+              onChange={(v) => onChange({ ...spec, rounds: num(v, 3) })}
+            />
+          </Group>
+          <Switch
+            label="Коробки и игрушки на пути — объехать"
+            checked={spec.blocks}
+            onChange={(e) => onChange({ ...spec, blocks: e.currentTarget.checked })}
+          />
+          <Text size="xs" c="dimmed">
+            Робот на клетчатом коврике должен доехать до батарейки. Ребёнок выкладывает
+            стрелки-команды в ленту и нажимает зелёную кнопку «Пуск» — робот едет по шагам, текущая
+            стрелка светится. Упёрся в коробку или край — робот возвращается на старт, а стрелка, на
+            которой он упёрся, краснеет. После двух неудач на коврике проступают следы. В задании
+            «Найди ошибку» робот сам едет по своей программе с одной неправильной стрелкой — её
+            нужно найти и заменить. С 4 лет; с 5 шагов поворот будет всегда — коврик 5 × 5.
           </Text>
         </Stack>
       );
