@@ -51,6 +51,7 @@ import { Differences } from './Differences';
 import { Paints } from './Paints';
 import { Scales } from './Scales';
 import { Gears } from './Gears';
+import { Dress } from './Dress';
 import { Train } from './Train';
 import { Dive } from './Dive';
 import { Race } from './Race';
@@ -151,6 +152,7 @@ const OWN_SCENE: GameKind[] = [
   'train',
   'scales',
   'gears',
+  'dress',
   'poem',
   'book',
 ];
@@ -250,6 +252,7 @@ const GAMES: { [K in GameKind]: ComponentType<GameProps<K>> } = {
   train: Train,
   scales: Scales,
   gears: Gears,
+  dress: Dress,
   poem: Poem,
   book: Book,
 };

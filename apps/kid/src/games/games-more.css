@@ -2372,3 +2372,28 @@
   display: none;
   pointer-events: none;
 }
+
+/* ─── «Одень мишку» (этап 58) ─── */
+.game.dress {
+  padding: 0;
+  inset: 0;
+  background: #f7d9a6;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.dress-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+/* Невидимые цели для пальца подсказки: нужная вещь в шкафу и место на мишке (или лишняя вещь). */
+.dress-hint {
+  position: absolute;
+  display: none;
+  pointer-events: none;
+}
