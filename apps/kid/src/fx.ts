@@ -256,6 +256,35 @@ export const fx = {
         gain: 0.16,
       });
   },
+  /** Робот проехал клетку (этап 58): жужжание моторчика. */
+  motor() {
+    tone(110, 0, 0.3, { slideTo: 150, type: 'sawtooth', gain: 0.05 });
+    tone(220, 0, 0.3, { slideTo: 300, type: 'square', gain: 0.025 });
+    noise(0, 0.28, { from: 600, to: 900, gain: 0.05, q: 1.5 });
+  },
+  /** Робот упёрся: железный «бдзынь». */
+  clang() {
+    noise(0, 0.08, { from: 3000, to: 900, gain: 0.4, q: 1 });
+    tone(523, 0, 0.35, { type: 'triangle', gain: 0.18 });
+    tone(1412, 0, 0.2, { gain: 0.06 });
+    tone(180, 0, 0.12, { slideTo: 90, gain: 0.3 });
+    vibrate([30, 40, 30]);
+  },
+  /** Стрелка легла в ленту: «пи-пик» робота — у каждой стороны свой. */
+  beep(i: number) {
+    const f = [392, 659, 523, 784][i % 4]!;
+    tone(f, 0, 0.08, { type: 'square', gain: 0.06 });
+    tone(f * 1.5, 0.08, 0.08, { type: 'square', gain: 0.045 });
+  },
+  /** Робот заряжается: гул вверх и звон. */
+  charge() {
+    tone(220, 0, 1, { slideTo: 880, type: 'sawtooth', gain: 0.05 });
+    tone(440, 0, 1, { slideTo: 1760, gain: 0.1 });
+    [C5, E5, G5, C6, E6].forEach((f, i) =>
+      tone(f, 0.9 + i * 0.07, 0.25, { type: 'triangle', gain: 0.25 }),
+    );
+    vibrate([20, 60, 20, 60, 40]);
+  },
   /** Праздник в конце: арпеджио и искорки. */
   fanfare() {
     [C5, E5, G5, C6, E6].forEach((f, i) => tone(f, i * 0.09, 0.3, { type: 'triangle', gain: 0.4 }));

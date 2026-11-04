@@ -896,6 +896,33 @@ export function figurePhrases(spec: SpecOf<'figure'>) {
   ];
 }
 
+// ─── «Робот и батарейка» (этап 58) ───
+export const BOT_GO =
+  'Помоги роботу доехать до батарейки! Нажимай на стрелки, потом — на зелёную кнопку «Пуск».';
+export const BOT_FIX_INTRO = 'Робот сам составил программу, но в ней ошибка. Смотри!';
+export const BOT_FIX_FIND = 'Найди неправильную стрелку и нажми на неё.';
+export const BOT_BUMP = 'Ой! Робот упёрся. Поправь программу!';
+export const BOT_SHORT = 'Робот не доехал до батарейки. Поправь программу!';
+export const BOT_RIGHT_ARROW = 'Эта стрелка правильная. Ищи другую!';
+export const BOT_WHICH = 'Какая стрелка нужна здесь?';
+export const BOT_EMPTY = 'Сначала нажми на стрелки!';
+export const BOT_FIND_FIRST = 'Сначала найди неправильную стрелку и нажми на неё.';
+export const BOT_FULL = 'Места больше нет. Нажми на стрелку в ленте — она уберётся.';
+export const BOT_WIN = 'Робот доехал и зарядился!';
+export const BOT_END = 'Все батарейки собраны! Ты настоящий программист!';
+export function botPhrases(spec: SpecOf<'bot'>) {
+  return [
+    BOT_BUMP,
+    BOT_SHORT,
+    BOT_WIN,
+    BOT_END,
+    ...(spec.tasks.includes('go') ? [BOT_GO, BOT_EMPTY, BOT_FULL] : []),
+    ...(spec.tasks.includes('fix')
+      ? [BOT_FIX_INTRO, BOT_FIX_FIND, BOT_RIGHT_ARROW, BOT_WHICH, BOT_FIND_FIRST]
+      : []),
+  ];
+}
+
 // ─── Этап 45: стихи и сказки ───
 export const POEM_INTRO = 'Послушай и повторяй за мной!';
 export const POEM_REPEAT = 'Повторяй за мной!';
@@ -1025,6 +1052,7 @@ export const GAME_INTRO: Record<GameKind, string> = {
   gears: gearsBuild('mill'),
   dress: dressTask('rain', 1),
   figure: figureTask('house', false),
+  bot: BOT_GO,
   poem: POEM_INTRO,
   book: BOOK_INTRO,
 };
@@ -1279,6 +1307,8 @@ export function gamePhrases(spec: GameSpec): string[] {
       return dressPhrases(spec);
     case 'figure':
       return figurePhrases(spec);
+    case 'bot':
+      return botPhrases(spec);
     case 'poem':
       return poemPhrases(spec.poem);
     case 'book':
