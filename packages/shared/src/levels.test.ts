@@ -66,6 +66,7 @@ const SPECS = [
   { kind: 'dress', weathers: ['rain', 'sun'], items: 1, tasks: ['dress'], rounds: 3 },
   { kind: 'figure', figures: ['house', 'fish'], pieces: 2, outlines: true, turn: false, rounds: 3 },
   { kind: 'bot', tasks: ['go'], steps: 2, turns: 0, blocks: false, rounds: 3 },
+  { kind: 'cuckoo', tasks: ['read'], half: false, rounds: 3 },
   { kind: 'gears', tasks: ['build'], gaps: 2, sizes: false, rounds: 3 },
 ] as const;
 
@@ -321,6 +322,20 @@ describe('игры этапа 41', () => {
     expect(gameSpec.safeParse({ kind: 'bot', steps: 0, rounds: 3 }).success).toBe(false);
     expect(gameSpec.safeParse({ kind: 'bot', steps: 9, rounds: 3 }).success).toBe(false);
     expect(gameSpec.safeParse({ kind: 'bot', turns: 4, rounds: 3 }).success).toBe(false);
+  });
+
+  it('часы с кукушкой (этап 58): целые часы → стрелками → половины → режим дня', () => {
+    const cuckoo = gameSpec.parse({ kind: 'cuckoo', rounds: 4 }) as GameSpec;
+    expect(cuckoo).toMatchObject({ tasks: ['read'], half: false });
+    expect(specAtLevel(cuckoo, 2)).toMatchObject({ tasks: ['read', 'set'], half: false });
+    expect(specAtLevel(cuckoo, 3)).toMatchObject({ tasks: ['read', 'set'], half: true });
+    expect(specAtLevel(cuckoo, 4)).toMatchObject({ tasks: ['read', 'set', 'day'], half: true });
+    // Родитель выбрал только режим дня — уровни добавляют стрелки, а не убирают его.
+    const day = gameSpec.parse({ kind: 'cuckoo', tasks: ['day'], rounds: 3 }) as GameSpec;
+    expect(specAtLevel(day, 4)).toMatchObject({ tasks: ['day', 'set'], half: true });
+    expect(gameSpec.safeParse({ kind: 'cuckoo', tasks: [], rounds: 3 }).success).toBe(false);
+    expect(gameSpec.safeParse({ kind: 'cuckoo', rounds: 1 }).success).toBe(false);
+    expect(gameSpec.safeParse({ kind: 'cuckoo', rounds: 9 }).success).toBe(false);
   });
 
   it('буквы этапа 56: обводка — ступенью выше, шарики — и маленькие', () => {

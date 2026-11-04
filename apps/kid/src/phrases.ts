@@ -46,6 +46,7 @@ import { lineStart, partSpeech, poemAnnounce, poemOf, type PoemCode } from '@kid
 import { SONGS } from '@kidsplus/shared/songs';
 import { soundPlace, syllablesIn, unstressed, wordScheme } from '@kidsplus/shared/sounds';
 import { NUMBERS, paint, PALETTE, type SpecOf } from './games/common';
+import { DAY, type DayId, type Time } from './games/cuckooLogic';
 import { needCount, OUTFITS, SLOT, WRONG_IN, type ItemId } from './games/dressLogic';
 import { PAINT_OBJECTS } from './games/paintsLogic';
 import { topOf } from './games/trainLogic';
@@ -923,6 +924,70 @@ export function botPhrases(spec: SpecOf<'bot'>) {
   ];
 }
 
+// ─── «Часы с кукушкой» (этап 58) ───
+export const CUCKOO_GO = 'Это часы с кукушкой! Ответишь правильно — кукушка выглянет.';
+export const CUCKOO_READ = 'Который час?';
+export const CUCKOO_READ_INTRO =
+  'Который час? Посмотри на маленькую стрелку и нажми на число, куда она показывает.';
+export const CUCKOO_BIG_HAND = 'Большая стрелка показывает минуты. Смотри на маленькую стрелку!';
+export const CUCKOO_LOOK = 'Посмотри, куда показывает маленькая стрелка.';
+export const CUCKOO_SET_INTRO = 'Двигай пальцем маленькую стрелку.';
+export const CUCKOO_SET_HALF_INTRO =
+  'Маленькая стрелка показывает часы, большая — минуты. Двигай их пальцем.';
+/** «Покажи три часа!», «Покажи половину четвёртого!» */
+export const cuckooShow = (t: Time) =>
+  `Покажи ${t.m ? `половину ${OF_HOUR[t.h % 12]!}` : HOURS[t.h % 12]!}!`;
+export const CUCKOO_NOW_BIG = 'А теперь большую стрелку!';
+export const CUCKOO_NOW_SMALL = 'А теперь маленькую стрелку!';
+export const CUCKOO_HALF_HINT = 'Половина — большая стрелка внизу, на шести.';
+export const CUCKOO_WHOLE_HINT = 'Ровно — большая стрелка наверху, на двенадцати.';
+export const CUCKOO_DAY_INTRO = 'Это день мишки. Помоги ему — покажи время на часах!';
+/** Режим дня: что делает мишка и что скажем, когда часы покажут это время. */
+export const CUCKOO_DAY: Record<DayId, readonly [string, string]> = {
+  wake: ['В семь часов утра мишка просыпается.', 'Доброе утро!'],
+  exercise: ['В половине восьмого мишка делает зарядку.', 'Раз-два, раз-два! Зарядка!'],
+  breakfast: ['В восемь часов утра мишка завтракает.', 'Приятного аппетита!'],
+  walk: ['В одиннадцать часов мишка идёт гулять.', 'Гулять — здорово!'],
+  lunch: ['В час дня мишка обедает.', 'Вкусный суп!'],
+  draw: ['В половине пятого мишка рисует.', 'Какой красивый цветок!'],
+  bath: ['В восемь часов вечера мишка купается.', 'Чистый мишка!'],
+  teeth: ['В половине девятого мишка чистит зубы.', 'Зубки чистые!'],
+  sleep: ['В девять часов вечера мишка ложится спать.', 'Спокойной ночи, мишка!'],
+};
+export const CUCKOO_END = 'Ку-ку! Теперь ты знаешь, который час!';
+export function cuckooPhrases(spec: SpecOf<'cuckoo'>) {
+  const hours = Array.from({ length: 12 }, (_, i) => i + 1);
+  const times: Time[] = hours.flatMap((h) => [
+    { h, m: 0 as const },
+    ...(spec.half ? [{ h, m: 30 as const }] : []),
+  ]);
+  const show = spec.tasks.includes('set') || spec.tasks.includes('day');
+  return [
+    CUCKOO_GO,
+    CUCKOO_END,
+    ...times.flatMap((t) => clockAnswer(t.h, t.m === 30)),
+    ...(spec.tasks.includes('read')
+      ? [CUCKOO_READ, CUCKOO_READ_INTRO, CUCKOO_BIG_HAND, CUCKOO_LOOK]
+      : []),
+    ...(show ? [CUCKOO_SET_INTRO, ...times.map(cuckooShow)] : []),
+    ...(show && spec.half
+      ? [
+          CUCKOO_SET_HALF_INTRO,
+          CUCKOO_NOW_BIG,
+          CUCKOO_NOW_SMALL,
+          CUCKOO_HALF_HINT,
+          CUCKOO_WHOLE_HINT,
+        ]
+      : []),
+    ...(spec.tasks.includes('day')
+      ? [
+          CUCKOO_DAY_INTRO,
+          ...DAY.filter((e) => spec.half || e.t.m === 0).flatMap((e) => CUCKOO_DAY[e.id]),
+        ]
+      : []),
+  ];
+}
+
 // ─── Этап 45: стихи и сказки ───
 export const POEM_INTRO = 'Послушай и повторяй за мной!';
 export const POEM_REPEAT = 'Повторяй за мной!';
@@ -1053,6 +1118,7 @@ export const GAME_INTRO: Record<GameKind, string> = {
   dress: dressTask('rain', 1),
   figure: figureTask('house', false),
   bot: BOT_GO,
+  cuckoo: CUCKOO_GO,
   poem: POEM_INTRO,
   book: BOOK_INTRO,
 };
@@ -1309,6 +1375,8 @@ export function gamePhrases(spec: GameSpec): string[] {
       return figurePhrases(spec);
     case 'bot':
       return botPhrases(spec);
+    case 'cuckoo':
+      return cuckooPhrases(spec);
     case 'poem':
       return poemPhrases(spec.poem);
     case 'book':

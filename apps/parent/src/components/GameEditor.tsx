@@ -11,6 +11,8 @@ import {
   BOT_TASK_LABELS,
   BOT_TASKS,
   COLORING_PICTURES,
+  CUCKOO_TASK_LABELS,
+  CUCKOO_TASKS,
   DIFF_SCENES,
   DOT_PICTURES,
   DRESS_TASK_LABELS,
@@ -39,6 +41,7 @@ import {
   TRACE_LETTERS,
   TRACE_SHAPES,
   type BotTask,
+  type CuckooTask,
   type DressTask,
   type DressWeather,
   type FigureShape,
@@ -464,6 +467,12 @@ const DEFAULTS: { [K in GameKind]: Extract<GameSpec, { kind: K }> } = {
     turns: 0,
     blocks: false,
     rounds: 3,
+  },
+  cuckoo: {
+    kind: 'cuckoo',
+    tasks: ['read'],
+    half: false,
+    rounds: 4,
   },
   poem: {
     kind: 'poem',
@@ -3219,6 +3228,56 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
             которой он упёрся, краснеет. После двух неудач на коврике проступают следы. В задании
             «Найди ошибку» робот сам едет по своей программе с одной неправильной стрелкой — её
             нужно найти и заменить. С 4 лет; с 5 шагов поворот будет всегда — коврик 5 × 5.
+          </Text>
+        </Stack>
+      );
+    case 'cuckoo':
+      return (
+        <Stack gap="xs">
+          <Text size="sm" fw={500}>
+            Задания (по очереди)
+          </Text>
+          <Chip.Group
+            multiple
+            value={spec.tasks}
+            onChange={(v) =>
+              v.length &&
+              onChange({
+                ...spec,
+                tasks: CUCKOO_TASKS.filter((t) => v.includes(t)) as CuckooTask[],
+              })
+            }
+          >
+            <Group gap="xs">
+              {CUCKOO_TASKS.map((t) => (
+                <Chip key={t} value={t}>
+                  {CUCKOO_TASK_LABELS[t]}
+                </Chip>
+              ))}
+            </Group>
+          </Chip.Group>
+          <Group grow align="flex-end">
+            <Switch
+              label="Половины часов"
+              checked={spec.half}
+              onChange={(e) => onChange({ ...spec, half: e.currentTarget.checked })}
+            />
+            <NumberInput
+              label="Раундов"
+              min={2}
+              max={8}
+              value={spec.rounds}
+              onChange={(v) => onChange({ ...spec, rounds: num(v, 4) })}
+            />
+          </Group>
+          <Text size="xs" c="dimmed">
+            Большие часы с кукушкой и маятником. «Который час?» — стрелки сами бегут к целому часу,
+            ребёнок нажимает на число, куда показывает маленькая стрелка. «Покажи время» — ребёнок
+            пальцем ставит стрелки. «Режим дня» — карточка мишки (завтрак, прогулка, сон…) и время
+            для неё. С половинами в «Покажи» и «Режиме дня» бывает и половина часа — большая стрелка
+            вниз, на «6». Ответ верный — дверца открывается, и кукушка кукует столько раз, который
+            час (в половину — один раз). После двух ошибок со стрелками проступает бледная стрелка
+            там, где ей быть. С 5 лет.
           </Text>
         </Stack>
       );

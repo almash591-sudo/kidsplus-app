@@ -297,6 +297,13 @@ export function specAtLevel(spec: GameSpec, level: number): GameSpec {
         blocks: spec.blocks || up >= 2,
         tasks: up >= 3 && !spec.tasks.includes('fix') ? [...spec.tasks, 'fix'] : spec.tasks,
       };
+    case 'cuckoo': {
+      // Целые часы → «покажи три часа» стрелками → половины → режим дня.
+      const tasks = [...spec.tasks];
+      if (up >= 1 && !tasks.includes('set')) tasks.push('set');
+      if (up >= 3 && !tasks.includes('day')) tasks.push('day');
+      return { ...spec, tasks, half: spec.half || up >= 2 };
+    }
     case 'poem':
       // Больше вариантов в «Договори» и вопросах.
       return { ...spec, choices: clamp(spec.choices + up, 2, 4) };

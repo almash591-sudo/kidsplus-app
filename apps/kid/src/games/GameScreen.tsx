@@ -54,6 +54,7 @@ import { Gears } from './Gears';
 import { Dress } from './Dress';
 import { Figure } from './Figure';
 import { Bot } from './Bot';
+import { Cuckoo } from './Cuckoo';
 import { Train } from './Train';
 import { Dive } from './Dive';
 import { Race } from './Race';
@@ -157,6 +158,7 @@ const OWN_SCENE: GameKind[] = [
   'dress',
   'figure',
   'bot',
+  'cuckoo',
   'poem',
   'book',
 ];
@@ -259,6 +261,7 @@ const GAMES: { [K in GameKind]: ComponentType<GameProps<K>> } = {
   dress: Dress,
   figure: Figure,
   bot: Bot,
+  cuckoo: Cuckoo,
   poem: Poem,
   book: Book,
 };
