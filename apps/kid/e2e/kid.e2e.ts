@@ -2965,6 +2965,31 @@ test.describe('новые игры', () => {
       .toBe(3);
   });
 
+  test('бездействие: цель спрятана — палец нажимает, а не тянет в угол экрана', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [
+      game(1, {
+        kind: 'odd',
+        rounds: [{ imageIds: [CAT, LION, RABBIT, CARROT], odd: 3 }],
+      }),
+    ];
+    await page.clock.install();
+    await openGame(page);
+    // Как в canvas-играх: место, куда тянуть, есть, но сейчас спрятано.
+    await page.evaluate(() => {
+      const d = document.createElement('div');
+      d.setAttribute('data-hint-target', '');
+      d.style.display = 'none';
+      document.body.append(d);
+    });
+    await page.clock.runFor(7_000);
+    const hand = page.getByTestId('hint-hand');
+    await expect(hand).toBeAttached();
+    await expect(hand).not.toHaveClass(/drag/);
+  });
+
   test('продолжи ряд: выбираем, что дальше', async ({ page, backend }) => {
     backend.items = [
       game(1, { kind: 'pattern', imageIds: [CAT, LION, RABBIT], patterns: ['ABC'], rounds: 2 }),

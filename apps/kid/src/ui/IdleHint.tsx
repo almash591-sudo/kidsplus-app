@@ -60,7 +60,10 @@ export function IdleHint({
       if (!el) return;
       const a = el.getBoundingClientRect();
       if (!a.width) return;
-      const to = document.querySelector<HTMLElement>('[data-hint-target]')?.getBoundingClientRect();
+      // Цель спрятана (display: none, нулевой размер) — палец просто нажимает, а не тянет
+      // в левый верхний угол экрана.
+      const t = document.querySelector<HTMLElement>('[data-hint-target]')?.getBoundingClientRect();
+      const to = t?.width ? t : undefined;
       const x = a.left + a.width / 2;
       const y = a.top + a.height / 2;
       setHand({
