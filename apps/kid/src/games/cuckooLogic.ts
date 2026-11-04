@@ -13,10 +13,13 @@ const hour12 = (n: number) => ((Math.round(n) % 12) + 12) % 12 || 12;
 const frac = (x: number) => x - Math.floor(x);
 
 // ─── Стрелки ───
-/** Длина маленькой и большой стрелок и радиус чисел — доли радиуса циферблата. */
+/**
+ * Длина маленькой и большой стрелок и радиус чисел — доли радиуса циферблата. Острие большой —
+ * за числами, на кольце минут: «12» и «6» под ней видно.
+ */
 export const SMALL_LEN = 0.52;
-export const BIG_LEN = 0.82;
-export const NUM_R = 0.78;
+export const BIG_LEN = 0.95;
+export const NUM_R = 0.74;
 
 export interface Face {
   x: number;
