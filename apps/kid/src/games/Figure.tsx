@@ -594,9 +594,27 @@ export function Figure({ spec, phrases, onFinish }: GameProps<'figure'>) {
         const k = Math.max(w / im.naturalWidth, h / im.naturalHeight);
         const dw = im.naturalWidth * k;
         const dh = im.naturalHeight * k;
-        const line = st.box.y + st.box.h * LINE[b];
-        const dy = Math.max(h - dh, Math.min(0, line - HORIZON[b][st.land ? 'l' : 'p'] * dh));
-        ctx.drawImage(im, (w - dw) / 2, dy, dw, dh);
+        const dx = (w - dw) / 2;
+        const want = st.box.y + st.box.h * LINE[b] - HORIZON[b][st.land ? 'l' : 'p'] * dh;
+        // Под водой картинка не сдвигается (песок — внизу, поверхность — вверху). Луг и море
+        // сдвигаются так, чтобы фигура стояла на траве и сидела в воде; открывшийся край —
+        // зеркальная копия картинки (небо выше неба, вода ниже воды).
+        const dy = b === 'deep' ? Math.max(h - dh, Math.min(0, want)) : want;
+        ctx.drawImage(im, dx, dy, dw, dh);
+        if (dy > 0) {
+          ctx.save();
+          ctx.translate(0, dy);
+          ctx.scale(1, -1);
+          ctx.drawImage(im, dx, 0, dw, dh);
+          ctx.restore();
+        }
+        if (dy + dh < h) {
+          ctx.save();
+          ctx.translate(0, dy + dh);
+          ctx.scale(1, -1);
+          ctx.drawImage(im, dx, -dh, dw, dh);
+          ctx.restore();
+        }
       }
       ctx.globalAlpha = 1;
     };
