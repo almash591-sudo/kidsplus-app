@@ -2422,3 +2422,28 @@
   display: none;
   pointer-events: none;
 }
+
+/* ─── «Робот и батарейка» (этап 58) ─── */
+.game.bot {
+  padding: 0;
+  inset: 0;
+  background: #e9c08c;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.bot-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+/* Невидимая цель для пальца подсказки: кнопка пульта, стрелка в ленте или «Пуск». */
+.bot-hint {
+  position: absolute;
+  display: none;
+  pointer-events: none;
+}
