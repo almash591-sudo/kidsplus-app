@@ -1,5 +1,6 @@
 import type { Game } from '@kidsplus/shared/api';
 import {
+  DRESS_WEATHER_LABELS,
   GAME_KINDS,
   GEARS_TASK_LABELS,
   SCALES_TASK_LABELS,
@@ -168,6 +169,8 @@ export function gameSummary(spec: GameSpec): string {
       return `${spec.tasks.map((t) => SCALES_TASK_LABELS[t].toLowerCase()).join(', ')} · ${{ cubes: 'кубики', dots: 'точки', digits: 'цифры' }[spec.look]} до ${spec.max} · заданий: ${spec.rounds}`;
     case 'gears':
       return `${spec.tasks.map((t) => GEARS_TASK_LABELS[t].toLowerCase()).join(', ')} · шестерёнок: ${spec.gaps}${spec.sizes ? ' разного размера' : ''} · машин: ${spec.rounds}`;
+    case 'dress':
+      return `${spec.weathers.map((w) => DRESS_WEATHER_LABELS[w].toLowerCase()).join(', ')} · ${spec.tasks.includes('odd') ? (spec.tasks.includes('dress') ? 'одеть и «что не так?»' : '«что не так?»') : 'одеть'} · вещей: ${spec.items} · заданий: ${spec.rounds}`;
     case 'differences':
       return `отличий: ${spec.count} · картинок: ${spec.rounds}${spec.hint ? ' · с лупой' : ''}`;
     case 'race':

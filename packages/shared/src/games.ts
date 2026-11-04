@@ -182,6 +182,24 @@ export const GEARS_TASK_LABELS: Record<GearsTask, string> = {
   build: 'Собери цепочку',
   direction: 'В какую сторону',
 };
+/** Погода в «Одень мишку» (этап 58): дождь, снег, жаркое солнце, осенний ветер. */
+export const DRESS_WEATHERS = ['rain', 'snow', 'sun', 'wind'] as const;
+export type DressWeather = (typeof DRESS_WEATHERS)[number];
+/** Как погода называется в кабинете. */
+export const DRESS_WEATHER_LABELS: Record<DressWeather, string> = {
+  rain: 'Дождь',
+  snow: 'Снег',
+  sun: 'Жара',
+  wind: 'Ветер',
+};
+/** Задания «Одень мишку»: одень по погоде, что не так (мишка оделся сам и ошибся). */
+export const DRESS_TASKS = ['dress', 'odd'] as const;
+export type DressTask = (typeof DRESS_TASKS)[number];
+/** Как задания «Одень мишку» называются в кабинете. */
+export const DRESS_TASK_LABELS: Record<DressTask, string> = {
+  dress: 'Одень по погоде',
+  odd: 'Что не так?',
+};
 /** Как задания «Весов» называются в кабинете. */
 export const SCALES_TASK_LABELS: Record<ScalesTask, string> = {
   compare: 'Какая тяжелее',
@@ -913,6 +931,25 @@ export const gameSpec = z.discriminatedUnion('kind', [
     rounds: z.number().int().min(2).max(6),
   }),
   /**
+   * Одень мишку (этап 58): за окном погода — дождь, снег, жара или ветер, мишка собирается гулять.
+   * Одень по погоде (dress): из шкафа на мишку — подходящие вещи (неподходящая не надевается,
+   * мишка мотает головой: «В шубе жарко!»). Что не так (odd): мишка оделся сам, одна вещь
+   * не по погоде — снять её и надеть подходящую. weathers — какая бывает погода (по очереди).
+   * items — сколько вещей надеть: 1 — одну главную (зонтик от дождя), 4 — всё, что нужно.
+   * tasks — какие задания (по очереди).
+   */
+  z.object({
+    kind: z.literal('dress'),
+    weathers: z
+      .array(z.enum(DRESS_WEATHERS))
+      .min(1)
+      .max(DRESS_WEATHERS.length)
+      .default([...DRESS_WEATHERS]),
+    items: z.number().int().min(1).max(4).default(1),
+    tasks: z.array(z.enum(DRESS_TASKS)).min(1).max(DRESS_TASKS.length).default(['dress']),
+    rounds: z.number().int().min(2).max(6),
+  }),
+  /**
    * Стих или сказка (этап 45) из встроенной библиотеки: послушать под глиняные картинки, повторять
    * за голосом по частям (repeat), «Договори словечко» (blanks) и вопросы по смыслу (questions) —
    * choices вариантов-картинок. Выученную часть телефон помнит: в следующий раз учим следующую.
@@ -1048,6 +1085,7 @@ export const GAME_KINDS: Record<GameKind, string> = {
   train: 'Поезд',
   scales: 'Весы',
   gears: 'Шестерёнки',
+  dress: 'Одень мишку',
   poem: 'Стих или сказка',
   book: 'Книжка',
 };
@@ -1129,6 +1167,7 @@ export function gameImageIds(g: GameSpec): string[] {
     case 'train':
     case 'scales':
     case 'gears':
+    case 'dress':
     case 'poem':
     case 'book':
       return [];

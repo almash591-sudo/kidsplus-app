@@ -11,6 +11,10 @@ import {
   COLORING_PICTURES,
   DIFF_SCENES,
   DOT_PICTURES,
+  DRESS_TASK_LABELS,
+  DRESS_TASKS,
+  DRESS_WEATHER_LABELS,
+  DRESS_WEATHERS,
   FISHING_LETTERS,
   FLASHLIGHT_SCENES,
   GAME_KINDS,
@@ -30,6 +34,8 @@ import {
   TRACE_GUIDES,
   TRACE_LETTERS,
   TRACE_SHAPES,
+  type DressTask,
+  type DressWeather,
   type GameKind,
   type GameSpec,
   type GearsTask,
@@ -429,6 +435,13 @@ const DEFAULTS: { [K in GameKind]: Extract<GameSpec, { kind: K }> } = {
     gaps: 2,
     sizes: false,
     rounds: 3,
+  },
+  dress: {
+    kind: 'dress',
+    weathers: ['rain', 'snow', 'sun', 'wind'],
+    items: 1,
+    tasks: ['dress'],
+    rounds: 4,
   },
   poem: {
     kind: 'poem',
@@ -2992,6 +3005,78 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
             гвоздики и крутит ручку, машина оживает. С разными размерами большая не помещается,
             маленькая не достаёт — пунктир подскажет. «В какую сторону» — ручку крутят по стрелке,
             куда закрутится машина: соседние шестерёнки крутятся в разные стороны.
+          </Text>
+        </Stack>
+      );
+    case 'dress':
+      return (
+        <Stack gap="xs">
+          <Text size="sm" fw={500}>
+            Погода (по очереди)
+          </Text>
+          <Chip.Group
+            multiple
+            value={spec.weathers}
+            onChange={(v) =>
+              v.length &&
+              onChange({
+                ...spec,
+                weathers: DRESS_WEATHERS.filter((t) => v.includes(t)) as DressWeather[],
+              })
+            }
+          >
+            <Group gap="xs">
+              {DRESS_WEATHERS.map((t) => (
+                <Chip key={t} value={t}>
+                  {DRESS_WEATHER_LABELS[t]}
+                </Chip>
+              ))}
+            </Group>
+          </Chip.Group>
+          <Text size="sm" fw={500}>
+            Задания (по очереди)
+          </Text>
+          <Chip.Group
+            multiple
+            value={spec.tasks}
+            onChange={(v) =>
+              v.length &&
+              onChange({
+                ...spec,
+                tasks: DRESS_TASKS.filter((t) => v.includes(t)) as DressTask[],
+              })
+            }
+          >
+            <Group gap="xs">
+              {DRESS_TASKS.map((t) => (
+                <Chip key={t} value={t}>
+                  {DRESS_TASK_LABELS[t]}
+                </Chip>
+              ))}
+            </Group>
+          </Chip.Group>
+          <Group grow>
+            <NumberInput
+              label="Сколько вещей надеть"
+              min={1}
+              max={4}
+              value={spec.items}
+              onChange={(v) => onChange({ ...spec, items: num(v, 1) })}
+            />
+            <NumberInput
+              label="Заданий"
+              min={2}
+              max={6}
+              value={spec.rounds}
+              onChange={(v) => onChange({ ...spec, rounds: num(v, 4) })}
+            />
+          </Group>
+          <Text size="xs" c="dimmed">
+            Мишка собирается гулять, за окном дождь, снег, жара или ветер. «Одень по погоде» —
+            ребёнок берёт вещи из шкафа и надевает на мишку; неподходящая не наденется, мишка
+            помотает головой, а голос скажет почему («В шубе жарко!»). Одна вещь — самая главная
+            (зонтик от дождя), четыре — всё, что нужно. «Что не так?» — мишка оделся сам и одну вещь
+            перепутал: ему жарко, холодно или он мокнет; её снять и надеть подходящую.
           </Text>
         </Stack>
       );

@@ -63,6 +63,7 @@ const SPECS = [
   { kind: 'paints', colors: ['orange'], tubes: 'needed', guess: false, rounds: 3 },
   { kind: 'train', task: 'tickets', look: 'dots', max: 3, wagons: 3, rounds: 3 },
   { kind: 'scales', tasks: ['compare'], look: 'cubes', max: 5, rounds: 4 },
+  { kind: 'dress', weathers: ['rain', 'sun'], items: 1, tasks: ['dress'], rounds: 3 },
   { kind: 'gears', tasks: ['build'], gaps: 2, sizes: false, rounds: 3 },
 ] as const;
 
@@ -250,6 +251,29 @@ describe('игры этапа 41', () => {
     expect(gameSpec.safeParse({ kind: 'gears', tasks: [], rounds: 3 }).success).toBe(false);
     expect(gameSpec.safeParse({ kind: 'gears', gaps: 5, rounds: 3 }).success).toBe(false);
     expect(gameSpec.safeParse({ kind: 'gears', rounds: 7 }).success).toBe(false);
+  });
+
+  it('одень мишку (этап 58): одна вещь → две → всё по погоде → и «Что не так?»', () => {
+    const dress = gameSpec.parse({ kind: 'dress', rounds: 4 }) as GameSpec;
+    expect(dress).toMatchObject({
+      weathers: ['rain', 'snow', 'sun', 'wind'],
+      items: 1,
+      tasks: ['dress'],
+    });
+    expect(specAtLevel(dress, 2)).toMatchObject({ items: 2, tasks: ['dress'] });
+    expect(specAtLevel(dress, 3)).toMatchObject({ items: 4, tasks: ['dress'] });
+    expect(specAtLevel(dress, 4)).toMatchObject({ items: 4, tasks: ['dress', 'odd'] });
+    // Погоду уровни не трогают; только «что не так» — им и остаётся.
+    const odd = gameSpec.parse({
+      kind: 'dress',
+      weathers: ['snow'],
+      tasks: ['odd'],
+      rounds: 2,
+    }) as GameSpec;
+    expect(specAtLevel(odd, 4)).toMatchObject({ weathers: ['snow'], tasks: ['odd'] });
+    expect(gameSpec.safeParse({ kind: 'dress', weathers: [], rounds: 3 }).success).toBe(false);
+    expect(gameSpec.safeParse({ kind: 'dress', items: 5, rounds: 3 }).success).toBe(false);
+    expect(gameSpec.safeParse({ kind: 'dress', rounds: 7 }).success).toBe(false);
   });
 
   it('буквы этапа 56: обводка — ступенью выше, шарики — и маленькие', () => {
