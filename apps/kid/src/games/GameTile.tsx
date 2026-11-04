@@ -81,6 +81,7 @@ export const ICON: Record<GameKind, string> = {
   dress: '🧸',
   figure: '🔷',
   bot: '🤖',
+  cuckoo: '🕰️',
   poem: '📖',
   book: '📚',
 };
