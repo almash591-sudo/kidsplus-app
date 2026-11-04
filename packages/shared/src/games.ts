@@ -210,6 +210,14 @@ export const FIGURE_SHAPE_LABELS: Record<FigureShape, string> = {
   cat: 'Кошка',
   boat: 'Кораблик',
 };
+/** Задания «Робота» (этап 58): составить программу до батарейки, найти ошибку в готовой. */
+export const BOT_TASKS = ['go', 'fix'] as const;
+export type BotTask = (typeof BOT_TASKS)[number];
+/** Как задания «Робота» называются в кабинете. */
+export const BOT_TASK_LABELS: Record<BotTask, string> = {
+  go: 'Составь программу',
+  fix: 'Найди ошибку в программе',
+};
 /** Как задания «Весов» называются в кабинете. */
 export const SCALES_TASK_LABELS: Record<ScalesTask, string> = {
   compare: 'Какая тяжелее',
@@ -979,6 +987,21 @@ export const gameSpec = z.discriminatedUnion('kind', [
     rounds: z.number().int().min(2).max(6),
   }),
   /**
+   * Робот и батарейка (этап 58): робот на клетчатом коврике должен доехать до батарейки. Ребёнок
+   * выкладывает стрелки-команды в ленту и жмёт «Пуск»; робот едет по шагам, упёрся — спотыкается и
+   * возвращается. steps — сколько шагов до батарейки, turns — сколько поворотов в пути, blocks —
+   * на коврике коробки и игрушки, их объезжать. tasks: go — составить программу самому, fix —
+   * робот уже составил программу с одной ошибкой: найти неправильную стрелку и заменить.
+   */
+  z.object({
+    kind: z.literal('bot'),
+    tasks: z.array(z.enum(BOT_TASKS)).min(1).max(BOT_TASKS.length).default(['go']),
+    steps: z.number().int().min(1).max(8).default(2),
+    turns: z.number().int().min(0).max(3).default(0),
+    blocks: z.boolean().default(false),
+    rounds: z.number().int().min(2).max(6),
+  }),
+  /**
    * Стих или сказка (этап 45) из встроенной библиотеки: послушать под глиняные картинки, повторять
    * за голосом по частям (repeat), «Договори словечко» (blanks) и вопросы по смыслу (questions) —
    * choices вариантов-картинок. Выученную часть телефон помнит: в следующий раз учим следующую.
@@ -1116,6 +1139,7 @@ export const GAME_KINDS: Record<GameKind, string> = {
   gears: 'Шестерёнки',
   dress: 'Одень мишку',
   figure: 'Сложи фигуру',
+  bot: 'Робот и батарейка',
   poem: 'Стих или сказка',
   book: 'Книжка',
 };
@@ -1199,6 +1223,7 @@ export function gameImageIds(g: GameSpec): string[] {
     case 'gears':
     case 'dress':
     case 'figure':
+    case 'bot':
     case 'poem':
     case 'book':
       return [];
