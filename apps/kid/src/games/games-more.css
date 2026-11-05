@@ -2473,7 +2473,8 @@
   pointer-events: none;
 }
 /* iPhone разрешает датчик только после нажатия. */
-.marble-start {
+.marble-start,
+.seek-start {
   position: absolute;
   left: 50%;
   top: 50%;
@@ -2520,6 +2521,39 @@
 }
 /* Невидимая цель для пальца подсказки. */
 .bubbles-hint {
+  position: absolute;
+  display: none;
+  pointer-events: none;
+}
+
+/* ─── «Прятки в комнате» (этап 59) ─── */
+.game.seek {
+  padding: 0;
+  inset: 0;
+  background: #f7d39d;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+/* Задняя камера не зеркалится: это окно в комнату. Кадр только показывается, игра его не читает. */
+.seek-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.seek-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+/* Невидимые цели для пальца подсказки: откуда и куда тянуть комнату. */
+.seek-hint {
   position: absolute;
   display: none;
   pointer-events: none;
