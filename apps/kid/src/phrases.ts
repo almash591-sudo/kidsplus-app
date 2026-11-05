@@ -46,6 +46,7 @@ import { lineStart, partSpeech, poemAnnounce, poemOf, type PoemCode } from '@kid
 import { SONGS } from '@kidsplus/shared/songs';
 import { soundPlace, syllablesIn, unstressed, wordScheme } from '@kidsplus/shared/sounds';
 import { NUMBERS, paint, PALETTE, type SpecOf } from './games/common';
+import { MARBLE_WORDS } from './games/marbleLogic';
 import { DAY, type DayId, type Time } from './games/cuckooLogic';
 import { needCount, OUTFITS, SLOT, WRONG_IN, type ItemId } from './games/dressLogic';
 import { PAINT_OBJECTS } from './games/paintsLogic';
@@ -988,6 +989,36 @@ export function cuckooPhrases(spec: SpecOf<'cuckoo'>) {
   ];
 }
 
+// ─── «Катись, шарик» (этап 59) ───
+export const MARBLE_GO = 'Держи телефон двумя руками и наклоняй. Шарик покатится!';
+export const MARBLE_HOLE = 'Докати шарик до лунки с флажком!';
+export const MARBLE_COUNT = 'Собери числа по порядку: один, два, три…';
+export const marbleWord = (word: string) => `Собери слово «${word}»!`;
+export const MARBLE_TILT = 'Наклони телефон — шарик покатится сам!';
+export const MARBLE_FINGER = 'Кати шарик пальцем: нажми и веди.';
+export const MARBLE_PIT = 'Ой, ямка! Шарик вернулся на старт.';
+export const MARBLE_ORDER = 'По порядку! Ищи то, что светится.';
+export const MARBLE_WIN = 'Шарик в лунке!';
+export const MARBLE_END = 'Все дощечки пройдены! Ловкие руки!';
+export const MARBLE_ASK =
+  'Нажми на зелёную кнопку. Если телефон спросит, попроси взрослого разрешить.';
+export function marblePhrases(spec: SpecOf<'marble'>) {
+  return [
+    MARBLE_GO,
+    MARBLE_TILT,
+    MARBLE_FINGER,
+    MARBLE_END,
+    MARBLE_ASK,
+    ...(spec.pits ? [MARBLE_PIT] : []),
+    ...(spec.tasks.includes('hole') ? [MARBLE_HOLE, MARBLE_WIN] : []),
+    ...(spec.tasks.some((t) => t !== 'hole') ? [MARBLE_ORDER] : []),
+    ...(spec.tasks.includes('count') ? [MARBLE_COUNT, ...NUMBERS.slice(1, 6)] : []),
+    ...(spec.tasks.includes('word')
+      ? MARBLE_WORDS.flatMap((word) => [marbleWord(word), word])
+      : []),
+  ];
+}
+
 // ─── Этап 45: стихи и сказки ───
 export const POEM_INTRO = 'Послушай и повторяй за мной!';
 export const POEM_REPEAT = 'Повторяй за мной!';
@@ -1119,6 +1150,7 @@ export const GAME_INTRO: Record<GameKind, string> = {
   figure: figureTask('house', false),
   bot: BOT_GO,
   cuckoo: CUCKOO_GO,
+  marble: MARBLE_GO,
   poem: POEM_INTRO,
   book: BOOK_INTRO,
 };
@@ -1377,6 +1409,8 @@ export function gamePhrases(spec: GameSpec): string[] {
       return botPhrases(spec);
     case 'cuckoo':
       return cuckooPhrases(spec);
+    case 'marble':
+      return marblePhrases(spec);
     case 'poem':
       return poemPhrases(spec.poem);
     case 'book':

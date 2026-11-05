@@ -310,6 +310,41 @@ export const fx = {
     noise(0, 0.012, { from: 4200, to: 3200, gain: 0.12, q: 5 });
     tone(2100, 0, 0.02, { type: 'triangle', gain: 0.05 });
   },
+  /** Шарик катится (этап 59): шорох по дереву, на скорости громче и выше. */
+  rolling(speed: number) {
+    noise(0, 0.14, {
+      from: 420 + speed * 520,
+      to: 320 + speed * 420,
+      gain: 0.02 + speed * 0.06,
+      q: 1.2,
+    });
+  },
+  /** Шарик стукнулся о перегородку: чем сильнее, тем громче; сильный удар слышно и рукой. */
+  rap(force: number) {
+    noise(0, 0.03, { from: 1500, to: 800, gain: 0.08 + force * 0.26, q: 2 });
+    tone(210 + force * 110, 0, 0.07, { type: 'triangle', gain: 0.07 + force * 0.17 });
+    if (force > 0.45) vibrate([14]);
+  },
+  /** Шарик упал в ямку: «плюх» вниз. */
+  plop() {
+    tone(430, 0, 0.24, { slideTo: 120, gain: 0.24 });
+    noise(0.12, 0.12, { from: 520, to: 240, gain: 0.1, q: 2 });
+    vibrate([28]);
+  },
+  /** Шарик крутится в лунке и падает: звон по кругу и «тук» на дне. */
+  sink() {
+    [0, 0.09, 0.17, 0.24, 0.3, 0.35].forEach((at, i) =>
+      tone(620 + i * 60, at, 0.07, { type: 'triangle', gain: 0.1 }),
+    );
+    tone(180, 0.42, 0.14, { slideTo: 110, gain: 0.3 });
+    vibrate([18, 50, 24]);
+  },
+  /** Шарик собрал число или букву: нота за нотой вверх. */
+  pick(i: number) {
+    const f = [C5, E5, G5, C6, E6][i % 5]!;
+    tone(f, 0, 0.16, { type: 'triangle', gain: 0.26 });
+    tone(f * 2, 0.05, 0.12, { gain: 0.06 });
+  },
   /** Праздник в конце: арпеджио и искорки. */
   fanfare() {
     [C5, E5, G5, C6, E6].forEach((f, i) => tone(f, i * 0.09, 0.3, { type: 'triangle', gain: 0.4 }));
