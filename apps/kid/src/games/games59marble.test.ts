@@ -51,6 +51,8 @@ import {
 } from './tilt';
 
 const spec = (o: object) => gameSpec.parse({ kind: 'marble', rounds: 4, ...o }) as SpecOf<'marble'>;
+/** Перебор дощечек и прогон автопилота: на сервере CI дольше обычных 5 секунд. */
+const HEAVY = { timeout: 30000 };
 const seeded = (seed: number) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
 const SCREENS = [
   [412, 915],
@@ -79,7 +81,7 @@ const ROUNDS: MarbleRound[] = [0, 1, 2, 3, 4].flatMap((walls) =>
 );
 
 describe('куда катить', () => {
-  it('у стенки и у ямки цель впереди, а не под самим шариком', () => {
+  it('у стенки и у ямки цель впереди, а не под самим шариком', HEAVY, () => {
     const rounds = ROUNDS.filter((r) => r.task === 'hole' && (r.walls > 0 || r.pits));
     let checked = 0;
     for (const [i, r] of rounds.entries()) {
@@ -249,7 +251,7 @@ describe('Наклон', () => {
 describe('Дощечка', () => {
   const targets = (b: Board) => [...b.tokens.map((t) => t.at), ...(b.goal ? [b.goal] : [])];
 
-  it('на любом экране проходима, и ничто не лежит друг на друге', () => {
+  it('на любом экране проходима, и ничто не лежит друг на друге', HEAVY, () => {
     for (const [w, h] of SCREENS)
       for (const r of ROUNDS)
         for (let seed = 1; seed <= 3; seed++) {
@@ -346,7 +348,7 @@ describe('Шарик', () => {
     expect(Math.hypot(ball.vx, ball.vy)).toBeLessThan(0.8);
   });
 
-  it('автопилот: на любой дощечке от старта до цели, в обход ямок', () => {
+  it('автопилот: на любой дощечке от старта до цели, в обход ямок', HEAVY, () => {
     for (const [w, h] of [SCREENS[0], SCREENS[1], SCREENS[3]])
       for (const r of ROUNDS) {
         const b = makeBoard(r, heightFor(w, h), seeded(r.walls * 31 + w));
