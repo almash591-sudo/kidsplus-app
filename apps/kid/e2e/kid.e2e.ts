@@ -2388,6 +2388,177 @@ class MarblePilot {
   }
 }
 
+type BubblesHand = 'wave' | 'wrong' | 'still' | 'frozen' | 'deny';
+interface BubbleSeen {
+  id: number;
+  x: number;
+  y: number;
+  r: number;
+  target: boolean;
+  wobble: boolean;
+}
+/**
+ * Автопилот «Волшебных пузырей»: поддельная камера. getUserMedia отдаёт поток настоящего холста, на
+ * котором в тёмной комнате мелькает светлое пятно — там, где пузырь окажется в зеркальном кадре. Так
+ * проверяется вся цепочка: поток → видео → кадр 96 × 72 → движение → зеркало → пузырь. Заодно здесь
+ * считается всё, чем кадр мог бы утечь.
+ */
+class BubblesPilot {
+  constructor(private page: Page) {}
+  private get g() {
+    return this.page.getByTestId('game-bubbles');
+  }
+  /** Поставить камеру до открытия игры. */
+  async install(mode: BubblesHand) {
+    await this.page.addInitScript((first) => {
+      const cam = {
+        mode: first,
+        asks: [] as MediaStreamConstraints[],
+        tracks: [] as MediaStreamTrack[],
+        leaks: [] as string[],
+      };
+      (window as unknown as { __cam: typeof cam }).__cam = cam;
+      const spy = (proto: object | undefined, name: string) => {
+        const host = proto as Record<string, (...a: unknown[]) => unknown> | undefined;
+        const real = host?.[name];
+        if (!host || !real) return;
+        host[name] = function (this: unknown, ...a: unknown[]) {
+          cam.leaks.push(name);
+          return real.apply(this, a);
+        };
+      };
+      spy(HTMLCanvasElement.prototype, 'toDataURL');
+      spy(HTMLCanvasElement.prototype, 'toBlob');
+      spy(window.OffscreenCanvas?.prototype, 'convertToBlob');
+      spy(window.MediaRecorder?.prototype, 'start');
+
+      const W = 640;
+      const H = 480;
+      const frame = document.createElement('canvas');
+      frame.width = W;
+      frame.height = H;
+      const pen = frame.getContext('2d')!;
+      let flash = false;
+      setInterval(() => {
+        if (cam.mode === 'frozen') return;
+        const v = 40 + Math.floor(Math.random() * 5);
+        pen.fillStyle = `rgb(${v},${v},${v})`;
+        pen.fillRect(0, 0, W, H);
+        const el = document.querySelector<HTMLElement>('[data-testid=game-bubbles]');
+        if (!el || (cam.mode !== 'wave' && cam.mode !== 'wrong')) return;
+        const seen = JSON.parse(el.dataset.bubbles ?? '[]') as {
+          x: number;
+          y: number;
+          r: number;
+          target: boolean;
+        }[];
+        const { width: sw, height: sh } = el.getBoundingClientRect();
+        const near = (a: (typeof seen)[number], b: (typeof seen)[number]) =>
+          Math.hypot(a.x - b.x, a.y - b.y) < a.r + b.r + 30;
+        const aim = seen
+          .filter((b) => b.y > 0 && b.y < sh)
+          .find((b) =>
+            cam.mode === 'wave' ? b.target : !b.target && !seen.some((t) => t.target && near(t, b)),
+          );
+        flash = !flash;
+        if (!aim || !flash) return;
+        // object-fit: cover и зеркало — как у настоящей передней камеры.
+        const k = Math.max(sw / W, sh / H);
+        pen.fillStyle = '#fff';
+        pen.beginPath();
+        pen.arc(
+          (sw - aim.x - (sw - W * k) / 2) / k,
+          (aim.y - (sh - H * k) / 2) / k,
+          aim.r / k,
+          0,
+          Math.PI * 2,
+        );
+        pen.fill();
+      }, 33);
+      Object.defineProperty(navigator, 'mediaDevices', {
+        configurable: true,
+        value: {
+          getUserMedia: async (asked: MediaStreamConstraints) => {
+            cam.asks.push(asked);
+            if (cam.mode === 'deny') throw new DOMException('нет', 'NotAllowedError');
+            const stream = frame.captureStream(15);
+            cam.tracks.push(...stream.getTracks());
+            return stream;
+          },
+        },
+      });
+    }, mode);
+  }
+  /** Что делает рука перед камерой. */
+  async hand(mode: BubblesHand) {
+    await this.page.evaluate((m) => {
+      (window as unknown as { __cam: { mode: string } }).__cam.mode = m;
+    }, mode);
+  }
+  async play() {
+    await expect(this.g).toHaveAttribute('data-phase', 'play', { timeout: 15_000 });
+  }
+  async pops() {
+    return Number(await this.g.getAttribute('data-pops'));
+  }
+  async bubbles() {
+    return JSON.parse((await this.g.getAttribute('data-bubbles')) ?? '[]') as BubbleSeen[];
+  }
+  /** Сколько дорожек камеры ещё работает. */
+  async liveTracks() {
+    return this.page.evaluate(
+      () =>
+        (window as unknown as { __cam: { tracks: MediaStreamTrack[] } }).__cam.tracks.filter(
+          (t) => t.readyState !== 'ended',
+        ).length,
+    );
+  }
+  async asks() {
+    return this.page.evaluate(
+      () => (window as unknown as { __cam: { asks: MediaStreamConstraints[] } }).__cam.asks,
+    );
+  }
+  async leaks() {
+    return this.page.evaluate(
+      () => (window as unknown as { __cam: { leaks: string[] } }).__cam.leaks,
+    );
+  }
+  /** Притвориться, что экран погас или загорелся. */
+  async screenOn(on: boolean) {
+    await this.page.evaluate((visible) => {
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => !visible });
+      document.dispatchEvent(new Event('visibilitychange'));
+    }, on);
+  }
+  /** Нажать пальцем на подходящий пузырь, как только такой всплывёт. */
+  async tap(target: boolean) {
+    const box = (await this.g.boundingBox())!;
+    const pick = async () => {
+      const list = await this.bubbles();
+      return list.find(
+        (b) =>
+          b.target === target &&
+          b.y > 150 &&
+          b.y < box.height - 40 &&
+          !list.some(
+            (o) => o.target !== target && Math.hypot(o.x - b.x, o.y - b.y) < o.r * 1.15 + b.r,
+          ),
+      );
+    };
+    await expect.poll(async () => !!(await pick()), { timeout: 15_000 }).toBe(true);
+    const b = (await pick())!;
+    await this.page.mouse.click(box.x + b.x, box.y + b.y);
+  }
+  /** Лопать пальцем нужные, пока не кончится раунд. */
+  async tapRound(goal: number) {
+    for (let i = 0; i < goal; i++) {
+      const before = await this.pops();
+      await this.tap(true);
+      await expect.poll(() => this.pops()).toBe(before + 1);
+    }
+  }
+}
+
 async function expectFinished(page: Page, backend: Backend) {
   await expect(page.getByTestId('game-finished')).toBeVisible({ timeout: 6000 });
   await expect
@@ -4964,6 +5135,179 @@ test.describe('новые игры', () => {
         'Нажми на зелёную кнопку. Если телефон спросит, попроси взрослого разрешить.',
       );
     });
+
+  test('пузыри (этап 59): взмах лопает — ребёнок как в зеркале, ошибок нет, камера гаснет', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(120_000);
+    backend.items = [game(1, { kind: 'bubbles', tasks: ['all'], goal: 3, fast: false, rounds: 2 })];
+    const b = new BubblesPilot(page);
+    await b.install('still');
+    await openGame(page);
+    const g = page.getByTestId('game-bubbles');
+    await b.play();
+    await expect(g).toHaveAttribute('data-camera', 'on');
+    // Взмахом играют без касаний: это не значит, что ребёнок завис.
+    await expect(g).toHaveAttribute('data-no-idle', 'true');
+    const video = page.locator('.bubbles-video');
+    expect(await video.evaluate((v) => getComputedStyle(v).transform)).toContain('matrix(-1');
+    // Кадр уменьшается до маленького, но в тех же пропорциях.
+    await expect(g).toHaveAttribute('data-frame', '96x72');
+    // Рука не двигается — ни один пузырь не лопается, зато голос подсказывает.
+    await expect
+      .poll(() => spoken(page).then((s) => s.map((x) => x.text)))
+      .toContain('Помаши рукой прямо по пузырю!');
+    expect(await b.pops()).toBe(0);
+    await shot(page, 'bubbles-camera');
+    await b.hand('wave');
+    await expect(g).toHaveAttribute('data-round', '1', { timeout: 30_000 });
+    await expect(g).toHaveAttribute('data-phase', 'finish', { timeout: 30_000 });
+    // Игра кончилась — камера выключена сразу, а не на выходе с экрана.
+    await expect.poll(() => b.liveTracks()).toBe(0);
+    await shot(page, 'bubbles-finish');
+    await expectFinished(page, backend);
+    const done = backend.events.find((e) => e.type === 'interactive_complete')!;
+    expect(done.payload).toMatchObject({ mistakes: 0 });
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain('Посмотри, это ты! Маши рукой, и пузыри лопнут.');
+    expect(said).toContain('Лопай все пузыри!');
+    expect(said).toContain('Все пузыри лопнули! Какие ловкие руки!');
+    expect(said).not.toContain('Лопай пузыри пальцем!');
+  });
+
+  test('пузыри (этап 59): камера видит взмах по чужому пузырю — он качнётся, это не ошибка', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(120_000);
+    backend.items = [
+      game(1, { kind: 'bubbles', tasks: ['color', 'digit'], goal: 3, fast: false, rounds: 2 }),
+    ];
+    const b = new BubblesPilot(page);
+    await b.install('wrong');
+    await openGame(page);
+    const g = page.getByTestId('game-bubbles');
+    await b.play();
+    await expect(g).toHaveAttribute('data-task', 'color');
+    await expect
+      .poll(async () => (await b.bubbles()).some((x) => x.wobble && !x.target), { timeout: 30_000 })
+      .toBe(true);
+    await shot(page, 'bubbles-color');
+    expect(await b.pops()).toBe(0);
+    await b.hand('wave');
+    await expect(g).toHaveAttribute('data-round', '1', { timeout: 30_000 });
+    await expect(g).toHaveAttribute('data-task', 'digit');
+    await expect
+      .poll(async () => (await b.bubbles()).length, { timeout: 10_000 })
+      .toBeGreaterThan(1);
+    await shot(page, 'bubbles-digit');
+    await expect(g).toHaveAttribute('data-phase', 'finish', { timeout: 30_000 });
+    await expectFinished(page, backend);
+    const done = backend.events.find((e) => e.type === 'interactive_complete')!;
+    expect(done.payload).toMatchObject({ mistakes: 0 });
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said.some((t) => /^Лопай только [а-яё]+ пузыри!$/.test(t))).toBe(true);
+    expect(said.some((t) => /^Лопай пузыри с цифрой [а-яё]+!$/.test(t))).toBe(true);
+  });
+
+  test('пузыри (этап 59): камеру не разрешили — лопаем пальцем, чужой пузырь — ошибка', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(120_000);
+    backend.items = [
+      game(1, { kind: 'bubbles', tasks: ['color'], goal: 3, fast: false, rounds: 2 }),
+    ];
+    const b = new BubblesPilot(page);
+    await b.install('deny');
+    await openGame(page);
+    const g = page.getByTestId('game-bubbles');
+    await b.play();
+    await expect(g).toHaveAttribute('data-camera', 'off');
+    // Играют пальцем — подсказка «ребёнок завис» снова нужна, и ей есть куда показать.
+    await expect(g).not.toHaveAttribute('data-no-idle', /.*/);
+    await expect(page.locator('.bubbles-hint[data-hint]')).toHaveCount(1, { timeout: 10_000 });
+    await shot(page, 'bubbles-finger');
+    await b.tap(false);
+    await expect(g).toHaveAttribute('data-got', '0');
+    await b.tapRound(3);
+    await expect(g).toHaveAttribute('data-round', '1', { timeout: 20_000 });
+    await b.tapRound(3);
+    await expect(g).toHaveAttribute('data-phase', 'finish', { timeout: 20_000 });
+    await expectFinished(page, backend);
+    const done = backend.events.find((e) => e.type === 'interactive_complete')!;
+    expect(done.payload).toMatchObject({ mistakes: 1 });
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain('Лопай пузыри пальцем!');
+    expect(said).not.toContain('Посмотри, это ты! Маши рукой, и пузыри лопнут.');
+  });
+
+  test('пузыри (этап 59): камера зависла — палец, ожила — снова взмах', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(120_000);
+    backend.items = [
+      game(1, { kind: 'bubbles', tasks: ['all'], goal: 12, fast: false, rounds: 2 }),
+    ];
+    const b = new BubblesPilot(page);
+    await b.install('still');
+    await openGame(page);
+    const g = page.getByTestId('game-bubbles');
+    await b.play();
+    await expect(g).toHaveAttribute('data-camera', 'on');
+    await b.hand('frozen');
+    await expect(g).toHaveAttribute('data-camera', 'off', { timeout: 10_000 });
+    await expect
+      .poll(() => spoken(page).then((s) => s.map((x) => x.text)))
+      .toContain('Лопай пузыри пальцем!');
+    await b.tap(true);
+    await expect.poll(() => b.pops()).toBe(1);
+    await b.hand('wave');
+    await expect(g).toHaveAttribute('data-camera', 'on', { timeout: 10_000 });
+    await expect.poll(() => b.pops(), { timeout: 20_000 }).toBeGreaterThan(1);
+  });
+
+  test('пузыри (этап 59): кадры не уходят — ни записи, ни отправки; камера гаснет с экраном', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(120_000);
+    backend.items = [
+      game(1, { kind: 'bubbles', tasks: ['all'], goal: 12, fast: false, rounds: 2 }),
+    ];
+    const sent: number[] = [];
+    page.on('request', (r) => sent.push(r.postDataBuffer()?.byteLength ?? 0));
+    const b = new BubblesPilot(page);
+    await b.install('wave');
+    await openGame(page);
+    const g = page.getByTestId('game-bubbles');
+    await b.play();
+    await expect(g).toHaveAttribute('data-camera', 'on');
+    await expect.poll(() => b.pops(), { timeout: 20_000 }).toBeGreaterThan(1);
+    const [ask] = await b.asks();
+    expect(ask).toMatchObject({ audio: false, video: { facingMode: 'user' } });
+
+    // Экран погас — камера выключена, загорелся — включается заново и снова работает.
+    await b.screenOn(false);
+    await expect.poll(() => b.liveTracks()).toBe(0);
+    await b.screenOn(true);
+    await expect.poll(async () => (await b.asks()).length).toBe(2);
+    await expect.poll(() => b.liveTracks()).toBe(1);
+    const before = await b.pops();
+    await expect.poll(() => b.pops(), { timeout: 20_000 }).toBeGreaterThan(before);
+
+    // Вышли посреди раунда — камера выключена, экран игры закрыт.
+    await page.getByTestId('go-home').click();
+    await expect(page.getByTestId('home')).toBeVisible();
+    await expect.poll(() => b.liveTracks()).toBe(0);
+    await expect(page.locator('.bubbles-video')).toHaveCount(0);
+
+    expect(await b.leaks()).toEqual([]);
+    // Самая большая отправка — короткая фраза на озвучку, кадр в такой размер не влезет.
+    expect(Math.max(...sent)).toBeLessThan(8000);
+  });
 
   test('стих (этап 45): послушать, повторять за голосом, «Договори словечко», вопросы — часть выучена', async ({
     page,
