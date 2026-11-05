@@ -497,16 +497,18 @@ export function Seek({ spec, phrases, onFinish }: GameProps<'seek'>) {
       const bh = (bw * im.naturalHeight) / im.naturalWidth;
       const yaw = ((headingOf(view) % 360) + 360) % 360;
       for (let k = -1; k <= 2; k++) {
-        const x = w / 2 + ((k * 180 - yaw) / 180) * bw;
+        // Начинаем с середины картинки: там окно и полка, а не пустая стена на стыке.
+        const x = w / 2 + ((k * 180 - 90 - yaw) / 180) * bw;
         if (x > w || x + bw < 0) continue;
         if (k % 2 === 0) {
-          ctx.drawImage(im, x, y0 - bh / 2, bw, bh);
+          ctx.drawImage(im, x - 0.5, y0 - bh / 2, bw + 1, bh);
           continue;
         }
         ctx.save();
         ctx.translate(x + bw, y0 - bh / 2);
         ctx.scale(-1, 1);
-        ctx.drawImage(im, 0, 0, bw, bh);
+        // Половинки заходят друг на друга на пиксель, иначе на стыке видна полоска.
+        ctx.drawImage(im, -0.5, 0, bw + 1, bh);
         ctx.restore();
       }
       ctx.fillStyle = CEILING;
