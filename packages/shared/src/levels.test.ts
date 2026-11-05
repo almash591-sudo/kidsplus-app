@@ -309,7 +309,11 @@ describe('игры этапа 41', () => {
     expect(marble).toMatchObject({ tasks: ['hole'], walls: 0, pits: false });
     expect(specAtLevel(marble, 2)).toMatchObject({ walls: 1, pits: false, tasks: ['hole'] });
     expect(specAtLevel(marble, 3)).toMatchObject({ walls: 2, pits: true, tasks: ['hole'] });
-    expect(specAtLevel(marble, 4)).toMatchObject({ walls: 2, pits: true, tasks: ['hole', 'count'] });
+    expect(specAtLevel(marble, 4)).toMatchObject({
+      walls: 2,
+      pits: true,
+      tasks: ['hole', 'count'],
+    });
     // Родитель уже задал больше — уровни не убавляют; четыре перегородки — предел.
     const big = gameSpec.parse({
       kind: 'marble',
