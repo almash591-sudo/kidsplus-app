@@ -12,6 +12,7 @@ import {
   BOARD_W,
   flowTo,
   fingerWish,
+  free,
   fromPx,
   heightFor,
   inHole,
@@ -76,6 +77,25 @@ const ROUNDS: MarbleRound[] = [0, 1, 2, 3, 4].flatMap((walls) =>
     ]),
   ),
 );
+
+describe('куда катить', () => {
+  it('у стенки и у ямки цель впереди, а не под самим шариком', () => {
+    const rounds = ROUNDS.filter((r) => r.task === 'hole' && (r.walls > 0 || r.pits));
+    let checked = 0;
+    for (const [i, r] of rounds.entries()) {
+      const rnd = seeded(i * 101 + 7);
+      const b = makeBoard(r, 17, rnd);
+      const flow = flowTo(b, b.goal!);
+      for (let k = 0; k < 1500; k++) {
+        const at = { x: rnd() * b.w, y: rnd() * b.h };
+        if (free(b, at) || pathFrom(flow, at).length < 5) continue;
+        checked++;
+        expect(dist(aimFrom(b, flow, at), at)).toBeGreaterThan(0.15);
+      }
+    }
+    expect(checked).toBeGreaterThan(1000);
+  });
+});
 
 describe('Наклон', () => {
   const flat = gravityOf(0, 0);

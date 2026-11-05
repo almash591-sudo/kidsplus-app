@@ -194,8 +194,9 @@ function sees(b: Board, a: P, to: P) {
 export function aimFrom(b: Board, f: Flow, from: P): P {
   const path = pathFrom(f, from);
   if (!path.length) return from;
+  // Начало пути — под самим шариком: у стенки дальше него ничего не видно, а стоять на месте нельзя.
   let aim = path[Math.min(3, path.length - 1)]!;
-  for (let i = 0; i < path.length; i += 2) if (sees(b, from, path[i]!)) aim = path[i]!;
+  for (let i = 2; i < path.length; i += 2) if (sees(b, from, path[i]!)) aim = path[i]!;
   return aim;
 }
 
