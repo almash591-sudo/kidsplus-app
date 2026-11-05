@@ -18,6 +18,7 @@ import {
   type GameProps,
 } from './common';
 import { Bubbles } from './Bubbles';
+import { Seek } from './Seek';
 import { Clock } from './Clock';
 import { Counting } from './Counting';
 import { Robot } from './Robot';
@@ -163,6 +164,7 @@ const OWN_SCENE: GameKind[] = [
   'cuckoo',
   'marble',
   'bubbles',
+  'seek',
   'poem',
   'book',
 ];
@@ -186,6 +188,8 @@ const OWL_INSIDE: readonly GameKind[] = [
   'marble',
   // Пузыри (этап 59): на экране сам ребёнок.
   'bubbles',
+  // Прятки (этап 59): на экране настоящая комната.
+  'seek',
   // Загадки (этап 41): совёнок загадывает посреди экрана.
   'riddle',
   // Стих (этап 45): совёнок читает и слушает ребёнка.
@@ -271,6 +275,7 @@ const GAMES: { [K in GameKind]: ComponentType<GameProps<K>> } = {
   bot: Bot,
   marble: Marble,
   bubbles: Bubbles,
+  seek: Seek,
   cuckoo: Cuckoo,
   poem: Poem,
   book: Book,

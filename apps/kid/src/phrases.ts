@@ -47,6 +47,15 @@ import { SONGS } from '@kidsplus/shared/songs';
 import { soundPlace, syllablesIn, unstressed, wordScheme } from '@kidsplus/shared/sounds';
 import { NUMBERS, paint, PALETTE, type SpecOf } from './games/common';
 import { BUBBLE_COLORS, BUBBLE_DIGITS, COLOR_WORDS, type BubbleColor } from './games/bubblesLogic';
+import {
+  ANIMAL_NAMES,
+  ANIMAL_WHOM,
+  PLACE_WORDS,
+  placesFor,
+  SEEK_ANIMALS,
+  type SeekAnimal,
+  type SeekPlace,
+} from './games/seekLogic';
 import { MARBLE_WORDS } from './games/marbleLogic';
 import { DAY, type DayId, type Time } from './games/cuckooLogic';
 import { needCount, OUTFITS, SLOT, WRONG_IN, type ItemId } from './games/dressLogic';
@@ -1027,6 +1036,46 @@ export function bubblesPhrases(spec: SpecOf<'bubbles'>) {
   ];
 }
 
+// ─── «Прятки в комнате» (этап 59) ───
+export const SEEK_GO =
+  'Стой на месте и поворачивайся вместе с телефоном. Зверята спрятались в комнате!';
+export const SEEK_FINGER = 'Двигай комнату пальцем и ищи зверят!';
+export const SEEK_ALL = 'Найди всех зверят!';
+export const seekWho = (a: SeekAnimal) => `Найди ${ANIMAL_WHOM[a]}!`;
+export const seekWhere = (p: SeekPlace) => `Кто прячется ${PLACE_WORDS[p]}?`;
+export const seekFound = (a: SeekAnimal) => `Вот ${ANIMAL_NAMES[a]}!`;
+export const seekOther = (a: SeekAnimal) => `Это ${ANIMAL_NAMES[a]}.`;
+export const seekHere = (p: SeekPlace, a: SeekAnimal) => {
+  const word = PLACE_WORDS[p];
+  return `${word[0]!.toUpperCase()}${word.slice(1)} прячется ${ANIMAL_NAMES[a]}!`;
+};
+export const SEEK_TURN = 'Поворачивайся за стрелкой!';
+export const SEEK_WIN = 'Всех нашли!';
+export const SEEK_END = 'Все зверята нашлись! Прятки удались!';
+export const SEEK_ASK =
+  'Нажми на зелёную кнопку. Если телефон спросит, попроси взрослого разрешить.';
+export function seekPhrases(spec: SpecOf<'seek'>) {
+  const places = placesFor(spec.wide || spec.tasks.includes('where'));
+  return [
+    SEEK_GO,
+    SEEK_FINGER,
+    SEEK_TURN,
+    SEEK_WIN,
+    SEEK_END,
+    SEEK_ASK,
+    BUBBLES_ASK,
+    ...SEEK_ANIMALS.map(seekFound),
+    ...(spec.tasks.includes('all') ? [SEEK_ALL] : []),
+    ...(spec.tasks.includes('who') ? [...SEEK_ANIMALS.map(seekWho)] : []),
+    ...(spec.tasks.includes('who') || spec.tasks.includes('where')
+      ? SEEK_ANIMALS.map(seekOther)
+      : []),
+    ...(spec.tasks.includes('where')
+      ? places.flatMap((p) => [seekWhere(p), ...SEEK_ANIMALS.map((a) => seekHere(p, a))])
+      : []),
+  ];
+}
+
 export function marblePhrases(spec: SpecOf<'marble'>) {
   return [
     MARBLE_GO,
@@ -1177,6 +1226,7 @@ export const GAME_INTRO: Record<GameKind, string> = {
   cuckoo: CUCKOO_GO,
   marble: MARBLE_GO,
   bubbles: BUBBLES_GO,
+  seek: SEEK_GO,
   poem: POEM_INTRO,
   book: BOOK_INTRO,
 };
@@ -1439,6 +1489,8 @@ export function gamePhrases(spec: GameSpec): string[] {
       return marblePhrases(spec);
     case 'bubbles':
       return bubblesPhrases(spec);
+    case 'seek':
+      return seekPhrases(spec);
     case 'poem':
       return poemPhrases(spec.poem);
     case 'book':

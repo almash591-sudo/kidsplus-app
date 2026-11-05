@@ -2559,6 +2559,212 @@ class BubblesPilot {
   }
 }
 
+type SeekHand = 'aim' | 'wrong' | 'away' | 'hold' | 'off';
+interface SeekSpot {
+  id: number;
+  az: number;
+  el: number;
+  animal: string;
+  place?: string;
+  state: 'hidden' | 'seen' | 'found';
+  x: number;
+  y: number;
+  front: boolean;
+}
+/**
+ * Автопилот «Пряток»: рука с телефоном. Поворачивается к укрытию не рывком, а как ребёнок, и шлёт те
+ * же углы, что датчик телефона, который держат вертикально. Камера настоящая — поддельное устройство
+ * браузера, поэтому видно, что её просят и выключают; заодно считается всё, чем кадр мог бы утечь.
+ */
+class SeekPilot {
+  constructor(private page: Page) {}
+  private get g() {
+    return this.page.getByTestId('game-seek');
+  }
+  /** Поставить руку и камеру до открытия игры. */
+  async install(mode: SeekHand, camera: 'real' | 'deny' = 'real') {
+    await this.page.addInitScript(
+      ([first, access]) => {
+        const hand = { mode: first, az: 0, el: 0 };
+        const cam = {
+          asks: [] as MediaStreamConstraints[],
+          tracks: [] as MediaStreamTrack[],
+          leaks: [] as string[],
+        };
+        const w = window as unknown as { __hand: typeof hand; __cam: typeof cam };
+        w.__hand = hand;
+        w.__cam = cam;
+        const spy = (proto: object | undefined, name: string) => {
+          const host = proto as Record<string, (...a: unknown[]) => unknown> | undefined;
+          const real = host?.[name];
+          if (!host || !real) return;
+          host[name] = function (this: unknown, ...a: unknown[]) {
+            cam.leaks.push(name);
+            return real.apply(this, a);
+          };
+        };
+        spy(HTMLCanvasElement.prototype, 'toDataURL');
+        spy(HTMLCanvasElement.prototype, 'toBlob');
+        spy(CanvasRenderingContext2D.prototype, 'getImageData');
+        spy(window.OffscreenCanvas?.prototype, 'convertToBlob');
+        spy(window.MediaRecorder?.prototype, 'start');
+        const paint = CanvasRenderingContext2D.prototype.drawImage as (...a: unknown[]) => void;
+        CanvasRenderingContext2D.prototype.drawImage = function (
+          this: CanvasRenderingContext2D,
+          ...a: unknown[]
+        ) {
+          if (a[0] instanceof HTMLVideoElement) cam.leaks.push('drawImage(video)');
+          paint.apply(this, a);
+        } as typeof CanvasRenderingContext2D.prototype.drawImage;
+
+        const device = navigator.mediaDevices;
+        const open = device?.getUserMedia?.bind(device);
+        Object.defineProperty(navigator, 'mediaDevices', {
+          configurable: true,
+          value: {
+            getUserMedia: async (asked: MediaStreamConstraints) => {
+              cam.asks.push(asked);
+              if (access === 'deny') throw new DOMException('нет', 'NotAllowedError');
+              if (!open) throw new DOMException('нет', 'NotFoundError');
+              const stream = await open(asked);
+              cam.tracks.push(...stream.getTracks());
+              return stream;
+            },
+          },
+        });
+
+        const turn = (from: number, to: number, most: number) =>
+          from + Math.max(-most, Math.min(most, ((to - from + 540) % 360) - 180));
+        setInterval(() => {
+          if (hand.mode === 'off') return;
+          const el = document.querySelector<HTMLElement>('[data-testid=game-seek]');
+          if (el?.dataset.phase === 'play' && el.dataset.busy !== 'true') {
+            const spots = JSON.parse(el.dataset.spots ?? '[]') as {
+              id: number;
+              az: number;
+              el: number;
+              state: string;
+            }[];
+            const hidden = spots.filter((s) => s.state === 'hidden');
+            const target = hidden.find((s) => String(s.id) === el.dataset.target);
+            const goal =
+              hand.mode === 'aim'
+                ? (target ?? hidden[0])
+                : hand.mode === 'wrong'
+                  ? hidden.find((s) => s !== target)
+                  : hand.mode === 'away'
+                    ? target && { az: target.az + 180, el: 0 }
+                    : undefined;
+            if (goal) {
+              hand.az = turn(hand.az, goal.az, 6);
+              hand.el = turn(hand.el, goal.el, 4);
+            }
+          }
+          // Рука всегда чуть дрожит: совсем неподвижный телефон лежит на столе.
+          const shake = Math.sin(performance.now() / 140);
+          window.dispatchEvent(
+            Object.assign(new Event('deviceorientation'), {
+              alpha: -hand.az - shake,
+              beta: 90 + hand.el,
+              gamma: 0,
+            }),
+          );
+        }, 33);
+      },
+      [mode, camera] as const,
+    );
+  }
+  /** Сменить, что делает рука. */
+  async hand(mode: SeekHand) {
+    await this.page.evaluate((m) => {
+      (window as unknown as { __hand: { mode: string } }).__hand.mode = m;
+    }, mode);
+  }
+  async play() {
+    await expect(this.g).toHaveAttribute('data-phase', 'play', { timeout: 20_000 });
+  }
+  async got() {
+    return Number(await this.g.getAttribute('data-got'));
+  }
+  async spots() {
+    return JSON.parse((await this.g.getAttribute('data-spots')) ?? '[]') as SeekSpot[];
+  }
+  /** Кого нажимать пальцем: названного или любого спрятанного, а можно и нарочно не того. */
+  private async goal(wrong: boolean) {
+    const list = (await this.spots()).filter((s) => s.state === 'hidden');
+    const id = Number(await this.g.getAttribute('data-target'));
+    return wrong ? list.find((s) => s.id !== id)! : (list.find((s) => s.id === id) ?? list[0]!);
+  }
+  /** Дотянуть комнату пальцем так, чтобы укрытие было на экране, но мимо кружка, и нажать на него. */
+  async tap(wrong = false) {
+    const box = (await this.g.boundingBox())!;
+    const f = Math.max(box.width, box.height) / (2 * Math.tan((31 * Math.PI) / 180));
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+    const id = (await this.goal(wrong)).id;
+    const now = async () => (await this.spots()).find((s) => s.id === id)!;
+    for (let i = 0; i < 30; i++) {
+      const s = await now();
+      const heading = Number(await this.g.getAttribute('data-heading'));
+      const pitch = Number(await this.g.getAttribute('data-pitch'));
+      // Сколько пикселей до места: за спиной считаем по углам, на экране — по самой картинке.
+      const dx = s.front
+        ? box.width / 2 + 0.2 * f - s.x
+        : (-(((s.az - heading + 540) % 360) - 180) * f * Math.PI) / 180;
+      const dy = s.front ? box.height / 2 - s.y : ((s.el - pitch) * f * Math.PI) / 180;
+      if (Math.hypot(dx, dy) < 30) break;
+      // Рука не выходит за край экрана: на iPhone SE от середины до него меньше 170 пикселей,
+      // а за краем отпускание не доходит и следующее движение отменяет сдвиг.
+      const reach = Math.min(170, Math.min(box.width, box.height) / 2 - 20);
+      const k = Math.min(1, reach / Math.hypot(dx, dy));
+      await this.page.mouse.move(cx, cy);
+      await this.page.mouse.down();
+      await this.page.mouse.move(cx + dx * k, cy + dy * k, { steps: 4 });
+      await this.page.mouse.up();
+      // Кадры в тестовом WebKit редкие: сначала дождаться, что игра нарисовала новое место.
+      await this.page.evaluate(
+        () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))),
+      );
+    }
+    const s = await now();
+    await this.page.mouse.click(box.x + s.x, box.y + s.y);
+    return s;
+  }
+  /** Найти пальцем всех, кто остался в раунде. */
+  async tapAll(goal: number) {
+    for (let i = await this.got(); i < goal; i++) {
+      await this.tap();
+      await expect.poll(() => this.got()).toBe(i + 1);
+    }
+  }
+  /** Сколько дорожек камеры ещё работает. */
+  async liveTracks() {
+    return this.page.evaluate(
+      () =>
+        (window as unknown as { __cam: { tracks: MediaStreamTrack[] } }).__cam.tracks.filter(
+          (t) => t.readyState !== 'ended',
+        ).length,
+    );
+  }
+  async asks() {
+    return this.page.evaluate(
+      () => (window as unknown as { __cam: { asks: MediaStreamConstraints[] } }).__cam.asks,
+    );
+  }
+  async leaks() {
+    return this.page.evaluate(
+      () => (window as unknown as { __cam: { leaks: string[] } }).__cam.leaks,
+    );
+  }
+  /** Притвориться, что экран погас или загорелся. */
+  async screenOn(on: boolean) {
+    await this.page.evaluate((visible) => {
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => !visible });
+      document.dispatchEvent(new Event('visibilitychange'));
+    }, on);
+  }
+}
+
 async function expectFinished(page: Page, backend: Backend) {
   await expect(page.getByTestId('game-finished')).toBeVisible({ timeout: 6000 });
   await expect
@@ -5164,7 +5370,7 @@ test.describe('новые игры', () => {
     await expect(g).toHaveAttribute('data-round', '1', { timeout: 30_000 });
     await expect(g).toHaveAttribute('data-phase', 'finish', { timeout: 30_000 });
     // Игра кончилась — камера выключена сразу, а не на выходе с экрана.
-    await expect.poll(() => b.liveTracks()).toBe(0);
+    expect(await b.liveTracks()).toBe(0);
     await shot(page, 'bubbles-finish');
     await expectFinished(page, backend);
     const done = backend.events.find((e) => e.type === 'interactive_complete')!;
@@ -5310,6 +5516,192 @@ test.describe('новые игры', () => {
     expect(await b.leaks()).toEqual([]);
     // Самая большая отправка — короткая фраза на озвучку, кадр в такой размер не влезет.
     expect(Math.max(...sent)).toBeLessThan(8000);
+  });
+
+  test('прятки (этап 59): камера показывает комнату, поворот находит зверят, кадр не читается', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(120_000);
+    backend.items = [game(1, { kind: 'seek', tasks: ['all'], animals: 3, wide: false, rounds: 2 })];
+    const k = new SeekPilot(page);
+    await k.install('hold');
+    await openGame(page);
+    const g = page.getByTestId('game-seek');
+    await k.play();
+    await expect(g).toHaveAttribute('data-camera', 'on');
+    await expect(g).toHaveAttribute('data-steer', 'tilt');
+    // Поворотом играют без касаний: это не значит, что ребёнок завис.
+    await expect(g).toHaveAttribute('data-no-idle', 'true');
+    const video = page.locator('.seek-video');
+    // Задняя камера — окно в комнату, а не зеркало.
+    expect(await video.evaluate((v) => getComputedStyle(v).transform)).toBe('none');
+    await expect
+      .poll(() => video.evaluate((v: HTMLVideoElement) => v.videoWidth))
+      .toBeGreaterThan(0);
+    const [ask] = await k.asks();
+    expect(ask).toMatchObject({ audio: false, video: { facingMode: 'environment' } });
+    await shot(page, 'seek-camera');
+    await k.hand('aim');
+    await expect(g).toHaveAttribute('data-round', '1', { timeout: 40_000 });
+    await expect(g).toHaveAttribute('data-phase', 'finish', { timeout: 40_000 });
+    // Игра кончилась — камера выключена сразу, а не на выходе с экрана.
+    expect(await k.liveTracks()).toBe(0);
+    await expectFinished(page, backend);
+    const done = backend.events.find((e) => e.type === 'interactive_complete')!;
+    expect(done.payload).toMatchObject({ mistakes: 0 });
+    expect(await k.leaks()).toEqual([]);
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain(
+      'Стой на месте и поворачивайся вместе с телефоном. Зверята спрятались в комнате!',
+    );
+    expect(said).toContain('Найди всех зверят!');
+    expect(said).toContain('Все зверята нашлись! Прятки удались!');
+    expect(said).not.toContain('Двигай комнату пальцем и ищи зверят!');
+  });
+
+  test('прятки (этап 59): кадры не уходят — камера гаснет с экраном и на выходе', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(120_000);
+    backend.items = [game(1, { kind: 'seek', tasks: ['all'], animals: 5, wide: true, rounds: 6 })];
+    const sent: number[] = [];
+    page.on('request', (r) => sent.push(r.postDataBuffer()?.byteLength ?? 0));
+    const k = new SeekPilot(page);
+    await k.install('hold');
+    await openGame(page);
+    const g = page.getByTestId('game-seek');
+    await k.play();
+    await expect(g).toHaveAttribute('data-camera', 'on');
+
+    // Экран погас — камера выключена, загорелся — включается заново и снова показывает комнату.
+    await k.screenOn(false);
+    await expect.poll(() => k.liveTracks()).toBe(0);
+    await k.screenOn(true);
+    await expect.poll(async () => (await k.asks()).length).toBe(2);
+    await expect.poll(() => k.liveTracks()).toBe(1);
+    await expect(g).toHaveAttribute('data-camera', 'on', { timeout: 10_000 });
+
+    // Вышли посреди раунда — камера выключена, экран игры закрыт.
+    await page.getByTestId('go-home').click();
+    await expect(page.getByTestId('home')).toBeVisible();
+    await expect.poll(() => k.liveTracks()).toBe(0);
+    await expect(page.locator('.seek-video')).toHaveCount(0);
+
+    expect(await k.leaks()).toEqual([]);
+    // Самая большая отправка — короткая фраза на озвучку, кадр в такой размер не влезет.
+    expect(Math.max(...sent)).toBeLessThan(8000);
+  });
+
+  test('прятки (этап 59): по имени и «кто где» — чужое укрытие покажет соседа, это не ошибка', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(150_000);
+    backend.items = [
+      game(1, { kind: 'seek', tasks: ['who', 'where'], animals: 3, wide: true, rounds: 2 }),
+    ];
+    const k = new SeekPilot(page);
+    await k.install('away');
+    await openGame(page);
+    const g = page.getByTestId('game-seek');
+    await k.play();
+    await expect(g).toHaveAttribute('data-task', 'who');
+    // Отвернулся от названного — стрелка, потом и голос.
+    await expect(g).toHaveAttribute('data-arrow', 'true', { timeout: 15_000 });
+    await shot(page, 'seek-arrow');
+    await expect
+      .poll(() => spoken(page).then((s) => s.map((x) => x.text)), { timeout: 20_000 })
+      .toContain('Поворачивайся за стрелкой!');
+    await k.hand('wrong');
+    await expect
+      .poll(async () => (await k.spots()).some((s) => s.state === 'seen'), { timeout: 20_000 })
+      .toBe(true);
+    await shot(page, 'seek-wrong');
+    expect(await k.got()).toBe(0);
+    await k.hand('aim');
+    await expect(g).toHaveAttribute('data-round', '1', { timeout: 40_000 });
+    await expect(g).toHaveAttribute('data-task', 'where');
+    await expect.poll(async () => (await k.spots()).length).toBe(5);
+    await shot(page, 'seek-where');
+    await expect(g).toHaveAttribute('data-phase', 'finish', { timeout: 60_000 });
+    await expectFinished(page, backend);
+    const done = backend.events.find((e) => e.type === 'interactive_complete')!;
+    expect(done.payload).toMatchObject({ mistakes: 0 });
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said.some((t) => /^Найди [а-яё]+!$/.test(t))).toBe(true);
+    expect(said.some((t) => /^Это [а-яё]+\.$/.test(t))).toBe(true);
+    expect(said.some((t) => /^Кто прячется [а-яё]+\?$/.test(t))).toBe(true);
+    expect(said.some((t) => /^(Наверху|Внизу|Слева|Справа|Сзади) прячется [а-яё]+!$/.test(t))).toBe(
+      true,
+    );
+  });
+
+  test('прятки (этап 59): датчика нет — комнату двигают пальцем, камеру не просим', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(150_000);
+    backend.items = [
+      game(1, { kind: 'seek', tasks: ['all', 'where'], animals: 2, wide: false, rounds: 2 }),
+    ];
+    const k = new SeekPilot(page);
+    await k.install('off');
+    await openGame(page);
+    const g = page.getByTestId('game-seek');
+    await k.play();
+    await expect(g).toHaveAttribute('data-steer', 'finger');
+    await expect(g).toHaveAttribute('data-camera', 'off');
+    // Играют пальцем — подсказка «ребёнок завис» снова нужна, и ей есть куда показать.
+    await expect(g).not.toHaveAttribute('data-no-idle', /.*/);
+    await expect(page.locator('.seek-hint[data-hint]')).toHaveCount(1, { timeout: 10_000 });
+    await shot(page, 'seek-finger');
+    await k.tapAll(2);
+    await expect(g).toHaveAttribute('data-round', '1', { timeout: 20_000 });
+    await expect(g).toHaveAttribute('data-task', 'where');
+    await expect.poll(async () => (await k.spots()).length).toBe(4);
+    await expect(g).not.toHaveAttribute('data-target', '', { timeout: 10_000 });
+    // Нажал не на то место — ошибка: вопрос был про другое.
+    await k.tap(true);
+    await expect
+      .poll(async () => (await k.spots()).some((s) => s.state === 'seen'), { timeout: 5_000 })
+      .toBe(true);
+    expect(await k.got()).toBe(0);
+    await k.tap();
+    await expect.poll(() => k.got()).toBe(1);
+    await expect(g).toHaveAttribute('data-busy', 'false', { timeout: 15_000 });
+    await k.tap();
+    await expect(g).toHaveAttribute('data-phase', 'finish', { timeout: 20_000 });
+    await expectFinished(page, backend);
+    const done = backend.events.find((e) => e.type === 'interactive_complete')!;
+    expect(done.payload).toMatchObject({ mistakes: 1 });
+    expect(await k.asks()).toEqual([]);
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain('Двигай комнату пальцем и ищи зверят!');
+    expect(said).not.toContain(
+      'Стой на месте и поворачивайся вместе с телефоном. Зверята спрятались в комнате!',
+    );
+  });
+
+  test('прятки (этап 59): камеру не разрешили — нарисованная комната, поворот работает', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(120_000);
+    backend.items = [game(1, { kind: 'seek', tasks: ['all'], animals: 2, wide: false, rounds: 2 })];
+    const k = new SeekPilot(page);
+    await k.install('hold', 'deny');
+    await openGame(page);
+    const g = page.getByTestId('game-seek');
+    await k.play();
+    await expect(g).toHaveAttribute('data-camera', 'off');
+    await expect(g).toHaveAttribute('data-steer', 'tilt');
+    await shot(page, 'seek-room');
+    await k.hand('aim');
+    await expect(g).toHaveAttribute('data-phase', 'finish', { timeout: 40_000 });
+    await expectFinished(page, backend);
+    expect(await k.leaks()).toEqual([]);
   });
 
   test('стих (этап 45): послушать, повторять за голосом, «Договори словечко», вопросы — часть выучена', async ({
