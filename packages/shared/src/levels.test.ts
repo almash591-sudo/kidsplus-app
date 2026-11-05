@@ -68,6 +68,7 @@ const SPECS = [
   { kind: 'bot', tasks: ['go'], steps: 2, turns: 0, blocks: false, rounds: 3 },
   { kind: 'cuckoo', tasks: ['read'], half: false, rounds: 3 },
   { kind: 'marble', tasks: ['hole'], walls: 0, pits: false, rounds: 3 },
+  { kind: 'bubbles', tasks: ['all'], goal: 5, fast: false, rounds: 3 },
   { kind: 'gears', tasks: ['build'], gaps: 2, sizes: false, rounds: 3 },
 ] as const;
 
@@ -324,6 +325,21 @@ describe('игры этапа 41', () => {
     }) as GameSpec;
     expect(specAtLevel(big, 4)).toMatchObject({ walls: 4, pits: true, tasks: ['word', 'count'] });
     expect(gameSpec.safeParse({ kind: 'marble', tasks: [], rounds: 3 }).success).toBe(false);
+
+    const bubbles = gameSpec.parse({ kind: 'bubbles', rounds: 3 }) as GameSpec;
+    expect(bubbles).toMatchObject({ tasks: ['all'], goal: 5, fast: false });
+    expect(specAtLevel(bubbles, 2)).toMatchObject({ goal: 7, fast: false, tasks: ['all'] });
+    expect(specAtLevel(bubbles, 3)).toMatchObject({ goal: 7, tasks: ['all', 'color'] });
+    expect(specAtLevel(bubbles, 4)).toMatchObject({
+      goal: 7,
+      fast: true,
+      tasks: ['all', 'color', 'digit'],
+    });
+    // Родитель оставил одни цифры и 12 пузырей — уровни не убавляют и не ломают порядок заданий.
+    const set = gameSpec.parse({ kind: 'bubbles', tasks: ['digit'], goal: 12, rounds: 3 });
+    expect(specAtLevel(set as GameSpec, 3)).toMatchObject({ goal: 12, tasks: ['color', 'digit'] });
+    expect(gameSpec.safeParse({ kind: 'bubbles', tasks: [], rounds: 3 }).success).toBe(false);
+    expect(gameSpec.safeParse({ kind: 'bubbles', goal: 2, rounds: 3 }).success).toBe(false);
     expect(gameSpec.safeParse({ kind: 'marble', walls: 5, rounds: 3 }).success).toBe(false);
     expect(gameSpec.safeParse({ kind: 'marble', rounds: 1 }).success).toBe(false);
   });

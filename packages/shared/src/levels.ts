@@ -3,6 +3,7 @@
 // выше — те же картинки, но больше счёт, крупнее пазл, длиннее мелодия (в пределах схемы игры).
 import type { GameKind, GameSpec } from './games';
 import {
+  BUBBLES_TASKS,
   DRESS_TASKS,
   GEARS_TASKS,
   isTraceLetter,
@@ -295,6 +296,17 @@ export function specAtLevel(spec: GameSpec, level: number): GameSpec {
         walls: clamp(spec.walls + (up >= 1 ? 1 : 0) + (up >= 2 ? 1 : 0), 0, 4),
         pits: spec.pits || up >= 2,
         tasks: up >= 3 && !spec.tasks.includes('count') ? [...spec.tasks, 'count'] : spec.tasks,
+      };
+    case 'bubbles':
+      // Со второго шага — пузырей больше, с третьего — только нужного цвета, с четвёртого — ещё и
+      // с цифрой, и плывут быстрее.
+      return {
+        ...spec,
+        goal: clamp(spec.goal + (up >= 1 ? 2 : 0), 3, 12),
+        fast: spec.fast || up >= 3,
+        tasks: BUBBLES_TASKS.filter(
+          (t) => spec.tasks.includes(t) || (t === 'color' && up >= 2) || (t === 'digit' && up >= 3),
+        ),
       };
     case 'bot':
       // Со второго шага — поворот и путь длиннее, с третьего — коробки на пути, с четвёртого —
