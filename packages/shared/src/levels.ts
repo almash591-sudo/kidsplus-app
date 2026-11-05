@@ -287,6 +287,15 @@ export function specAtLevel(spec: GameSpec, level: number): GameSpec {
         turn: spec.turn || up >= 1,
         outlines: spec.outlines && up < 3,
       };
+    case 'marble':
+      // Со второго шага — перегородка, с третьего — ещё одна и ямки, с четвёртого — ещё и числа
+      // по порядку.
+      return {
+        ...spec,
+        walls: clamp(spec.walls + (up >= 1 ? 1 : 0) + (up >= 2 ? 1 : 0), 0, 4),
+        pits: spec.pits || up >= 2,
+        tasks: up >= 3 && !spec.tasks.includes('count') ? [...spec.tasks, 'count'] : spec.tasks,
+      };
     case 'bot':
       // Со второго шага — поворот и путь длиннее, с третьего — коробки на пути, с четвёртого —
       // ещё и «Найди ошибку в программе».
