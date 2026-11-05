@@ -5198,10 +5198,13 @@ test.describe('новые игры', () => {
     await b.hand('wave');
     await expect(g).toHaveAttribute('data-round', '1', { timeout: 30_000 });
     await expect(g).toHaveAttribute('data-task', 'digit');
+    // Рука лопает нужный пузырь сразу, и раунд мог кончиться раньше, чем их станет два.
+    await b.hand('still');
     await expect
-      .poll(async () => (await b.bubbles()).length, { timeout: 10_000 })
+      .poll(async () => (await b.bubbles()).length, { timeout: 15_000 })
       .toBeGreaterThan(1);
     await shot(page, 'bubbles-digit');
+    await b.hand('wave');
     await expect(g).toHaveAttribute('data-phase', 'finish', { timeout: 30_000 });
     await expectFinished(page, backend);
     const done = backend.events.find((e) => e.type === 'interactive_complete')!;
