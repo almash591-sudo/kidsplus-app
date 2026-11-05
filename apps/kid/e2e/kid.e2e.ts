@@ -2713,7 +2713,10 @@ class SeekPilot {
         : (-(((s.az - heading + 540) % 360) - 180) * f * Math.PI) / 180;
       const dy = s.front ? box.height / 2 - s.y : ((s.el - pitch) * f * Math.PI) / 180;
       if (Math.hypot(dx, dy) < 30) break;
-      const k = Math.min(1, 170 / Math.hypot(dx, dy));
+      // Рука не выходит за край экрана: на iPhone SE от середины до него меньше 170 пикселей,
+      // а за краем отпускание не доходит и следующее движение отменяет сдвиг.
+      const reach = Math.min(170, Math.min(box.width, box.height) / 2 - 20);
+      const k = Math.min(1, reach / Math.hypot(dx, dy));
       await this.page.mouse.move(cx, cy);
       await this.page.mouse.down();
       await this.page.mouse.move(cx + dx * k, cy + dy * k, { steps: 4 });
