@@ -2491,6 +2491,40 @@
   line-height: 1;
 }
 
+/* ─── «Волшебные пузыри» (этап 59) ─── */
+.game.bubbles {
+  padding: 0;
+  inset: 0;
+  background: #8fd3f5;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+/* Передняя камера как зеркало: ребёнок поднял правую руку — справа на экране. */
+.bubbles-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+.bubbles-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+/* Невидимая цель для пальца подсказки. */
+.bubbles-hint {
+  position: absolute;
+  display: none;
+  pointer-events: none;
+}
+
 /* ─── «Часы с кукушкой» (этап 58) ─── */
 .game.cuckoo {
   padding: 0;

@@ -11,6 +11,8 @@ import {
   BOT_TASK_LABELS,
   BOT_TASKS,
   MARBLE_TASK_LABELS,
+  BUBBLES_TASK_LABELS,
+  BUBBLES_TASKS,
   MARBLE_TASKS,
   COLORING_PICTURES,
   CUCKOO_TASK_LABELS,
@@ -43,6 +45,7 @@ import {
   TRACE_LETTERS,
   TRACE_SHAPES,
   type BotTask,
+  type BubblesTask,
   type MarbleTask,
   type CuckooTask,
   type DressTask,
@@ -468,6 +471,13 @@ const DEFAULTS: { [K in GameKind]: Extract<GameSpec, { kind: K }> } = {
     tasks: ['hole'],
     walls: 0,
     pits: false,
+    rounds: 3,
+  },
+  bubbles: {
+    kind: 'bubbles',
+    tasks: ['all'],
+    goal: 5,
+    fast: false,
     rounds: 3,
   },
   bot: {
@@ -3293,6 +3303,61 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
             числами и буквами шарик собирает их по порядку. Если в телефоне нет датчика или он лежит
             на столе, шарик катят пальцем. Младшим телефон тяжёлый — лучше сидя, двумя руками. С 3
             лет.
+          </Text>
+        </Stack>
+      );
+    case 'bubbles':
+      return (
+        <Stack gap="xs">
+          <Text size="sm" fw={500}>
+            Задания (по очереди)
+          </Text>
+          <Chip.Group
+            multiple
+            value={spec.tasks}
+            onChange={(v) =>
+              v.length &&
+              onChange({
+                ...spec,
+                tasks: BUBBLES_TASKS.filter((t) => v.includes(t)) as BubblesTask[],
+              })
+            }
+          >
+            <Group gap="xs">
+              {BUBBLES_TASKS.map((t) => (
+                <Chip key={t} value={t}>
+                  {BUBBLES_TASK_LABELS[t]}
+                </Chip>
+              ))}
+            </Group>
+          </Chip.Group>
+          <Group grow>
+            <NumberInput
+              label="Пузырей за раунд"
+              min={3}
+              max={12}
+              value={spec.goal}
+              onChange={(v) => onChange({ ...spec, goal: num(v, 5) })}
+            />
+            <NumberInput
+              label="Раундов"
+              min={2}
+              max={6}
+              value={spec.rounds}
+              onChange={(v) => onChange({ ...spec, rounds: num(v, 3) })}
+            />
+          </Group>
+          <Switch
+            label="Пузыри плывут быстрее"
+            checked={spec.fast}
+            onChange={(e) => onChange({ ...spec, fast: e.currentTarget.checked })}
+          />
+          <Text size="xs" c="dimmed">
+            Ребёнок видит себя на передней камере, как в зеркале, и лопает пузыри взмахом руки.
+            Кадры остаются только в памяти телефона: они не сохраняются, никуда не отправляются и не
+            попадают в галерею и кабинет. Камера выключается на выходе, на паузе и при погашенном
+            экране. Нет камеры или не разрешили — пузыри лопают пальцем. Телефон удобнее поставить
+            или держать взрослому. С 2 лет.
           </Text>
         </Stack>
       );

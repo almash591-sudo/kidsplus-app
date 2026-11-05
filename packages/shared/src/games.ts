@@ -219,6 +219,15 @@ export const MARBLE_TASK_LABELS: Record<MarbleTask, string> = {
   count: 'Собери числа по порядку',
   word: 'Собери слово',
 };
+/** Задания «Пузырей» (этап 59): лопать все, только одного цвета, только с нужной цифрой. */
+export const BUBBLES_TASKS = ['all', 'color', 'digit'] as const;
+export type BubblesTask = (typeof BUBBLES_TASKS)[number];
+/** Как задания «Пузырей» называются в кабинете. */
+export const BUBBLES_TASK_LABELS: Record<BubblesTask, string> = {
+  all: 'Лопай все',
+  color: 'Только нужного цвета',
+  digit: 'Только с нужной цифрой',
+};
 /** Задания «Робота» (этап 58): составить программу до батарейки, найти ошибку в готовой. */
 export const BOT_TASKS = ['go', 'fix'] as const;
 export type BotTask = (typeof BOT_TASKS)[number];
@@ -1033,6 +1042,19 @@ export const gameSpec = z.discriminatedUnion('kind', [
     rounds: z.number().int().min(2).max(6),
   }),
   /**
+   * Волшебные пузыри (этап 59): ребёнок видит себя на передней камере, как в зеркале, и лопает
+   * пузыри взмахом руки. Кадры остаются только в памяти телефона. Нет камеры или не разрешили —
+   * лопаем пальцем. tasks: all — любые пузыри, color — только названного цвета, digit — только с
+   * названной цифрой. goal — сколько пузырей лопнуть за раунд, fast — плывут быстрее.
+   */
+  z.object({
+    kind: z.literal('bubbles'),
+    tasks: z.array(z.enum(BUBBLES_TASKS)).min(1).max(BUBBLES_TASKS.length).default(['all']),
+    goal: z.number().int().min(3).max(12).default(5),
+    fast: z.boolean().default(false),
+    rounds: z.number().int().min(2).max(6),
+  }),
+  /**
    * Часы с кукушкой (этап 58): большие часы с маятником, на верный ответ из домика выскакивает
    * кукушка и кукует столько раз, который час. tasks: read — «Который час?», нажать цифру, куда
    * смотрит маленькая стрелка (целые часы); set — «Покажи три часа»: поставить стрелки пальцем;
@@ -1185,6 +1207,7 @@ export const GAME_KINDS: Record<GameKind, string> = {
   figure: 'Сложи фигуру',
   bot: 'Робот и батарейка',
   marble: 'Катись, шарик',
+  bubbles: 'Волшебные пузыри',
   cuckoo: 'Часы с кукушкой',
   poem: 'Стих или сказка',
   book: 'Книжка',
@@ -1272,6 +1295,7 @@ export function gameImageIds(g: GameSpec): string[] {
     case 'bot':
     case 'cuckoo':
     case 'marble':
+    case 'bubbles':
     case 'poem':
     case 'book':
       return [];

@@ -46,6 +46,7 @@ import { lineStart, partSpeech, poemAnnounce, poemOf, type PoemCode } from '@kid
 import { SONGS } from '@kidsplus/shared/songs';
 import { soundPlace, syllablesIn, unstressed, wordScheme } from '@kidsplus/shared/sounds';
 import { NUMBERS, paint, PALETTE, type SpecOf } from './games/common';
+import { BUBBLE_COLORS, BUBBLE_DIGITS, COLOR_WORDS, type BubbleColor } from './games/bubblesLogic';
 import { MARBLE_WORDS } from './games/marbleLogic';
 import { DAY, type DayId, type Time } from './games/cuckooLogic';
 import { needCount, OUTFITS, SLOT, WRONG_IN, type ItemId } from './games/dressLogic';
@@ -1002,6 +1003,30 @@ export const MARBLE_WIN = 'Шарик в лунке!';
 export const MARBLE_END = 'Все дощечки пройдены! Ловкие руки!';
 export const MARBLE_ASK =
   'Нажми на зелёную кнопку. Если телефон спросит, попроси взрослого разрешить.';
+// ─── «Волшебные пузыри» (этап 59) ───
+export const BUBBLES_GO = 'Посмотри, это ты! Маши рукой, и пузыри лопнут.';
+export const BUBBLES_FINGER = 'Лопай пузыри пальцем!';
+export const BUBBLES_ALL = 'Лопай все пузыри!';
+export const bubblesColor = (color: BubbleColor) => `Лопай только ${COLOR_WORDS[color]} пузыри!`;
+export const bubblesDigit = (digit: number) => `Лопай пузыри с цифрой ${NUMBERS[digit]}!`;
+export const BUBBLES_WAVE = 'Помаши рукой прямо по пузырю!';
+export const BUBBLES_WIN = 'Вот это да, сколько пузырей!';
+export const BUBBLES_END = 'Все пузыри лопнули! Какие ловкие руки!';
+export const BUBBLES_ASK = 'Если телефон спросит про камеру, попроси взрослого разрешить.';
+export function bubblesPhrases(spec: SpecOf<'bubbles'>) {
+  return [
+    BUBBLES_GO,
+    BUBBLES_FINGER,
+    BUBBLES_WAVE,
+    BUBBLES_WIN,
+    BUBBLES_END,
+    BUBBLES_ASK,
+    ...(spec.tasks.includes('all') ? [BUBBLES_ALL] : []),
+    ...(spec.tasks.includes('color') ? BUBBLE_COLORS.map(bubblesColor) : []),
+    ...(spec.tasks.includes('digit') ? BUBBLE_DIGITS.map(bubblesDigit) : []),
+  ];
+}
+
 export function marblePhrases(spec: SpecOf<'marble'>) {
   return [
     MARBLE_GO,
@@ -1151,6 +1176,7 @@ export const GAME_INTRO: Record<GameKind, string> = {
   bot: BOT_GO,
   cuckoo: CUCKOO_GO,
   marble: MARBLE_GO,
+  bubbles: BUBBLES_GO,
   poem: POEM_INTRO,
   book: BOOK_INTRO,
 };
@@ -1411,6 +1437,8 @@ export function gamePhrases(spec: GameSpec): string[] {
       return cuckooPhrases(spec);
     case 'marble':
       return marblePhrases(spec);
+    case 'bubbles':
+      return bubblesPhrases(spec);
     case 'poem':
       return poemPhrases(spec.poem);
     case 'book':
