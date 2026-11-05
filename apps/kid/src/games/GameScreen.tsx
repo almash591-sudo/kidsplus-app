@@ -17,6 +17,7 @@ import {
   setTask,
   type GameProps,
 } from './common';
+import { Bubbles } from './Bubbles';
 import { Clock } from './Clock';
 import { Counting } from './Counting';
 import { Robot } from './Robot';
@@ -161,6 +162,7 @@ const OWN_SCENE: GameKind[] = [
   'bot',
   'cuckoo',
   'marble',
+  'bubbles',
   'poem',
   'book',
 ];
@@ -182,6 +184,8 @@ const OWL_INSIDE: readonly GameKind[] = [
   'differences',
   // Шарик (этап 59): дощечка занимает весь экран, совёнку негде сидеть.
   'marble',
+  // Пузыри (этап 59): на экране сам ребёнок.
+  'bubbles',
   // Загадки (этап 41): совёнок загадывает посреди экрана.
   'riddle',
   // Стих (этап 45): совёнок читает и слушает ребёнка.
@@ -266,6 +270,7 @@ const GAMES: { [K in GameKind]: ComponentType<GameProps<K>> } = {
   figure: Figure,
   bot: Bot,
   marble: Marble,
+  bubbles: Bubbles,
   cuckoo: Cuckoo,
   poem: Poem,
   book: Book,
