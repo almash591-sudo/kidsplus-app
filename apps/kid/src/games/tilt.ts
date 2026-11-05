@@ -175,5 +175,7 @@ export function createTilt(source: Source = window, clock = () => performance.no
       return calmed(tiltFrom(g, zero));
     },
     steer: (): Steer => steerBy(clock(), times),
+    /** Датчик хоть раз отозвался с начала игры. */
+    heard: () => times.lastAt >= times.startedAt,
   };
 }

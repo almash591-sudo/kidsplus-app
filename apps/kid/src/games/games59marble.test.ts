@@ -49,8 +49,7 @@ import {
   tiltFrom,
 } from './tilt';
 
-const spec = (o: object) =>
-  gameSpec.parse({ kind: 'marble', rounds: 4, ...o }) as SpecOf<'marble'>;
+const spec = (o: object) => gameSpec.parse({ kind: 'marble', rounds: 4, ...o }) as SpecOf<'marble'>;
 const seeded = (seed: number) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
 const SCREENS = [
   [412, 915],
@@ -122,7 +121,8 @@ describe('Наклон', () => {
   });
 
   it('полный наклон — единица, больше не бывает', () => {
-    const flatTilt = (deg: number) => Math.hypot(...Object.values(tiltFrom(gravityOf(deg, 0), flat)));
+    const flatTilt = (deg: number) =>
+      Math.hypot(...Object.values(tiltFrom(gravityOf(deg, 0), flat)));
     near(flatTilt(FULL_DEG), 1);
     near(flatTilt(70), 1);
     expect(flatTilt(FULL_DEG / 2)).toBeLessThan(0.6);
@@ -339,7 +339,10 @@ describe('Шарик', () => {
           roll(ball, fingerWish(ball, aimFrom(b, flow, ball)), 1 / 60, b);
           if (b.goal) pull(ball, b.goal, 1 / 60);
           const name = `${w}×${h} ${r.task} ${r.walls} ${r.pits} ${r.flip}`;
-          expect(b.pits.some((p) => inPit(ball, p)), name).toBe(false);
+          expect(
+            b.pits.some((p) => inPit(ball, p)),
+            name,
+          ).toBe(false);
           if (b.goal && inHole(ball, b.goal)) done = true;
           if (todo[0] && onToken(ball, todo[0])) {
             todo.shift();
@@ -448,9 +451,7 @@ describe('Экран', () => {
 describe('Фразы и картинки', () => {
   it('озвучка знает всё, что игра скажет', () => {
     expect(GAME_INTRO.marble).toBe(MARBLE_GO);
-    const all = gamePhrases(
-      spec({ tasks: ['hole', 'word'], pits: true, rounds: 3 }) as GameSpec,
-    );
+    const all = gamePhrases(spec({ tasks: ['hole', 'word'], pits: true, rounds: 3 }) as GameSpec);
     expect(all).toContain(MARBLE_PIT);
     for (const w of MARBLE_WORDS) expect(all).toContain(marbleWord(w));
     const plain = gamePhrases(spec({ tasks: ['hole'] }) as GameSpec);
