@@ -1,6 +1,7 @@
 import type { Game } from '@kidsplus/shared/api';
 import {
   BOT_TASK_LABELS,
+  MARBLE_TASK_LABELS,
   CUCKOO_TASK_LABELS,
   DRESS_WEATHER_LABELS,
   FIGURE_SHAPE_LABELS,
@@ -178,6 +179,8 @@ export function gameSummary(spec: GameSpec): string {
       return `${spec.figures.map((f) => FIGURE_SHAPE_LABELS[f].toLowerCase()).join(', ')} · деталей: ${spec.pieces}${spec.turn ? ' · повёрнутые' : ''}${spec.outlines ? '' : ' · только силуэт'} · фигур: ${spec.rounds}`;
     case 'cuckoo':
       return `${spec.tasks.map((t) => CUCKOO_TASK_LABELS[t].toLowerCase()).join(', ')}${spec.half ? ' · с половинами' : ''} · раундов: ${spec.rounds}`;
+    case 'marble':
+      return `${spec.tasks.map((t) => MARBLE_TASK_LABELS[t].toLowerCase()).join(', ')}${spec.walls ? ` · перегородок: ${spec.walls}` : ''}${spec.pits ? ' · с ямками' : ''} · дощечек: ${spec.rounds}`;
     case 'bot':
       return `${spec.tasks.map((t) => BOT_TASK_LABELS[t].toLowerCase()).join(', ')} · шагов: ${spec.steps}${spec.turns ? ` · поворотов: ${spec.turns}` : ''}${spec.blocks ? ' · с коробками' : ''} · полей: ${spec.rounds}`;
     case 'differences':

@@ -67,6 +67,7 @@ const SPECS = [
   { kind: 'figure', figures: ['house', 'fish'], pieces: 2, outlines: true, turn: false, rounds: 3 },
   { kind: 'bot', tasks: ['go'], steps: 2, turns: 0, blocks: false, rounds: 3 },
   { kind: 'cuckoo', tasks: ['read'], half: false, rounds: 3 },
+  { kind: 'marble', tasks: ['hole'], walls: 0, pits: false, rounds: 3 },
   { kind: 'gears', tasks: ['build'], gaps: 2, sizes: false, rounds: 3 },
 ] as const;
 
@@ -301,6 +302,30 @@ describe('игры этапа 41', () => {
     expect(gameSpec.safeParse({ kind: 'figure', figures: [], rounds: 3 }).success).toBe(false);
     expect(gameSpec.safeParse({ kind: 'figure', pieces: 1, rounds: 3 }).success).toBe(false);
     expect(gameSpec.safeParse({ kind: 'figure', pieces: 8, rounds: 3 }).success).toBe(false);
+  });
+
+  it('шарик (этап 59): чистая дощечка → перегородки → ямки → и числа по порядку', () => {
+    const marble = gameSpec.parse({ kind: 'marble', rounds: 3 }) as GameSpec;
+    expect(marble).toMatchObject({ tasks: ['hole'], walls: 0, pits: false });
+    expect(specAtLevel(marble, 2)).toMatchObject({ walls: 1, pits: false, tasks: ['hole'] });
+    expect(specAtLevel(marble, 3)).toMatchObject({ walls: 2, pits: true, tasks: ['hole'] });
+    expect(specAtLevel(marble, 4)).toMatchObject({
+      walls: 2,
+      pits: true,
+      tasks: ['hole', 'count'],
+    });
+    // Родитель уже задал больше — уровни не убавляют; четыре перегородки — предел.
+    const big = gameSpec.parse({
+      kind: 'marble',
+      tasks: ['word'],
+      walls: 3,
+      pits: true,
+      rounds: 3,
+    }) as GameSpec;
+    expect(specAtLevel(big, 4)).toMatchObject({ walls: 4, pits: true, tasks: ['word', 'count'] });
+    expect(gameSpec.safeParse({ kind: 'marble', tasks: [], rounds: 3 }).success).toBe(false);
+    expect(gameSpec.safeParse({ kind: 'marble', walls: 5, rounds: 3 }).success).toBe(false);
+    expect(gameSpec.safeParse({ kind: 'marble', rounds: 1 }).success).toBe(false);
   });
 
   it('робот (этап 58): 1–2 шага → поворот → коробки на пути → «Найди ошибку»', () => {

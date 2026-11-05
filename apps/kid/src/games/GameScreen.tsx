@@ -54,6 +54,7 @@ import { Gears } from './Gears';
 import { Dress } from './Dress';
 import { Figure } from './Figure';
 import { Bot } from './Bot';
+import { Marble } from './Marble';
 import { Cuckoo } from './Cuckoo';
 import { Train } from './Train';
 import { Dive } from './Dive';
@@ -159,6 +160,7 @@ const OWN_SCENE: GameKind[] = [
   'figure',
   'bot',
   'cuckoo',
+  'marble',
   'poem',
   'book',
 ];
@@ -178,6 +180,8 @@ const OWL_INSIDE: readonly GameKind[] = [
   'rocket',
   'race',
   'differences',
+  // Шарик (этап 59): дощечка занимает весь экран, совёнку негде сидеть.
+  'marble',
   // Загадки (этап 41): совёнок загадывает посреди экрана.
   'riddle',
   // Стих (этап 45): совёнок читает и слушает ребёнка.
@@ -261,6 +265,7 @@ const GAMES: { [K in GameKind]: ComponentType<GameProps<K>> } = {
   dress: Dress,
   figure: Figure,
   bot: Bot,
+  marble: Marble,
   cuckoo: Cuckoo,
   poem: Poem,
   book: Book,

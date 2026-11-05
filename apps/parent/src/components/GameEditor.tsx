@@ -10,6 +10,8 @@ import {
   BALLOON_COLORS,
   BOT_TASK_LABELS,
   BOT_TASKS,
+  MARBLE_TASK_LABELS,
+  MARBLE_TASKS,
   COLORING_PICTURES,
   CUCKOO_TASK_LABELS,
   CUCKOO_TASKS,
@@ -41,6 +43,7 @@ import {
   TRACE_LETTERS,
   TRACE_SHAPES,
   type BotTask,
+  type MarbleTask,
   type CuckooTask,
   type DressTask,
   type DressWeather,
@@ -459,6 +462,13 @@ const DEFAULTS: { [K in GameKind]: Extract<GameSpec, { kind: K }> } = {
     outlines: true,
     turn: false,
     rounds: 4,
+  },
+  marble: {
+    kind: 'marble',
+    tasks: ['hole'],
+    walls: 0,
+    pits: false,
+    rounds: 3,
   },
   bot: {
     kind: 'bot',
@@ -3228,6 +3238,61 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
             которой он упёрся, краснеет. После двух неудач на коврике проступают следы. В задании
             «Найди ошибку» робот сам едет по своей программе с одной неправильной стрелкой — её
             нужно найти и заменить. С 4 лет; с 5 шагов поворот будет всегда — коврик 5 × 5.
+          </Text>
+        </Stack>
+      );
+    case 'marble':
+      return (
+        <Stack gap="xs">
+          <Text size="sm" fw={500}>
+            Задания (по очереди)
+          </Text>
+          <Chip.Group
+            multiple
+            value={spec.tasks}
+            onChange={(v) =>
+              v.length &&
+              onChange({
+                ...spec,
+                tasks: MARBLE_TASKS.filter((t) => v.includes(t)) as MarbleTask[],
+              })
+            }
+          >
+            <Group gap="xs">
+              {MARBLE_TASKS.map((t) => (
+                <Chip key={t} value={t}>
+                  {MARBLE_TASK_LABELS[t]}
+                </Chip>
+              ))}
+            </Group>
+          </Chip.Group>
+          <Group grow>
+            <NumberInput
+              label="Перегородок"
+              min={0}
+              max={4}
+              value={spec.walls}
+              onChange={(v) => onChange({ ...spec, walls: num(v, 0) })}
+            />
+            <NumberInput
+              label="Дощечек"
+              min={2}
+              max={6}
+              value={spec.rounds}
+              onChange={(v) => onChange({ ...spec, rounds: num(v, 3) })}
+            />
+          </Group>
+          <Switch
+            label="Ямки на пути — объехать"
+            checked={spec.pits}
+            onChange={(e) => onChange({ ...spec, pits: e.currentTarget.checked })}
+          />
+          <Text size="xs" c="dimmed">
+            Ребёнок двумя руками наклоняет телефон, и глиняный шарик катится по дощечке к лунке с
+            флажком, в обход перегородок. Упал в ямку — шарик возвращается на старт. В заданиях с
+            числами и буквами шарик собирает их по порядку. Если в телефоне нет датчика или он лежит
+            на столе, шарик катят пальцем. Младшим телефон тяжёлый — лучше сидя, двумя руками. С 3
+            лет.
           </Text>
         </Stack>
       );
