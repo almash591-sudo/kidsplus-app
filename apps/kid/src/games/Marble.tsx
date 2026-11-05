@@ -57,14 +57,7 @@ import {
   type MarbleRound,
   type P,
 } from './marbleLogic';
-import {
-  askMotion,
-  createTilt,
-  onScreen,
-  screenAngle,
-  type MotionAccess,
-  type Steer,
-} from './tilt';
+import { askMotion, createTilt, onScreen, screenAngle, type Steer } from './tilt';
 
 type Phase = 'ask' | 'drop' | 'play' | 'fall' | 'done' | 'finish';
 
@@ -78,6 +71,10 @@ const SINK_MS = 540;
 const TRAIL_AFTER = 10000;
 /** Шарик стоит столько мс — снова показать качающийся телефон. */
 const ROCK_AFTER = 6000;
+/** Самый длинный шаг физики, с: на редких кадрах шарик не тормозит и не проскакивает сквозь стенки. */
+const STEP = 0.02;
+/** Телефон взяли со стола: столько мс ждём, пока он ляжет в руки, и только потом берём «ровно». */
+const SETTLE_MS = 700;
 /** На сколько пикселей дно дощечки плывёт за наклоном. */
 const PARALLAX = 5;
 
@@ -180,9 +177,6 @@ export function Marble({ spec, phrases, onFinish }: GameProps<'marble'>) {
       ball: atStart(),
       phase: 'drop' as Phase,
       mode: 'tilt' as Steer,
-      /** Датчик включён; нет разрешения — сразу палец. */
-      sensorOn: false,
-      noSensor: false,
       launched: false,
       greeted: false,
       fingerTold: false,
@@ -210,6 +204,7 @@ export function Marble({ spec, phrases, onFinish }: GameProps<'marble'>) {
       wobble: { i: -1, at: -1e9 },
       closing: [] as { p: P; at: number }[],
       flying: [] as { i: number; at: number }[],
+      settleAt: -1,
       dragging: false,
       pointer: -1,
       finger: null as P | null,
@@ -448,23 +443,22 @@ export function Marble({ spec, phrases, onFinish }: GameProps<'marble'>) {
     setTask(remind);
 
     // ─── Запуск: на iPhone датчик разрешают нажатием ───
-    const launch = (access: MotionAccess) => {
+    // Ответу системы не верим на слово: requestPermission есть и в новом Chrome, а решает то, отзовётся
+    // ли датчик. Отказ на iPhone — датчик молчит, и через LOST_MS играем пальцем.
+    const launch = () => {
       if (s.stopped || s.launched) return;
       s.launched = true;
-      if (access === 'granted') {
-        s.sensorOn = true;
-        tilt.start();
-      } else s.noSensor = true;
+      tilt.start();
       start(0);
     };
     press.current = () => {
       fx.click();
-      void askMotion().then((a) => launch(a === 'gesture' ? 'denied' : a));
+      void askMotion().then(launch);
     };
     void askMotion().then((a) => {
       if (s.stopped) return;
       if (a !== 'gesture') {
-        launch(a);
+        launch();
         return;
       }
       go('ask');
@@ -473,7 +467,7 @@ export function Marble({ spec, phrases, onFinish }: GameProps<'marble'>) {
 
     // Погашенный экран: датчик не читаем, а на возврате считаем его заново.
     const onVisibility = () => {
-      if (!s.sensorOn) return;
+      if (!s.launched) return;
       if (document.hidden) tilt.stop();
       else tilt.start();
     };
@@ -773,19 +767,24 @@ export function Marble({ spec, phrases, onFinish }: GameProps<'marble'>) {
     const frame = (raw: number) => {
       const gap = Math.max(0, raw - (last || raw));
       const dt = Math.min(0.05, gap / 1000);
+      const span = Math.min(gap, 250);
       last = raw;
-      clock += Math.min(gap, 250);
+      clock += span;
       frameNo++;
       const due = s.timers.filter((t) => t.at <= clock);
       s.timers = s.timers.filter((t) => t.at > clock);
       for (const t of due) t.fn();
 
       // Чем управляем. Палец на экране держит режим, даже если телефон качнулся от нажатия.
-      const mode: Steer = s.noSensor || s.dragging ? 'finger' : tilt.steer();
+      const mode: Steer = s.dragging ? 'finger' : tilt.steer();
       if (s.launched && mode !== s.mode) {
         s.mode = mode;
         setSteer(mode);
-        if (mode === 'tilt') tilt.center();
+        if (mode === 'tilt') s.settleAt = clock + SETTLE_MS;
+      }
+      if (s.settleAt >= 0 && clock >= s.settleAt) {
+        s.settleAt = -1;
+        tilt.center();
       }
       if (s.phase === 'play') {
         if (!s.greeted && (s.mode === 'finger' || tilt.heard())) {
@@ -798,17 +797,27 @@ export function Marble({ spec, phrases, onFinish }: GameProps<'marble'>) {
         }
       }
 
-      const t = onScreen(s.mode === 'tilt' ? tilt.read() : { x: 0, y: 0 }, screenAngle());
+      const sensed = s.mode === 'tilt' && s.settleAt < 0;
+      const t = onScreen(sensed ? tilt.read() : { x: 0, y: 0 }, screenAngle());
       const before = toPx(s.view, s.ball);
       if (s.phase === 'play') {
-        const wish =
-          s.mode === 'tilt'
-            ? toBoard(s.view, t)
-            : s.finger
-              ? fingerWish(s.ball, s.finger)
-              : { x: 0, y: 0 };
-        const hit = roll(s.ball, wish, dt, s.board);
-        if (s.board.goal) pull(s.ball, s.board.goal, dt);
+        const steps = Math.max(1, Math.ceil(span / 1000 / STEP));
+        const h = span / 1000 / steps;
+        let hit = 0;
+        for (let i = 0; i < steps && s.phase === 'play'; i++) {
+          const wish =
+            s.mode === 'tilt'
+              ? toBoard(s.view, t)
+              : s.finger
+                ? fingerWish(s.ball, s.finger)
+                : { x: 0, y: 0 };
+          hit = Math.max(hit, roll(s.ball, wish, h, s.board));
+          if (s.board.goal) pull(s.ball, s.board.goal, h);
+          const pit = s.board.pits.find((c) => inPit(s.ball, c));
+          if (s.board.goal && inHole(s.ball, s.board.goal)) win();
+          else if (pit) fall(pit);
+          else checkTokens();
+        }
         const speed = Math.hypot(s.ball.vx, s.ball.vy);
         if (speed > 0.5) {
           s.rollAt = clock;
@@ -824,10 +833,6 @@ export function Marble({ spec, phrases, onFinish }: GameProps<'marble'>) {
           const p = toPx(s.view, s.ball);
           dust(p.x, p.y, 4);
         }
-        const pit = s.board.pits.find((c) => inPit(s.ball, c));
-        if (s.board.goal && inHole(s.ball, s.board.goal)) win();
-        else if (pit) fall(pit);
-        else checkTokens();
       }
       const after = toPx(s.view, s.ball);
       const moved = { x: after.x - before.x, y: after.y - before.y };
@@ -839,7 +844,7 @@ export function Marble({ spec, phrases, onFinish }: GameProps<'marble'>) {
       // Куда катить: для подсказки пальца и дорожки — не каждый кадр.
       const trailOn =
         s.phase === 'play' && (s.k === 0 || clock - s.shownAt > TRAIL_AFTER) && !!s.flow;
-      if (frameNo % 6 === 0 && s.flow) {
+      if ((frameNo % 6 === 0 || webdriver) && s.flow) {
         if (s.mode === 'finger' || webdriver) s.aim = aimFrom(s.board, s.flow, s.ball);
         if (trailOn) s.trail = pathFrom(s.flow, s.ball);
       }
@@ -985,6 +990,7 @@ export function Marble({ spec, phrases, onFinish }: GameProps<'marble'>) {
         const vel = toPx(s.view, { x: ball.vx, y: ball.vy });
         el.dataset.vPx = pt({ x: vel.x - zero.x, y: vel.y - zero.y });
         el.dataset.steer = s.mode;
+        el.dataset.sensed = String(sensed);
         el.dataset.task = s.R.task;
         el.dataset.word = s.R.word ?? '';
         el.dataset.walls = String(s.board.walls.length);
@@ -997,6 +1003,7 @@ export function Marble({ spec, phrases, onFinish }: GameProps<'marble'>) {
         el.dataset.wins = String(s.wins);
         el.dataset.goal = s.board.goal ? px(s.board.goal) : '';
         el.dataset.h = String(s.board.h);
+        el.dataset.cell = String(s.view.cell);
         el.dataset.tiltTold = String(s.tiltTold);
         el.dataset.orderTold = String(s.orderTold);
       }
