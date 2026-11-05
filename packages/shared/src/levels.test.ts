@@ -69,6 +69,7 @@ const SPECS = [
   { kind: 'cuckoo', tasks: ['read'], half: false, rounds: 3 },
   { kind: 'marble', tasks: ['hole'], walls: 0, pits: false, rounds: 3 },
   { kind: 'bubbles', tasks: ['all'], goal: 5, fast: false, rounds: 3 },
+  { kind: 'seek', tasks: ['all'], animals: 3, wide: false, rounds: 3 },
   { kind: 'gears', tasks: ['build'], gaps: 2, sizes: false, rounds: 3 },
 ] as const;
 
@@ -305,6 +306,21 @@ describe('игры этапа 41', () => {
     expect(gameSpec.safeParse({ kind: 'figure', pieces: 8, rounds: 3 }).success).toBe(false);
   });
 
+  it('«Прятки в комнате»: зверят больше, потом по имени, потом «кто где» и за спиной', () => {
+    const seek = gameSpec.parse({ kind: 'seek', rounds: 3 }) as GameSpec;
+    expect(seek).toMatchObject({ tasks: ['all'], animals: 3, wide: false });
+    expect(specAtLevel(seek, 2)).toMatchObject({ animals: 4, wide: false, tasks: ['all'] });
+    expect(specAtLevel(seek, 3)).toMatchObject({ animals: 4, tasks: ['all', 'who'] });
+    expect(specAtLevel(seek, 4)).toMatchObject({
+      animals: 4,
+      wide: true,
+      tasks: ['all', 'who', 'where'],
+    });
+    const set = gameSpec.parse({ kind: 'seek', tasks: ['where'], animals: 5, rounds: 3 });
+    expect(specAtLevel(set as GameSpec, 2)).toMatchObject({ animals: 5, tasks: ['where'] });
+    expect(gameSpec.safeParse({ kind: 'seek', tasks: [], rounds: 3 }).success).toBe(false);
+    expect(gameSpec.safeParse({ kind: 'seek', animals: 1, rounds: 3 }).success).toBe(false);
+  });
   it('шарик (этап 59): чистая дощечка → перегородки → ямки → и числа по порядку', () => {
     const marble = gameSpec.parse({ kind: 'marble', rounds: 3 }) as GameSpec;
     expect(marble).toMatchObject({ tasks: ['hole'], walls: 0, pits: false });
