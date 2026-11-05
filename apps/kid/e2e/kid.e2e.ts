@@ -2251,6 +2251,143 @@ class CuckooPilot {
   }
 }
 
+/** Рука: катит к цели, держит телефон (пальцы чуть дрожат), телефон на столе, датчика нет. */
+type MarbleHand = 'fly' | 'hold' | 'still' | 'off';
+type MarbleSpot = { x: number; y: number };
+const marbleXY = (s: string): MarbleSpot => {
+  const [x, y] = s.split(',').map(Number);
+  return { x: x!, y: y! };
+};
+/**
+ * Автопилот «Катись, шарик»: рука с телефоном. Настоящего датчика в тестах нет, поэтому рука живёт
+ * в странице и 30 раз в секунду шлёт `deviceorientation`: куда наклонить, считает по координатам
+ * шарика и цели. Углы — обратные к tilt.ts: так проверяется вся цепочка от датчика до экрана.
+ */
+class MarblePilot {
+  constructor(private page: Page) {}
+  private get g() {
+    return this.page.getByTestId('game-marble');
+  }
+  /** Поставить руку до открытия игры: датчик отзывается сразу, как на телефоне. */
+  async install(mode: MarbleHand) {
+    await this.page.addInitScript((first) => {
+      const w = window as unknown as {
+        __hand: { mode: string; to: { x: number; y: number } | null; falls?: number };
+        orientation?: number;
+      };
+      w.__hand = { mode: first, to: null };
+      const RAD = Math.PI / 180;
+      const BASE = 30 * RAD;
+      const FULL = Math.sin(24 * RAD);
+      const pair = (s = '0,0') => s.split(',').map(Number) as [number, number];
+      /** Наклон в осях экрана → углы датчика телефона, который держат под 30°. */
+      const pose = (sx: number, sy: number) => {
+        const a = screen.orientation?.angle ?? w.orientation ?? 0;
+        const q = ((a % 360) + 360) % 360;
+        const [tx, ty] =
+          q === 90 ? [-sy, sx] : q === 180 ? [-sx, -sy] : q === 270 ? [sy, -sx] : [sx, sy];
+        const gx = tx * FULL;
+        const gy = -Math.sin(BASE) - ty * FULL * Math.cos(BASE);
+        const gz = -Math.cos(BASE) + ty * FULL * Math.sin(BASE);
+        const n = Math.hypot(gx, gy, gz);
+        return { beta: Math.asin(-gy / n) / RAD, gamma: Math.atan2(gx, -gz) / RAD };
+      };
+      setInterval(() => {
+        const el = document.querySelector<HTMLElement>('[data-testid=game-marble]');
+        if (!el) return;
+        // Шарик упал в ямку — рука замирает сама: тест мог бы и не успеть.
+        const { falls } = w.__hand;
+        if (falls !== undefined && Number(el.dataset.falls) > falls)
+          w.__hand = { mode: 'hold', to: null };
+        const { mode, to } = w.__hand;
+        if (mode === 'off') return;
+        let angles = pose(mode === 'still' ? 0 : 0.04 * Math.sin(performance.now() / 200), 0);
+        // Пока игра не слушает наклон, рука его не держит: иначе «ровно» возьмётся с наклоном.
+        if (mode === 'fly' && el.dataset.phase === 'play' && el.dataset.sensed === 'true') {
+          const cell = Number(el.dataset.cell) || 40;
+          const [bx, by] = pair(el.dataset.ballPx);
+          const [vx, vy] = pair(el.dataset.vPx);
+          const [ax, ay] = to ? [to.x, to.y] : pair(el.dataset.aimPx);
+          const sx = (0.5 * (ax - bx) - 0.25 * vx) / cell;
+          const sy = (0.5 * (ay - by) - 0.25 * vy) / cell;
+          const len = Math.hypot(sx, sy);
+          // Без спешки — как ребёнок. Совсем маленький наклон шарик не чувствует.
+          const k = len > 0.5 ? 0.5 / len : len > 0.02 && len < 0.14 ? 0.14 / len : 1;
+          angles = pose(sx * k, sy * k);
+        }
+        window.dispatchEvent(
+          Object.assign(new Event('deviceorientation'), { alpha: 0, ...angles }),
+        );
+      }, 33);
+    }, mode);
+  }
+  /** Сменить, что делает рука; `to` — катить не к цели игры, а в эту точку. */
+  async hand(mode: MarbleHand, to: MarbleSpot | null = null, falls?: number) {
+    await this.page.evaluate(
+      ([m, t, f]) => {
+        (window as unknown as { __hand: unknown }).__hand = { mode: m, to: t, falls: f };
+      },
+      [mode, to, falls] as const,
+    );
+  }
+  /** Скатить шарик в ямку и дождаться, когда он вернётся на старт. */
+  async fall(pit: MarbleSpot, start: MarbleSpot, n: number) {
+    await this.hand('fly', pit, n - 1);
+    await expect.poll(() => this.count('data-falls'), { timeout: 20_000 }).toBe(n);
+    await expect
+      .poll(
+        async () => {
+          const b = await this.spot('data-ball-px');
+          return Math.hypot(b.x - start.x, b.y - start.y);
+        },
+        { timeout: 15_000 },
+      )
+      .toBeLessThan(2);
+    await this.play();
+  }
+  async play() {
+    await expect(this.g).toHaveAttribute('data-phase', 'play', { timeout: 15_000 });
+  }
+  async count(attr: 'data-wins' | 'data-falls' | 'data-got') {
+    return Number(await this.g.getAttribute(attr));
+  }
+  async spot(attr: 'data-ball-px' | 'data-goal') {
+    return marbleXY((await this.g.getAttribute(attr))!);
+  }
+  async pits() {
+    return (JSON.parse((await this.g.getAttribute('data-pits'))!) as string[]).map(marbleXY);
+  }
+  async tokens() {
+    const list = JSON.parse((await this.g.getAttribute('data-tokens'))!) as {
+      label: string;
+      at: string;
+    }[];
+    return list.map((t) => ({ label: t.label, ...marbleXY(t.at) }));
+  }
+  /** Дождаться победы на дощечке. */
+  async won(n: number) {
+    await expect.poll(() => this.count('data-wins'), { timeout: 40_000 }).toBe(n);
+  }
+  /** Все дощечки пройдены, игра закрылась. */
+  async finished(backend: Backend) {
+    await expect
+      .poll(() => backend.events.filter((e) => e.type === 'interactive_complete').length, {
+        timeout: 30_000,
+      })
+      .toBe(1);
+  }
+  /** Вести шарик пальцем до точки и держать, пока не закатится. */
+  async drag(to: MarbleSpot, wins: number) {
+    const box = (await this.g.boundingBox())!;
+    const from = await this.spot('data-ball-px');
+    await this.page.mouse.move(box.x + from.x, box.y + from.y);
+    await this.page.mouse.down();
+    await this.page.mouse.move(box.x + to.x, box.y + to.y, { steps: 12 });
+    await this.won(wins);
+    await this.page.mouse.up();
+  }
+}
+
 async function expectFinished(page: Page, backend: Backend) {
   await expect(page.getByTestId('game-finished')).toBeVisible({ timeout: 6000 });
   await expect
@@ -4569,6 +4706,264 @@ test.describe('новые игры', () => {
     expect(said).toContain('Это день мишки. Помоги ему — покажи время на часах!');
     expect(said).toContain('Ку-ку! Теперь ты знаешь, который час!');
   });
+
+  test('шарик (этап 59): наклоном до лунки — две дощечки, ошибок нет, руки-подсказки нет', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(120_000);
+    backend.items = [
+      game(1, { kind: 'marble', tasks: ['hole'], walls: 0, pits: false, rounds: 2 }),
+    ];
+    const m = new MarblePilot(page);
+    await m.install('hold');
+    await openGame(page);
+    const g = page.getByTestId('game-marble');
+    await m.play();
+    await expect(g).toHaveAttribute('data-steer', 'tilt');
+    await expect(g).toHaveAttribute('data-task', 'hole');
+    // Наклоном играют без касаний: это не значит, что ребёнок завис.
+    await expect(g).toHaveAttribute('data-no-idle', 'true');
+    await page.waitForTimeout(900);
+    await shot(page, 'marble-hole');
+    const start = await m.spot('data-ball-px');
+    await m.hand('fly');
+    await expect
+      .poll(
+        async () => {
+          const b = await m.spot('data-ball-px');
+          return Math.hypot(b.x - start.x, b.y - start.y);
+        },
+        { timeout: 15_000 },
+      )
+      .toBeGreaterThan(40);
+    await shot(page, 'marble-rolling');
+    await m.won(1);
+    await expect(g).toHaveAttribute('data-round', '1', { timeout: 20_000 });
+    await m.won(2);
+    await m.finished(backend);
+    const done = backend.events.find((e) => e.type === 'interactive_complete')!;
+    expect(done.payload).toMatchObject({ mistakes: 0 });
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain('Держи телефон двумя руками и наклоняй. Шарик покатится!');
+    expect(said).toContain('Докати шарик до лунки с флажком!');
+    expect(said).toContain('Шарик в лунке!');
+    expect(said).toContain('Все дощечки пройдены! Ловкие руки!');
+    expect(said).not.toContain('Кати шарик пальцем: нажми и веди.');
+  });
+
+  test('шарик (этап 59): ямка — на старт, голос два раза, на третий ямка затягивается', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(150_000);
+    backend.items = [game(1, { kind: 'marble', tasks: ['hole'], walls: 0, pits: true, rounds: 2 })];
+    const m = new MarblePilot(page);
+    await m.install('hold');
+    await openGame(page);
+    const g = page.getByTestId('game-marble');
+    await m.play();
+    const pits = await m.pits();
+    expect(pits).toHaveLength(2);
+    const start = await m.spot('data-ball-px');
+    await page.waitForTimeout(400);
+    await shot(page, 'marble-pits');
+    for (let i = 1; i <= 3; i++) await m.fall(pits[0]!, start, i);
+    expect(await m.pits()).toHaveLength(1);
+    await m.hand('fly');
+    await m.won(1);
+    await expect(g).toHaveAttribute('data-round', '1', { timeout: 20_000 });
+    await m.won(2);
+    await m.finished(backend);
+    const done = backend.events.find((e) => e.type === 'interactive_complete')!;
+    expect((done.payload as { mistakes: number }).mistakes).toBeGreaterThanOrEqual(3);
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said.filter((t) => t === 'Ой, ямка! Шарик вернулся на старт.')).toHaveLength(2);
+  });
+
+  test('шарик (этап 59): числа по порядку — не то число качается и это не ошибка', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(120_000);
+    backend.items = [
+      game(1, { kind: 'marble', tasks: ['count'], walls: 0, pits: false, rounds: 2 }),
+    ];
+    const m = new MarblePilot(page);
+    await m.install('hold');
+    await openGame(page);
+    const g = page.getByTestId('game-marble');
+    await m.play();
+    await expect(g).toHaveAttribute('data-task', 'count');
+    await expect(g).toHaveAttribute('data-goal', '');
+    const tokens = await m.tokens();
+    expect(tokens.map((t) => t.label)).toEqual(['1', '2', '3']);
+    await page.waitForTimeout(400);
+    await shot(page, 'marble-count');
+    // Не то число — то, до которого дорога дальше всего от единицы: шарик не заденет её по пути.
+    const a = await m.spot('data-ball-px');
+    const clear = (t: MarbleSpot) => {
+      const dx = t.x - a.x;
+      const dy = t.y - a.y;
+      const one = tokens[0]!;
+      const k = Math.max(
+        0,
+        Math.min(1, ((one.x - a.x) * dx + (one.y - a.y) * dy) / (dx * dx + dy * dy)),
+      );
+      return Math.hypot(a.x + dx * k - one.x, a.y + dy * k - one.y);
+    };
+    const wrong = tokens.slice(1).sort((p, q) => clear(q) - clear(p))[0]!;
+    await m.hand('fly', wrong);
+    await expect(g).toHaveAttribute('data-order-told', 'true', { timeout: 20_000 });
+    expect(await m.count('data-got')).toBe(0);
+    await m.hand('fly');
+    await expect.poll(() => m.count('data-got'), { timeout: 30_000 }).toBeGreaterThan(0);
+    await page.waitForTimeout(250);
+    await shot(page, 'marble-count-got');
+    await m.won(1);
+    await expect(g).toHaveAttribute('data-round', '1', { timeout: 20_000 });
+    await m.won(2);
+    await m.finished(backend);
+    const done = backend.events.find((e) => e.type === 'interactive_complete')!;
+    expect(done.payload).toMatchObject({ mistakes: 0 });
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain('Собери числа по порядку: один, два, три…');
+    expect(said).toContain('По порядку! Ищи то, что светится.');
+    expect(said).toContain('один');
+    expect(said).toContain('два');
+    expect(said).toContain('три');
+  });
+
+  test('шарик (этап 59): слово за перегородками и мимо ямок', async ({ page, backend }) => {
+    test.setTimeout(150_000);
+    backend.items = [
+      game(1, { kind: 'marble', tasks: ['word', 'hole'], walls: 3, pits: true, rounds: 2 }),
+    ];
+    const m = new MarblePilot(page);
+    await m.install('fly');
+    await openGame(page);
+    const g = page.getByTestId('game-marble');
+    await m.play();
+    await expect(g).toHaveAttribute('data-task', 'word');
+    await expect(g).toHaveAttribute('data-walls', '3');
+    const word = (await g.getAttribute('data-word'))!;
+    expect(word).toMatch(/^[а-яё]{3,5}$/);
+    await shot(page, 'marble-word');
+    await m.won(1);
+    await expect(g).toHaveAttribute('data-round', '1', { timeout: 20_000 });
+    await expect(g).toHaveAttribute('data-task', 'hole');
+    await m.play();
+    await page.waitForTimeout(300);
+    await shot(page, 'marble-walls');
+    await m.won(2);
+    await m.finished(backend);
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain(`Собери слово «${word}»!`);
+    expect(said).toContain(word);
+  });
+
+  test('шарик (этап 59): датчик молчит — пальцем, с рукой-подсказкой', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(120_000);
+    backend.items = [
+      game(1, { kind: 'marble', tasks: ['hole'], walls: 0, pits: false, rounds: 2 }),
+    ];
+    const m = new MarblePilot(page);
+    await m.install('off');
+    await openGame(page);
+    const g = page.getByTestId('game-marble');
+    await expect(g).toHaveAttribute('data-steer', 'finger', { timeout: 6000 });
+    await m.play();
+    await expect(g).not.toHaveAttribute('data-no-idle', 'true');
+    await expect(g.locator('[data-hint]')).toHaveCount(1);
+    await expect(g.locator('[data-hint-target]')).toHaveCount(1);
+    await m.drag(await m.spot('data-goal'), 1);
+    await expect(g).toHaveAttribute('data-round', '1', { timeout: 20_000 });
+    await m.play();
+    await m.drag(await m.spot('data-goal'), 2);
+    await m.finished(backend);
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said).toContain('Кати шарик пальцем: нажми и веди.');
+    expect(said).not.toContain('Держи телефон двумя руками и наклоняй. Шарик покатится!');
+  });
+
+  test('шарик (этап 59): телефон лежит на столе — пальцем, подняли — снова наклоном; нажатие напоминает про наклон', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(90_000);
+    backend.items = [
+      game(1, { kind: 'marble', tasks: ['hole'], walls: 0, pits: false, rounds: 2 }),
+    ];
+    const m = new MarblePilot(page);
+    await m.install('hold');
+    await openGame(page);
+    const g = page.getByTestId('game-marble');
+    await m.play();
+    await expect(g).toHaveAttribute('data-steer', 'tilt');
+    // В наклоне нажатие на дощечку только напоминает — один раз за дощечку.
+    const box = (await g.boundingBox())!;
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(g).toHaveAttribute('data-tilt-told', 'true');
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await m.hand('still');
+    await expect(g).toHaveAttribute('data-steer', 'finger', { timeout: 12_000 });
+    // Взяли в руки: снова наклоном, а «ровно» — когда телефон ляжет в руки.
+    await m.hand('hold');
+    await expect(g).toHaveAttribute('data-steer', 'tilt', { timeout: 5000 });
+    await page.waitForTimeout(900);
+    await m.hand('fly');
+    await m.won(1);
+    const said = (await spoken(page)).map((x) => x.text);
+    expect(said.filter((t) => t === 'Наклони телефон — шарик покатится сам!')).toHaveLength(1);
+    expect(said.filter((t) => t === 'Кати шарик пальцем: нажми и веди.')).toHaveLength(1);
+  });
+
+  for (const answer of ['granted', 'denied'] as const)
+    test(`шарик (этап 59): iPhone спрашивает разрешение по кнопке — ${answer}`, async ({
+      page,
+      backend,
+    }) => {
+      test.setTimeout(90_000);
+      backend.items = [
+        game(1, { kind: 'marble', tasks: ['hole'], walls: 0, pits: false, rounds: 2 }),
+      ];
+      // Без нажатия система отказывает, по нажатию — отвечает то, что выбрал взрослый.
+      await page.addInitScript((a) => {
+        const w = window as unknown as { DeviceOrientationEvent?: object };
+        w.DeviceOrientationEvent ??= function () {};
+        let asked = 0;
+        Object.assign(w.DeviceOrientationEvent, {
+          requestPermission: () =>
+            asked++ ? Promise.resolve(a) : Promise.reject(new Error('NotAllowedError')),
+        });
+      }, answer);
+      const m = new MarblePilot(page);
+      await m.install(answer === 'granted' ? 'fly' : 'off');
+      await openGame(page);
+      const g = page.getByTestId('game-marble');
+      await expect(g).toHaveAttribute('data-phase', 'ask');
+      await expect(page.getByTestId('marble-start')).toBeVisible();
+      await page.waitForTimeout(300);
+      await shot(page, 'marble-ask');
+      await page.getByTestId('marble-start').click();
+      await expect(page.getByTestId('marble-start')).toHaveCount(0);
+      await m.play();
+      if (answer === 'granted') {
+        await expect(g).toHaveAttribute('data-steer', 'tilt');
+        await m.won(1);
+      } else {
+        // После отказа датчик молчит — пальцем.
+        await expect(g).toHaveAttribute('data-steer', 'finger', { timeout: 6000 });
+        await m.drag(await m.spot('data-goal'), 1);
+      }
+      const said = (await spoken(page)).map((x) => x.text);
+      expect(said).toContain(
+        'Нажми на зелёную кнопку. Если телефон спросит, попроси взрослого разрешить.',
+      );
+    });
 
   test('стих (этап 45): послушать, повторять за голосом, «Договори словечко», вопросы — часть выучена', async ({
     page,
