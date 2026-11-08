@@ -4,6 +4,7 @@
 import type { GameKind, GameSpec } from './games';
 import {
   BUBBLES_TASKS,
+  SEEK_TASKS,
   DRESS_TASKS,
   GEARS_TASKS,
   isTraceLetter,
@@ -306,6 +307,17 @@ export function specAtLevel(spec: GameSpec, level: number): GameSpec {
         fast: spec.fast || up >= 3,
         tasks: BUBBLES_TASKS.filter(
           (t) => spec.tasks.includes(t) || (t === 'color' && up >= 2) || (t === 'digit' && up >= 3),
+        ),
+      };
+    case 'seek':
+      // Со второго шага — зверят больше, с третьего — названного по имени, с четвёртого — «кто где»
+      // и за спиной.
+      return {
+        ...spec,
+        animals: clamp(spec.animals + (up >= 1 ? 1 : 0), 2, 5),
+        wide: spec.wide || up >= 3,
+        tasks: SEEK_TASKS.filter(
+          (t) => spec.tasks.includes(t) || (t === 'who' && up >= 2) || (t === 'where' && up >= 3),
         ),
       };
     case 'bot':

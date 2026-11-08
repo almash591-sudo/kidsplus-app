@@ -228,6 +228,15 @@ export const BUBBLES_TASK_LABELS: Record<BubblesTask, string> = {
   color: 'Только нужного цвета',
   digit: 'Только с нужной цифрой',
 };
+/** Задания «Пряток» (этап 59): найти всех, найти названного, сказать, кто где. */
+export const SEEK_TASKS = ['all', 'who', 'where'] as const;
+export type SeekTask = (typeof SEEK_TASKS)[number];
+/** Как задания «Пряток» называются в кабинете. */
+export const SEEK_TASK_LABELS: Record<SeekTask, string> = {
+  all: 'Найди всех зверят',
+  who: 'Найди названного',
+  where: 'Кто наверху, внизу, справа',
+};
 /** Задания «Робота» (этап 58): составить программу до батарейки, найти ошибку в готовой. */
 export const BOT_TASKS = ['go', 'fix'] as const;
 export type BotTask = (typeof BOT_TASKS)[number];
@@ -1055,6 +1064,20 @@ export const gameSpec = z.discriminatedUnion('kind', [
     rounds: z.number().int().min(2).max(6),
   }),
   /**
+   * Прятки в комнате (этап 59): задняя камера показывает комнату, глиняные зверята спрятаны вокруг
+   * ребёнка, он поворачивается вместе с телефоном и наводит кружок на укрытие. Кадры нигде не
+   * читаются и остаются только в памяти телефона. Нет датчика — двигаем комнату пальцем, нет камеры —
+   * вместо неё нарисованная комната. tasks: all — найти всех, who — найти названного, where — «Кто
+   * прячется наверху?». animals — сколько зверят за раунд, wide — прячутся и за спиной.
+   */
+  z.object({
+    kind: z.literal('seek'),
+    tasks: z.array(z.enum(SEEK_TASKS)).min(1).max(SEEK_TASKS.length).default(['all']),
+    animals: z.number().int().min(2).max(5).default(3),
+    wide: z.boolean().default(false),
+    rounds: z.number().int().min(2).max(6),
+  }),
+  /**
    * Часы с кукушкой (этап 58): большие часы с маятником, на верный ответ из домика выскакивает
    * кукушка и кукует столько раз, который час. tasks: read — «Который час?», нажать цифру, куда
    * смотрит маленькая стрелка (целые часы); set — «Покажи три часа»: поставить стрелки пальцем;
@@ -1208,6 +1231,7 @@ export const GAME_KINDS: Record<GameKind, string> = {
   bot: 'Робот и батарейка',
   marble: 'Катись, шарик',
   bubbles: 'Волшебные пузыри',
+  seek: 'Прятки в комнате',
   cuckoo: 'Часы с кукушкой',
   poem: 'Стих или сказка',
   book: 'Книжка',
@@ -1296,6 +1320,7 @@ export function gameImageIds(g: GameSpec): string[] {
     case 'cuckoo':
     case 'marble':
     case 'bubbles':
+    case 'seek':
     case 'poem':
     case 'book':
       return [];

@@ -13,6 +13,8 @@ import {
   MARBLE_TASK_LABELS,
   BUBBLES_TASK_LABELS,
   BUBBLES_TASKS,
+  SEEK_TASK_LABELS,
+  SEEK_TASKS,
   MARBLE_TASKS,
   COLORING_PICTURES,
   CUCKOO_TASK_LABELS,
@@ -46,6 +48,7 @@ import {
   TRACE_SHAPES,
   type BotTask,
   type BubblesTask,
+  type SeekTask,
   type MarbleTask,
   type CuckooTask,
   type DressTask,
@@ -473,6 +476,7 @@ const DEFAULTS: { [K in GameKind]: Extract<GameSpec, { kind: K }> } = {
     pits: false,
     rounds: 3,
   },
+  seek: { kind: 'seek', tasks: ['all'], animals: 3, wide: false, rounds: 3 },
   bubbles: {
     kind: 'bubbles',
     tasks: ['all'],
@@ -3358,6 +3362,62 @@ function SpecFields({ spec, onChange }: { spec: GameSpec; onChange: (s: GameSpec
             попадают в галерею и кабинет. Камера выключается на выходе, на паузе и при погашенном
             экране. Нет камеры или не разрешили — пузыри лопают пальцем. Телефон удобнее поставить
             или держать взрослому. С 2 лет.
+          </Text>
+        </Stack>
+      );
+    case 'seek':
+      return (
+        <Stack gap="xs">
+          <Text size="sm" fw={500}>
+            Задания (по очереди)
+          </Text>
+          <Chip.Group
+            multiple
+            value={spec.tasks}
+            onChange={(v) =>
+              v.length &&
+              onChange({
+                ...spec,
+                tasks: SEEK_TASKS.filter((t) => v.includes(t)) as SeekTask[],
+              })
+            }
+          >
+            <Group gap="xs">
+              {SEEK_TASKS.map((t) => (
+                <Chip key={t} value={t}>
+                  {SEEK_TASK_LABELS[t]}
+                </Chip>
+              ))}
+            </Group>
+          </Chip.Group>
+          <Group grow>
+            <NumberInput
+              label="Зверят в раунде"
+              min={2}
+              max={5}
+              value={spec.animals}
+              onChange={(v) => onChange({ ...spec, animals: num(v, 3) })}
+            />
+            <NumberInput
+              label="Раундов"
+              min={2}
+              max={6}
+              value={spec.rounds}
+              onChange={(v) => onChange({ ...spec, rounds: num(v, 3) })}
+            />
+          </Group>
+          <Switch
+            label="Прячутся и за спиной"
+            checked={spec.wide}
+            onChange={(e) => onChange({ ...spec, wide: e.currentTarget.checked })}
+          />
+          <Text size="xs" c="dimmed">
+            Ребёнок видит комнату на задней камере, поворачивается вместе с телефоном и ищет
+            глиняных зверят. Голос просит стоять на месте: ходить с телефоном не нужно. Кадры игра
+            не читает вовсе: их только показывает экран, они не сохраняются, никуда не отправляются
+            и не попадают в галерею и кабинет. Камера выключается на выходе, на паузе и при
+            погашенном экране. Нет камеры — комната нарисованная, нет датчика — её двигают пальцем.
+            С 3 лет.
           </Text>
         </Stack>
       );
