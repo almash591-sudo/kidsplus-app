@@ -210,6 +210,15 @@ export const FIGURE_SHAPE_LABELS: Record<FigureShape, string> = {
   cat: 'Кошка',
   boat: 'Кораблик',
 };
+/** Задания «Шарика» (этап 59): докатить до лунки, собрать числа или буквы слова по порядку. */
+export const MARBLE_TASKS = ['hole', 'count', 'word'] as const;
+export type MarbleTask = (typeof MARBLE_TASKS)[number];
+/** Как задания «Шарика» называются в кабинете. */
+export const MARBLE_TASK_LABELS: Record<MarbleTask, string> = {
+  hole: 'Докати до лунки',
+  count: 'Собери числа по порядку',
+  word: 'Собери слово',
+};
 /** Задания «Робота» (этап 58): составить программу до батарейки, найти ошибку в готовой. */
 export const BOT_TASKS = ['go', 'fix'] as const;
 export type BotTask = (typeof BOT_TASKS)[number];
@@ -1011,6 +1020,19 @@ export const gameSpec = z.discriminatedUnion('kind', [
     rounds: z.number().int().min(2).max(6),
   }),
   /**
+   * Катись, шарик (этап 59): ребёнок наклоняет телефон, и шарик катится по деревянной дощечке.
+   * Гироскоп, а если датчика нет или он не отвечает — пальцем. tasks: hole — докатить до лунки с
+   * флажком, count — собрать числа по порядку, word — буквы слова по порядку. walls — сколько
+   * перегородок на дощечке, pits — ямки: шарик падает и возвращается на старт.
+   */
+  z.object({
+    kind: z.literal('marble'),
+    tasks: z.array(z.enum(MARBLE_TASKS)).min(1).max(MARBLE_TASKS.length).default(['hole']),
+    walls: z.number().int().min(0).max(4).default(0),
+    pits: z.boolean().default(false),
+    rounds: z.number().int().min(2).max(6),
+  }),
+  /**
    * Часы с кукушкой (этап 58): большие часы с маятником, на верный ответ из домика выскакивает
    * кукушка и кукует столько раз, который час. tasks: read — «Который час?», нажать цифру, куда
    * смотрит маленькая стрелка (целые часы); set — «Покажи три часа»: поставить стрелки пальцем;
@@ -1162,6 +1184,7 @@ export const GAME_KINDS: Record<GameKind, string> = {
   dress: 'Одень мишку',
   figure: 'Сложи фигуру',
   bot: 'Робот и батарейка',
+  marble: 'Катись, шарик',
   cuckoo: 'Часы с кукушкой',
   poem: 'Стих или сказка',
   book: 'Книжка',
@@ -1248,6 +1271,7 @@ export function gameImageIds(g: GameSpec): string[] {
     case 'figure':
     case 'bot':
     case 'cuckoo':
+    case 'marble':
     case 'poem':
     case 'book':
       return [];
