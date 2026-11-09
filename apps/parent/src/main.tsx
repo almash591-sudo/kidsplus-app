@@ -6,6 +6,7 @@ import '@fontsource/onest/500.css';
 import '@fontsource/onest/600.css';
 import '@fontsource/onest/800.css';
 import './theme.css';
+import './aurora.css';
 import { MantineProvider } from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';
 import { Notifications } from '@mantine/notifications';

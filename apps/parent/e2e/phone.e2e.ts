@@ -85,6 +85,46 @@ test('страница приглашения: поля не мельче 16px',
   expect(await layoutProblems(page)).toEqual([]);
 });
 
+test('Aurora и Midnight: тема сохраняется, разделы читаемы на узком экране', async ({ page }) => {
+  await login(page);
+  for (const [label, scheme] of [
+    ['Тёмное', 'dark'],
+    ['Светлое', 'light'],
+  ] as const) {
+    await page.goto('/account');
+    await page.getByText(label, { exact: true }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-mantine-color-scheme', scheme);
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('data-mantine-color-scheme', scheme);
+    for (const url of ['/remote', '/content', '/routine', '/progress', '/more']) {
+      await page.goto(url);
+      await page.waitForLoadState('networkidle');
+      expect(await layoutProblems(page), `${scheme} ${url}`).toEqual([]);
+      await expect(page.locator('.tabbar a[aria-current="page"]')).toHaveCount(1);
+    }
+    await page.goto('/remote');
+    await expect(page.getByTestId('kid-card').first()).toBeVisible();
+    expect(
+      await page
+        .getByTestId('kid-card')
+        .first()
+        .evaluate((el) => {
+          return [...el.querySelectorAll('p, small')].every(
+            (t) => parseFloat(getComputedStyle(t).fontSize) >= 14,
+          );
+        }),
+    ).toBe(true);
+    if (process.env.SHOTS)
+      await page.screenshot({
+        path: `${process.env.SHOTS}/${scheme}-${test.info().project.name}.png`,
+      });
+  }
+  await page.goto('/account');
+  await page.getByText('Как в системе', { exact: true }).click();
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expect(page.locator('html')).toHaveAttribute('data-mantine-color-scheme', 'dark');
+});
+
 test('окно «Новый профиль» — шторка в пределах экрана, «Сохранить» доступна', async ({ page }) => {
   await login(page);
   await page.goto('/children');
@@ -447,9 +487,8 @@ test('точность (этап 47): уроки подписаны, завер�
   page,
 }) => {
   await login(page);
-  // «Все»: под именем — уроки с названием и остатком, а не безымянные кольца.
-  const lessons = page.getByTestId('kid-lessons').first();
-  await expect(lessons).toContainText(/Английский|Китайский|Математика/);
+  // Обзор показывает остаток; подробный план с названиями доступен в пульте.
+  await expect(page.getByTestId('family-minutes').first()).toBeVisible();
   expect(await layoutProblems(page)).toEqual([]);
 
   // «Завершить на сегодня» — не пройденные уроки в ленте «не сегодня» с причиной.
@@ -473,9 +512,9 @@ test('навигация (этап 47): боковое меню — все ра�
   const side = page.getByTestId('side-nav');
   await expect(side).toBeVisible();
   for (const label of [
-    'Пульт',
+    'Сегодня',
     'Контент',
-    'Распорядок',
+    'Ритм дня',
     'Прогресс',
     'Дети',
     'Мамин голос',

@@ -23,14 +23,13 @@ export const duration = (s: number) => {
   return m >= 60 ? `${Math.floor(m / 60)} ч ${String(m % 60).padStart(2, '0')} мин` : `${m} мин`;
 };
 
-export function NowHero({ child, color }: { child: Child; color: string }) {
+export function NowHero({ child }: { child: Child }) {
   const now = useChildNow(child.id);
   const control = useControl(child.id);
   const d = now.data;
   if (!d) return <Skeleton height={300} radius="xl" />;
 
   const left = secondsLeftToday(d);
-  const part = d.closed ? 1 : d.usedSeconds / Math.max(1, d.usedSeconds + left);
   const act = control.mutate;
   // Минуты помогают, пока день открыт или кончился лимит (не окно, не выходной).
   const canAdd = d.mode === 'plan' && (!d.closed || d.closed === 'limit');
@@ -59,7 +58,6 @@ export function NowHero({ child, color }: { child: Child; color: string }) {
 
         <Group wrap="nowrap" gap="lg" align="center">
           <div className="hero-ring">
-            <Ring part={d.mode === 'plan' ? part : 0} color={color} size={128} />
             <div className="hero-ring-label">
               {d.mode === 'plan' ? (
                 <>
@@ -129,7 +127,7 @@ export function NowHero({ child, color }: { child: Child; color: string }) {
               <Button
                 px={4}
                 size="md"
-                variant={d.paused ? 'filled' : 'light'}
+                variant="filled"
                 onClick={() => act({ action: d.paused ? 'resume' : 'pause' })}
                 loading={control.isPending}
                 data-testid="hero-pause"

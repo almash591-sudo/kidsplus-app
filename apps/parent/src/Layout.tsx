@@ -21,7 +21,7 @@ import { isActive, MAIN, MORE, moreFor, type NavItem } from './nav';
 /** «Ещё» на телефоне подсвечен на любой странице из своих групп. */
 const MORE_TAB = {
   to: '/more',
-  label: 'Ещё',
+  label: 'Семья',
   icon: 'M5 12h.01M12 12h.01M19 12h.01',
   also: MORE.flatMap((g) => g.items.map((it) => it.to)),
 };

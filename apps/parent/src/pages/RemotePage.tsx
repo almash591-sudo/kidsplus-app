@@ -7,7 +7,6 @@ import type { Child } from '@kidsplus/shared/api';
 import type { ModerationItem } from '@kidsplus/shared/moderation';
 import type { ParentCapture } from '@kidsplus/shared/captures';
 import type { MonitorState } from '@kidsplus/shared/monitor';
-import { childPeer } from '@kidsplus/shared/calls';
 import type { ChildNow } from '@kidsplus/shared/schedule';
 import {
   ActionIcon,
@@ -23,15 +22,12 @@ import { useQueries, useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { api } from '../api';
-import { parentCalls } from '../calls/CallLayer';
 import { keys, useChildNow, useChildren, useMe, useSegments } from '../queries';
 import {
   KidAvatar,
   kidColor,
-  RING,
-  Ring,
   statusLine,
-  subjectPart,
+  secondsLeftToday,
   useControl,
 } from '../components/KidBits';
 import { DayLine } from '../components/DayLine';
@@ -48,7 +44,7 @@ import {
 } from '../components/ParentRemote';
 import { RemoteActions } from '../components/RemoteActions';
 import { setCurrentChild, useCurrentChildRaw } from '../lib/currentChild';
-import { SUBJECT_LABELS } from '../lib/subjects';
+import { ageText } from '../lib/child';
 import { phoneOf } from '../lib/names';
 
 const today = () =>
@@ -202,103 +198,98 @@ function Attention({ kids }: { kids: Child[] }) {
   );
 }
 
-/**
- * Строка ребёнка (этап 40): аватар, что делает, кольца уроков, звонок. Касание — пульт этого
- * ребёнка. Пауза и «+10» прямо здесь — только пока ребёнок в приложении.
- */
+/** Спокойный обзор семьи; полное управление открывается из карточки. */
 function KidRow({ child, color }: { child: Child; color: string }) {
   const now = useChildNow(child.id);
   const control = useControl(child.id);
   const d = now.data;
-  if (!d) return <Skeleton height={76} radius="xl" />;
-  const b = d.battery;
-  const live = d.online && d.mode === 'plan' && !d.closed && !d.rest;
-
+  if (!d) return <Skeleton height={240} radius="xl" />;
+  const canPause = d.mode === 'plan' && !d.closed && !d.rest && (d.online || d.paused);
+  const canAdd = d.mode === 'plan' && (!d.closed || d.closed === 'limit');
+  const open = () => {
+    setCurrentChild(child.id);
+    window.scrollTo({ top: 0 });
+  };
   return (
-    <Card padding="sm" className="kid-row" data-testid="kid-card">
-      <Group wrap="nowrap" gap="sm">
+    <Card className="kid-row" data-testid="kid-card">
+      <Group wrap="nowrap" justify="space-between">
         <UnstyledButton
-          onClick={() => {
-            setCurrentChild(child.id);
-            window.scrollTo({ top: 0 });
-          }}
+          onClick={open}
           aria-label={`Открыть: ${child.nickname}`}
           className="kid-row-main"
         >
-          <span className="kid-row-avatar">
-            <KidAvatar child={child} color={color} />
-            {d.online && <span className="live-dot on" aria-hidden="true" />}
-          </span>
-          <Stack gap={0} style={{ minWidth: 0, flex: 1 }}>
-            <Text fw={700} size="lg" lh={1.25}>
+          <KidAvatar child={child} color={color} />
+          <Stack gap={4} style={{ minWidth: 0 }}>
+            <Text fw={600} size="xl" lh={1.2}>
               {child.nickname}
             </Text>
-            <Text size="sm" c="dimmed" truncate>
-              {statusLine(d)}
-              {b ? ` · ${b.charging ? '⚡' : ''}${b.level} %` : ''}
+            <Text size="sm" c="dimmed">
+              {ageText(child)} · {d.online ? 'На связи' : 'Не в приложении'}
             </Text>
           </Stack>
         </UnstyledButton>
         <ActionIcon
-          size={40}
-          radius="xl"
-          variant="light"
-          color="green"
-          aria-label={`Позвонить: ${child.nickname}`}
-          onClick={() => void parentCalls()?.start([childPeer(child.id)], true)}
+          variant="subtle"
+          color="gray"
+          size={44}
+          onClick={open}
+          aria-label={`Пульт: ${child.nickname}`}
         >
           <svg
-            width="18"
-            height="18"
+            width="22"
+            height="22"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+            strokeWidth="1.6"
             aria-hidden="true"
           >
-            <path d="M6.5 4h3l1.6 4.2-2 1.3a11 11 0 0 0 5.4 5.4l1.3-2L20 14.5v3a2.5 2.5 0 0 1-2.5 2.5A14.5 14.5 0 0 1 4 6.5 2.5 2.5 0 0 1 6.5 4z" />
+            <path d="M4 7h16M4 17h16" />
+            <circle cx="9" cy="7" r="3" fill="var(--app-card)" />
+            <circle cx="15" cy="17" r="3" fill="var(--app-card)" />
           </svg>
         </ActionIcon>
       </Group>
-      {/* Этап 47: кольца с подписями — строкой под именем (без подписей было непонятно, что это). */}
-      {d.mode === 'plan' && d.subjects.length > 0 && (
-        <div className="kid-lessons" data-testid="kid-lessons">
-          {d.subjects.map((s) => (
-            <span key={s.subject} className="kid-lesson">
-              <Ring size={18} color={RING[s.subject] ?? '#007aff'} part={subjectPart(s)} />
-              <span>{SUBJECT_LABELS[s.subject].split(' ')[0]}</span>
-              <span className="kid-lesson-left">
-                {/* День закрыт — «осталось N мин» уже неправда; почему — в строке выше. */}
-                {s.done ? '✓' : d.closed ? '' : `${Math.ceil(s.secondsLeft / 60)} мин`}
-              </span>
-            </span>
-          ))}
+      <div className="family-session">
+        <Text fw={500} className="family-status">
+          {statusLine(d)}
+        </Text>
+        <div className="family-remaining">
+          {d.mode === 'plan' ? (
+            <>
+              <strong data-testid="family-minutes">{Math.ceil(secondsLeftToday(d) / 60)}</strong>
+              <span> мин</span>
+              <small>осталось</small>
+            </>
+          ) : (
+            <small>Без лимита</small>
+          )}
         </div>
-      )}
+      </div>
       {eyeBreakOf(d)?.asked && (
-        <div style={{ marginTop: 'var(--mantine-spacing-sm)' }}>
-          <EyeBreakControls now={d} act={(b) => control.mutate(b)} busy={control.isPending} />
-        </div>
+        <EyeBreakControls now={d} act={(b) => control.mutate(b)} busy={control.isPending} />
       )}
-      {(live || d.paused) && (
-        <Group gap={8} grow mt="sm" data-testid="kid-quick">
-          <Button
-            size="xs"
-            variant={d.paused ? 'filled' : 'light'}
-            onClick={() => control.mutate({ action: d.paused ? 'resume' : 'pause' })}
-            loading={control.isPending}
-          >
-            {d.paused ? 'Дальше' : 'Пауза'}
-          </Button>
-          <Button
-            size="xs"
-            variant="light"
-            onClick={() => control.mutate({ action: 'add', minutes: 10 })}
-          >
-            +10 мин
-          </Button>
+      {(canPause || canAdd) && (
+        <Group gap={12} grow mt="sm" data-testid="kid-quick">
+          {canPause && (
+            <Button
+              size="md"
+              onClick={() => control.mutate({ action: d.paused ? 'resume' : 'pause' })}
+              loading={control.isPending}
+            >
+              {d.paused ? 'Продолжить' : 'Пауза'}
+            </Button>
+          )}
+          {canAdd && (
+            <Button
+              size="md"
+              variant="subtle"
+              disabled={control.isPending}
+              onClick={() => control.mutate({ action: 'add', minutes: 5 })}
+            >
+              +5 мин
+            </Button>
+          )}
         </Group>
       )}
     </Card>
@@ -372,7 +363,7 @@ function KidRemote({ child, kids, listen }: { child: Child; kids: Child[]; liste
   }, [listen, loaded]);
   return (
     <Stack gap="md" data-testid="kid-remote" data-child={child.id}>
-      <NowHero child={child} color={kidColor(kids, child.id)} />
+      <NowHero child={child} />
       <RemoteActions child={child} listenAccent={listen} />
       {d && (
         <Card>
@@ -452,7 +443,7 @@ export function RemotePage() {
         <Text size="xs" fw={600} c="dimmed" tt="uppercase">
           {today()}
         </Text>
-        <h1 className="page-title">Пульт</h1>
+        <h1 className="page-title">Моя семья</h1>
       </Stack>
       <KidSwitch all />
       {children.isPending && <Skeleton height={76} radius="xl" />}
@@ -466,7 +457,7 @@ export function RemotePage() {
         />
       ) : (
         shown.length > 0 && (
-          <Stack gap={8}>
+          <Stack gap={14}>
             {shown.map((k) => (
               <KidRow key={k.id} child={k} color={kidColor(kids, k.id)} />
             ))}

@@ -19,7 +19,7 @@ export type NavItem = {
 export const MAIN: NavItem[] = [
   {
     to: '/remote',
-    label: 'Пульт',
+    label: 'Сегодня',
     // Корпус пульта, кнопка, клавиши.
     icon: 'M8 2.5h8a1.5 1.5 0 0 1 1.5 1.5v16a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 20V4A1.5 1.5 0 0 1 8 2.5zM12 9.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM10 13h4M10 16h4M10 19h4',
     color: '#007aff',
@@ -35,7 +35,7 @@ export const MAIN: NavItem[] = [
   // Этап 33: план, привычки и сон — один раздел «Распорядок».
   {
     to: '/routine',
-    label: 'Распорядок',
+    label: 'Ритм дня',
     icon: 'M4 6h16v14H4zM4 10h16M9 3v4M15 3v4',
     color: '#5856d6',
     also: ['/plan', '/habits', '/sleep'],

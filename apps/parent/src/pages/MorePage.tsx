@@ -10,7 +10,7 @@ export function MorePage() {
   const admin = useMe().data?.isAdmin === true;
   return (
     <Stack gap="md">
-      <h1 className="page-title">Ещё</h1>
+      <h1 className="page-title">Семья</h1>
       {moreFor(admin).map((g) => (
         <Stack key={g.title} gap={6}>
           <Text size="xs" fw={600} c="dimmed" tt="uppercase" px={16}>

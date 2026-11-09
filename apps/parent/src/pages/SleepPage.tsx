@@ -339,7 +339,7 @@ function Stories({
             Модель напишет добрую сказку на 2–4 минуты по вашей теме. Имя ребёнка не пишите — в
             модель уходят только тема и возраст. Вы прочитаете сказку и решите, звучать ли ей.
           </Text>
-          <Group gap={6}>
+          <Group gap={6} className="story-ideas">
             {THEME_IDEAS.map((t) => (
               <Chip key={t} checked={theme === t} onChange={() => setTheme(t)} size="xs">
                 {t}
