@@ -1,0 +1,437 @@
+﻿{
+    "generatedAt":  "2026-11-11",
+    "status":  "blocked_no_permitted_media_access",
+    "reason":  "The documented YouTube IFrame Player API exposes playback controls and player state, not audiovisual samples to a local model. Accessing the playback stream is outside this task.",
+    "contentReviewed":  false,
+    "videosDownloaded":  false,
+    "geminiUsed":  false,
+    "productionChanged":  false,
+    "childrenAssigned":  false,
+    "candidates":  [
+                       {
+                           "videoId":  "Kfl5ihXpiUg",
+                           "url":  "https://www.youtube.com/watch?v=Kfl5ihXpiUg",
+                           "subject":  "Математика",
+                           "title":  "Учим цифры от 1 до 9 для самых маленьких",
+                           "channel":  "Ягодка Малинка",
+                           "durationSeconds":  511,
+                           "reviewStatus":  "blocked_content_not_accessed",
+                           "summary":  null,
+                           "ageAssessment":  null,
+                           "safetyNotes":  null,
+                           "selectedSegment":  null,
+                           "quiz":  [
+
+                                    ],
+                           "evidence":  [
+
+                                        ],
+                           "confidence":  null
+                       },
+                       {
+                           "videoId":  "dM8XCA4_xS0",
+                           "url":  "https://www.youtube.com/watch?v=dM8XCA4_xS0",
+                           "subject":  "Математика",
+                           "title":  "Счёт от 1 до 5",
+                           "channel":  "Dominoki на русском",
+                           "durationSeconds":  582,
+                           "reviewStatus":  "blocked_content_not_accessed",
+                           "summary":  null,
+                           "ageAssessment":  null,
+                           "safetyNotes":  null,
+                           "selectedSegment":  null,
+                           "quiz":  [
+
+                                    ],
+                           "evidence":  [
+
+                                        ],
+                           "confidence":  null
+                       },
+                       {
+                           "videoId":  "F2q7RjZ3HJM",
+                           "url":  "https://www.youtube.com/watch?v=F2q7RjZ3HJM",
+                           "subject":  "Математика",
+                           "title":  "Учим цифры с разноцветной гусеницей",
+                           "channel":  "Тино — Игрушки для детей",
+                           "durationSeconds":  323,
+                           "reviewStatus":  "blocked_content_not_accessed",
+                           "summary":  null,
+                           "ageAssessment":  null,
+                           "safetyNotes":  null,
+                           "selectedSegment":  null,
+                           "quiz":  [
+
+                                    ],
+                           "evidence":  [
+
+                                        ],
+                           "confidence":  null
+                       },
+                       {
+                           "videoId":  "LLwU3nXOd5Y",
+                           "url":  "https://www.youtube.com/watch?v=LLwU3nXOd5Y",
+                           "subject":  "Математика",
+                           "title":  "Учим цифры, овощи и фрукты. Маленький поезд",
+                           "channel":  "Развивайка ТВ",
+                           "durationSeconds":  595,
+                           "reviewStatus":  "blocked_content_not_accessed",
+                           "summary":  null,
+                           "ageAssessment":  null,
+                           "safetyNotes":  null,
+                           "selectedSegment":  null,
+                           "quiz":  [
+
+                                    ],
+                           "evidence":  [
+
+                                        ],
+                           "confidence":  null
+                       },
+                       {
+                           "videoId":  "wWvTtQMHnWk",
+                           "url":  "https://www.youtube.com/watch?v=wWvTtQMHnWk",
+                           "subject":  "Математика",
+                           "title":  "Диана, Рома и Оливер: цифры от 1 до 10",
+                           "channel":  "Диана и Рома",
+                           "durationSeconds":  574,
+                           "reviewStatus":  "blocked_content_not_accessed",
+                           "summary":  null,
+                           "ageAssessment":  null,
+                           "safetyNotes":  null,
+                           "selectedSegment":  null,
+                           "quiz":  [
+
+                                    ],
+                           "evidence":  [
+
+                                        ],
+                           "confidence":  null
+                       },
+                       {
+                           "videoId":  "6xhjY6f94QE",
+                           "url":  "https://www.youtube.com/watch?v=6xhjY6f94QE",
+                           "subject":  "Музыка",
+                           "title":  "Маленький оркестр",
+                           "channel":  "Мультмама",
+                           "durationSeconds":  323,
+                           "reviewStatus":  "blocked_content_not_accessed",
+                           "summary":  null,
+                           "ageAssessment":  null,
+                           "safetyNotes":  null,
+                           "selectedSegment":  null,
+                           "quiz":  [
+
+                                    ],
+                           "evidence":  [
+
+                                        ],
+                           "confidence":  null
+                       },
+                       {
+                           "videoId":  "X0w0r3EBMx0",
+                           "url":  "https://www.youtube.com/watch?v=X0w0r3EBMx0",
+                           "subject":  "Музыка",
+                           "title":  "Алфавит — музыкальные инструменты",
+                           "channel":  "СЛОВАРИКИ",
+                           "durationSeconds":  460,
+                           "reviewStatus":  "blocked_content_not_accessed",
+                           "summary":  null,
+                           "ageAssessment":  null,
+                           "safetyNotes":  null,
+                           "selectedSegment":  null,
+                           "quiz":  [
+
+                                    ],
+                           "evidence":  [
+
+                                        ],
+                           "confidence":  null
+                       },
+                       {
+                           "videoId":  "AJgb_Ff7mtY",
+                           "url":  "https://www.youtube.com/watch?v=AJgb_Ff7mtY",
+                           "subject":  "Музыка",
+                           "title":  "Развлечёба: музыкальные инструменты",
+                           "channel":  "Кубокот",
+                           "durationSeconds":  370,
+                           "reviewStatus":  "blocked_content_not_accessed",
+                           "summary":  null,
+                           "ageAssessment":  null,
+                           "safetyNotes":  null,
+                           "selectedSegment":  null,
+                           "quiz":  [
+
+                                    ],
+                           "evidence":  [
+
+                                        ],
+                           "confidence":  null
+                       },
+                       {
+                           "videoId":  "8EoQ117dOkM",
+                           "url":  "https://www.youtube.com/watch?v=8EoQ117dOkM",
+                           "subject":  "Музыка",
+                           "title":  "Музыкальные инструменты — викторина для малышей",
+                           "channel":  "Чижик ТВ",
+                           "durationSeconds":  353,
+                           "reviewStatus":  "blocked_content_not_accessed",
+                           "summary":  null,
+                           "ageAssessment":  null,
+                           "safetyNotes":  null,
+                           "selectedSegment":  null,
+                           "quiz":  [
+
+                                    ],
+                           "evidence":  [
+
+                                        ],
+                           "confidence":  null
+                       },
+                       {
+                           "videoId":  "A5AHExS_ch0",
+                           "url":  "https://www.youtube.com/watch?v=A5AHExS_ch0",
+                           "subject":  "Природа",
+                           "title":  "Жираф. Видео про животных для детей",
+                           "channel":  "Тёма и Рома",
+                           "durationSeconds":  264,
+                           "reviewStatus":  "blocked_content_not_accessed",
+                           "summary":  null,
+                           "ageAssessment":  null,
+                           "safetyNotes":  null,
+                           "selectedSegment":  null,
+                           "quiz":  [
+
+                                    ],
+                           "evidence":  [
+
+                                        ],
+                           "confidence":  null
+                       },
+                       {
+                           "videoId":  "vRe5D5OBpNI",
+                           "url":  "https://www.youtube.com/watch?v=vRe5D5OBpNI",
+                           "subject":  "Природа",
+                           "title":  "Домашние животные и их звуки",
+                           "channel":  "Ладушки — Ладушки",
+                           "durationSeconds":  525,
+                           "reviewStatus":  "blocked_content_not_accessed",
+                           "summary":  null,
+                           "ageAssessment":  null,
+                           "safetyNotes":  null,
+                           "selectedSegment":  null,
+                           "quiz":  [
+
+                                    ],
+                           "evidence":  [
+
+                                        ],
+                           "confidence":  null
+                       },
+                       {
+                           "videoId":  "nXyg33vpVl0",
+                           "url":  "https://www.youtube.com/watch?v=nXyg33vpVl0",
+                           "subject":  "Природа",
+                           "title":  "Собаки: породы и звуки",
+                           "channel":  "Котейка ТВ Животные",
+                           "durationSeconds":  536,
+                           "reviewStatus":  "blocked_content_not_accessed",
+                           "summary":  null,
+                           "ageAssessment":  null,
+                           "safetyNotes":  null,
+                           "selectedSegment":  null,
+                           "quiz":  [
+
+                                    ],
+                           "evidence":  [
+
+                                        ],
+                           "confidence":  null
+                       },
+                       {
+                           "videoId":  "-P9GfmOLFls",
+                           "url":  "https://www.youtube.com/watch?v=-P9GfmOLFls",
+                           "subject":  "Природа",
+                           "title":  "Изучаем птиц и их голоса",
+                           "channel":  "Котейка ТВ",
+                           "durationSeconds":  292,
+                           "reviewStatus":  "blocked_content_not_accessed",
+                           "summary":  null,
+                           "ageAssessment":  null,
+                           "safetyNotes":  null,
+                           "selectedSegment":  null,
+                           "quiz":  [
+
+                                    ],
+                           "evidence":  [
+
+                                        ],
+                           "confidence":  null
+                       },
+                       {
+                           "videoId":  "XAMVSdDi7ho",
+                           "url":  "https://www.youtube.com/watch?v=XAMVSdDi7ho",
+                           "subject":  "Природа",
+                           "title":  "Акулы и морские животные",
+                           "channel":  "Комарик",
+                           "durationSeconds":  255,
+                           "reviewStatus":  "blocked_content_not_accessed",
+                           "summary":  null,
+                           "ageAssessment":  null,
+                           "safetyNotes":  null,
+                           "selectedSegment":  null,
+                           "quiz":  [
+
+                                    ],
+                           "evidence":  [
+
+                                        ],
+                           "confidence":  null
+                       },
+                       {
+                           "videoId":  "gRam9BcBbck",
+                           "url":  "https://www.youtube.com/watch?v=gRam9BcBbck",
+                           "subject":  "География",
+                           "title":  "Материки и география вместе с Мией",
+                           "channel":  "Знаем сами",
+                           "durationSeconds":  261,
+                           "reviewStatus":  "blocked_content_not_accessed",
+                           "summary":  null,
+                           "ageAssessment":  null,
+                           "safetyNotes":  null,
+                           "selectedSegment":  null,
+                           "quiz":  [
+
+                                    ],
+                           "evidence":  [
+
+                                        ],
+                           "confidence":  null
+                       },
+                       {
+                           "videoId":  "nGvZm5V3TfM",
+                           "url":  "https://www.youtube.com/watch?v=nGvZm5V3TfM",
+                           "subject":  "География",
+                           "title":  "Материки: энциклопедия для детей",
+                           "channel":  "Всезнайко",
+                           "durationSeconds":  316,
+                           "reviewStatus":  "blocked_content_not_accessed",
+                           "summary":  null,
+                           "ageAssessment":  null,
+                           "safetyNotes":  null,
+                           "selectedSegment":  null,
+                           "quiz":  [
+
+                                    ],
+                           "evidence":  [
+
+                                        ],
+                           "confidence":  null
+                       },
+                       {
+                           "videoId":  "Jeq6SKscBxM",
+                           "url":  "https://www.youtube.com/watch?v=Jeq6SKscBxM",
+                           "subject":  "География",
+                           "title":  "Материки: энциклопедия для детей",
+                           "channel":  "творог творогич",
+                           "durationSeconds":  305,
+                           "reviewStatus":  "blocked_content_not_accessed",
+                           "summary":  null,
+                           "ageAssessment":  null,
+                           "safetyNotes":  null,
+                           "selectedSegment":  null,
+                           "quiz":  [
+
+                                    ],
+                           "evidence":  [
+
+                                        ],
+                           "confidence":  null
+                       },
+                       {
+                           "videoId":  "k4pnV4Zc7kM",
+                           "url":  "https://www.youtube.com/watch?v=k4pnV4Zc7kM",
+                           "subject":  "География",
+                           "title":  "Океаны и материки",
+                           "channel":  "Юлія Шпічка",
+                           "durationSeconds":  327,
+                           "reviewStatus":  "blocked_content_not_accessed",
+                           "summary":  null,
+                           "ageAssessment":  null,
+                           "safetyNotes":  null,
+                           "selectedSegment":  null,
+                           "quiz":  [
+
+                                    ],
+                           "evidence":  [
+
+                                        ],
+                           "confidence":  null
+                       },
+                       {
+                           "videoId":  "WT-KoTAyreA",
+                           "url":  "https://www.youtube.com/watch?v=WT-KoTAyreA",
+                           "subject":  "Английский",
+                           "title":  "Овощи на английском с Бадди",
+                           "channel":  "Buddy.ai",
+                           "durationSeconds":  441,
+                           "reviewStatus":  "blocked_content_not_accessed",
+                           "summary":  null,
+                           "ageAssessment":  null,
+                           "safetyNotes":  null,
+                           "selectedSegment":  null,
+                           "quiz":  [
+
+                                    ],
+                           "evidence":  [
+
+                                        ],
+                           "confidence":  null
+                       },
+                       {
+                           "videoId":  "vSzgn-7YHFY",
+                           "url":  "https://www.youtube.com/watch?v=vSzgn-7YHFY",
+                           "subject":  "Английский",
+                           "title":  "Английский язык для детей и начинающих. Урок 1",
+                           "channel":  "Английский язык для начинающих",
+                           "durationSeconds":  400,
+                           "reviewStatus":  "blocked_content_not_accessed",
+                           "summary":  null,
+                           "ageAssessment":  null,
+                           "safetyNotes":  null,
+                           "selectedSegment":  null,
+                           "quiz":  [
+
+                                    ],
+                           "evidence":  [
+
+                                        ],
+                           "confidence":  null
+                       },
+                       {
+                           "videoId":  "qUwVokSbSZ4",
+                           "url":  "https://www.youtube.com/watch?v=qUwVokSbSZ4",
+                           "subject":  "Английский",
+                           "title":  "Английский язык для детей. Урок 3/1",
+                           "channel":  "Английский язык для начинающих",
+                           "durationSeconds":  333,
+                           "reviewStatus":  "blocked_content_not_accessed",
+                           "summary":  null,
+                           "ageAssessment":  null,
+                           "safetyNotes":  null,
+                           "selectedSegment":  null,
+                           "quiz":  [
+
+                                    ],
+                           "evidence":  [
+
+                                        ],
+                           "confidence":  null
+                       }
+                   ],
+    "nextSteps":  [
+                      "Provide one licensed local media file with analysis rights for a local-model POC.",
+                      "Authorize a specific cloud video-analysis service and its processing terms.",
+                      "Authorize evaluation of a non-Gemini direct-URL provider for the existing KidsPlus moderation worker."
+                  ]
+}
