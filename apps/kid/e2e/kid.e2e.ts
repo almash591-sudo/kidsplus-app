@@ -6412,11 +6412,9 @@ test.describe('новые игры', () => {
     ];
     await gameMedia(page);
     await page.goto('/');
-    expect(
-      await page.evaluate(() =>
-        getComputedStyle(document.documentElement).getPropertyValue('--ink').trim(),
-      ),
-    ).toBe('#f3f1ff');
+    expect(await page.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches)).toBe(
+      true,
+    );
     // Контраст текста и фона самого элемента (WCAG): белым по белому — около 1.
     const contrast = (testid: string) =>
       page
@@ -6539,19 +6537,19 @@ test.describe('новые игры', () => {
     await expect(tile).toHaveAttribute('data-shelf', 'new');
     await expect(tile.locator('.book-new')).toBeVisible();
     await expect(tile.locator('[data-picture]')).toHaveAttribute('data-picture', 'kot-happy');
-    // Обложка — во всю плитку, а не по размеру содержимого (иначе «новая» обрезана).
-    // Размеры без transform: плитка ещё выезжает.
-    const [w, h, buttonW, buttonH] = await tile.evaluate((el) => {
-      const b = el.closest('button')!;
+    // Обложка заполняет иллюстрированную область внутри рамки карточки.
+    // Размеры без transform: карточка ещё выезжает.
+    const [w, h, artW, artH] = await tile.evaluate((el) => {
+      const art = el.closest('.fairy-item-art')!;
       return [
         (el as HTMLElement).offsetWidth,
         (el as HTMLElement).offsetHeight,
-        b.clientWidth,
-        b.clientHeight,
+        art.clientWidth,
+        art.clientHeight,
       ];
     });
-    expect(w).toBe(buttonW);
-    expect(h).toBe(buttonH);
+    expect(w).toBe(artW);
+    expect(h).toBe(artH);
     // Нарисованная обложка загрузилась и закрывает плитку целиком, а не как значок игры.
     const cover = tile.locator('.poem-pic-img');
     await expect

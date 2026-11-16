@@ -211,6 +211,10 @@
 .fairy-game .game-tile > img {
   object-fit: contain;
 }
+.fairy-game .book-tile .poem-pic-img,
+.fairy-game .poem-tile > img {
+  object-fit: cover;
+}
 .fairy-game .game-badge {
   width: 44px;
   height: 44px;
