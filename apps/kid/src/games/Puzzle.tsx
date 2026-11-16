@@ -97,12 +97,19 @@ function PuzzleRound(props: { imageId: string; cols: number; rows: number; onSol
   });
   // Лоток — сетка без наложений; кусочки в нём уменьшены, если не помещаются.
   const tray = L
-    ? trayGrid(Math.min(count, 6), L.tray.w, L.tray.h)
-    : { cols: 1, rows: 1, cw: 0, ch: 0 };
-  const k = L ? Math.min(1, (Math.min(tray.cw, tray.ch) * 0.9) / Math.max(pw, ph)) : 1;
+    ? trayGrid(Math.min(count, 6), L.tray.w, L.tray.h, pw, ph)
+    : { cols: 1, rows: 1, cw: 0, ch: 0, scale: 1 };
+  const k = tray.scale;
+  // Узкая полоска картинки сохраняет пропорции, но нажимается как кнопка не меньше 48 px.
+  const hitWidth = Math.max(48, pw * k);
+  const hitHeight = Math.max(48, ph * k);
+  const keepInside = (at: { x: number; y: number }) => ({
+    x: Math.min(Math.max(at.x, hitWidth / 2 + 4), L!.w - hitWidth / 2 - 4),
+    y: Math.min(Math.max(at.y, hitHeight / 2 + 4), L!.h - hitHeight / 2 - 4),
+  });
   const centerOf = (p: (typeof loose)[number]) =>
     p.at
-      ? { x: p.at.fx * L!.w, y: p.at.fy * L!.h }
+      ? keepInside({ x: p.at.fx * L!.w, y: p.at.fy * L!.h })
       : {
           x: L!.tray.x + ((p.tray % tray.cols) + 0.5) * tray.cw,
           y: L!.tray.y + (Math.floor(p.tray / tray.cols) + 0.5) * tray.ch,
@@ -133,10 +140,9 @@ function PuzzleRound(props: { imageId: string; cols: number; rows: number; onSol
       return;
     }
     // Весь кусочек остаётся в рабочей области, в том числе после поворота экрана.
-    const halfWidth = (pw * k) / 2 + 4;
-    const halfHeight = (ph * k) / 2 + 4;
-    const nx = Math.min(Math.max(at.x, halfWidth), L!.w - halfWidth) / L!.w;
-    const ny = Math.min(Math.max(at.y, halfHeight), L!.h - halfHeight) / L!.h;
+    const safe = keepInside(at);
+    const nx = safe.x / L!.w;
+    const ny = safe.y / L!.h;
     setLoose((l) => l.map((p) => (p.piece === piece ? { ...p, at: { fx: nx, fy: ny } } : p)));
   };
 
@@ -210,8 +216,12 @@ function PuzzleRound(props: { imageId: string; cols: number; rows: number; onSol
                       setSelected(p.piece);
                     }}
                     style={{
-                      left: c.x - (pw * k) / 2,
-                      top: c.y - (ph * k) / 2,
+                      left: c.x - hitWidth / 2,
+                      top: c.y - hitHeight / 2,
+                      width: hitWidth,
+                      height: hitHeight,
+                    }}
+                    picture={{
                       width: pw * k,
                       height: ph * k,
                       ...bg(p.piece),
@@ -230,6 +240,7 @@ function PuzzleRound(props: { imageId: string; cols: number; rows: number; onSol
 function Piece(props: {
   piece: number;
   style: React.CSSProperties;
+  picture: React.CSSProperties;
   selected: boolean;
   onChoose: () => void;
   onDrop: (d: DragState) => void;
@@ -268,17 +279,23 @@ function Piece(props: {
         if (event.detail === 0 || !suppressClick.current) props.onChoose();
         suppressClick.current = false;
       }}
-    />
+    >
+      <span className="puzzle-piece-picture" style={props.picture} aria-hidden="true" />
+    </button>
   );
 }
 
-/** Сетка лотка с самыми крупными ячейками для n кусочков. */
-function trayGrid(n: number, w: number, h: number) {
-  let best = { cols: 1, rows: n, cw: w, ch: h / n };
+/** Сетка учитывает пропорции частей и оставляет место для крупных зон нажатия. */
+function trayGrid(n: number, w: number, h: number, pw: number, ph: number) {
+  let best = { cols: 1, rows: n, cw: w, ch: h / n, scale: 0, fits: false };
   for (let c = 1; c <= n; c++) {
     const r = Math.ceil(n / c);
-    if (Math.min(w / c, h / r) > Math.min(best.cw, best.ch))
-      best = { cols: c, rows: r, cw: w / c, ch: h / r };
+    const cw = w / c;
+    const ch = h / r;
+    const fits = cw >= 56 && ch >= 56;
+    const scale = Math.min(1, (cw * 0.9) / pw, (ch * 0.9) / ph);
+    if ((fits && !best.fits) || (fits === best.fits && scale > best.scale))
+      best = { cols: c, rows: r, cw, ch, scale, fits };
   }
   return best;
 }

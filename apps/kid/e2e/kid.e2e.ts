@@ -3093,6 +3093,58 @@ test.describe('игры', () => {
     await expectFinished(page, backend);
   });
 
+  for (const [cols, rows] of [
+    [1, 4],
+    [4, 1],
+  ] as const) {
+    test(`пазл ${cols}×${rows}: узкие полоски удобно нажимаются после поворота`, async ({
+      page,
+      backend,
+    }) => {
+      backend.items = [game(1, { kind: 'puzzle', imageIds: [LION], cols, rows })];
+      await openGame(page);
+      const pieces = page.getByTestId('puzzle-piece');
+      await expect(pieces).toHaveCount(4);
+      for (const viewport of [
+        { width: 320, height: 568 },
+        { width: 568, height: 320 },
+      ]) {
+        await page.setViewportSize(viewport);
+        await expect
+          .poll(() =>
+            pieces.evaluateAll((buttons) =>
+              buttons.flatMap((button) => {
+                const r = button.getBoundingClientRect();
+                const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+                return r.width < 44 ||
+                  r.height < 44 ||
+                  r.left < 0 ||
+                  r.top < 0 ||
+                  r.right > innerWidth ||
+                  r.bottom > innerHeight ||
+                  !button.contains(hit)
+                  ? [button.getAttribute('data-piece')]
+                  : [];
+              }),
+            ),
+          )
+          .toEqual([]);
+      }
+      // A missed drag keeps the entire hit area inside the table.
+      await dragTo(page, await center(pieces.first()), { x: 0, y: 0 });
+      const bounds = (await pieces.first().boundingBox())!;
+      expect(bounds.x).toBeGreaterThanOrEqual(0);
+      expect(bounds.y).toBeGreaterThanOrEqual(0);
+      for (let k = 0; k < 4; k++) {
+        const piece = pieces.first();
+        const n = Number(await piece.getAttribute('data-piece'));
+        await piece.click();
+        await page.getByTestId('puzzle-slot').nth(n).click();
+      }
+      await expectFinished(page, backend);
+    });
+  }
+
   test('пара: прогресс сохраняется после поворота, завершение после выхода отменяется', async ({
     page,
     backend,

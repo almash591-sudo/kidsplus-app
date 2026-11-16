@@ -222,12 +222,27 @@
   border: 0;
 }
 .game-table-field .puzzle-piece {
+  display: grid;
+  place-items: center;
   padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  box-shadow: none;
+}
+.puzzle-piece-picture {
+  box-sizing: border-box;
   border: 2px solid #fffdf3;
   border-radius: 12px;
+  background-color: #fff;
+  background-repeat: no-repeat;
   box-shadow:
     0 4px 0 #c19a70,
     0 7px 12px #684f2e25;
+  pointer-events: none;
+}
+.puzzle-piece.dragging .puzzle-piece-picture {
+  box-shadow: 0 8px 18px #684f2e55;
 }
 .game-table-field .puzzle-piece.selected {
   outline: 4px solid #725396;
