@@ -20,6 +20,16 @@ import '@fontsource/nunito/800.css';
 import '@fontsource/nunito/900.css';
 import './theme.css';
 import './wow.css';
+import './storybook.css';
+import './screens/today-adventure.css';
+import './screens/fairy-interiors.css';
+import './camera/fairy-media.css';
+import './calls/fairy-family.css';
+import './screens/fairy-habits.css';
+import './games/fairy-coloring.css';
+import './games/fairy-drawing.css';
+import './games/fairy-sorting.css';
+import './games/fairy-games.css';
 
 // Сбои — на сервер, родителю в «Устройства» (этап 51).
 startErrorReports();

@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import { fx } from '../fx';
 import { praise, shuffled, type GameProps } from './common';
 import { useDrag, type DragState } from './useDrag';
+import { GameTableHeader } from './GameTableHeader';
+import { nice } from './common';
 
 interface Layout {
   w: number;
@@ -13,18 +15,18 @@ interface Layout {
 
 /** Доска слева (альбом) или сверху (портрет), остальное место — для кусочков. */
 function layoutFor(w: number, h: number): Layout {
-  const pad = 16;
+  const pad = 12;
   if (w > h) {
-    const s = Math.min(h - 2 * pad, w * 0.5);
+    const s = Math.min(h - 2 * pad, w * 0.54);
     return {
       w,
       h,
-      board: { x: pad + 72, y: (h - s) / 2, s },
-      tray: { x: s + 2 * pad + 72, y: pad, w: w - s - 3 * pad - 72, h: h - 2 * pad },
+      board: { x: pad, y: (h - s) / 2, s },
+      tray: { x: s + 2 * pad, y: pad, w: w - s - 3 * pad, h: h - 2 * pad },
     };
   }
-  const s = Math.min(w - 2 * pad, h * 0.5);
-  const top = pad + 88;
+  const s = Math.min(w - 2 * pad, h * 0.54);
+  const top = pad;
   return {
     w,
     h,
@@ -36,6 +38,9 @@ function layoutFor(w: number, h: number): Layout {
 /** Пазл: картинка режется на части; кусочек, отпущенный рядом со своим местом, встаёт туда. */
 export function Puzzle({ spec, phrases, onFinish }: GameProps<'puzzle'>) {
   const [round, setRound] = useState(0);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const solved = useRef(false);
+  useEffect(() => () => clearTimeout(timer.current), []);
   return (
     <PuzzleRound
       key={round}
@@ -43,10 +48,14 @@ export function Puzzle({ spec, phrases, onFinish }: GameProps<'puzzle'>) {
       cols={spec.cols}
       rows={spec.rows}
       onSolved={() => {
+        if (solved.current) return;
+        solved.current = true;
         void praise(phrases);
-        setTimeout(() => {
-          if (round + 1 < spec.imageIds.length) setRound(round + 1);
-          else onFinish();
+        timer.current = setTimeout(() => {
+          if (round + 1 < spec.imageIds.length) {
+            solved.current = false;
+            setRound(round + 1);
+          } else onFinish();
         }, 1300);
       }}
     />
@@ -68,6 +77,8 @@ function PuzzleRound(props: { imageId: string; cols: number; rows: number; onSol
     shuffled(Array.from({ length: count }, (_, i) => i)).map((piece, tray) => ({ piece, tray })),
   );
   const [placed, setPlaced] = useState<Set<number>>(new Set());
+  const placedRef = useRef(new Set<number>());
+  const [selected, setSelected] = useState<number | null>(null);
 
   useEffect(() => {
     const el = box.current!;
@@ -85,7 +96,9 @@ function PuzzleRound(props: { imageId: string; cols: number; rows: number; onSol
     y: L!.board.y + (Math.floor(piece / cols) + 0.5) * ph,
   });
   // Лоток — сетка без наложений; кусочки в нём уменьшены, если не помещаются.
-  const tray = L ? trayGrid(count, L.tray.w, L.tray.h) : { cols: 1, rows: 1, cw: 0, ch: 0 };
+  const tray = L
+    ? trayGrid(Math.min(count, 6), L.tray.w, L.tray.h)
+    : { cols: 1, rows: 1, cw: 0, ch: 0 };
   const k = L ? Math.min(1, (Math.min(tray.cw, tray.ch) * 0.9) / Math.max(pw, ph)) : 1;
   const centerOf = (p: (typeof loose)[number]) =>
     p.at
@@ -95,20 +108,35 @@ function PuzzleRound(props: { imageId: string; cols: number; rows: number; onSol
           y: L!.tray.y + (Math.floor(p.tray / tray.cols) + 0.5) * tray.ch,
         };
 
+  const place = (piece: number) => {
+    if (placedRef.current.has(piece)) return;
+    const next = new Set(placedRef.current).add(piece);
+    placedRef.current = next;
+    fx.snap();
+    setPlaced(next);
+    setSelected(null);
+    setLoose((list) => {
+      const freeSlot = list.find((item) => item.piece === piece)?.tray;
+      const rest = list.filter((item) => item.piece !== piece);
+      const refill = rest.find((item) => item.tray >= 6);
+      return freeSlot !== undefined && refill
+        ? rest.map((item) => (item === refill ? { ...item, tray: freeSlot } : item))
+        : rest;
+    });
+    if (next.size === count) props.onSolved();
+  };
   const drop = (piece: number, from: { x: number; y: number }, d: DragState) => {
     const at = { x: from.x + d.dx, y: from.y + d.dy };
     const target = slot(piece);
     if (Math.hypot(at.x - target.x, at.y - target.y) < Math.min(pw, ph) * 0.45) {
-      const next = new Set(placed).add(piece);
-      fx.snap();
-      setPlaced(next);
-      setLoose((l) => l.filter((p) => p.piece !== piece));
-      if (next.size === count) props.onSolved();
+      place(piece);
       return;
     }
-    // Остаётся там, где отпустили (в пределах экрана).
-    const nx = Math.min(Math.max(at.x / L!.w, 0.05), 0.95);
-    const ny = Math.min(Math.max(at.y / L!.h, 0.05), 0.95);
+    // Весь кусочек остаётся в рабочей области, в том числе после поворота экрана.
+    const halfWidth = (pw * k) / 2 + 4;
+    const halfHeight = (ph * k) / 2 + 4;
+    const nx = Math.min(Math.max(at.x, halfWidth), L!.w - halfWidth) / L!.w;
+    const ny = Math.min(Math.max(at.y, halfHeight), L!.h - halfHeight) / L!.h;
     setLoose((l) => l.map((p) => (p.piece === piece ? { ...p, at: { fx: nx, fy: ny } } : p)));
   };
 
@@ -122,51 +150,79 @@ function PuzzleRound(props: { imageId: string; cols: number; rows: number; onSol
   });
 
   return (
-    <div className="game puzzle" ref={box} data-testid="game-puzzle">
-      {L && (
-        <>
-          <div
-            className="puzzle-board"
-            style={{ left: L.board.x, top: L.board.y, width: L.board.s, height: L.board.s }}
-          >
-            <img className="puzzle-ghost" src={url} alt="" draggable={false} />
-            {Array.from({ length: count }, (_, i) => {
-              const s = slot(i);
-              return (
-                <div
-                  key={i}
-                  className={placed.has(i) ? 'puzzle-slot filled' : 'puzzle-slot'}
-                  data-testid="puzzle-slot"
-                  style={{
-                    left: s.x - pw / 2 - L.board.x,
-                    top: s.y - ph / 2 - L.board.y,
-                    width: pw,
-                    height: ph,
-                    ...(placed.has(i) ? bg(i) : {}),
-                  }}
-                />
-              );
-            })}
-          </div>
-          {loose.map((p) => {
-            const c = centerOf(p);
-            return (
-              <Piece
-                key={p.piece}
-                piece={p.piece}
-                style={{
-                  left: c.x - (pw * k) / 2,
-                  top: c.y - (ph * k) / 2,
-                  width: pw * k,
-                  height: ph * k,
-                  ...bg(p.piece),
-                }}
-                onDrop={(d) => drop(p.piece, c, d)}
-              />
-            );
-          })}
-        </>
-      )}
+    <div className="fairy-table-game" data-testid="game-puzzle">
+      <GameTableHeader
+        kind="puzzle"
+        title="Собери картинку"
+        hint="Перетащи кусочек на его место. Или нажми на кусочек, а потом на его место на картинке."
+        done={placed.size}
+        total={count}
+      />
+      <div className="game-table-field puzzle" ref={box}>
+        {L && (
+          <>
+            <div
+              className="puzzle-board"
+              style={{ left: L.board.x, top: L.board.y, width: L.board.s, height: L.board.s }}
+            >
+              <img className="puzzle-ghost" src={url} alt="" draggable={false} />
+              {Array.from({ length: count }, (_, i) => {
+                const s = slot(i);
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    className={placed.has(i) ? 'puzzle-slot filled' : 'puzzle-slot'}
+                    data-testid="puzzle-slot"
+                    aria-label={`Место ${i + 1}${placed.has(i) ? ': собрано' : ''}`}
+                    aria-disabled={placed.has(i)}
+                    data-hint-target={selected === i ? '' : undefined}
+                    onClick={(event) => {
+                      if (selected === null || placedRef.current.has(i)) return;
+                      if (selected === i) place(i);
+                      else {
+                        fx.soft();
+                        nice(event.currentTarget);
+                      }
+                    }}
+                    style={{
+                      left: s.x - pw / 2 - L.board.x,
+                      top: s.y - ph / 2 - L.board.y,
+                      width: pw,
+                      height: ph,
+                      ...(placed.has(i) ? bg(i) : {}),
+                    }}
+                  />
+                );
+              })}
+            </div>
+            {loose
+              .filter((p) => p.tray < 6)
+              .map((p) => {
+                const c = centerOf(p);
+                return (
+                  <Piece
+                    key={p.piece}
+                    piece={p.piece}
+                    selected={selected === p.piece}
+                    onChoose={() => {
+                      fx.soft();
+                      setSelected(p.piece);
+                    }}
+                    style={{
+                      left: c.x - (pw * k) / 2,
+                      top: c.y - (ph * k) / 2,
+                      width: pw * k,
+                      height: ph * k,
+                      ...bg(p.piece),
+                    }}
+                    onDrop={(d) => drop(p.piece, c, d)}
+                  />
+                );
+              })}
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -174,20 +230,30 @@ function PuzzleRound(props: { imageId: string; cols: number; rows: number; onSol
 function Piece(props: {
   piece: number;
   style: React.CSSProperties;
+  selected: boolean;
+  onChoose: () => void;
   onDrop: (d: DragState) => void;
 }) {
   const [drag, setDrag] = useState<DragState | null>(null);
+  const suppressClick = useRef(false);
   const handlers = useDrag({
-    onStart: () => setDrag({ dx: 0, dy: 0 }),
+    onStart: () => {
+      suppressClick.current = false;
+      setDrag({ dx: 0, dy: 0 });
+    },
     onMove: setDrag,
-    onDrop: (_p, d) => {
+    onDrop: (point, d) => {
       setDrag(null);
-      props.onDrop(d);
+      suppressClick.current = !Number.isFinite(point.x) || Math.hypot(d.dx, d.dy) >= 10;
+      if (suppressClick.current && Number.isFinite(point.x)) props.onDrop(d);
     },
   });
   return (
-    <div
-      className={drag ? 'puzzle-piece dragging' : 'puzzle-piece'}
+    <button
+      type="button"
+      className={`puzzle-piece${drag ? ' dragging' : ''}${props.selected ? ' selected' : ''}`}
+      aria-label={`Кусочек ${props.piece + 1}`}
+      aria-pressed={props.selected}
       data-testid="puzzle-piece"
       data-piece={props.piece}
       style={{
@@ -195,6 +261,13 @@ function Piece(props: {
         transform: drag ? `translate(${drag.dx}px, ${drag.dy}px)` : undefined,
       }}
       {...handlers}
+      onPointerDown={(event) => {
+        if (event.button === 0) handlers.onPointerDown(event);
+      }}
+      onClick={(event) => {
+        if (event.detail === 0 || !suppressClick.current) props.onChoose();
+        suppressClick.current = false;
+      }}
     />
   );
 }

@@ -247,6 +247,7 @@ export async function buildKidItems(
       result.push({
         kind: 'segment',
         id: row.segment.id,
+        title: row.segment.title,
         provider: row.source.provider as VideoProvider,
         externalId: row.source.externalId,
         startSec: row.segment.startSec,

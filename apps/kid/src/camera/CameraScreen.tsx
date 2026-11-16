@@ -14,11 +14,12 @@ import { kidApi } from '../api';
 import { playSequence } from '../audio';
 import { fx } from '../fx';
 import { ru } from '../games/common';
-import { CAMERA_ENOUGH } from '../phrases';
+import { CAMERA_ENOUGH, ROOM_PHRASES } from '../phrases';
 import { saveCapture } from './store';
 import { flushCaptures } from './upload';
 import './camera.css';
 import { Icon } from '../ui/icons';
+import { FairyGuide } from '../ui/FairyGuide';
 
 type Facing = 'user' | 'environment';
 
@@ -51,6 +52,9 @@ export function CameraScreen({ onExit, onGallery }: { onExit: () => void; onGall
   const [mode, setMode] = useState<CaptureKind>('photo');
   const [facing, setFacing] = useState<Facing>('environment');
   const [failed, setError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const [saved, setSaved] = useState(false);
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   // Камеры нет вовсе (старый браузер) — сразу заглушка.
   const error = failed || !navigator.mediaDevices;
   const [cooldown, setCooldown] = useState(false);
@@ -89,10 +93,16 @@ export function CameraScreen({ onExit, onGallery }: { onExit: () => void; onGall
       stream.current?.getTracks().forEach((t) => t.stop());
       stream.current = null;
     };
-  }, [mode, facing]);
+  }, [mode, facing, attempt]);
 
   // Уходим с экрана посреди записи — запись останавливается и сохраняется.
-  useEffect(() => () => recorder.current?.stop(), []);
+  useEffect(
+    () => () => {
+      if (recorder.current?.state === 'recording') recorder.current.stop();
+      clearTimeout(savedTimer.current);
+    },
+    [],
+  );
 
   const used = (k: CaptureKind) => today?.[k].used ?? 0;
   const enough = (k: CaptureKind) => used(k) >= (today?.[k].limit ?? CAPTURE_DAILY_LIMIT[k]);
@@ -109,6 +119,9 @@ export function CameraScreen({ onExit, onGallery }: { onExit: () => void; onGall
       uploaded: false,
     });
     counted(kind);
+    clearTimeout(savedTimer.current);
+    setSaved(true);
+    savedTimer.current = setTimeout(() => setSaved(false), 1800);
     void flushCaptures();
   }, []);
 
@@ -174,21 +187,42 @@ export function CameraScreen({ onExit, onGallery }: { onExit: () => void; onGall
     !ready || (mode === 'photo' ? cooldown || enough('photo') : !recording && enough('video'));
 
   return (
-    <div className="screen camera" data-testid="camera" data-mode={mode}>
-      {error ? (
-        <div className="camera-error" data-testid="camera-error">
-          📷❌
-        </div>
-      ) : (
-        <video
-          ref={video}
-          className={`camera-preview${facing === 'user' ? ' mirrored' : ''}`}
-          playsInline
-          muted
-          autoPlay
-        />
-      )}
-      {flash && <div className="camera-flash" />}
+    <div className="screen camera fairy-camera" data-testid="camera" data-mode={mode}>
+      <div className="camera-viewfinder">
+        {error ? (
+          <div className="camera-error" data-testid="camera-error">
+            <img src="/playroom/camera.webp" alt="" />
+            <p>Позови взрослого</p>
+            <button
+              type="button"
+              className="camera-retry"
+              onClick={() => {
+                setError(false);
+                setReady(false);
+                setAttempt((value) => value + 1);
+              }}
+            >
+              <Icon name="retry" size={28} /> Ещё раз
+            </button>
+            <FairyGuide hint={ROOM_PHRASES.cameraUnavailable} />
+          </div>
+        ) : (
+          <video
+            ref={video}
+            className={`camera-preview${facing === 'user' ? ' mirrored' : ''}`}
+            playsInline
+            muted
+            autoPlay
+          />
+        )}
+        {flash && <div className="camera-flash" />}
+        {(mode === 'photo' ? enough('photo') : enough('video') && !recording) && (
+          <div className="camera-limit" data-testid="camera-limit">
+            <img src="/playroom/owl.webp" alt="" />
+            <p>На сегодня хватит</p>
+          </div>
+        )}
+      </div>
 
       <div className="camera-modes">
         {(['photo', 'video'] as const).map((m) => (
@@ -197,16 +231,18 @@ export function CameraScreen({ onExit, onGallery }: { onExit: () => void; onGall
             type="button"
             className={`camera-mode${mode === m ? ' active' : ''}`}
             aria-label={m === 'photo' ? 'Фото' : 'Видео'}
+            aria-pressed={mode === m}
             data-testid={`camera-mode-${m}`}
             disabled={Boolean(recording)}
             onClick={() => {
               fx.tap();
+              if (m === mode) return;
               setError(false);
               if (m !== mode) setReady(false);
               setMode(m);
             }}
           >
-            {m === 'photo' ? '📷' : '🎥'}
+            <img src={`/playroom/${m === 'photo' ? 'camera' : 'tablet'}.webp`} alt="" />
           </button>
         ))}
       </div>
@@ -214,13 +250,18 @@ export function CameraScreen({ onExit, onGallery }: { onExit: () => void; onGall
       <div className="camera-bar">
         <button
           type="button"
-          className="camera-side"
+          className={`camera-side camera-gallery${saved ? ' just-saved' : ''}`}
           aria-label="Мои снимки"
           data-testid="camera-gallery"
           disabled={Boolean(recording)}
           onClick={onGallery}
         >
-          🖼️
+          <Icon name={saved ? 'check' : 'gallery'} size={30} />
+          {saved && (
+            <span className="camera-saved" role="status">
+              Сохранено
+            </span>
+          )}
         </button>
         <button
           type="button"
@@ -231,7 +272,7 @@ export function CameraScreen({ onExit, onGallery }: { onExit: () => void; onGall
           disabled={disabled || error}
           onClick={shutter}
         >
-          <svg viewBox="0 0 100 100" aria-hidden="true">
+          <svg className="camera-ring" viewBox="0 0 100 100" aria-hidden="true">
             <circle cx="50" cy="50" r="46" className="ring-bg" />
             {recording && (
               <circle
@@ -245,6 +286,7 @@ export function CameraScreen({ onExit, onGallery }: { onExit: () => void; onGall
               />
             )}
           </svg>
+          {!recording && <Icon name={mode === 'photo' ? 'camera' : 'play'} size={38} />}
           {recording && <span className="camera-left">{left}</span>}
         </button>
         <button
@@ -260,19 +302,13 @@ export function CameraScreen({ onExit, onGallery }: { onExit: () => void; onGall
             setFacing((f) => (f === 'user' ? 'environment' : 'user'));
           }}
         >
-          🔄
+          <Icon name="retry" size={30} />
         </button>
       </div>
 
-      {(mode === 'photo' ? enough('photo') : enough('video') && !recording) && (
-        <div className="camera-limit" data-testid="camera-limit">
-          ✋
-        </div>
-      )}
-
       <button
         type="button"
-        className="corner-button home"
+        className="fairy-back camera-back"
         aria-label="Домой"
         onClick={() => {
           stopRecording();

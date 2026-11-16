@@ -1,0 +1,510 @@
+/* The room's worktable becomes a quiet, usable painting studio. The SVG is the
+   existing editable colouring content; decoration uses the room's raster art. */
+.fairy-game-screen[data-kind='coloring'] {
+  color: #604b3a;
+  background: #f5e4c7 url('/playroom/worktable.webp') center / cover no-repeat;
+}
+.game.fairy-coloring {
+  width: min(100%, 1100px);
+  margin-inline: auto;
+  padding: max(12px, env(safe-area-inset-top)) 16px max(18px, env(safe-area-inset-bottom));
+  display: grid;
+  grid-template: 64px 88px minmax(0, 1fr) auto / minmax(0, 1fr);
+  gap: 12px;
+}
+.coloring-heading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding-inline: 62px;
+}
+.coloring-heading > img {
+  width: 46px;
+  height: 46px;
+  object-fit: contain;
+}
+.coloring-heading > h1 {
+  margin: 0;
+  font-size: 25px;
+  font-weight: 900;
+  line-height: 1.15;
+}
+.fairy-game-screen[data-kind='coloring'] > .home {
+  top: max(16px, env(safe-area-inset-top));
+  left: max(16px, env(safe-area-inset-left));
+  width: 52px;
+  height: 52px;
+  border-radius: 18px;
+}
+.coloring-guide {
+  min-width: 0;
+  padding: 4px 12px 4px 4px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 2px solid #fff8e8;
+  border-radius: 26px;
+  color: #604b3a;
+  background: #fff6e5;
+  box-shadow:
+    0 4px 0 #dec8a5,
+    0 8px 18px #72502d12;
+  text-align: left;
+  touch-action: manipulation;
+}
+.coloring-owl {
+  flex: 0 0 76px;
+  height: 88px;
+  position: relative;
+  align-self: end;
+  pointer-events: none;
+}
+.coloring-owl > img {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.coloring-owl-blink {
+  opacity: 0;
+  animation: coloring-blink 6s step-end infinite;
+}
+.coloring-guide.is-happy .coloring-owl {
+  animation: coloring-cheer 650ms ease-out;
+}
+.coloring-guide.is-happy .coloring-owl-blink {
+  display: none;
+}
+.coloring-guide-content {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+.coloring-prompt {
+  font-size: 19px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+.coloring-guide-caption {
+  font-size: 14px;
+  line-height: 1.2;
+  color: #806b53;
+}
+.coloring-guide > .icon {
+  flex: 0 0 auto;
+}
+.coloring-target {
+  flex: 0 0 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border: 3px solid #fffdf6;
+  border-radius: 18px;
+  box-shadow: 0 3px 0 #75563230;
+}
+.coloring-target > .icon {
+  box-sizing: content-box;
+  padding: 3px;
+  border-radius: 50%;
+  background: #fff9ed;
+}
+.coloring-guide.is-helping {
+  border-color: #b79157;
+}
+.coloring-progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.coloring-progress > img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  filter: grayscale(1);
+  opacity: 0.3;
+}
+.coloring-progress > .is-done {
+  filter: none;
+  opacity: 1;
+  animation: coloring-star 450ms ease-out;
+}
+.fairy-coloring .coloring-board {
+  position: relative;
+  min-height: 0;
+  width: 100%;
+  container-type: size;
+}
+.coloring-paper {
+  position: relative;
+  width: min(100cqw, 100cqh);
+  height: min(100cqw, 100cqh);
+  aspect-ratio: 1;
+  box-sizing: border-box;
+  padding: 14px;
+  border: 2px solid #fffdf6;
+  border-radius: 24px;
+  background: #fffdf6;
+  box-shadow:
+    0 5px 0 #d9c19d,
+    0 12px 22px #72502d25;
+}
+.fairy-coloring .coloring-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.fairy-coloring .region {
+  cursor: pointer;
+  transition: fill 180ms ease-out;
+  stroke: #615344;
+}
+.fairy-coloring .coloring-svg > g:last-child {
+  stroke: #615344;
+}
+.fairy-coloring .region.hint path {
+  animation: coloring-region 1.8s ease-in-out infinite;
+}
+.fairy-coloring .region.just-painted:not(.hint) path {
+  animation: coloring-ink 500ms ease-out;
+}
+.fairy-coloring .region:focus-visible {
+  outline: 4px solid #58763f;
+  outline-offset: 3px;
+}
+.fairy-coloring .coloring-tools {
+  width: auto;
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 12px;
+  border: 2px solid #fff8e8;
+  border-radius: 26px;
+  background: #f9edda;
+  box-shadow:
+    0 4px 0 #d7b990,
+    0 8px 16px #72502d16;
+}
+.fairy-coloring .palette {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(48px, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+.fairy-coloring .paint {
+  width: 100%;
+  height: 50px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  color: #43602f;
+  border: 3px solid #fff9eb;
+  border-radius: 17px;
+  box-shadow:
+    inset 0 -4px 0 #30241320,
+    0 3px 0 #af957750;
+  transform: none;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease;
+  touch-action: manipulation;
+}
+.fairy-coloring .paint.on {
+  border: 3px solid #fffdf4;
+  box-shadow:
+    0 0 0 3px #58763f,
+    0 4px 0 #456032;
+  transform: translateY(-2px);
+}
+.fairy-coloring .paint.on > .icon {
+  box-sizing: content-box;
+  padding: 2px;
+  background: #fff9eb;
+  border-radius: 50%;
+}
+.fairy-coloring .paint.suggested:not(.on) {
+  outline: 3px solid #b79157;
+  outline-offset: 2px;
+}
+.coloring-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.coloring-undo,
+.fairy-coloring .tool.done {
+  height: 48px;
+  border: 2px solid #fff8e8;
+  border-radius: 17px;
+  box-shadow: 0 3px 0 #d7b990;
+  touch-action: manipulation;
+}
+.coloring-undo {
+  flex: 0 0 48px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  color: #705438;
+  background: #fff9ed;
+}
+.coloring-selected {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 0;
+  flex: 1;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+.coloring-selected > img {
+  width: 22px;
+  height: 36px;
+  object-fit: contain;
+  transform: rotate(15deg);
+}
+.fairy-coloring .tool.done {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 0 12px;
+  display: flex;
+  gap: 5px;
+  background: #58763f;
+  color: #fffdf4;
+  box-shadow: 0 3px 0 #3b542b;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 900;
+}
+.coloring-undo:disabled,
+.fairy-coloring .tool.done:disabled {
+  opacity: 0.45;
+}
+.coloring-guide:focus-visible,
+.coloring-undo:focus-visible,
+.fairy-coloring .paint:focus-visible,
+.fairy-coloring .tool.done:focus-visible {
+  outline: 4px solid #58763f;
+  outline-offset: 4px;
+}
+.coloring-guide:active,
+.coloring-undo:active:not(:disabled),
+.fairy-coloring .tool.done:active:not(:disabled) {
+  transform: translateY(2px);
+}
+@keyframes coloring-blink {
+  0%,
+  47%,
+  51%,
+  100% {
+    opacity: 0;
+  }
+  48%,
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes coloring-cheer {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  35% {
+    transform: translateY(-5px) rotate(-8deg);
+  }
+  70% {
+    transform: rotate(5deg);
+  }
+}
+@keyframes coloring-star {
+  from {
+    transform: scale(0.65);
+  }
+  65% {
+    transform: scale(1.18);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+@keyframes coloring-region {
+  50% {
+    stroke: #b9843e;
+    stroke-width: 7px;
+  }
+}
+@keyframes coloring-ink {
+  45% {
+    stroke: #93a873;
+    stroke-width: 7px;
+  }
+}
+@media (max-height: 720px) and (max-width: 599px) {
+  .game.fairy-coloring {
+    padding: max(8px, env(safe-area-inset-top)) 6px max(12px, env(safe-area-inset-bottom));
+    grid-template-rows: 52px 70px minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+  .coloring-heading {
+    gap: 5px;
+    padding-inline: 56px;
+  }
+  .coloring-heading > img {
+    width: 34px;
+    height: 34px;
+  }
+  .coloring-heading > h1 {
+    font-size: 22px;
+  }
+  .fairy-game-screen[data-kind='coloring'] > .home {
+    top: max(8px, env(safe-area-inset-top));
+    left: max(8px, env(safe-area-inset-left));
+    width: 48px;
+    height: 48px;
+  }
+  .coloring-guide {
+    gap: 8px;
+    border-radius: 22px;
+    padding-right: 10px;
+  }
+  .coloring-owl {
+    flex-basis: 58px;
+    height: 72px;
+  }
+  .coloring-prompt {
+    font-size: 18px;
+  }
+  .coloring-guide-caption {
+    font-size: 13px;
+  }
+  .coloring-guide-content {
+    gap: 4px;
+  }
+  .coloring-progress > img {
+    width: 17px;
+    height: 17px;
+  }
+  .coloring-target {
+    flex-basis: 44px;
+    height: 44px;
+  }
+  .coloring-paper {
+    border-radius: 19px;
+    padding: 10px;
+  }
+  .fairy-coloring .coloring-tools {
+    padding: 8px 0;
+    gap: 8px;
+    border-radius: 22px;
+  }
+  .fairy-coloring .palette {
+    gap: 3px;
+  }
+  .fairy-coloring .paint {
+    height: 48px;
+    border-radius: 15px;
+  }
+  .coloring-actions {
+    padding-inline: 6px;
+  }
+  .coloring-selected {
+    font-size: 14px;
+  }
+  .coloring-selected > img {
+    width: 18px;
+    height: 30px;
+  }
+  .fairy-coloring .tool.done {
+    padding-inline: 8px;
+  }
+}
+@media (min-width: 600px) and (orientation: landscape) {
+  .game.fairy-coloring {
+    padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right))
+      max(12px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+    grid-template: 48px 100px minmax(0, 1fr) / minmax(0, 1fr) 312px;
+    gap: 8px 16px;
+  }
+  .coloring-heading {
+    grid-column: 1 / -1;
+  }
+  .coloring-heading > img {
+    width: 38px;
+    height: 38px;
+  }
+  .coloring-heading > h1 {
+    font-size: 23px;
+  }
+  .coloring-guide {
+    grid-column: 2;
+    grid-row: 2;
+    gap: 8px;
+    border-radius: 22px;
+  }
+  .coloring-owl {
+    flex-basis: 58px;
+    height: 72px;
+  }
+  .coloring-prompt {
+    font-size: 18px;
+  }
+  .coloring-progress > img {
+    width: 17px;
+    height: 17px;
+  }
+  .fairy-coloring .coloring-board {
+    grid-column: 1;
+    grid-row: 2 / 4;
+  }
+  .fairy-coloring .coloring-tools {
+    grid-column: 2;
+    grid-row: 3;
+    align-self: start;
+    padding: 8px 0;
+    gap: 8px;
+  }
+  .fairy-coloring .palette {
+    gap: 4px;
+  }
+  .fairy-coloring .paint {
+    height: 48px;
+  }
+  .coloring-actions {
+    padding-inline: 6px;
+  }
+  .coloring-selected {
+    font-size: 14px;
+  }
+  .coloring-selected > img {
+    width: 18px;
+    height: 30px;
+  }
+  .fairy-coloring .tool.done {
+    padding-inline: 8px;
+  }
+  .fairy-game-screen[data-kind='coloring'] > .home {
+    top: max(8px, env(safe-area-inset-top));
+    left: max(8px, env(safe-area-inset-left));
+    width: 48px;
+    height: 48px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .coloring-owl-blink,
+  .coloring-guide.is-happy .coloring-owl,
+  .coloring-progress > .is-done,
+  .fairy-coloring .region.hint path,
+  .fairy-coloring .region.just-painted path {
+    animation: none;
+  }
+  .fairy-coloring .paint,
+  .fairy-coloring .region {
+    transition: none;
+  }
+}

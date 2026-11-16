@@ -482,6 +482,8 @@ export const pairClaimRequest = z.object({
 
 export interface KidSegment {
   id: string;
+  /** Short, parent-approved title for the child playlist card. */
+  title?: string;
   provider: VideoProvider;
   externalId: string;
   startSec: number;

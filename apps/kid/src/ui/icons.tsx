@@ -40,6 +40,8 @@ const PATHS = {
   retry: 'M4.5 12a7.5 7.5 0 1 0 2.2-5.3M4.5 4.5v4h4',
   moon: 'M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z',
   close: 'M6.5 6.5l11 11M17.5 6.5l-11 11',
+  video: 'M15 8l6-4v16l-6-4M3 5h12v14H3z',
+  mic: 'M9 5a3 3 0 0 1 6 0v7a3 3 0 0 1-6 0zM5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8',
 } as const;
 
 export type IconName = keyof typeof PATHS;

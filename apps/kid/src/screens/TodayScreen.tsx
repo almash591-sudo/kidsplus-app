@@ -13,48 +13,28 @@ import {
   PAUSED,
   HINT_TODAY,
   TODAY_GREETING,
+  ADVENTURE_GUIDE_TIPS,
+  ADVENTURE_ALL_DONE,
 } from '../phrases';
-import { CategoryArt } from '../ui/CategoryArt';
 import { IdleHint } from '../ui/IdleHint';
 import { Icon } from '../ui/icons';
-import { CATEGORY_SHORT } from './HomeScreen';
+import { CHILD_CATEGORY } from '../ui/childCategories';
 
-/**
- * Кольцо прогресса вокруг значка предмета — как «Активность» на часах. Долю считает сервер по
- * минутам предмета из расписания (этап 44: раньше урок всегда считался за 20 минут).
- */
-function ProgressRing({
-  done,
-  progress,
-  subject,
-}: {
-  done: boolean;
-  progress: number;
-  subject: Subject;
-}) {
-  const part = done ? 1 : progress;
-  const r = 42;
-  const c = 2 * Math.PI * r;
-  return (
-    <span className="ring" aria-hidden="true">
-      <svg viewBox="0 0 100 100">
-        <circle className="ring-bg" cx="50" cy="50" r={r} />
-        {part > 0 && (
-          <circle
-            className="ring-fg"
-            cx="50"
-            cy="50"
-            r={r}
-            strokeDasharray={`${c * part} ${c}`}
-            transform="rotate(-90 50 50)"
-          />
-        )}
-      </svg>
-      <span className="ring-icon">
-        {done ? <Icon name="check" size="52%" stroke={2.8} /> : <CategoryArt category={subject} />}
-      </span>
-    </span>
-  );
+const GUIDE_POSES = ['point', 'wave', 'happy'] as const;
+const GUIDE_BUBBLES = ['Сюда!', 'Дай пять!', 'Ты сможешь!'] as const;
+
+function minutesText(seconds: number) {
+  const minutes = Math.max(1, Math.ceil(seconds / 60));
+  const lastTwo = minutes % 100;
+  const unit =
+    lastTwo >= 11 && lastTwo <= 14
+      ? 'минут'
+      : minutes % 10 === 1
+        ? 'минута'
+        : minutes % 10 >= 2 && minutes % 10 <= 4
+          ? 'минуты'
+          : 'минут';
+  return `${minutes} ${unit}`;
 }
 
 /** Приветствие «Сегодня» — один раз за запуск. */
@@ -73,73 +53,159 @@ export function TodayScreen({
   onSubject: (s: Subject) => void;
   onFree: () => void;
 }) {
+  const [owlTip, setOwlTip] = useState(-1);
+  const [owlReacting, setOwlReacting] = useState(false);
+  const reactionTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const greeting = useRef(
+    today.subjects.some((s) => !s.done) ? TODAY_GREETING : ADVENTURE_ALL_DONE,
+  );
+  useEffect(() => () => clearTimeout(reactionTimer.current), []);
   useEffect(() => {
     if (greeted) return;
     greeted = true;
-    void playSequence([ru(TODAY_GREETING)]);
+    void playSequence([ru(greeting.current)]);
   }, []);
   // Куда нажать: первый непройденный предмет, а после уроков — свободное время.
   const next = today.subjects.find((s) => !s.done)?.subject ?? null;
+  const completed = today.subjects.filter((s) => s.done).length;
+  const guideSpeech =
+    owlTip < 0
+      ? next
+        ? TODAY_GREETING
+        : ADVENTURE_ALL_DONE
+      : !next && owlTip === 0
+        ? today.free.open
+          ? FREE_TIME
+          : ADVENTURE_ALL_DONE
+        : ADVENTURE_GUIDE_TIPS[owlTip]!;
   return (
-    <div className="screen tiles categories today" data-testid="today">
-      <header className="screen-title" aria-hidden="true">
-        <h1>Твои занятия</h1>
+    <div
+      className={`screen tiles categories today adventure-today${owlReacting ? ' guide-reacting' : ''}`}
+      data-testid="today"
+    >
+      <header className="adventure-welcome">
+        <h1>{next ? 'Поиграем?' : 'Молодец!'}</h1>
+        <button
+          className="adventure-guide"
+          type="button"
+          aria-label="Поговорить с совёнком"
+          onClick={() => {
+            const tip = (owlTip + 1) % ADVENTURE_GUIDE_TIPS.length;
+            setOwlTip(tip);
+            setOwlReacting(true);
+            clearTimeout(reactionTimer.current);
+            reactionTimer.current = setTimeout(() => setOwlReacting(false), 1400);
+            if (tip === 1) fx.boing();
+            else fx.bell(tip);
+            void playSequence([
+              ru(
+                !next && tip === 0
+                  ? today.free.open
+                    ? FREE_TIME
+                    : ADVENTURE_ALL_DONE
+                  : ADVENTURE_GUIDE_TIPS[tip]!,
+              ),
+            ]);
+          }}
+        >
+          <img
+            key={`${owlTip}-${owlReacting}`}
+            src={`/owl/${owlTip < 0 ? (next ? 'wave' : 'happy') : GUIDE_POSES[owlTip]}.webp`}
+            alt=""
+            draggable={false}
+            className={owlReacting ? 'owl-waving' : ''}
+          />
+          <span className="guide-hello" aria-hidden="true">
+            {owlTip < 0 ? 'Привет!' : GUIDE_BUBBLES[owlTip]}
+          </span>
+          <span className="guide-listen" aria-hidden="true">
+            <Icon name="ear" size={22} />
+          </span>
+        </button>
+        <span className="adventure-sr-only" aria-live="polite">
+          {guideSpeech}
+        </span>
       </header>
-      {today.subjects.map((s, i) => (
-        <button
-          key={s.subject}
-          type="button"
-          className={`tile category ${s.subject}${s.done ? ' done' : ''}`}
-          style={{ '--i': i } as React.CSSProperties}
-          disabled={s.done}
-          onClick={() => {
-            fx.whoosh();
-            void playSequence([ru(categoryPhrase(s.subject))]);
-            onSubject(s.subject);
-          }}
-          data-testid="subject"
-          data-subject={s.subject}
-          data-hint={s.subject === next ? '' : undefined}
-          data-done={s.done}
-          data-progress={s.done ? 1 : s.progress}
-          aria-label={CATEGORY_LABELS[s.subject]}
-        >
-          <ProgressRing done={s.done} progress={s.progress} subject={s.subject} />
-          <span className="lesson-text" aria-hidden="true">
-            <span className="tile-label">{CATEGORY_SHORT[s.subject]}</span>
-            <span className="lesson-left">
-              {s.done ? 'Готово! Молодец' : `${Math.max(1, Math.ceil(s.secondsLeft / 60))} мин`}
+      <div
+        className="adventure-progress"
+        role="img"
+        aria-label={`Завершено занятий: ${completed} из ${today.subjects.length}`}
+      >
+        <span className="adventure-stars" aria-hidden="true">
+          {today.subjects.map((s) => (
+            <span key={s.subject} className={s.done ? 'earned' : ''}>
+              <Icon name="star" size={30} fill={s.done} stroke={1.8} />
             </span>
-          </span>
-          {s.done && (
-            <span className="done-star" aria-hidden="true">
-              <Icon name="star" size="100%" fill stroke={1.2} />
+          ))}
+        </span>
+      </div>
+      <section className="today-journey adventure-path" aria-label="Приключения на сегодня">
+        {today.subjects.map((s, i) => (
+          <button
+            key={s.subject}
+            type="button"
+            className={`tile category ${s.subject}${s.done ? ' done' : ''}${s.subject === next ? ' is-next' : ''}`}
+            style={{ '--i': i } as React.CSSProperties}
+            disabled={s.done}
+            onClick={() => {
+              fx.whoosh();
+              void playSequence([ru(categoryPhrase(s.subject))]);
+              onSubject(s.subject);
+            }}
+            data-testid="subject"
+            data-subject={s.subject}
+            data-hint={s.subject === next ? '' : undefined}
+            data-done={s.done}
+            data-progress={s.done ? 1 : s.progress}
+            aria-label={`${CATEGORY_LABELS[s.subject]}, ${s.done ? 'занятие завершено' : `осталось ${minutesText(s.secondsLeft)}`}`}
+          >
+            <img
+              className="adventure-toy"
+              src={CHILD_CATEGORY[s.subject].picture}
+              alt=""
+              draggable={false}
+            />
+            <span className="tile-label" aria-hidden="true">
+              {CHILD_CATEGORY[s.subject].label}
             </span>
-          )}
-        </button>
-      ))}
-      {today.free.open && (
-        <button
-          type="button"
-          className="tile category free"
-          style={{ '--i': today.subjects.length } as React.CSSProperties}
-          onClick={() => {
-            fx.whoosh();
-            void playSequence([ru(FREE_TIME)]);
-            onFree();
-          }}
-          data-testid="free"
-          data-hint={next === null ? '' : undefined}
-          aria-label="Свободное время"
-        >
-          <span className="tile-badge" aria-hidden="true">
-            <CategoryArt category="free" />
-          </span>
-          <span className="lesson-text" aria-hidden="true">
-            <span className="tile-label">Свободное время</span>
-          </span>
-        </button>
-      )}
+            {!s.done && (
+              <span className="adventure-go" aria-hidden="true">
+                <Icon name="play" size={s.subject === next ? 34 : 23} fill stroke={1.5} />
+              </span>
+            )}
+            {s.done && (
+              <span className="done-star" aria-hidden="true">
+                <Icon name="star" size="100%" fill stroke={1.2} />
+              </span>
+            )}
+          </button>
+        ))}
+        {today.free.open && (
+          <button
+            type="button"
+            className="tile category free"
+            style={{ '--i': today.subjects.length } as React.CSSProperties}
+            onClick={() => {
+              fx.whoosh();
+              void playSequence([ru(FREE_TIME)]);
+              onFree();
+            }}
+            data-testid="free"
+            data-hint={next === null ? '' : undefined}
+            aria-label="Свободное время"
+          >
+            <span className="tile-badge" aria-hidden="true">
+              <img src="/games/icon-balloons.webp" alt="" draggable={false} />
+            </span>
+            <span className="tile-label" aria-hidden="true">
+              Играем!
+            </span>
+            <span className="adventure-go" aria-hidden="true">
+              <Icon name="play" size={24} fill stroke={1.5} />
+            </span>
+          </button>
+        )}
+      </section>
       <IdleHint onIdle={() => void playSequence([ru(HINT_TODAY)])} first={9000} />
     </div>
   );

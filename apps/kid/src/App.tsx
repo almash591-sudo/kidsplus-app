@@ -63,6 +63,7 @@ import { fromKidQuestion } from './quiz/engine';
 import { QuizScreen } from './quiz/QuizScreen';
 import { DeckScreen } from './screens/DeckScreen';
 import { CategoryScreen, HomeScreen } from './screens/HomeScreen';
+import { MagicRoomScreen } from './screens/MagicRoomScreen';
 import { ReviewScreen, type Check } from './screens/ReviewScreen';
 import { levelOf, REVIEW_TASKS, reviewed, reviewOf } from './review';
 import { PairScreen } from './screens/PairScreen';
@@ -71,14 +72,7 @@ import { BreakScreen } from './screens/BreakScreen';
 import { bedtimeStore, NightScreen, OPEN_HABITS_EVENT } from './screens/NightScreen';
 import { inAndroidWebView, setVolume } from './kiosk';
 import { owlBus } from './owl/bus';
-import { LiveOwl } from './owl/LiveOwl';
-import {
-  DayOverScreen,
-  ParentCorner,
-  ParentMenu,
-  PausedScreen,
-  TodayScreen,
-} from './screens/TodayScreen';
+import { DayOverScreen, ParentCorner, ParentMenu, PausedScreen } from './screens/TodayScreen';
 
 /** Где ребёнок в списке раздела: пункт и этап (видео → его квиз). */
 /** seq — номер шага по порядку: урок идёт по кругу, и тот же пункт должен начаться заново. */
@@ -665,8 +659,14 @@ export function App() {
       )}
     </>
   );
-  // Живой совёнок (этап 32) — только в меню: не на уроке, не на паузе и не ночью.
-  const owl = <LiveOwl evening={bedtime?.phase === 'soon' || new Date().getHours() >= 19} />;
+  const selectionCorner = isPlan ? (
+    <>
+      <ParentCorner onUnlock={() => setParentMenu(true)} />
+      <BatteryBadge battery={battery} />
+    </>
+  ) : (
+    corner
+  );
   // Перерыв для глаз (этап 50): «у экрана» — меню, занятия, камера, альбом, дела. Не считаются
   // звонок, радионяня, ночь, «выключить экран», пауза и конец дня, аудиотека, малыш и просмотр.
   const shown = state.screen === 'today' || state.screen === 'home' || state.screen === 'run';
@@ -843,13 +843,29 @@ export function App() {
         );
       return (
         <>
-          <TodayScreen
+          <MagicRoomScreen
             today={today!}
+            categories={categoriesOf(state.playlist.items)}
             onSubject={(subject) => void startLesson(subject)}
-            onFree={() => setState({ screen: 'home', playlist: state.playlist, category: null })}
+            onCategory={(category) => {
+              if (today?.free.open && categoriesOf(state.playlist.items).includes(category)) {
+                setState({ screen: 'home', playlist: state.playlist, category });
+              }
+            }}
+            onCamera={cameraAllowed ? () => setCamera('camera') : undefined}
+            onCalls={paired ? () => setCamera('calls') : undefined}
+            onAlbum={() => setCamera('album')}
+            tools={
+              <>
+                <AlbumButton onOpen={() => setCamera('album')} />
+                {paired && <HabitsButton onOpen={() => setCamera('habits')} />}
+                {audioAllowed && <AudioButton onOpen={() => setCamera('audio')} />}
+                <BrightnessButton />
+              </>
+            }
           />
-          {corner}
-          {owl}
+          <ParentCorner onUnlock={() => setParentMenu(true)} />
+          <BatteryBadge battery={battery} />
         </>
       );
     case 'home': {
@@ -877,8 +893,7 @@ export function App() {
               onPick={(c) => setState({ screen: 'home', playlist, category: c })}
               onBack={toToday}
             />
-            {corner}
-            {owl}
+            {selectionCorner}
           </>
         );
       }
@@ -888,9 +903,10 @@ export function App() {
           <HomeScreen
             items={items}
             onBack={
-              categoriesOf(playlist.items).length > 1
+              toToday ??
+              (categoriesOf(playlist.items).length > 1
                 ? () => setState({ screen: 'home', playlist, category: null })
-                : toToday
+                : undefined)
             }
             onPick={(index) =>
               setState({
@@ -925,8 +941,7 @@ export function App() {
               return true;
             }}
           />
-          {corner}
-          {owl}
+          {selectionCorner}
         </>
       );
     }

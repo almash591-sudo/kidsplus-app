@@ -1,0 +1,576 @@
+/* Familiar room materials frame the live camera; the image stays unobstructed. */
+.screen.fairy-camera {
+  display: grid;
+  grid-template-rows: 88px minmax(0, 1fr) 116px;
+  gap: 18px;
+  padding: max(24px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom));
+  background: #f8eedb url('/playroom/worktable.webp') center / cover;
+  color: #3c573b;
+}
+.fairy-camera .camera-back {
+  position: absolute;
+  top: max(40px, env(safe-area-inset-top));
+  left: 20px;
+  z-index: 2;
+}
+.fairy-camera .camera-modes {
+  position: relative;
+  grid-row: 1;
+  top: auto;
+  left: auto;
+  transform: none;
+  justify-self: center;
+  align-self: center;
+  margin-left: 56px;
+  gap: 8px;
+  padding: 5px;
+  background: #e8ddc7;
+  box-shadow: inset 0 2px 3px #9b785b21;
+}
+.fairy-camera .camera-mode {
+  width: 76px;
+  height: 66px;
+  border-radius: 28px;
+  opacity: 0.65;
+  display: grid;
+  place-items: center;
+  transition:
+    background 0.18s,
+    transform 0.18s;
+}
+.fairy-camera .camera-mode img {
+  width: 56px;
+  height: 54px;
+  object-fit: contain;
+}
+.fairy-camera .camera-mode.active {
+  background: #fffaf0;
+  box-shadow: 0 3px 4px #78553720;
+  opacity: 1;
+}
+.fairy-camera .camera-viewfinder {
+  grid-row: 2;
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  border: 8px solid #fffaf1;
+  border-radius: 34px;
+  background: #eadfc9;
+  box-shadow:
+    0 7px 0 #d8c7aa,
+    0 12px 20px #674c3424;
+}
+.fairy-camera .camera-preview {
+  border-radius: 24px;
+}
+.fairy-camera .camera-bar {
+  position: static;
+  grid-row: 3;
+  gap: 12px;
+}
+.fairy-camera .camera-side {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
+  color: #516446;
+  background: #fffaf0;
+  box-shadow:
+    0 5px 0 #dacbad,
+    0 7px 12px #674c341c;
+}
+.fairy-camera .camera-shutter {
+  width: 90px;
+  height: 90px;
+  flex-shrink: 0;
+  color: #fffaf0;
+  background: #68894f;
+  box-shadow:
+    0 6px 0 #486438,
+    0 9px 16px #45603833;
+  display: grid;
+  place-items: center;
+}
+.fairy-camera .camera-shutter.video {
+  background: #bd6253;
+  box-shadow: 0 6px 0 #904b3f;
+}
+.fairy-camera .camera-shutter.recording {
+  background: #a3483f;
+}
+.fairy-camera .camera-shutter svg:not(.camera-ring) {
+  position: static;
+  width: 38px;
+  height: 38px;
+  transform: none;
+}
+.fairy-camera .camera-shutter .ring-bg {
+  stroke: #fff9e4;
+  stroke-width: 4;
+}
+.fairy-camera .camera-shutter .ring {
+  stroke: #ffd76d;
+}
+.fairy-camera .camera-left {
+  font-size: 32px;
+}
+.fairy-camera .camera-mode:disabled,
+.fairy-camera .camera-side:disabled {
+  opacity: 0.45;
+}
+.fairy-camera button:focus-visible,
+.fairy-gallery button:focus-visible,
+.fairy-capture-preview button:focus-visible {
+  outline: 4px solid #7761ac;
+  outline-offset: 4px;
+}
+.fairy-camera .camera-side:active,
+.fairy-camera .camera-mode:active {
+  transform: translateY(3px);
+}
+.fairy-camera .camera-error,
+.fairy-camera .camera-limit {
+  padding: 24px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: #faf0df;
+  color: #4d6343;
+  text-align: center;
+  font-size: 22px;
+}
+.fairy-camera .camera-error > img {
+  width: 132px;
+  height: 120px;
+  object-fit: contain;
+}
+.fairy-camera .camera-error p,
+.fairy-camera .camera-limit p {
+  margin: 0;
+  font-weight: 900;
+}
+.fairy-camera .camera-error .fairy-guide {
+  position: relative;
+  width: 72px;
+  height: 86px;
+}
+.fairy-camera .camera-limit > img {
+  width: 112px;
+  height: 140px;
+  object-fit: contain;
+}
+.camera-retry,
+.fairy-photo-start {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 60px;
+  padding: 12px 22px;
+  border: 0;
+  border-radius: 24px;
+  background: #68894f;
+  color: #fffdf0;
+  font: inherit;
+  font-size: 20px;
+  font-weight: 900;
+  box-shadow: 0 5px 0 #4b663b;
+}
+.camera-saved {
+  position: absolute;
+  bottom: calc(100% + 14px);
+  left: -12px;
+  background: #fffaf0;
+  color: #416337;
+  border-radius: 16px;
+  padding: 9px 12px;
+  font-size: 16px;
+  font-weight: 900;
+  pointer-events: none;
+  box-shadow: 0 4px 12px #654e3026;
+}
+.camera-gallery.just-saved {
+  animation: media-saved 0.5s ease-out;
+}
+.screen.fairy-gallery {
+  padding-top: max(40px, env(safe-area-inset-top));
+}
+.fairy-gallery .gallery-grid {
+  max-width: 640px;
+  margin: 12px auto;
+  gap: 20px 16px;
+}
+.fairy-gallery .gallery-tile {
+  padding: 8px 8px 26px;
+  background: #fffaf0;
+  border: 1px solid #e8dac1;
+  border-radius: 22px;
+  box-shadow:
+    0 5px 0 #dccbac,
+    0 8px 16px #71533617;
+  animation: fairy-card-enter 0.4s ease-out both;
+}
+.fairy-gallery .gallery-tile img,
+.fairy-gallery .gallery-tile video {
+  border-radius: 14px;
+  display: block;
+}
+.fairy-gallery .gallery-play {
+  inset: 0 0 18px;
+  filter: drop-shadow(0 2px 4px #0006);
+}
+.fairy-gallery-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  padding: 16px 0 40px;
+  text-align: center;
+}
+.fairy-photo-friend {
+  width: min(72vw, 280px);
+  height: min(72vw, 280px);
+  padding: 16px 20px 30px;
+  background: #fffaf0;
+  border: 1px solid #e8dac1;
+  border-radius: 28px;
+  box-shadow:
+    0 7px 0 #dccbac,
+    0 10px 20px #71533617;
+  transform: rotate(-4deg);
+}
+.fairy-photo-friend img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  animation: media-friend 3s ease-in-out infinite;
+}
+.fairy-gallery-empty p {
+  margin: 4px 0 0;
+  font-size: 24px;
+  font-weight: 900;
+  color: #4d6343;
+}
+dialog.fairy-capture-preview:not([open]) {
+  display: none;
+}
+dialog.fairy-capture-preview[open] {
+  display: grid;
+  place-items: center;
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: calc(100vw - 24px);
+  height: calc(100dvh - 24px);
+  max-width: 900px;
+  max-height: none;
+  padding: 78px 12px 20px;
+  border: 6px solid #fffaf0;
+  border-radius: 30px;
+  background: #25392d;
+  box-sizing: border-box;
+  overflow: hidden;
+  animation: media-preview 0.24s ease-out;
+}
+.fairy-capture-preview::backdrop {
+  background: #25392dcf;
+}
+.fairy-capture-preview .fairy-back {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+}
+.fairy-capture-preview img,
+.fairy-capture-preview video {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: contain;
+  border-radius: 12px;
+}
+.celebrate.fairy-celebrate {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  background: #f8eedb url('/playroom/worktable.webp') center / cover;
+  color: #4d6343;
+  pointer-events: none;
+}
+.fairy-reward-scene {
+  position: relative;
+  width: min(390px, 100vw);
+  height: min(660px, 100dvh);
+}
+.fairy-reward-title {
+  position: absolute;
+  top: 9%;
+  width: 100%;
+  text-align: center;
+  margin: 0;
+  font-size: clamp(28px, 8vw, 36px);
+  font-weight: 900;
+  animation: media-preview 0.5s ease-out;
+}
+.fairy-reward-basket {
+  position: absolute;
+  top: 52%;
+  left: 13%;
+  width: 74%;
+  height: 36%;
+  object-fit: contain;
+}
+.fairy-reward-owl {
+  position: absolute;
+  top: 21%;
+  right: 8%;
+  width: 24%;
+  height: 23%;
+  object-fit: contain;
+  animation: media-friend 1.6s ease-in-out infinite;
+}
+.fairy-celebrate .celebrate-sticker {
+  position: absolute;
+  top: 26%;
+  left: 20%;
+  width: 52%;
+  height: 31%;
+  border-radius: 40%;
+  background: #fffaf0;
+  box-shadow:
+    0 8px 0 #ddcba4,
+    0 14px 28px #72532d1c;
+  animation: reward-arrive 0.85s cubic-bezier(0.2, 0.7, 0.3, 1.1) both;
+}
+.fairy-celebrate .celebrate-emoji {
+  font-size: min(31vw, 122px, 19dvh);
+}
+.fairy-reward-name {
+  position: absolute;
+  top: 89%;
+  width: 100%;
+  margin: 0;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 900;
+}
+.fairy-reward-stars {
+  position: absolute;
+  inset: 0;
+}
+.fairy-reward-stars img {
+  position: absolute;
+  left: 45%;
+  top: 45%;
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+  --angle: calc(var(--i) * 45deg);
+  rotate: var(--angle);
+  animation: reward-stars 1.2s ease-out calc(0.18s + var(--i) * 0.045s) both;
+}
+@keyframes media-saved {
+  50% {
+    transform: translateY(-8px) rotate(-7deg);
+  }
+}
+@keyframes media-friend {
+  50% {
+    transform: translateY(-5px) rotate(3deg);
+  }
+}
+@keyframes media-preview {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+}
+@keyframes reward-arrive {
+  from {
+    opacity: 0;
+    transform: translate(30px, 170px) scale(0.3) rotate(-12deg);
+  }
+}
+@keyframes reward-stars {
+  from {
+    opacity: 0;
+    transform: translateY(0) scale(0.3);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-148px) rotate(calc(-1 * var(--angle))) scale(0.9);
+  }
+}
+@media (max-height: 740px) and (orientation: portrait) {
+  .fairy-gallery-empty {
+    gap: 12px;
+    padding: 0 0 24px;
+  }
+  .fairy-gallery .fairy-photo-friend {
+    width: 170px;
+    height: 170px;
+    padding: 8px 12px 18px;
+  }
+  .fairy-gallery-empty p {
+    font-size: 22px;
+  }
+  .screen.fairy-camera {
+    grid-template-rows: 76px minmax(0, 1fr) 94px;
+    gap: 14px;
+    padding: 16px;
+  }
+  .fairy-camera .camera-back {
+    top: 31px;
+    left: 16px;
+  }
+  .fairy-camera .camera-shutter {
+    width: 76px;
+    height: 76px;
+  }
+  .fairy-camera .camera-error {
+    gap: 8px;
+    font-size: 18px;
+    padding: 8px;
+  }
+  .fairy-camera .camera-error > img {
+    width: 72px;
+    height: 60px;
+  }
+  .fairy-camera .camera-error .fairy-guide {
+    width: 52px;
+    height: 62px;
+  }
+}
+@media (orientation: landscape) and (max-height: 600px) {
+  .screen.fairy-gallery {
+    padding-top: max(20px, env(safe-area-inset-top));
+  }
+  .fairy-gallery .fairy-header {
+    min-height: 126px;
+  }
+  .fairy-gallery .fairy-header-toy {
+    height: 66px;
+  }
+  .fairy-gallery .fairy-header h1 {
+    font-size: 24px;
+  }
+  .fairy-gallery-empty {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    grid-template-rows: 1fr 1fr;
+    width: min(600px, 100%);
+    margin: 12px auto 0;
+    gap: 12px 32px;
+    padding: 0 0 16px;
+    justify-items: center;
+  }
+  .fairy-gallery-empty .fairy-photo-friend {
+    grid-row: 1 / 3;
+  }
+  .fairy-gallery-empty p {
+    align-self: end;
+  }
+  .fairy-gallery-empty .fairy-photo-start {
+    align-self: start;
+  }
+  .screen.fairy-camera {
+    grid-template-columns: 100px minmax(0, 1fr) 110px;
+    grid-template-rows: minmax(0, 1fr);
+    padding: 18px;
+    gap: 16px;
+  }
+  .fairy-camera .camera-modes {
+    grid-column: 1;
+    grid-row: 1;
+    flex-direction: column;
+    margin: 62px 0 0;
+  }
+  .fairy-camera .camera-back {
+    top: 18px;
+    left: 40px;
+  }
+  .fairy-camera .camera-viewfinder {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .fairy-camera .camera-bar {
+    grid-column: 3;
+    grid-row: 1;
+    flex-direction: column;
+  }
+  .fairy-camera .camera-shutter {
+    width: 80px;
+    height: 80px;
+  }
+  .fairy-camera .camera-error {
+    gap: 8px;
+    font-size: 18px;
+    padding: 8px;
+  }
+  .fairy-camera .camera-error > img {
+    width: 70px;
+    height: 60px;
+  }
+  .fairy-camera .camera-error .fairy-guide {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+  }
+  .fairy-gallery .fairy-photo-friend {
+    width: 180px;
+    height: 180px;
+  }
+  .fairy-reward-scene {
+    width: 360px;
+    height: 100dvh;
+  }
+  .fairy-reward-title {
+    top: 5%;
+    font-size: 28px;
+  }
+  .fairy-celebrate .celebrate-sticker {
+    top: 23%;
+    left: 24%;
+    width: 42%;
+    height: 35%;
+  }
+  .fairy-reward-basket {
+    top: 51%;
+    height: 38%;
+  }
+  .fairy-reward-name {
+    top: 91%;
+    font-size: 18px;
+  }
+  .fairy-reward-stars img {
+    width: 26px;
+    height: 26px;
+  }
+  @keyframes reward-stars {
+    from {
+      opacity: 0;
+      transform: scale(0.3);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(-98px) rotate(calc(-1 * var(--angle)));
+    }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fairy-camera *,
+  .fairy-gallery *,
+  .fairy-capture-preview,
+  .fairy-celebrate * {
+    animation: none !important;
+    transition: none !important;
+  }
+  .fairy-reward-stars img {
+    transform: translateY(-130px) rotate(calc(-1 * var(--angle)));
+  }
+}

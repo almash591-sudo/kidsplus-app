@@ -17,7 +17,7 @@ const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
  * Совёнок в углу экрана игры: дышит, моргает, радуется верному ответу, «ой» — при ошибке,
  * а иногда облетает экран. Только картинка: касания проходят сквозь него.
  */
-export function Mascot() {
+export function Mascot({ room = false }: { room?: boolean }) {
   const { mood, seq } = useSyncExternalStore(mascotStore.subscribe, mascotStore.get);
   const [frame, setFrame] = useState<Frame>('wave');
   const [flying, setFlying] = useState(false);
@@ -56,7 +56,7 @@ export function Mascot() {
 
   // Время от времени — круг над экраном с взмахами крыльев.
   useEffect(() => {
-    if (calm()) return;
+    if (calm() || room) return;
     let flap: ReturnType<typeof setInterval> | undefined;
     const timer = setInterval(() => {
       const node = el.current;
@@ -91,7 +91,7 @@ export function Mascot() {
       clearInterval(timer);
       clearInterval(flap);
     };
-  }, []);
+  }, [room]);
 
   return (
     <div
@@ -101,7 +101,15 @@ export function Mascot() {
       aria-hidden="true"
       data-mood={mood}
     >
-      <img src={src(shown)} alt="" draggable={false} />
+      <img
+        src={
+          room
+            ? `/playroom/${shown === 'blink' ? 'owl-blink' : shown === 'wave' || mood === 'happy' || mood === 'wow' ? 'owl-wave' : 'owl'}.webp`
+            : src(shown)
+        }
+        alt=""
+        draggable={false}
+      />
     </div>
   );
 }

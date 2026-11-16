@@ -6,6 +6,7 @@ import { useEffect, useRef } from 'react';
 import { contactEmoji } from './CallsScreen';
 import { callEngine } from './engine';
 import './calls.css';
+import { Icon } from '../ui/icons';
 
 /** Мелодия звонка (WebAudio): два тона, пауза — пока не ответили. */
 function useRingtone(on: boolean) {
@@ -77,11 +78,14 @@ export function CallOverlay({ view, me }: { view: CallView; me: Peer }) {
 
   if (incoming) {
     return (
-      <div className="call-screen incoming" data-testid="call-incoming">
+      <div className="call-screen incoming fairy-call" data-testid="call-incoming">
+        <p className="fairy-call-title">Тебе звонят!</p>
         <div className="call-who">
           <span className="call-emoji">{face(call, call.from)}</span>
           <span className="call-name">{nameOf(call, call.from)}</span>
-          <span className="call-kind">{call.video ? '🎥' : '📞'}</span>
+          <span className="call-kind">
+            <Icon name={call.video ? 'video' : 'phone'} size={30} />
+          </span>
         </div>
         <div className="call-actions">
           <button
@@ -91,7 +95,7 @@ export function CallOverlay({ view, me }: { view: CallView; me: Peer }) {
             data-testid="call-decline"
             onClick={() => void engine.decline()}
           >
-            ✕
+            <Icon name="close" size={40} />
           </button>
           <button
             type="button"
@@ -100,7 +104,7 @@ export function CallOverlay({ view, me }: { view: CallView; me: Peer }) {
             data-testid="call-accept"
             onClick={() => void engine.answer()}
           >
-            📞
+            <Icon name="phone" size={40} />
           </button>
         </div>
       </div>
@@ -112,7 +116,11 @@ export function CallOverlay({ view, me }: { view: CallView; me: Peer }) {
   );
   const ringingOthers = call.members.filter((m) => m.id !== me && m.state === 'ringing');
   return (
-    <div className="call-screen active" data-testid="call-active" data-status={call.status}>
+    <div
+      className="call-screen active fairy-call"
+      data-testid="call-active"
+      data-status={call.status}
+    >
       <div className={`call-remotes n${Math.max(1, talking.length)}`}>
         {talking.map((r) => (
           <div key={r.peer} className="call-remote" data-testid="call-remote" data-state={r.state}>
@@ -124,13 +132,16 @@ export function CallOverlay({ view, me }: { view: CallView; me: Peer }) {
           </div>
         ))}
         {!talking.length && (
-          <div className="call-waiting" data-testid="call-waiting">
+          <div className={`call-waiting n${ringingOthers.length}`} data-testid="call-waiting">
             {ringingOthers.map((m) => (
               <span key={m.id} className="call-emoji">
                 {face(call, m.id)}
+                <span className="call-waiting-name">{m.name}</span>
               </span>
             ))}
-            <span className="call-dots">• • •</span>
+            <span className="call-dots">
+              {call.status === 'ringing' ? 'Звоним…' : 'Соединяем…'}
+            </span>
           </div>
         )}
       </div>
@@ -139,15 +150,26 @@ export function CallOverlay({ view, me }: { view: CallView; me: Peer }) {
           <Video stream={view.local} muted mirrored />
         </div>
       )}
+      {view.mediaError && (
+        <p className="fairy-call-media-error" role="status">
+          Камера и звук не включились. Позови взрослого.
+        </p>
+      )}
       <div className="call-actions">
         <button
           type="button"
           className={`call-btn small${view.mic ? '' : ' off'}`}
           aria-label="Микрофон"
+          aria-pressed={view.mic}
           data-testid="call-mic"
           onClick={() => engine.toggleMic()}
         >
-          {view.mic ? '🎤' : '🔇'}
+          <Icon name="mic" size={30} />
+          {!view.mic && (
+            <span className="fairy-call-off">
+              <Icon name="close" size={16} />
+            </span>
+          )}
         </button>
         <button
           type="button"
@@ -156,17 +178,23 @@ export function CallOverlay({ view, me }: { view: CallView; me: Peer }) {
           data-testid="call-hangup"
           onClick={() => void engine.hangup()}
         >
-          ✕
+          <Icon name="close" size={40} />
         </button>
         {call.video && (
           <button
             type="button"
             className={`call-btn small${view.cam ? '' : ' off'}`}
             aria-label="Камера"
+            aria-pressed={view.cam}
             data-testid="call-cam"
             onClick={() => engine.toggleCam()}
           >
-            {view.cam ? '🎥' : '🚫'}
+            <Icon name="video" size={30} />
+            {!view.cam && (
+              <span className="fairy-call-off">
+                <Icon name="close" size={16} />
+              </span>
+            )}
           </button>
         )}
       </div>

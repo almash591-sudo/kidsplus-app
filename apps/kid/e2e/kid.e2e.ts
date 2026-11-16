@@ -633,7 +633,7 @@ test.describe('мои дела (этап 30)', () => {
     await expect(page.getByTestId('jar-stars')).toContainText('3');
 
     const first = page.getByTestId('habit').first();
-    await first.dispatchEvent('pointerdown');
+    await first.click();
     await expect(first).toHaveAttribute('data-done', '1');
     await expect(page.getByTestId('jar-stars')).toContainText('4');
     await shot(page, 'habits');
@@ -643,7 +643,7 @@ test.describe('мои дела (этап 30)', () => {
       .toContain('Все дела сделаны! Совёнок тобой гордится!');
 
     // Уже сделанное — звёздочку второй раз не даёт.
-    await first.dispatchEvent('pointerdown');
+    await first.click();
     expect(backend.habitsDone).toEqual(['a']);
     await page.getByTestId('go-home').click();
     await expect(page.getByTestId('habits-stars')).toHaveText('4');
@@ -659,7 +659,7 @@ test.describe('мои дела (этап 30)', () => {
     await page.getByTestId('habits-open').click();
     // Вечер — вечерние дела; утро — вкладкой.
     await expect(page.getByTestId('slot-evening')).toHaveAttribute('aria-selected', 'true');
-    await page.getByTestId('habit').first().dispatchEvent('pointerdown');
+    await page.getByTestId('habit').first().click();
     await expect(page.getByTestId('teeth-timer')).toBeVisible();
     await shot(page, 'teeth');
     await expect
@@ -731,27 +731,39 @@ test.describe('живой совёнок (этап 32)', () => {
     await page.clock.install({ time: new Date('2026-10-18T10:00:00') });
   });
 
-  test('прячется за плиткой; нашли — «Ку-ку!»', async ({ page, backend: _ }) => {
+  test('совёнок мастерской: касание повторяет подсказку, затем возвращается в покой', async ({
+    page,
+    backend: _,
+  }) => {
     await page.goto('/');
     await expect(page.getByTestId('tile').first()).toBeVisible();
-    await expect(page.getByTestId('live-owl')).toHaveAttribute('data-mode', 'away');
-    await run(page, 24_000);
-    await expect(page.getByTestId('live-owl')).toHaveAttribute('data-mode', 'peek');
-    await shot(page, 'owl-peek');
-    await page.getByTestId('live-owl').dispatchEvent('pointerdown');
+    const owl = page.getByTestId('fairy-guide');
+    await owl.click();
+    await expect(owl).toHaveClass(/is-waving/);
+    await expect.poll(() => said(page)).toContain('Нажми на любую картинку!');
     await run(page, 2_000);
-    await expect.poll(() => said(page)).toContain('Ку-ку!');
+    await expect(owl).not.toHaveClass(/is-waving/);
+    await expect(owl.locator('img').first()).toHaveAttribute('src', '/playroom/owl.webp');
+    await shot(page, 'owl-guide');
   });
 
-  test('долго ничего не нажимает — садится на урок и зовёт', async ({ page, backend: _ }) => {
+  test('без касаний голос и рука показывают занятие; подсказки ограничены', async ({
+    page,
+    backend: _,
+  }) => {
     await page.goto('/');
     await expect(page.getByTestId('tile').first()).toBeVisible();
-    // Прятки (никто не нашёл) — потом минута тишины — зовёт к уроку.
+    const hand = page.getByTestId('hint-hand').locator('span');
+    for (let i = 0; i < 20 && !(await hand.isVisible()); i++) await run(page, 1_000);
+    await expect(hand).toBeVisible();
+    await expect.poll(() => said(page)).toContain('Нажми на любую картинку!');
     await run(page, 92_000);
-    await expect.poll(() => said(page)).toContain('Смотри сюда! Давай позанимаемся.');
+    expect((await said(page)).filter((text) => text === 'Нажми на любую картинку!')).toHaveLength(
+      3,
+    );
   });
 
-  test('все дела сделаны — в меню подлетает похвалить', async ({ page, backend }) => {
+  test('все дела сделаны — совёнок в меню машет и хвалит', async ({ page, backend }) => {
     backend.habits = {
       date: '2026-10-18',
       habits: [
@@ -772,9 +784,10 @@ test.describe('живой совёнок (этап 32)', () => {
     };
     await page.goto('/');
     await page.getByTestId('habits-open').click();
-    await page.getByTestId('habit').first().dispatchEvent('pointerdown');
+    await page.getByTestId('habit').first().click();
     await page.getByTestId('go-home').click();
     await run(page, 3_000);
+    await expect(page.getByTestId('fairy-guide')).toHaveAttribute('data-praising', 'true');
     await expect.poll(() => said(page)).toContain('Ты молодец!');
   });
 });
@@ -2798,17 +2811,71 @@ test.describe('игры', () => {
     const regions = PICTURES.house.regions;
     // Не тот цвет — область не закрашивается.
     await page.locator('[data-paint=black]').click();
-    await page.locator(`[data-region=${regions[0]!.id}] path`).first().dispatchEvent('pointerdown');
+    await page.locator(`[data-region=${regions[0]!.id}] path`).first().dispatchEvent('click');
     await expect(page.locator(`[data-region=${regions[0]!.id}]`)).toHaveAttribute('fill', '#fff');
+    await expect(page.getByTestId('coloring-prompt')).toHaveText('Нужен голубой');
+    await expect(page.locator('[data-paint=lightblue]')).toHaveClass(/suggested/);
     await shot(page, 'coloring');
     for (const r of regions) {
       await page.locator(`[data-paint=${r.target}]`).click();
-      await page.locator(`[data-region=${r.id}] path`).first().dispatchEvent('pointerdown');
+      await page.locator(`[data-region=${r.id}] path`).first().dispatchEvent('click');
     }
     await expectFinished(page, backend);
     const said = (await spoken(page)).map((s) => s.text);
     expect(said).toContain('Раскрась небо голубым.');
     expect(said).toContain('Нужен голубой цвет.');
+  });
+
+  test('раскраска свободная: касание, отмена, клавиатура и одна награда', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [game(1, { kind: 'coloring', picture: 'flower', tasks: false })];
+    await openGame(page);
+    await expect(page.getByTestId('game-done')).toBeDisabled();
+    await expect(page.getByTestId('coloring-undo')).toBeDisabled();
+    // Настоящее касание крупного горшка, без искусственной отправки события.
+    const pot = page.getByRole('button', { name: 'Раскрасить горшок' });
+    await pot.click();
+    await expect(pot).toHaveAttribute('fill', '#E8453C');
+    await page.getByTestId('coloring-undo').click();
+    await expect(pot).toHaveAttribute('fill', '#fff');
+    await expect(page.getByTestId('game-done')).toBeDisabled();
+    await page.locator('[data-paint=green]').click();
+    await expect(page.locator('[data-paint=green]')).toHaveAttribute('aria-pressed', 'true');
+    await pot.focus();
+    await page.keyboard.press('Enter');
+    await expect(pot).toHaveAttribute('fill', '#22A55B');
+    await page.getByTestId('game-done').click();
+    await expectFinished(page, backend);
+  });
+
+  test('раскраска: выход до праздника отменяет отложенное завершение', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [game(1, { kind: 'coloring', picture: 'sun', tasks: true })];
+    await openGame(page);
+    const { PICTURES } = await import('../src/games/pictures');
+    const regions = PICTURES.sun.regions;
+    for (const region of regions.slice(0, -1)) {
+      await page.locator(`[data-paint=${region.target}]`).click();
+      await page.locator(`[data-region=${region.id}]`).dispatchEvent('click');
+    }
+    const last = regions.at(-1)!;
+    await page.locator(`[data-paint=${last.target}]`).click();
+    // Exit in the same browser task as the final paint. WebKit actionability waits
+    // must not consume the celebration delay: this checks cancellation, not click speed.
+    await page.evaluate((id) => {
+      document
+        .querySelector(`[data-region=${id}]`)!
+        .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      (document.querySelector('[data-testid=go-home]') as HTMLButtonElement).click();
+    }, last.id);
+    await expect(page.getByTestId('home')).toBeVisible();
+    await page.waitForTimeout(1400);
+    expect(backend.events.filter((e) => e.type === 'interactive_complete')).toHaveLength(0);
+    expect(backend.events.filter((e) => e.type === 'interactive_exit')).toHaveLength(1);
   });
 
   test('разложи по местам: перетаскивание, не туда — предмет возвращается', async ({
@@ -2851,6 +2918,149 @@ test.describe('игры', () => {
     await expectFinished(page, backend);
   });
 
+  test('разложи по местам: касания, клавиатура и двенадцать крупных картинок', async ({
+    page,
+    backend,
+  }) => {
+    const ids = [RABBIT, CAT, LION];
+    backend.items = [
+      game(1, {
+        kind: 'sorting',
+        prompt: 'Найди семью',
+        bins: ids.map((imageId, index) => ({ imageId, name: `Семья ${index + 1}` })),
+        items: Array.from({ length: 12 }, (_, index) => ({
+          imageId: ids[index % 3]!,
+          bin: index % 3,
+        })),
+      }),
+    ];
+    await openGame(page);
+    const pieces = page.getByTestId('item');
+    const bins = page.getByTestId('bin');
+    const progress = page.getByRole('progressbar', { name: 'Разложено картинок' });
+    await expect(pieces).toHaveCount(6);
+    const first = pieces.first();
+    const id = (await first.locator('img').getAttribute('data-src'))!.split('/').at(-1);
+    const answer = ids.indexOf(id!);
+    await first.click();
+    await expect(first).toHaveAttribute('aria-pressed', 'true');
+    await bins.nth((answer + 1) % 3).click();
+    await expect(progress).toHaveAttribute('aria-valuenow', '0');
+    await expect(first).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByTestId('game')).toHaveAttribute('data-lock', 'none');
+    // Two synchronous activations must not place the same chosen picture twice.
+    await bins.nth(answer).evaluate((el) => {
+      (el as HTMLButtonElement).click();
+      (el as HTMLButtonElement).click();
+    });
+    await expect(progress).toHaveAttribute('aria-valuenow', '1');
+    await expect(pieces).toHaveCount(6);
+    for (let count = 1; count < 12; count++) {
+      const piece = pieces.first();
+      const imageId = (await piece.locator('img').getAttribute('data-src'))!.split('/').at(-1);
+      await piece.focus();
+      await page.keyboard.press('Space');
+      await expect(piece).toHaveAttribute('aria-pressed', 'true');
+      const home = bins.nth(ids.indexOf(imageId!));
+      await home.focus();
+      await page.keyboard.press('Enter');
+      await expect(progress).toHaveAttribute('aria-valuenow', String(count + 1));
+      await expect(pieces).toHaveCount(Math.min(6, 11 - count));
+    }
+    await expectFinished(page, backend);
+    expect(
+      backend.events.find((event) => event.type === 'interactive_complete')?.payload?.mistakes,
+    ).toBe(1);
+  });
+
+  test('разложи по местам: отмена касания и поворот сохраняют выбор и прогресс', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [
+      game(1, {
+        kind: 'sorting',
+        prompt: 'Найди семью',
+        bins: [
+          { imageId: RABBIT, name: 'Зайчики' },
+          { imageId: CAT, name: 'Котики' },
+        ],
+        items: [
+          { imageId: RABBIT, bin: 0 },
+          { imageId: CAT, bin: 1 },
+          { imageId: RABBIT, bin: 0 },
+        ],
+      }),
+    ];
+    await openGame(page);
+    const pieces = page.getByTestId('item');
+    const bins = page.getByTestId('bin');
+    const progress = page.getByRole('progressbar');
+    const cancelled = pieces.first();
+    await cancelled.dispatchEvent('pointerdown', {
+      pointerId: 90,
+      clientX: 50,
+      clientY: 50,
+      button: 0,
+    });
+    await cancelled.dispatchEvent('pointercancel', { pointerId: 90 });
+    await expect(cancelled).toHaveAttribute('aria-pressed', 'false');
+    await expect(progress).toHaveAttribute('aria-valuenow', '0');
+    const rabbit = pieces.filter({ has: page.locator(`img[data-src$="${RABBIT}"]`) }).first();
+    await rabbit.click();
+    await bins.nth(0).click();
+    await expect(progress).toHaveAttribute('aria-valuenow', '1');
+    const cat = pieces.filter({ has: page.locator(`img[data-src$="${CAT}"]`) }).first();
+    await cat.click();
+    const size = page.viewportSize()!;
+    await page.setViewportSize({ width: size.height, height: size.width });
+    await expect(cat).toHaveAttribute('aria-pressed', 'true');
+    await expect(progress).toHaveAttribute('aria-valuenow', '1');
+    await expect(bins.nth(0)).toHaveAttribute('aria-label', 'Зайчики. В корзинке 1');
+    await expect(page.locator('[data-hint]')).toHaveCount(1);
+    await expect(page.locator('[data-hint] img')).toHaveAttribute('data-src', new RegExp(CAT));
+    // Safari does not focus a native button on pointer click; keyboard input starts with focus.
+    await cat.focus();
+    await page.keyboard.press('Escape');
+    await expect(cat).toHaveAttribute('aria-pressed', 'false');
+    await cat.click();
+    await bins.nth(1).click();
+    await expect(progress).toHaveAttribute('aria-valuenow', '2');
+    await dragTo(page, await center(pieces.first()), await center(bins.nth(0)));
+    await expectFinished(page, backend);
+    expect(
+      backend.events.find((event) => event.type === 'interactive_complete')?.payload?.mistakes,
+    ).toBe(0);
+  });
+
+  test('разложи по местам: выход отменяет отложенное завершение', async ({ page, backend }) => {
+    backend.items = [
+      game(1, {
+        kind: 'sorting',
+        prompt: 'Все к зайчику',
+        bins: [{ imageId: RABBIT, name: 'Зайчик' }],
+        items: [
+          { imageId: CARROT, bin: 0 },
+          { imageId: CARROT, bin: 0 },
+        ],
+      }),
+    ];
+    await openGame(page);
+    await page.getByTestId('item').first().click();
+    await page.getByTestId('bin').click();
+    await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '1');
+    await page.getByTestId('item').click();
+    // Exit before the timer can fire, independent of WebKit actionability waits.
+    await page.evaluate(() => {
+      (document.querySelector('[data-testid=bin]') as HTMLButtonElement).click();
+      (document.querySelector('[data-testid=go-home]') as HTMLButtonElement).click();
+    });
+    await expect(page.getByTestId('home')).toBeVisible();
+    await page.waitForTimeout(1400);
+    expect(backend.events.filter((event) => event.type === 'interactive_complete')).toHaveLength(0);
+    expect(backend.events.filter((event) => event.type === 'interactive_exit')).toHaveLength(1);
+  });
+
   test('найди пару: несовпавшие закрываются, совпавшие остаются', async ({ page, backend }) => {
     backend.items = [game(1, { kind: 'memory', imageIds: [CAT, LION, RABBIT] })];
     await openGame(page);
@@ -2881,6 +3091,97 @@ test.describe('игры', () => {
     }
     await expect(page.locator('.puzzle-slot.filled')).toHaveCount(4);
     await expectFinished(page, backend);
+  });
+
+  test('пара: прогресс сохраняется после поворота, завершение после выхода отменяется', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [game(1, { kind: 'memory', imageIds: [CAT, LION] })];
+    await openGame(page);
+    await page.locator('[data-testid=memory-card][data-pair="0"]').nth(0).click();
+    await page.locator('[data-testid=memory-card][data-pair="0"]').nth(1).click();
+    await expect(page.getByRole('progressbar', { name: 'Собрано' })).toHaveAttribute(
+      'aria-valuenow',
+      '1',
+    );
+    await page.setViewportSize({ width: 568, height: 320 });
+    await expect(page.locator('.memory-card.found')).toHaveCount(2);
+    await page.locator('[data-testid=memory-card][data-pair="1"]').nth(0).click();
+    await page.evaluate(() => {
+      document
+        .querySelectorAll<HTMLButtonElement>('[data-testid=memory-card][data-pair="1"]')[1]!
+        .click();
+      (document.querySelector('[data-testid=go-home]') as HTMLButtonElement).click();
+    });
+    await expect(page.getByTestId('home')).toBeVisible();
+    await page.waitForTimeout(1400);
+    expect(backend.events.filter((event) => event.type === 'interactive_complete')).toHaveLength(0);
+  });
+
+  test('пазл: выбор двумя касаниями, неверное место и отмена указателя', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [game(1, { kind: 'puzzle', imageIds: [LION], cols: 2, rows: 2 })];
+    await openGame(page);
+    let piece = page.getByTestId('puzzle-piece').first();
+    const n = Number(await piece.getAttribute('data-piece'));
+    await piece.dispatchEvent('pointerdown', {
+      pointerId: 7,
+      button: 0,
+      clientX: 100,
+      clientY: 100,
+    });
+    await piece.dispatchEvent('pointercancel', { pointerId: 7 });
+    await expect(page.locator('.puzzle-slot.filled')).toHaveCount(0);
+    await piece.click();
+    await expect(piece).toHaveAttribute('aria-pressed', 'true');
+    await page
+      .getByTestId('puzzle-slot')
+      .nth((n + 1) % 4)
+      .click();
+    await expect(page.locator('.puzzle-slot.filled')).toHaveCount(0);
+    await page.getByTestId('puzzle-slot').nth(n).click();
+    await expect(page.getByRole('progressbar', { name: 'Собрано' })).toHaveAttribute(
+      'aria-valuenow',
+      '1',
+    );
+    await page.setViewportSize({ width: 568, height: 320 });
+    for (let k = 0; k < 3; k++) {
+      piece = page.getByTestId('puzzle-piece').first();
+      const target = Number(await piece.getAttribute('data-piece'));
+      await piece.focus();
+      await page.keyboard.press('Enter');
+      await page.getByTestId('puzzle-slot').nth(target).focus();
+      await page.keyboard.press('Enter');
+    }
+    await expectFinished(page, backend);
+    expect(backend.events.filter((event) => event.type === 'interactive_complete')).toHaveLength(1);
+  });
+
+  test('пазл: выход во время похвалы не выдаёт награду', async ({ page, backend }) => {
+    backend.items = [game(1, { kind: 'puzzle', imageIds: [LION], cols: 2, rows: 2 })];
+    await openGame(page);
+    for (let k = 0; k < 3; k++) {
+      const piece = page.getByTestId('puzzle-piece').first();
+      const target = Number(await piece.getAttribute('data-piece'));
+      await piece.click();
+      await page.getByTestId('puzzle-slot').nth(target).click();
+    }
+    await page.getByTestId('puzzle-piece').click();
+    await page.evaluate(() => {
+      const piece = document.querySelector('[data-testid=puzzle-piece]') as HTMLButtonElement;
+      (
+        document.querySelectorAll('[data-testid=puzzle-slot]')[
+          Number(piece.dataset.piece)
+        ] as HTMLButtonElement
+      ).click();
+      (document.querySelector('[data-testid=go-home]') as HTMLButtonElement).click();
+    });
+    await expect(page.getByTestId('home')).toBeVisible();
+    await page.waitForTimeout(1500);
+    expect(backend.events.filter((event) => event.type === 'interactive_complete')).toHaveLength(0);
   });
 
   test('обведи по точкам: ведём пальцем по линии цифры', async ({ page, backend }) => {
@@ -3260,6 +3561,145 @@ test.describe('игры', () => {
     );
   });
 
+  test('рисовалка: отмена штриха и восстановление случайно очищенного листа', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [game(1, { kind: 'drawing', stickerIds: [] })];
+    await openGame(page);
+    const canvas = page.getByTestId('canvas');
+    const undo = page.getByRole('button', { name: 'Отменить последнее действие' });
+    const clear = page.getByRole('button', { name: 'Стереть всё' });
+    const pixel = (x: number, y: number) =>
+      canvas.evaluate(
+        (el: HTMLCanvasElement, p) =>
+          [
+            ...el
+              .getContext('2d')!
+              .getImageData(Math.floor(el.width * p.x), Math.floor(el.height * p.y), 1, 1).data,
+          ].slice(0, 3),
+        { x, y },
+      );
+    await expect(undo).toBeDisabled();
+    await expect(clear).toBeDisabled();
+    const box = (await canvas.boundingBox())!;
+    await canvas.click({ position: { x: box.width * 0.3, y: box.height * 0.3 } });
+    await page.locator('[data-paint=blue]').click();
+    await page.getByRole('button', { name: 'Тонкая кисть' }).click();
+    await canvas.click({ position: { x: box.width * 0.7, y: box.height * 0.7 } });
+    expect(await pixel(0.3, 0.3)).toEqual([232, 69, 60]);
+    expect(await pixel(0.7, 0.7)).toEqual([37, 99, 235]);
+    await undo.click();
+    expect(await pixel(0.7, 0.7)).toEqual([255, 255, 255]);
+    expect(await pixel(0.3, 0.3)).toEqual([232, 69, 60]);
+    await clear.click();
+    expect(await pixel(0.3, 0.3)).toEqual([255, 255, 255]);
+    await expect(clear).toBeDisabled();
+    await undo.click();
+    expect(await pixel(0.3, 0.3)).toEqual([232, 69, 60]);
+    await expect(clear).toBeEnabled();
+    await undo.click();
+    expect(await pixel(0.3, 0.3)).toEqual([255, 255, 255]);
+    await expect(undo).toBeDisabled();
+    expect(backend.events.filter((event) => event.type === 'interactive_complete')).toHaveLength(0);
+  });
+
+  test('рисовалка: поворот сохраняет края, наклейку и историю отмены', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [game(1, { kind: 'drawing', stickerIds: [CAT] })];
+    await openGame(page);
+    const canvas = page.getByTestId('canvas');
+    const box = (await canvas.boundingBox())!;
+    await canvas.click({ position: { x: box.width * 0.08, y: box.height * 0.08 } });
+    await page.locator('[data-paint=blue]').click();
+    await canvas.click({ position: { x: box.width * 0.92, y: box.height * 0.92 } });
+    await page.getByTestId('sticker').click();
+    const beforeStamp = await canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL());
+    await canvas.click({ position: { x: box.width / 2, y: box.height / 2 } });
+    expect(await canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).not.toBe(beforeStamp);
+    const oldSize = await canvas.evaluate((el: HTMLCanvasElement) => el.width);
+    const viewport = page.viewportSize()!;
+    await page.setViewportSize({ width: viewport.height, height: viewport.width });
+    await expect
+      .poll(() =>
+        canvas.evaluate(
+          (el: HTMLCanvasElement, old) =>
+            el.width > 10 &&
+            el.width !== old &&
+            Math.abs(el.width - el.clientWidth * devicePixelRatio) <= 1,
+          oldSize,
+        ),
+      )
+      .toBe(true);
+    const read = () =>
+      canvas.evaluate((el: HTMLCanvasElement) => {
+        const ctx = el.getContext('2d')!;
+        const pixel = (at: number) =>
+          [
+            ...ctx.getImageData(Math.floor(el.width * at), Math.floor(el.height * at), 1, 1).data,
+          ].slice(0, 3);
+        const center = ctx.getImageData(
+          el.width * 0.3,
+          el.height * 0.3,
+          el.width * 0.4,
+          el.height * 0.4,
+        ).data;
+        return {
+          first: pixel(0.08),
+          last: pixel(0.92),
+          centerPainted: center.some((value, i) => i % 4 !== 3 && value < 250),
+        };
+      });
+    expect(await read()).toEqual({
+      first: [232, 69, 60],
+      last: [37, 99, 235],
+      centerPainted: true,
+    });
+    await page.getByRole('button', { name: 'Отменить последнее действие' }).click();
+    expect(await read()).toEqual({
+      first: [232, 69, 60],
+      last: [37, 99, 235],
+      centerPainted: false,
+    });
+    await page.getByTestId('game-done').click();
+    await expectFinished(page, backend);
+  });
+
+  test('рисовалка: недоступная наклейка повторно загружается, рисование продолжает работать', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [game(1, { kind: 'drawing', stickerIds: [CAT] })];
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await gameMedia(page);
+    let unavailable = true;
+    await page.route(`**/api/media/${CAT}`, (route) =>
+      unavailable
+        ? route.abort('failed')
+        : route.fulfill({ contentType: 'image/png', body: PIXEL }),
+    );
+    await page.goto('/');
+    await page.getByTestId('tile').first().click();
+    const sticker = page.getByTestId('sticker');
+    await expect(sticker).toHaveAccessibleName('Загрузить наклейку 1 ещё раз');
+    const canvas = page.getByTestId('canvas');
+    await canvas.click();
+    await expect(page.getByRole('button', { name: 'Стереть всё' })).toBeEnabled();
+    unavailable = false;
+    await sticker.click();
+    await expect(sticker).toHaveAccessibleName('Наклейка 1');
+    await expect(sticker).toBeEnabled();
+    await sticker.click();
+    await expect(sticker).toHaveAttribute('aria-pressed', 'true');
+    await canvas.click();
+    await page.getByTestId('game-done').click();
+    await expectFinished(page, backend);
+    expect(errors).toEqual([]);
+  });
+
   test('рисовалка: рисуем пальцем, ставим наклейку, «готово»', async ({ page, backend }) => {
     backend.items = [game(1, { kind: 'drawing', stickerIds: [CAT, LION] })];
     await openGame(page);
@@ -3325,12 +3765,12 @@ test.describe('отклик интерфейса', () => {
     await expect(page.locator('.count-option.right')).toBeVisible();
   });
 
-  test('в конце игры — наклейка и конфетти', async ({ page, backend }) => {
+  test('в конце игры — наклейка и звёзды', async ({ page, backend }) => {
     backend.items = [game(1, { kind: 'drawing', stickerIds: [] })];
     await openGame(page);
     await page.getByTestId('game-done').click();
     await expect(page.getByTestId('game-finished')).toBeVisible();
-    await expect(page.locator('.confetti span')).toHaveCount(56);
+    await expect(page.locator('.fairy-reward-stars img')).toHaveCount(8);
     await expect(page.getByTestId('sticker-award')).toBeVisible();
     await page.waitForTimeout(600);
     await shot(page, 'celebrate');
@@ -6658,6 +7098,7 @@ test.describe('расписание дня', () => {
     backend.today = planDay();
     await page.goto('/');
     await expect(page.getByTestId('today')).toBeVisible();
+    await page.getByTestId('room-chest').click();
     await expect(page.getByTestId('subject')).toHaveCount(3);
     await expect(page.locator('[data-subject=english]')).toHaveAttribute('data-done', 'true');
     await expect(page.locator('[data-subject=english]')).toBeDisabled();
@@ -6666,10 +7107,10 @@ test.describe('расписание дня', () => {
     await shot(page, 'today');
     await expect
       .poll(async () => (await spoken(page)).map((s) => s.text))
-      .toContain('Привет! Вот твои занятия на сегодня.');
+      .toContain('Привет! Это наша волшебная комната. Нажми на сундучок — выберем игру!');
   });
 
-  test('«Сегодня»: кольцо — по доле с сервера; подписи не обрезаются и лёжа (этап 44)', async ({
+  test('комната: состояния предметов с сервера; подписи в сундуке не обрезаются и лёжа', async ({
     page,
     backend,
   }) => {
@@ -6684,13 +7125,14 @@ test.describe('расписание дня', () => {
       ],
     });
     await page.goto('/');
+    await page.getByTestId('room-chest').click();
     await expect(page.getByTestId('subject')).toHaveCount(5);
     await expect(page.locator('[data-subject=math]')).toHaveAttribute('data-progress', '0.5');
     await expect(page.locator('[data-subject=english]')).toHaveAttribute('data-progress', '0');
     await page.waitForTimeout(800);
     const clipped = await page.getByTestId('subject').evaluateAll((tiles) =>
       tiles.flatMap((tile) => {
-        const label = tile.querySelector('.tile-label')!;
+        const label = tile.querySelector('span')!;
         const range = document.createRange();
         range.selectNodeContents(label);
         const text = range.getBoundingClientRect();
@@ -6710,7 +7152,7 @@ test.describe('расписание дня', () => {
     backend.lessons = { math: [game(1, { kind: 'balloons', count: 3 }, 'math')] };
     await gameMedia(page);
     await page.goto('/');
-    await page.locator('[data-subject=math]').click();
+    await page.getByTestId('room-math').click();
     await expect(page.getByTestId('game')).toBeVisible();
     // Телефон сообщает, что ребёнок на уроке математики.
     await expect
@@ -6731,7 +7173,7 @@ test.describe('расписание дня', () => {
     backend.lessons = { math: [game(1, { kind: 'balloons', count: 3 }, 'math')] };
     await gameMedia(page);
     await page.goto('/');
-    await page.locator('[data-subject=math]').click();
+    await page.getByTestId('room-math').click();
     await expect(page.getByTestId('game')).toBeVisible();
     await expect
       .poll(() => backend.events.find((e) => e.type === 'interactive_start')?.payload)
@@ -6743,7 +7185,7 @@ test.describe('расписание дня', () => {
     backend.lessons = { math: [game(1, { kind: 'balloons', count: 3 }, 'math')] };
     await gameMedia(page);
     await page.goto('/');
-    await page.locator('[data-subject=math]').click();
+    await page.getByTestId('room-math').click();
     for (let round = 0; round < 2; round++) {
       for (let i = 0; i < 3; i++) {
         await expect(page.locator('.balloon:not(.popped)').first()).toBeAttached();
@@ -6766,10 +7208,11 @@ test.describe('расписание дня', () => {
     ];
     await gameMedia(page);
     await page.goto('/');
-    await page.getByTestId('free').click();
-    await expect(page.getByTestId('categories')).toBeVisible();
+    await page.getByTestId('room-chest').click();
+    await page.locator('[data-testid=category][data-category=games]').click();
+    await expect(page.getByTestId('home')).toBeVisible();
     await expect.poll(() => (backend.beats ?? []).some((b) => b.activity === 'free')).toBe(true);
-    await page.getByTestId('to-today').click();
+    await page.getByTestId('to-categories').click();
     await expect(page.getByTestId('today')).toBeVisible();
   });
 
@@ -6787,6 +7230,7 @@ test.describe('расписание дня', () => {
   });
 
   test('выход в меню родителя — удержание угла 3 секунды и PIN', async ({ page, backend }) => {
+    test.setTimeout(60_000);
     backend.today = planDay();
     backend.pin = '2580';
     await page.goto('/');
@@ -7189,7 +7633,7 @@ test.describe('главный экран', () => {
     ),
   ];
 
-  test('все десять разделов (с музыкой, играми и стихами) помещаются на экран без прокрутки', async ({
+  test('все десять разделов доступны прокруткой и сохраняют крупные кнопки', async ({
     page,
     backend,
   }) => {
@@ -7208,14 +7652,17 @@ test.describe('главный экран', () => {
     await expect(page.getByTestId('category')).toHaveCount(10);
     await page.waitForTimeout(800);
     await shot(page, 'ten-categories');
-    const fits = await page.evaluate(() => {
-      const last = [...document.querySelectorAll('[data-testid=category]')].at(-1)!;
-      const dock = document.querySelector('.dock');
-      const bottom = last.getBoundingClientRect().bottom;
-      return bottom <= (dock ? dock.getBoundingClientRect().top : window.innerHeight);
-    });
-    // Альбомная ориентация — разделы в ряд, проверяем только книжную.
-    if (page.viewportSize()!.height > page.viewportSize()!.width) expect(fits).toBe(true);
+    for (const category of await page.getByTestId('category').all()) {
+      await category.scrollIntoViewIfNeeded();
+      await expect(category).toBeInViewport();
+      const box = (await category.boundingBox())!;
+      expect(box.width).toBeGreaterThanOrEqual(56);
+      expect(box.height).toBeGreaterThanOrEqual(56);
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(page.viewportSize()!.width);
+    }
+    await page.getByTestId('category').last().click();
+    await expect(page.getByTestId('home')).toBeVisible();
   });
 
   test('яркость: три солнца, выбор уходит в киоск; вне киоска кнопки нет', async ({
@@ -8148,12 +8595,18 @@ test.describe('наклейки', () => {
 
     await expect(page.getByTestId('album-open')).toBeVisible({ timeout: 8000 });
     await page.getByTestId('album-open').click();
-    await expect(page.getByTestId('album')).toContainText('1 из 60');
+    await expect(page.getByLabel('Собрано 1 из 60', { exact: true })).toBeVisible();
     const got = page.locator('[data-testid=album-cell][data-got=true]');
     await expect(got).toHaveCount(1);
     await expect(got).toContainText(emoji);
     await shot(page, 'album');
     await got.click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    const name = (await got.getAttribute('aria-label'))!;
+    await expect
+      .poll(async () => (await spoken(page)).map((s) => s.text).join('|'))
+      .toContain(name);
+    await page.getByRole('button', { name: 'Закрыть наклейку', exact: true }).click();
     await page.getByTestId('album-close').click();
     await expect(page.getByTestId('album')).toHaveCount(0);
   });
@@ -8250,7 +8703,7 @@ test.describe('аудиотека', () => {
     await page.goto('/');
     await page.getByTestId('audio-open').click();
     const tiles = page.getByTestId('audio-tile');
-    await expect(tiles.nth(1)).toContainText('🎬');
+    await expect(tiles.nth(1)).toHaveAttribute('data-kind', 'video');
     await tiles.nth(1).click();
     await expect(page.getByTestId('kid-video')).toBeVisible();
     await expect.poll(() => asked).toContain('/api/audio/v1/file');
@@ -8270,6 +8723,7 @@ test.describe('урок из одних видео', () => {
       other: [{ ...SEGMENTS[0]!, kind: 'segment', subject: 'other', questions: [] } as Item],
     };
     await page.goto('/');
+    await page.getByTestId('room-chest').click();
     await page.locator('[data-subject=other]').click();
     await expect(page.getByTestId('player')).toBeVisible();
   });

@@ -86,7 +86,7 @@ export function QuizScreen(props: {
   if (!question) return null;
 
   return (
-    <div className="quiz-screen" data-testid="quiz">
+    <div className="quiz-screen fairy-learning" data-testid="quiz">
       {done ? (
         <Celebrate testId="quiz-done" say={done.say} onDone={() => alive.current && onDone()} />
       ) : (
@@ -115,7 +115,7 @@ export function QuizScreen(props: {
       <div className="quiz-progress" aria-hidden="true">
         {queue.map((_, i) => (
           <span key={i} className={i < index || done ? 'star on' : 'star'}>
-            ★
+            <img src="/games/robot-star.webp" alt="" />
           </span>
         ))}
       </div>
@@ -264,7 +264,7 @@ function QuestionRound(props: {
         onClick={repeat}
         data-testid="repeat"
       >
-        👂
+        <Icon name="ear" size={32} />
       </button>
     </div>
   );

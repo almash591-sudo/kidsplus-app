@@ -13,46 +13,55 @@ import {
   REST_LEARNED,
   REST_TODAY,
 } from '../phrases';
-import { CategoryArt } from '../ui/CategoryArt';
 import { IdleHint } from '../ui/IdleHint';
 import { Icon } from '../ui/icons';
 import { LessonPath } from './LessonPath';
 import { CachedImg } from '../ui/CachedImg';
+import { CHILD_CATEGORY } from '../ui/childCategories';
+import { FairyHeader } from '../ui/FairyGuide';
 
-/** Приветствие — один раз за запуск приложения. */
 let greeted = false;
-
-/** Короткая подпись на плитке раздела (полное название звучит голосом). */
 export const CATEGORY_SHORT: Record<KidCategory, string> = {
-  video: 'Видео',
+  video: 'Кинотеатр',
   english: 'Английский',
   math: 'Математика',
   chinese: 'Китайский',
-  geography: 'География',
+  geography: 'Наш мир',
   nature: 'Природа',
   music: 'Музыка',
   letters: 'Буквы',
   poems: 'Стихи',
   books: 'Книжки',
-  games: 'Игры',
-  other: 'Разное',
+  games: 'Игротека',
+  other: 'Открытия',
 };
 
-/** Плитка раздела: значок на белой плашке и подпись — малыш узнаёт по цвету и значку. */
-export function CategoryFace({ category }: { category: KidCategory }) {
+/** Compatibility with the existing daily screen. */
+export function CategoryFace({ category, coverUrl }: { category: KidCategory; coverUrl?: string }) {
   return (
     <>
-      <span className="tile-badge" aria-hidden="true">
-        <CategoryArt category={category} />
-      </span>
+      {coverUrl && <img className="category-cover" src={coverUrl} alt="" draggable={false} />}
+      <span className="category-cover-shade" aria-hidden="true" />
+      {category !== 'video' && (
+        <img
+          className="category-toy"
+          src={CHILD_CATEGORY[category].picture}
+          alt=""
+          draggable={false}
+        />
+      )}
+      {category === 'video' && (
+        <span className="tile-badge" aria-hidden="true">
+          <Icon name="play" size={32} fill />
+        </span>
+      )}
       <span className="tile-label" aria-hidden="true">
-        {CATEGORY_SHORT[category]}
+        {CHILD_CATEGORY[category].label}
       </span>
     </>
   );
 }
 
-/** Экран разделов: видео, английский, математика, китайский… */
 export function CategoryScreen({
   items,
   onPick,
@@ -60,7 +69,6 @@ export function CategoryScreen({
 }: {
   items: KidItem[];
   onPick: (category: KidCategory) => void;
-  /** Назад к «Сегодня» — в режиме расписания (свободное время). */
   onBack?: (() => void) | undefined;
 }) {
   useEffect(() => {
@@ -69,65 +77,43 @@ export function CategoryScreen({
     void playSequence([ru(GREETING)]);
   }, []);
   return (
-    <div
-      className={[
-        'screen tiles categories',
-        onBack ? 'with-back' : '',
-        // Много разделов: на невысоком экране (iPhone в Safari, iPhone SE) — в три колонки.
-        categoriesOf(items).length > 6 ? 'many' : '',
-      ]
-        .filter(Boolean)
-        .join(' ')}
-      data-testid="categories"
-      style={
-        {
-          '--rows': Math.ceil(categoriesOf(items).length / 2),
-          '--rows3': Math.ceil(categoriesOf(items).length / 3),
-        } as React.CSSProperties
-      }
-    >
-      {onBack ? (
-        <button
-          type="button"
-          className="corner-button home"
-          aria-label="К занятиям"
-          onClick={onBack}
-          data-testid="to-today"
-        >
-          <Icon name="back" size={34} stroke={2.6} />
-        </button>
-      ) : (
-        <header className="screen-title" aria-hidden="true">
-          <h1>Привет!</h1>
-          <p>Что будем делать?</p>
-        </header>
-      )}
-      {categoriesOf(items).map((c, i) => (
-        <button
-          key={c}
-          type="button"
-          className={`tile category ${c}`}
-          style={{ '--i': i } as React.CSSProperties}
-          onClick={() => {
-            // Раздел называется вслух — ребёнок узнаёт, куда попал.
-            fx.whoosh();
-            void playSequence([ru(categoryPhrase(c))]);
-            onPick(c);
-          }}
-          data-testid="category"
-          data-category={c}
-          data-hint={i === 0 ? '' : undefined}
-          aria-label={CATEGORY_LABELS[c]}
-        >
-          <CategoryFace category={c} />
-        </button>
-      ))}
+    <div className="screen fairy-page fairy-categories" data-testid="categories">
+      <FairyHeader
+        title="Выбирай!"
+        picture="/playroom/chest-open.webp"
+        hint={HINT_PICK}
+        celebrate
+        onBack={onBack}
+        backTestId="to-today"
+      />
+      <div className="fairy-toy-grid">
+        {categoriesOf(items).map((category, i) => (
+          <button
+            key={category}
+            type="button"
+            className="fairy-category"
+            style={{ '--i': Math.min(i, 7) } as React.CSSProperties}
+            data-testid="category"
+            data-category={category}
+            data-hint={i === 0 ? '' : undefined}
+            aria-label={CATEGORY_LABELS[category]}
+            onClick={() => {
+              fx.whoosh();
+              void playSequence([ru(categoryPhrase(category))]);
+              onPick(category);
+            }}
+          >
+            <img src={CHILD_CATEGORY[category].picture} alt="" draggable={false} />
+            <span>{CHILD_CATEGORY[category].label}</span>
+          </button>
+        ))}
+      </div>
       <IdleHint onIdle={() => void playSequence([ru(HINT_PICK)])} first={9000} />
     </div>
   );
 }
 
-/** Пункты раздела: крупные карточки без текста. Только пункты списка своего ребёнка. */
+/** Assigned content and review rules are preserved; imagery carries the navigation. */
 export function HomeScreen({
   items,
   onPick,
@@ -136,94 +122,103 @@ export function HomeScreen({
 }: {
   items: KidItem[];
   onPick: (index: number) => void;
-  /** Бледная плитка (этап 55): открыть после заданий; false — проверить нечем, отдыхает. */
   onReview?: (index: number) => boolean;
-  /** Назад к разделам — если разделов несколько. */
   onBack?: (() => void) | undefined;
 }) {
-  if (!items.length) {
-    return (
-      <div className="screen center" data-testid="empty">
-        <div className="sun" aria-hidden="true">
-          🌙
-        </div>
-      </div>
-    );
-  }
+  const category = categoriesOf(items)[0];
   const path = pathLength(items);
   const tiles = items.slice(path);
+  const video = category === 'video';
   return (
-    <div className={onBack ? 'screen tiles with-back' : 'screen tiles'} data-testid="home">
-      {onBack && (
-        <button
-          type="button"
-          className="corner-button home"
-          aria-label="К разделам"
-          onClick={() => {
-            fx.whoosh();
-            onBack();
-          }}
-          data-testid="to-categories"
-        >
-          <Icon name="back" size={34} stroke={2.6} />
-        </button>
+    <div
+      className={`screen fairy-page fairy-collection${video ? ' fairy-cinema' : ''}`}
+      data-testid={items.length ? 'home' : 'empty'}
+    >
+      <FairyHeader
+        title={category ? CATEGORY_SHORT[category] : 'Пока пусто'}
+        picture={category ? CHILD_CATEGORY[category].picture : '/playroom/chest.webp'}
+        hint={HINT_PICK}
+        celebrate
+        onBack={onBack}
+      />
+      {!items.length && (
+        <div className="fairy-empty">
+          <img src="/playroom/bunny.webp" alt="" />
+          <p>Здесь появятся твои приключения</p>
+        </div>
       )}
-      {/* Дорожка уроков (музыка, буквы, «Счёт»), под ней — остальное плитками (этап 49). */}
       {path > 0 && <LessonPath items={items.slice(0, path)} onPick={onPick} />}
-      {tiles.map((item, j) => {
-        const i = path + j;
-        // Этап 34: пройденное отдыхает — бледная плитка со звёздочкой, совёнок зовёт к новому.
-        const resting = restingIn(tiles, item);
-        return (
-          <button
-            key={`${item.kind}-${item.id}`}
-            type="button"
-            className={`${
-              item.kind === 'segment' ? 'tile' : `tile ${item.kind === 'deck' ? 'deck' : 'game'}`
-            }${resting ? ' rested' : ''}`}
-            style={{ '--i': j } as React.CSSProperties}
-            onClick={() => {
-              if (!resting) return onPick(i);
-              if (onReview?.(i)) return;
-              fx.soft();
-              void playSequence([ru(item.rest === 'learned' ? REST_LEARNED : REST_TODAY)]);
-            }}
-            data-testid="tile"
-            data-kind={item.kind}
-            data-rest={resting ? item.rest : undefined}
-            data-hint={i === 0 ? '' : undefined}
-            aria-label={
-              item.kind === 'deck'
-                ? 'Карточки'
-                : item.kind === 'interactive'
-                  ? 'Играть'
-                  : 'Смотреть'
-            }
-          >
-            {item.kind === 'interactive' ? (
-              <GameTile spec={item.spec} />
-            ) : item.kind === 'deck' ? (
-              <CachedImg src={item.coverUrl} alt="" draggable={false} />
-            ) : item.thumbnailUrl ? (
-              <img src={item.thumbnailUrl} alt="" draggable={false} />
-            ) : (
-              <span className="tile-play" aria-hidden="true">
-                <Icon name="play" size={56} fill />
+      <div className="fairy-items">
+        {tiles.map((item, j) => {
+          const i = path + j;
+          const resting = restingIn(tiles, item);
+          return (
+            <button
+              key={`${item.kind}-${item.id}`}
+              type="button"
+              className={`fairy-item ${item.kind === 'segment' ? 'fairy-film' : 'fairy-game'}${resting ? ' rested' : ''}`}
+              style={{ '--i': Math.min(j, 6) } as React.CSSProperties}
+              onClick={() => {
+                if (!resting) {
+                  fx.tap();
+                  return onPick(i);
+                }
+                if (onReview?.(i)) return;
+                fx.soft();
+                void playSequence([ru(item.rest === 'learned' ? REST_LEARNED : REST_TODAY)]);
+              }}
+              data-testid="tile"
+              data-kind={item.kind}
+              data-rest={resting ? item.rest : undefined}
+              data-hint={i === 0 ? '' : undefined}
+              aria-label={
+                item.kind === 'deck'
+                  ? `Набор карточек ${j + 1}`
+                  : item.kind === 'interactive'
+                    ? `Игра ${j + 1}`
+                    : `${item.title?.trim() || `Видео ${j + 1}`}${item.subject ? `, ${CATEGORY_SHORT[item.subject]}` : ''}`
+              }
+            >
+              <span className="fairy-item-art">
+                {item.kind === 'interactive' ? (
+                  <GameTile spec={item.spec} />
+                ) : item.kind === 'deck' ? (
+                  <CachedImg src={item.coverUrl} alt="" draggable={false} />
+                ) : item.thumbnailUrl ? (
+                  <img
+                    src={item.thumbnailUrl}
+                    alt=""
+                    draggable={false}
+                    loading={j > 1 ? 'lazy' : 'eager'}
+                  />
+                ) : (
+                  <img
+                    className="fairy-film-fallback"
+                    src="/playroom/tablet.webp"
+                    alt=""
+                    draggable={false}
+                  />
+                )}
+                {item.kind === 'segment' && (
+                  <span className="fairy-play" aria-hidden="true">
+                    <Icon name="play" size={30} fill />
+                  </span>
+                )}
               </span>
-            )}
-            {item.kind === 'segment' && item.thumbnailUrl && !resting && (
-              <span className="tile-play small" aria-hidden="true">
-                <Icon name="play" size={26} fill />
-              </span>
-            )}
-            {resting && (
-              <span className="tile-star" aria-hidden="true">
-                <Icon name="star" size={30} fill />
-              </span>
-            )}
-          </button>
-        );
-      })}
+              {item.kind === 'segment' && (
+                <span className="fairy-film-name" aria-hidden="true">
+                  {item.title?.trim() || `Видео ${j + 1}`}
+                </span>
+              )}
+              {resting && (
+                <span className="fairy-rest-star" aria-hidden="true">
+                  <img src="/games/robot-star.webp" alt="" />
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
       <IdleHint onIdle={() => void playSequence([ru(HINT_PICK)])} first={8000} />
     </div>
   );

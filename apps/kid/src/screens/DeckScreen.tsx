@@ -153,7 +153,7 @@ export function DeckScreen(props: {
 
   return (
     <div
-      className="deck-screen"
+      className="deck-screen fairy-learning"
       data-testid="deck"
       data-speaking={speaking || undefined}
       onPointerDown={(e) => (startX.current = e.clientX)}
@@ -166,9 +166,20 @@ export function DeckScreen(props: {
         else if (dx > SWIPE_PX) prev();
       }}
     >
+      <div className="fairy-lesson-emblem" aria-hidden="true">
+        <img
+          src={
+            cards[0]?.word.lang === 'zh'
+              ? '/playroom/book-chinese-open.webp'
+              : '/playroom/book-english-open.webp'
+          }
+          alt=""
+        />
+      </div>
       <button
         type="button"
         className={`deck-card from-${dir}`}
+        data-card-id={card.id}
         onClick={repeat}
         disabled={speaking}
         aria-label="Повторить слово"
@@ -187,7 +198,7 @@ export function DeckScreen(props: {
           data-wait={(speaking && index > 0) || undefined}
           data-testid="deck-prev"
         >
-          ◀
+          <Icon name="prev" size={32} />
         </button>
         <div className="deck-dots" aria-hidden="true">
           {cards.map((c, i) => (
@@ -203,7 +214,7 @@ export function DeckScreen(props: {
           data-wait={speaking || undefined}
           data-testid="deck-next"
         >
-          ▶
+          <Icon name="next" size={32} />
         </button>
       </div>
 

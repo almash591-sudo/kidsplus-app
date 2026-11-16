@@ -1,0 +1,860 @@
+/* The room continues into a quiet, tactile worktable. All illustration is raster art. */
+.screen.fairy-page {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  display: block;
+  box-sizing: border-box;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: max(40px, calc(env(safe-area-inset-top) + 24px)) max(24px, env(safe-area-inset-right))
+    max(32px, calc(env(safe-area-inset-bottom) + 24px)) max(24px, env(safe-area-inset-left));
+  color: #4d4337;
+  background: #f9e6c7 url('/playroom/worktable.webp') center / cover no-repeat;
+  animation: fairy-arrive 360ms ease-out both;
+  scrollbar-color: #c5a37d #f7e5ca;
+  scrollbar-width: thin;
+}
+.fairy-page > * {
+  max-width: 560px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.fairy-header {
+  position: relative;
+  display: grid;
+  grid-template-columns: 60px minmax(0, 1fr) 84px;
+  align-items: center;
+  min-height: 178px;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.fairy-header-title {
+  grid-column: 2;
+  text-align: center;
+}
+.fairy-header-toy {
+  width: 96px;
+  height: 94px;
+  object-fit: contain;
+  filter: drop-shadow(0 5px 4px #77542c24);
+  animation: fairy-toy-arrive 600ms ease-out both;
+}
+.fairy-header h1 {
+  margin: 0;
+  font-size: clamp(24px, 6.6vw, 30px);
+  font-weight: 900;
+  line-height: 1.1;
+  color: #395240;
+  letter-spacing: -0.7px;
+}
+.fairy-back,
+.fairy-page-controls > button,
+.fairy-learning .deck-arrow {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  min-width: 56px;
+  height: 56px;
+  padding: 0;
+  border: 2px solid #fff7e1;
+  border-radius: 20px;
+  background: #fff7e7;
+  color: #6e5547;
+  box-shadow:
+    0 4px 0 #d7b58b,
+    0 7px 12px #75502a14;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease;
+  touch-action: manipulation;
+}
+.fairy-header > .fairy-back {
+  position: absolute;
+  top: 2px;
+  left: 0;
+}
+.fairy-back:active,
+.fairy-page-controls > button:active,
+.fairy-learning .deck-arrow:active {
+  transform: translateY(3px) scale(0.96);
+  box-shadow: 0 1px 0 #d7b58b;
+}
+.fairy-page button:focus-visible,
+.fairy-chest-sheet button:focus-visible,
+.fairy-sticker-preview button:focus-visible {
+  outline: 4px solid #725397;
+  outline-offset: 4px;
+}
+.fairy-guide {
+  position: relative;
+  grid-column: 3;
+  width: 84px;
+  height: 104px;
+  padding: 0;
+  border: 0;
+  background: none;
+  align-self: end;
+  margin-bottom: 20px;
+  border-radius: 22px;
+  touch-action: manipulation;
+}
+.fairy-guide > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: transform 180ms ease;
+}
+.fairy-guide:active > img {
+  transform: scale(0.94);
+}
+.fairy-guide .fairy-guide-blink {
+  opacity: 0;
+  animation: fairy-blink 6.5s 1s infinite;
+}
+.fairy-guide.is-waving > img {
+  animation: fairy-wave 800ms ease-in-out;
+}
+.fairy-toy-grid,
+.fairy-items {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px 16px;
+  align-content: start;
+}
+.fairy-category {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 168px;
+  padding: 12px 8px;
+  border: 0;
+  border-radius: 26px;
+  background: #fff7e6;
+  box-shadow:
+    0 5px 0 #debe97,
+    0 10px 16px #7a4a2520;
+  color: #555041;
+  font-size: 18px;
+  font-weight: 900;
+  animation: fairy-item-arrive 400ms calc(var(--i, 0) * 45ms) both;
+  transition: transform 180ms ease;
+}
+.fairy-category > img {
+  display: block;
+  width: 112px;
+  max-width: 100%;
+  height: 108px;
+  object-fit: contain;
+  filter: drop-shadow(0 5px 4px #74501e20);
+}
+.fairy-category > span {
+  margin-top: 8px;
+}
+.fairy-category:active {
+  transform: translateY(4px) scale(0.97);
+}
+.fairy-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  min-height: 140px;
+  padding: 8px;
+  overflow: hidden;
+  border: 2px solid #fffaf0;
+  border-radius: 27px;
+  background: #fff8ea;
+  box-shadow:
+    0 5px 0 #d2ac83,
+    0 12px 20px #74502b20;
+  color: #43523d;
+  animation: fairy-item-arrive 450ms calc(var(--i, 0) * 65ms) both;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease;
+  touch-action: manipulation;
+}
+.fairy-item:active {
+  transform: translateY(4px) scale(0.98);
+  box-shadow: 0 1px 0 #d2ac83;
+}
+.fairy-item-art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 0;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 19px;
+  background: #f1e4d2;
+}
+.fairy-item-art > img,
+.fairy-item-art > svg,
+.fairy-item-art .game-tile,
+.fairy-item-art .game-icon {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.fairy-item-art .game-icon-img {
+  width: 90%;
+  height: 90%;
+  object-fit: contain;
+}
+.fairy-game .game-tile > img {
+  object-fit: contain;
+}
+.fairy-game .game-badge {
+  width: 44px;
+  height: 44px;
+}
+.fairy-item.rested {
+  opacity: 0.68;
+}
+.fairy-rest-star {
+  position: absolute;
+  top: 6px;
+  right: 7px;
+  width: 36px;
+  height: 36px;
+}
+.fairy-rest-star > img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.fairy-cinema .fairy-items {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+}
+.fairy-film {
+  padding: 7px;
+  text-align: left;
+}
+.fairy-film .fairy-item-art {
+  aspect-ratio: 16 / 9;
+}
+.fairy-film .fairy-item-art > img {
+  object-fit: cover;
+}
+.fairy-film .fairy-item-art > .fairy-film-fallback {
+  padding: 16px;
+  box-sizing: border-box;
+  object-fit: contain;
+}
+.fairy-play {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  margin: auto;
+  border: 3px solid #fff8df;
+  border-radius: 50%;
+  color: #fffdf2;
+  background: #5e9864;
+  box-shadow:
+    0 4px 0 #346a42,
+    0 6px 18px #283f4e40;
+}
+.fairy-play svg {
+  margin-left: 3px;
+}
+.fairy-film-name {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  padding: 12px 10px 8px;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+.fairy-empty {
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  text-align: center;
+}
+.fairy-empty img {
+  width: 160px;
+  height: 180px;
+  object-fit: contain;
+}
+.fairy-empty p {
+  max-width: 250px;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.fairy-page .lesson-path {
+  padding: 14px 4px 30px;
+}
+.fairy-page .path-step {
+  background: #fff8e8;
+  box-shadow: 0 5px 0 #dcc098;
+}
+.fairy-page .path-num {
+  background: #76935b;
+}
+.fairy-page .path-step.done {
+  background: #edf0d9;
+}
+.fairy-page .path-step.next {
+  box-shadow:
+    0 0 0 4px #89a766,
+    0 7px 0 #c4b58a;
+  animation: fairy-path-invite 5s 1s infinite;
+}
+@keyframes fairy-path-invite {
+  0%,
+  85%,
+  100% {
+    translate: 0 0;
+  }
+  92% {
+    translate: 0 -3px;
+  }
+}
+
+/* The chest opens into a quiet shelf of familiar toys. */
+.room-sheet.fairy-chest-sheet {
+  width: min(94vw, 490px);
+  max-height: min(88dvh, 850px);
+  border: 3px solid #e5bf91;
+  border-radius: 34px;
+  padding: 24px 20px 28px;
+  background: #fff2d9 url('/playroom/worktable.webp') center / cover;
+  color: #4f4e3c;
+}
+.fairy-chest-sheet h2 {
+  color: #3b5942;
+}
+.fairy-chest-sheet h3 {
+  font-size: 19px;
+}
+.fairy-chest-sheet .room-close {
+  background: #fff7e6;
+  color: #6e5547;
+  box-shadow: 0 3px 0 #d7b58b;
+  flex: none;
+}
+.fairy-chest-sheet .room-lessons {
+  gap: 14px;
+}
+.fairy-chest-sheet .room-choice {
+  min-height: 142px;
+  padding: 10px 6px;
+  border: 2px solid #fffaf0;
+  background: #fff6e3;
+  box-shadow: 0 4px 0 #dbb78e;
+  border-radius: 24px;
+  font-size: 17px;
+  color: #526047;
+  animation: fairy-item-arrive 420ms ease-out both;
+  transition: transform 180ms ease;
+}
+.fairy-chest-sheet .room-choice > img {
+  width: 100px;
+  height: 94px;
+}
+.fairy-chest-sheet .room-choice > .room-earned-star {
+  width: 28px;
+  height: 28px;
+}
+.fairy-chest-sheet .room-choice:active {
+  transform: translateY(3px) scale(0.96);
+}
+.fairy-chest-sheet .room-choice:disabled {
+  opacity: 0.6;
+}
+
+/* Sticker pages: twelve generous slots, earned stickers first, no false awards. */
+.fairy-album-count {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 22px;
+  color: #6a5940;
+  font-size: 22px;
+  font-weight: 900;
+}
+.fairy-album-count > img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+.fairy-count-total {
+  font-size: 17px;
+  color: #847058;
+}
+.fairy-album-count .album-progress {
+  flex: 1;
+  height: 10px;
+  margin: 0 0 0 6px;
+  background: #ddc5a4;
+}
+.fairy-album-count .album-progress > span {
+  background: #8caa67;
+}
+.fairy-album-paper {
+  padding: 18px 14px;
+  background: #fff8eb;
+  border: 2px solid #fffdf5;
+  border-radius: 18px 26px 26px 18px;
+  box-shadow:
+    -4px 0 0 #e7ca9e,
+    0 5px 0 #dfc5a4,
+    0 12px 25px #8c5d2520;
+  animation: fairy-page-turn 360ms ease-out;
+  transform-origin: left center;
+}
+.fairy-album .album-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px 12px;
+}
+.fairy-album .album-cell {
+  width: 100%;
+  min-width: 48px;
+  min-height: 48px;
+  aspect-ratio: 1;
+  border-radius: 22px;
+  animation: fairy-sticker-in 380ms calc(var(--i, 0) * 25ms) both;
+  transition: transform 180ms ease;
+}
+.fairy-album .album-cell.got {
+  background: #fffdf7;
+  border: 2px solid #eedcc2;
+  box-shadow: 0 3px 0 #ead8bc;
+}
+.fairy-album .album-cell.empty {
+  background: #f0e6d5;
+  color: #c5b493;
+  border: 2px dashed #e0d1b9;
+}
+.fairy-album .album-cell:active {
+  transform: scale(0.92) rotate(-4deg);
+}
+.fairy-album .album-emoji {
+  font-size: clamp(36px, 10vw, 52px);
+  line-height: 1;
+  filter: drop-shadow(0 3px 1px #947e5220);
+}
+.fairy-album .album-count {
+  font-size: 13px;
+  color: #7c694e;
+}
+.fairy-page-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 24px;
+  padding: 0 8px 6px;
+}
+.fairy-page-controls button:disabled {
+  opacity: 0.38;
+  box-shadow: none;
+}
+.fairy-page-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+}
+.fairy-page-dots > span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #cdb999;
+  transition: width 200ms ease;
+}
+.fairy-page-dots > .is-current {
+  width: 22px;
+  border-radius: 6px;
+  background: #76935b;
+}
+.fairy-sticker-preview {
+  width: min(80vw, 350px);
+  box-sizing: border-box;
+  padding: 74px 24px 36px;
+  overflow: visible;
+  border: 3px solid #e1bb88;
+  border-radius: 36px;
+  background: #fff6df;
+  color: #4b6044;
+  text-align: center;
+  box-shadow: 0 20px 70px #40312745;
+  animation: fairy-sticker-in 380ms ease-out;
+}
+.fairy-sticker-preview::backdrop {
+  background: #46352e55;
+  backdrop-filter: blur(5px);
+}
+.fairy-sticker-preview > .fairy-back {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 50px;
+  min-width: 50px;
+  height: 50px;
+}
+.fairy-sticker-big {
+  font-size: clamp(100px, 36vw, 158px);
+  line-height: 1.15;
+  animation: fairy-sticker-float 3s 400ms ease-in-out infinite;
+}
+.fairy-sticker-preview p {
+  position: relative;
+  z-index: 1;
+  margin: 20px 0 0;
+  font-size: 24px;
+  font-weight: 900;
+  text-transform: capitalize;
+}
+.fairy-sticker-sparks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.fairy-sticker-sparks img {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  animation: fairy-spark 650ms calc(var(--i) * 75ms) both;
+}
+.fairy-sticker-sparks img:nth-child(1) {
+  left: 7%;
+  top: 27%;
+}
+.fairy-sticker-sparks img:nth-child(2) {
+  right: 8%;
+  top: 39%;
+  width: 24px;
+}
+.fairy-sticker-sparks img:nth-child(3) {
+  left: 15%;
+  bottom: 23%;
+  width: 24px;
+}
+.fairy-sticker-sparks img:nth-child(4) {
+  right: 19%;
+  top: 20%;
+}
+
+/* Lesson imagery stays central; the frame and controls belong to the same room. */
+.deck-screen.fairy-learning,
+.quiz-screen.fairy-learning {
+  color: #4b5941;
+  background: #f9e6c7 url('/playroom/worktable.webp') center / cover no-repeat;
+}
+.deck-screen.fairy-learning {
+  padding: max(108px, calc(env(safe-area-inset-top) + 94px)) 24px
+    max(24px, calc(env(safe-area-inset-bottom) + 12px));
+  grid-template-rows: minmax(0, 1fr) 72px;
+  gap: 20px;
+}
+.fairy-lesson-emblem {
+  position: absolute;
+  top: max(20px, env(safe-area-inset-top));
+  left: calc(50% - 40px);
+  width: 80px;
+  height: 72px;
+  pointer-events: none;
+}
+.fairy-lesson-emblem img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.fairy-learning .deck-card {
+  padding: 7%;
+  border: 3px solid #fffdf2;
+  border-radius: 30px;
+  background: #fffaf0;
+  box-shadow:
+    0 6px 0 #dfc29a,
+    0 16px 32px #805b3020;
+}
+.fairy-learning .deck-card img {
+  animation: fairy-card-reveal 380ms ease-out;
+}
+.fairy-learning .deck-arrow {
+  width: 64px;
+  min-width: 64px;
+  height: 60px;
+  background: #779c68;
+  border-color: #c3d1a2;
+  color: #fffdf2;
+  box-shadow: 0 4px 0 #4c744a;
+}
+.fairy-learning .deck-arrow:disabled {
+  opacity: 0.4;
+}
+.fairy-learning .deck-dots {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-height: 50px;
+  overflow: auto;
+}
+.fairy-learning .deck-dots > span {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  background: #d9c4a5;
+}
+.fairy-learning .deck-dots > .dot-on {
+  background: #789968;
+}
+.fairy-learning .corner-button,
+.fairy-game-screen > .corner-button {
+  width: 58px;
+  height: 58px;
+  border: 2px solid #fff6dd;
+  border-radius: 20px;
+  background: #fff7e6;
+  color: #6e5547;
+  box-shadow:
+    0 4px 0 #d7b58b,
+    0 6px 16px #4f352220;
+  font-size: 30px;
+}
+.fairy-learning .quiz-option {
+  border: 3px solid #fffdf3;
+  border-radius: 28px;
+  box-shadow:
+    0 5px 0 #dfc5a0,
+    0 12px 20px #76542c20;
+}
+.fairy-learning .quiz-option.chosen {
+  border-color: #769e65;
+  box-shadow:
+    0 0 0 4px #769e65,
+    0 9px 18px #557c4b22;
+}
+.fairy-learning .quiz-progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  letter-spacing: 0;
+}
+.fairy-learning .quiz-progress .star {
+  display: block;
+  width: 30px;
+  height: 30px;
+  filter: grayscale(1);
+  opacity: 0.3;
+}
+.fairy-learning .quiz-progress .star.on {
+  filter: none;
+  opacity: 1;
+  animation: fairy-spark 500ms ease-out;
+}
+.fairy-learning .quiz-progress img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.fairy-game-screen > .ear {
+  background: #f5ebd5;
+}
+.fairy-game-screen[data-bg] {
+  --bg-art: url('/playroom/worktable.webp');
+  background-image: url('/playroom/worktable.webp');
+  background-size: cover;
+  background-position: center;
+}
+.fairy-page ~ .battery.battery-ok {
+  top: max(12px, env(safe-area-inset-top));
+  right: max(14px, env(safe-area-inset-right));
+  padding: 3px 6px;
+  background: #fff8e6b0;
+  box-shadow: none;
+}
+.fairy-page ~ .battery.battery-ok .battery-text {
+  display: none;
+}
+
+@keyframes fairy-arrive {
+  from {
+    transform: translateY(10px);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes fairy-toy-arrive {
+  from {
+    transform: translateY(-6px) rotate(-5deg) scale(0.93);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes fairy-item-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fairy-blink {
+  0%,
+  47%,
+  50%,
+  100% {
+    opacity: 0;
+  }
+  48%,
+  49% {
+    opacity: 1;
+  }
+}
+@keyframes fairy-wave {
+  0%,
+  100% {
+    transform: none;
+  }
+  30% {
+    transform: rotate(-7deg) translateY(-4px);
+  }
+  65% {
+    transform: rotate(5deg);
+  }
+}
+@keyframes fairy-page-turn {
+  from {
+    transform: perspective(900px) rotateY(-9deg);
+  }
+  to {
+    transform: perspective(900px) rotateY(0deg);
+  }
+}
+@keyframes fairy-sticker-in {
+  from {
+    transform: scale(0.8) rotate(-6deg);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes fairy-sticker-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-3deg);
+  }
+  50% {
+    transform: translateY(-7px) rotate(3deg);
+  }
+}
+@keyframes fairy-spark {
+  0% {
+    transform: scale(0.2) rotate(-22deg);
+    opacity: 0;
+  }
+  65% {
+    transform: scale(1.15) rotate(6deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes fairy-card-reveal {
+  from {
+    transform: perspective(800px) rotateY(-8deg) scale(0.98);
+  }
+  to {
+    transform: none;
+  }
+}
+@media (max-width: 350px) {
+  .screen.fairy-page {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+  .fairy-header {
+    grid-template-columns: 52px minmax(0, 1fr) 68px;
+    gap: 4px;
+  }
+  .fairy-guide {
+    width: 68px;
+    height: 92px;
+  }
+  .fairy-header-toy {
+    width: 80px;
+    height: 86px;
+  }
+  .fairy-header h1 {
+    font-size: 24px;
+  }
+  .fairy-album-paper {
+    padding: 14px 10px;
+  }
+  .fairy-album .album-grid {
+    gap: 12px 9px;
+  }
+  .fairy-header > .fairy-back {
+    width: 50px;
+    min-width: 50px;
+    height: 50px;
+  }
+}
+@media (orientation: landscape) {
+  .screen.fairy-page {
+    background-attachment: fixed;
+  }
+  .fairy-header {
+    min-height: 145px;
+  }
+  .fairy-header-toy {
+    width: 80px;
+    height: 76px;
+  }
+  .fairy-items:not(.fairy-cinema .fairy-items),
+  .fairy-toy-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .deck-screen.fairy-learning {
+    grid-template-rows: minmax(0, 1fr) 20px;
+    grid-template-areas: 'prev card next' '. dots .';
+    padding: 20px 88px;
+    gap: 10px;
+  }
+  .fairy-learning .fairy-lesson-emblem {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fairy-page,
+  .fairy-page *,
+  .fairy-chest-sheet,
+  .fairy-chest-sheet *,
+  .fairy-sticker-preview,
+  .fairy-sticker-preview *,
+  .fairy-learning *,
+  .fairy-game-screen > .corner-button {
+    animation: none !important;
+    transition: none !important;
+  }
+  .fairy-guide .fairy-guide-blink {
+    display: none;
+  }
+}

@@ -4,12 +4,13 @@
 import type { Speech } from '@kidsplus/shared/api';
 import {
   HABIT_SLOTS,
+  HABIT_SLOT_LABELS,
   slotAt,
   type HabitSlot,
   type KidHabit,
   type KidHabits,
 } from '@kidsplus/shared/habits';
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { kidApi } from '../api';
 import { playSequence, stopAudio } from '../audio';
 import { fx } from '../fx';
@@ -28,6 +29,7 @@ import {
 } from '../phrases';
 import { owlBus } from '../owl/bus';
 import { Icon } from '../ui/icons';
+import { FairyHeader } from '../ui/FairyGuide';
 import { vary } from '../variety';
 
 const picture = (h: Pick<KidHabit, 'preset'>) => `/habits/${h.preset ?? 'custom'}.webp`;
@@ -86,7 +88,7 @@ export const habitsStore = {
   },
   /** Ребёнок отметил дело: сразу на экране, на сервер — как получится. */
   async done(id: string) {
-    if (!data) return;
+    if (!data?.habits.some((h) => h.id === id && !h.done)) return;
     data = {
       ...data,
       stars: data.stars + 1,
@@ -139,7 +141,11 @@ export function HabitsButton({ onOpen }: { onOpen: () => void }) {
 
 // ─── Экран ───────────────────────────────────────────────────────────────────
 
-const SLOT_ICON: Record<HabitSlot, string> = { morning: '☀️', day: '🌤️', evening: '🌙' };
+const SLOT_PICTURE: Record<HabitSlot, string> = {
+  morning: '/games/cuckoo-day-wake.webp',
+  day: '/games/cuckoo-day-walk.webp',
+  evening: '/games/cuckoo-day-sleep.webp',
+};
 
 export function HabitsScreen({ onExit }: { onExit: () => void }) {
   const habits = useHabits();
@@ -151,6 +157,19 @@ export function HabitsScreen({ onExit }: { onExit: () => void }) {
   });
   const [timer, setTimer] = useState<KidHabit | null>(null);
   const jar = useRef<HTMLDivElement>(null);
+  const tabs = useRef<HTMLDivElement>(null);
+  const screen = useRef<HTMLDivElement>(null);
+  const returnTo = useRef<string | null>(null);
+  const uid = useId();
+
+  useEffect(() => {
+    if (timer || !returnTo.current) return;
+    const button = [
+      ...(screen.current?.querySelectorAll<HTMLButtonElement>('[data-habit-id]') ?? []),
+    ].find((el) => el.dataset.habitId === returnTo.current);
+    button?.focus();
+    returnTo.current = null;
+  }, [timer]);
 
   useEffect(() => {
     const goal = habits?.goal;
@@ -193,6 +212,7 @@ export function HabitsScreen({ onExit }: { onExit: () => void }) {
     }
     if (h.timerSec) {
       fx.tap();
+      returnTo.current = h.id;
       setTimer(h);
       return;
     }
@@ -212,89 +232,147 @@ export function HabitsScreen({ onExit }: { onExit: () => void }) {
     );
 
   const goal = habits.goal;
+  const allDone = list.length > 0 && list.every((h) => h.done);
+  const chooseSlot = (next: HabitSlot) => {
+    fx.tap();
+    setSlot(next);
+    void playSequence([ru(HABIT_SLOT_SAY[next])]);
+  };
   return (
-    <div className="screen habits" data-testid="habits">
-      <button
-        type="button"
-        className="corner-button home"
-        aria-label="Назад"
-        onClick={onExit}
-        data-testid="go-home"
-      >
-        <Icon name="home" size={34} stroke={2.6} />
-      </button>
+    <div className="screen habits fairy-page fairy-habits" data-testid="habits" ref={screen}>
+      <FairyHeader
+        title="Мои дела"
+        picture="/habits/jar.webp"
+        hint={HABITS_INTRO}
+        onBack={onExit}
+        backTestId="go-home"
+      />
 
       <div className="habits-jar" ref={jar} data-testid="habits-jar">
         <img src="/habits/jar.webp" alt="" draggable={false} />
         <div className="habits-jar-info">
-          <b data-testid="jar-stars">
-            {habits.stars} <span aria-hidden="true">⭐</span>
+          <span className="habits-jar-label">Мои звёзды</span>
+          <b
+            data-testid="jar-stars"
+            aria-live="polite"
+            aria-label={`Звёзд в копилке: ${habits.stars}`}
+          >
+            {habits.stars}
+            <img src="/habits/star.webp" alt="" draggable={false} />
           </b>
-          {goal && (
-            <div
-              className="habits-goal"
-              data-testid="habits-goal"
-              onClick={() => void playSequence([ru(HABIT_GOAL), goal.title])}
-            >
-              <img src="/habits/gift.webp" alt="" draggable={false} />
-              <span>{goal.title.text}</span>
-              <div className="habits-goal-bar">
-                <span style={{ width: `${Math.min(100, (habits.stars / goal.price) * 100)}%` }} />
-              </div>
-              <small>
-                {Math.min(habits.stars, goal.price)} / {goal.price}
-              </small>
-            </div>
-          )}
         </div>
+        {goal && (
+          <button
+            type="button"
+            className="habits-goal"
+            data-testid="habits-goal"
+            aria-label={`Награда: ${goal.title.text}. ${Math.min(habits.stars, goal.price)} из ${goal.price} звёзд`}
+            onClick={() => void playSequence([ru(HABIT_GOAL), goal.title])}
+          >
+            <img src="/habits/gift.webp" alt="" draggable={false} />
+            <span className="habits-goal-title">{goal.title.text}</span>
+            <div
+              className="habits-goal-bar"
+              role="progressbar"
+              aria-label="Звёзды на награду"
+              aria-valuemin={0}
+              aria-valuemax={goal.price}
+              aria-valuenow={Math.min(habits.stars, goal.price)}
+            >
+              <span style={{ width: `${Math.min(100, (habits.stars / goal.price) * 100)}%` }} />
+            </div>
+            <small>
+              {Math.min(habits.stars, goal.price)} / {goal.price}
+            </small>
+          </button>
+        )}
       </div>
 
       {slots.length > 1 && (
-        <div className="habits-slots" role="tablist">
+        <div className="habits-slots" role="tablist" aria-label="Время дня" ref={tabs}>
           {slots.map((s) => (
             <button
               key={s}
               type="button"
               role="tab"
               aria-selected={s === slot}
+              aria-controls={`habits-panel-${uid}`}
+              id={`habits-slot-${s}-${uid}`}
+              tabIndex={s === slot ? 0 : -1}
               className={s === slot ? 'on' : ''}
               data-testid={`slot-${s}`}
-              onClick={() => {
-                fx.tap();
-                setSlot(s);
-                void playSequence([ru(HABIT_SLOT_SAY[s])]);
+              onClick={() => chooseSlot(s)}
+              onKeyDown={(e) => {
+                const index = slots.indexOf(s);
+                const next =
+                  e.key === 'ArrowRight'
+                    ? slots[(index + 1) % slots.length]
+                    : e.key === 'ArrowLeft'
+                      ? slots[(index + slots.length - 1) % slots.length]
+                      : e.key === 'Home'
+                        ? slots[0]
+                        : e.key === 'End'
+                          ? slots.at(-1)
+                          : undefined;
+                if (!next) return;
+                e.preventDefault();
+                chooseSlot(next);
+                tabs.current
+                  ?.querySelector<HTMLButtonElement>(`[data-testid="slot-${next}"]`)
+                  ?.focus();
               }}
             >
-              <span aria-hidden="true">{SLOT_ICON[s]}</span>
+              <img src={SLOT_PICTURE[s]} alt="" draggable={false} />
+              <span>{HABIT_SLOT_LABELS[s]}</span>
+              {s === slot && <Icon name="check" size={18} />}
             </button>
           ))}
         </div>
       )}
 
-      <div className="habits-grid">
-        {list.map((h) => (
-          <button
-            key={h.id}
-            type="button"
-            className={h.done ? 'habit done' : 'habit'}
-            data-testid="habit"
-            data-done={h.done ? '1' : '0'}
-            aria-label={h.title.text}
-            onPointerDown={(e) => {
-              e.preventDefault();
-              tap(h, e.currentTarget);
-            }}
-          >
-            <img src={picture(h)} alt="" draggable={false} />
-            <span className="habit-title">{h.title.text}</span>
-            {h.done && (
-              <span className="habit-check" aria-hidden="true">
-                ⭐
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      <section
+        className="habits-panel"
+        role={slots.length > 1 ? 'tabpanel' : undefined}
+        id={`habits-panel-${uid}`}
+        aria-labelledby={slots.length > 1 ? `habits-slot-${slot}-${uid}` : undefined}
+        aria-label={slots.length > 1 ? undefined : HABIT_SLOT_LABELS[slot]}
+      >
+        {allDone && (
+          <p className="habits-all-done" role="status">
+            <img src="/habits/star.webp" alt="" draggable={false} />
+            Все дела сделаны!
+          </p>
+        )}
+        <div className="habits-grid">
+          {list.map((h) => (
+            <button
+              key={h.id}
+              type="button"
+              className={h.done ? 'habit done' : 'habit'}
+              data-testid="habit"
+              data-habit-id={h.id}
+              data-done={h.done ? '1' : '0'}
+              aria-label={`${h.title.text}${h.done ? ' — сделано' : ''}`}
+              aria-pressed={h.done}
+              onClick={(e) => tap(h, e.currentTarget)}
+            >
+              <img src={picture(h)} alt="" draggable={false} />
+              <span className="habit-title">{h.title.text}</span>
+              {h.done && (
+                <span className="habit-check" aria-hidden="true">
+                  <Icon name="check" size={24} stroke={3} />
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+        {!list.length && (
+          <div className="habits-empty" role="status">
+            <img src="/playroom/bunny.webp" alt="" draggable={false} />
+            <p>Пока можно отдохнуть</p>
+          </div>
+        )}
+      </section>
     </div>
   );
 }
@@ -345,40 +423,64 @@ export function TeethTimer({
 
   const r = 46;
   const len = 2 * Math.PI * r;
+  const step = Math.max(
+    0,
+    TEETH_STEPS.findLastIndex((s) => passed >= (s.at / 120) * total),
+  );
+  const stepTitles = ['Верхние зубки', 'Нижние зубки', 'С другой стороны', 'Передние зубки'];
   return (
-    <div className="screen teeth-timer" data-testid="teeth-timer" data-left={left}>
-      <button
-        type="button"
-        className="corner-button home"
-        aria-label="Назад"
-        onClick={onExit}
-        data-testid="timer-exit"
-      >
-        <Icon name="home" size={34} stroke={2.6} />
-      </button>
-      <div className="teeth-ring">
-        <svg viewBox="0 0 100 100" aria-hidden="true">
-          <circle cx="50" cy="50" r={r} className="teeth-ring-bg" />
-          <circle
-            cx="50"
-            cy="50"
-            r={r}
-            className="teeth-ring-fill"
-            strokeDasharray={len}
-            strokeDashoffset={len * (left / total)}
+    <div
+      className="screen teeth-timer fairy-page fairy-teeth"
+      data-testid="teeth-timer"
+      data-left={left}
+    >
+      <FairyHeader
+        title={habit.title.text}
+        picture={picture(habit)}
+        hint={left === 0 ? TEETH_DONE : TEETH_STEPS[step]!.text}
+        onBack={onExit}
+        backLabel="Вернуться к моим делам"
+        backTestId="timer-exit"
+      />
+      <div className="teeth-activity">
+        <div className="teeth-ring">
+          <svg viewBox="0 0 100 100" aria-hidden="true">
+            <circle cx="50" cy="50" r={r} className="teeth-ring-bg" />
+            <circle
+              cx="50"
+              cy="50"
+              r={r}
+              className="teeth-ring-fill"
+              strokeDasharray={len}
+              strokeDashoffset={len * (left / total)}
+            />
+          </svg>
+          <img
+            className={left === 0 ? 'teeth-owl done' : 'teeth-owl'}
+            src={left === 0 ? '/playroom/owl-wave.webp' : '/playroom/owl.webp'}
+            alt=""
+            draggable={false}
           />
-        </svg>
-        <img
-          className={left === 0 ? 'teeth-owl done' : 'teeth-owl'}
-          src={left === 0 ? '/owl/happy.webp' : '/owl/talk.webp'}
-          alt=""
-          draggable={false}
-        />
-        <img className="teeth-brush" src={picture(habit)} alt="" draggable={false} />
+          <img className="teeth-brush" src={picture(habit)} alt="" draggable={false} />
+        </div>
+        <p className="teeth-left" role="timer" aria-label={`Осталось ${left} секунд`}>
+          {Math.floor(left / 60)}:{String(left % 60).padStart(2, '0')}
+        </p>
+        <div className="teeth-guidance">
+          <div className="teeth-steps" aria-label={`Шаг ${step + 1} из ${TEETH_STEPS.length}`}>
+            {TEETH_STEPS.map((s, i) => (
+              <span
+                key={s.at}
+                className={left === 0 || i < step ? 'done' : i === step ? 'current' : ''}
+                aria-hidden="true"
+              >
+                {left === 0 || i < step ? <Icon name="check" size={20} /> : i + 1}
+              </span>
+            ))}
+          </div>
+          <p role="status">{left === 0 ? 'Чистые зубки!' : stepTitles[step]}</p>
+        </div>
       </div>
-      <p className="teeth-left" aria-live="polite">
-        {Math.floor(left / 60)}:{String(left % 60).padStart(2, '0')}
-      </p>
     </div>
   );
 }
@@ -467,19 +569,35 @@ export function HabitLayer() {
 
   if (grant)
     return (
-      <div className="habit-pop grant" data-testid="habit-grant" onPointerDown={closeGrant}>
+      <div
+        className="habit-pop grant fairy-habit-pop"
+        data-testid="habit-grant"
+        role="status"
+        onPointerDown={closeGrant}
+      >
         <img src="/habits/gift.webp" alt="" draggable={false} />
         <p>
           {HABIT_GRANT} {grant.title.text}
         </p>
+        <button type="button" onClick={closeGrant} aria-label="Продолжить">
+          <Icon name="check" size={32} />
+        </button>
       </div>
     );
   if (remind)
     return (
-      <div className="habit-pop" data-testid="habit-remind" onPointerDown={() => setRemind(null)}>
-        <img className="habit-pop-owl" src="/owl/wave.webp" alt="" draggable={false} />
+      <div
+        className="habit-pop fairy-habit-pop"
+        data-testid="habit-remind"
+        role="status"
+        onPointerDown={() => setRemind(null)}
+      >
+        <img className="habit-pop-owl" src="/playroom/owl-wave.webp" alt="" draggable={false} />
         <img src={picture(remind)} alt="" draggable={false} />
         <p>{remind.remind.text}</p>
+        <button type="button" onClick={() => setRemind(null)} aria-label="Продолжить">
+          <Icon name="check" size={32} />
+        </button>
       </div>
     );
   return null;

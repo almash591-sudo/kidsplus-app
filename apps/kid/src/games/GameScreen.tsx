@@ -1,7 +1,14 @@
 import type { KidPhrases } from '@kidsplus/shared/api';
 import type { GameKind, GameSpec } from '@kidsplus/shared/games';
 import { specAtLevel } from '@kidsplus/shared/levels';
-import { useEffect, useMemo, useState, useSyncExternalStore, type ComponentType } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ComponentType,
+} from 'react';
 import { sendEvent } from '../api';
 import { stopAudio } from '../audio';
 import { markDone, markTried } from '../progress';
@@ -175,7 +182,11 @@ export const backdropOf = (kind: GameKind): Backdrop | undefined =>
 
 /** Игры, где совёнок — герой на поле. */
 const OWL_INSIDE: readonly GameKind[] = [
+  // В мастерской совёнок сидит рядом с наглядным заданием.
+  'coloring',
+  'drawing',
   'robot',
+  'sorting',
   'space',
   'fishing',
   'flight',
@@ -299,6 +310,8 @@ export function GameScreen(props: {
   const level = props.level ?? 1;
   const spec = useMemo(() => specAtLevel(props.spec, level), [props.spec, level]);
   const [finished, setFinished] = useState(false);
+  const active = useRef(true);
+  const completed = useRef(false);
   const Game = GAMES[spec.kind] as ComponentType<GameProps<GameKind>>;
   const about = {
     kind: spec.kind,
@@ -311,9 +324,11 @@ export function GameScreen(props: {
   );
 
   useEffect(() => {
+    active.current = true;
     gameMistakes.reset();
     gameReport.take();
     return () => {
+      active.current = false;
       stopAudio();
       gameLock.reset();
     };
@@ -335,7 +350,7 @@ export function GameScreen(props: {
 
   return (
     <div
-      className={lock === 'none' ? 'game-screen' : `game-screen kp-${lock}`}
+      className={`game-screen fairy-game-screen${lock === 'none' ? '' : ` kp-${lock}`}`}
       data-testid="game"
       data-lock={lock}
       data-kind={spec.kind}
@@ -351,6 +366,10 @@ export function GameScreen(props: {
           spec={spec}
           phrases={props.phrases}
           onFinish={() => {
+            // Older games can resolve speech/timers after exit. Never finish a closed game,
+            // and never emit a second completion when two gestures arrive together.
+            if (!active.current || completed.current) return;
+            completed.current = true;
             sendEvent({
               type: 'interactive_complete',
               interactiveId: id,
@@ -372,9 +391,11 @@ export function GameScreen(props: {
         </div>
       )}
       {/* Где совёнок сам в игре (робот, ракета, лодка), второй в углу путал бы. */}
-      {!finished && !OWL_INSIDE.includes(spec.kind) && <Mascot />}
+      {!finished &&
+        !OWL_INSIDE.includes(spec.kind) &&
+        !['memory', 'puzzle'].includes(spec.kind) && <Mascot room />}
       {!finished && <IdleHint onIdle={remind} first={6000} />}
-      {!finished && (
+      {!finished && !['coloring', 'drawing', 'sorting', 'memory', 'puzzle'].includes(spec.kind) && (
         <button
           type="button"
           className="corner-button ear"
@@ -382,7 +403,7 @@ export function GameScreen(props: {
           onClick={remind}
           data-testid="ear"
         >
-          👂
+          <Icon name="ear" size={32} />
         </button>
       )}
       <button
@@ -390,6 +411,7 @@ export function GameScreen(props: {
         className="corner-button home"
         aria-label="Домой"
         onClick={() => {
+          active.current = false;
           // Ушёл, не пройдя, — дорожка уроков это запомнит и не будет звать сюда без конца.
           if (!finished) {
             markTried(id);

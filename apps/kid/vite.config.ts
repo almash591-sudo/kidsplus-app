@@ -24,6 +24,7 @@ export default defineConfig({
         'owl/*.webp',
         'rest/*.webp',
         'habits/*.webp',
+        'playroom/*.webp',
         'games/*.webp',
         'poems/*.webp',
       ],

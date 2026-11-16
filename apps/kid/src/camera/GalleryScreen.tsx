@@ -1,9 +1,65 @@
 // Галерея ребёнка: свои снимки с телефона, крупной сеткой. Без «поделиться» и скачивания;
 // удаляет только родитель (в кабинете).
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { fx } from '../fx';
 import { listCaptures, type StoredCapture } from './store';
 import { Icon } from '../ui/icons';
+import { FairyHeader } from '../ui/FairyGuide';
+import { ROOM_PHRASES } from '../phrases';
+
+function CapturePreview({
+  item,
+  url,
+  onClose,
+}: {
+  item: StoredCapture;
+  url: string;
+  onClose: () => void;
+}) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const opener = useRef(document.activeElement as HTMLElement | null);
+  useEffect(() => {
+    const element = dialog.current!;
+    const before = opener.current;
+    element.showModal();
+    return () => {
+      element.close();
+      if (before?.isConnected) before.focus();
+    };
+  }, []);
+  return (
+    <dialog
+      ref={dialog}
+      className="gallery-viewer fairy-capture-preview"
+      data-testid="gallery-viewer"
+      aria-label={item.kind === 'photo' ? 'Мой снимок' : 'Моё видео'}
+      onCancel={onClose}
+    >
+      <button
+        type="button"
+        className="fairy-back"
+        aria-label="Назад"
+        data-testid="gallery-close"
+        onClick={onClose}
+        autoFocus
+      >
+        <Icon name="close" size={28} />
+      </button>
+      {item.kind === 'photo' ? (
+        <img src={url} alt="Мой снимок" />
+      ) : (
+        <video
+          src={url}
+          autoPlay
+          playsInline
+          controls
+          controlsList="nodownload noplaybackrate noremoteplayback"
+          disablePictureInPicture
+        />
+      )}
+    </dialog>
+  );
+}
 
 export function GalleryScreen({ onBack }: { onBack: () => void }) {
   const [items, setItems] = useState<StoredCapture[] | null>(null);
@@ -19,8 +75,26 @@ export function GalleryScreen({ onBack }: { onBack: () => void }) {
 
   const current = open === null ? null : items?.[open];
   return (
-    <div className="screen gallery" data-testid="gallery">
-      {items && !items.length && <div className="gallery-empty">📷</div>}
+    <div className="screen gallery fairy-page fairy-gallery" data-testid="gallery">
+      <FairyHeader
+        title="Мои снимки"
+        picture="/playroom/camera.webp"
+        hint={ROOM_PHRASES.gallery}
+        onBack={onBack}
+        backLabel="Вернуться к фотоаппарату"
+        backTestId="go-home"
+      />
+      {items && !items.length && (
+        <div className="fairy-gallery-empty">
+          <div className="fairy-photo-friend">
+            <img src="/playroom/bunny-wave.webp" alt="" />
+          </div>
+          <p>Снимем что-нибудь?</p>
+          <button type="button" className="fairy-photo-start" onClick={onBack}>
+            <Icon name="camera" size={32} /> Сделать фото
+          </button>
+        </div>
+      )}
       <div className="gallery-grid">
         {items?.map((c, i) => (
           <button
@@ -29,6 +103,7 @@ export function GalleryScreen({ onBack }: { onBack: () => void }) {
             className="gallery-tile"
             data-testid="gallery-item"
             data-kind={c.kind}
+            aria-label={`${c.kind === 'photo' ? 'Снимок' : 'Видео'} ${i + 1}`}
             onClick={() => {
               fx.tap();
               setOpen(i);
@@ -39,7 +114,9 @@ export function GalleryScreen({ onBack }: { onBack: () => void }) {
             ) : (
               <>
                 <video src={urls[i]} muted playsInline preload="metadata" />
-                <span className="gallery-play">▶</span>
+                <span className="gallery-play">
+                  <Icon name="play" size={32} />
+                </span>
               </>
             )}
           </button>
@@ -47,44 +124,14 @@ export function GalleryScreen({ onBack }: { onBack: () => void }) {
       </div>
 
       {current && (
-        <div className="gallery-viewer" data-testid="gallery-viewer">
-          {current.kind === 'photo' ? (
-            <img src={urls[open!]} alt="" />
-          ) : (
-            <video
-              src={urls[open!]}
-              autoPlay
-              playsInline
-              controls
-              controlsList="nodownload noplaybackrate noremoteplayback"
-              disablePictureInPicture
-            />
-          )}
-          <button
-            type="button"
-            className="corner-button home"
-            aria-label="Назад"
-            data-testid="gallery-close"
-            onClick={() => {
-              fx.whoosh();
-              setOpen(null);
-            }}
-          >
-            ✕
-          </button>
-        </div>
-      )}
-
-      {!current && (
-        <button
-          type="button"
-          className="corner-button home"
-          aria-label="Назад"
-          onClick={onBack}
-          data-testid="go-home"
-        >
-          <Icon name="home" size={34} stroke={2.6} />
-        </button>
+        <CapturePreview
+          item={current}
+          url={urls[open!]!}
+          onClose={() => {
+            fx.whoosh();
+            setOpen(null);
+          }}
+        />
       )}
     </div>
   );
