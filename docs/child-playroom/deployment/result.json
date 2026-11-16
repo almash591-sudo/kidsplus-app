@@ -1,0 +1,51 @@
+{
+  "at": "2026-11-16T15:17:56.047Z",
+  "base": "https://kid-web-production.up.railway.app",
+  "commit": "0f9bb3ec451cd9dfa8eaf135cd4b3ec52995f18d",
+  "baseline": false,
+  "checks": [
+    {
+      "name": "real health, database, unpaired authentication",
+      "passed": true
+    },
+    {
+      "name": "source image hashes and PWA precache",
+      "count": 21,
+      "passed": true
+    },
+    {
+      "name": "chromium: real unpaired screen",
+      "passed": true
+    },
+    {
+      "name": "chromium: CSP blocks Zod capability probe; caught fallback works",
+      "count": 3,
+      "passed": true
+    },
+    {
+      "name": "chromium: deployed room and drawing with demo API",
+      "viewports": 3,
+      "passed": true
+    },
+    {
+      "name": "webkit: real unpaired screen",
+      "passed": true
+    },
+    {
+      "name": "webkit: CSP blocks Zod capability probe; caught fallback works",
+      "count": 3,
+      "passed": true
+    },
+    {
+      "name": "webkit: deployed room and drawing with demo API",
+      "viewports": 3,
+      "passed": true
+    }
+  ],
+  "entries": {
+    "jsPath": "/assets/index-Bdzlm76T.js",
+    "cssPath": "/assets/index-BmflzPgW.css"
+  },
+  "screenshotStyleProbes": 6,
+  "passed": true
+}

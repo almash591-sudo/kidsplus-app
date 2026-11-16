@@ -1,0 +1,39 @@
+{
+  "status": "completed",
+  "conclusion": "success",
+  "headSha": "0f9bb3ec451cd9dfa8eaf135cd4b3ec52995f18d",
+  "url": "https://github.com/almash591-sudo/kidsplus-app/actions/runs/43826338051",
+  "updatedAt": "2026-11-16T14:21:22Z",
+  "jobs": [
+    {
+      "name": "e2e",
+      "status": "completed",
+      "conclusion": "success",
+      "completedAt": "2026-11-16T14:15:45Z"
+    },
+    {
+      "name": "e2e-phone",
+      "status": "completed",
+      "conclusion": "success",
+      "completedAt": "2026-11-16T13:38:36Z"
+    },
+    {
+      "name": "e2e-iphone",
+      "status": "completed",
+      "conclusion": "success",
+      "completedAt": "2026-11-16T14:21:21Z"
+    },
+    {
+      "name": "kiosk",
+      "status": "completed",
+      "conclusion": "success",
+      "completedAt": "2026-11-16T13:38:38Z"
+    },
+    {
+      "name": "check",
+      "status": "completed",
+      "conclusion": "success",
+      "completedAt": "2026-11-16T13:46:01Z"
+    }
+  ]
+}
