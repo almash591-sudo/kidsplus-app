@@ -1180,14 +1180,16 @@ test.describe('плеер', () => {
     await fail();
     await expect.poll(() => yt<string>(page, 'opts.videoId')).toBe('bbbbbbbbbbb');
     await fail();
-    // В тестовом списке почти одни видео — без них меню может оказаться пустым.
-    await expect(page.getByTestId('home').or(page.getByTestId('empty'))).toBeVisible();
+    // Без доступных видео возвращаемся в комнату, даже если плейлист опустел.
+    await expect(page.getByTestId('today')).toBeVisible();
     await expect
       .poll(async () => (await spoken(page)).map((s) => s.text))
       .toContain('Видео сейчас отдыхают. Давай поиграем в игры или посмотрим карточки!');
     // Видео пропали из меню; после перезагрузки — тоже (пауза помнится).
     const tiles = page.locator('[data-testid=tile][data-kind=segment]');
     await expect(tiles).toHaveCount(0);
+    await page.getByTestId('room-chest').click();
+    await expect(page.locator('[data-testid=category][data-category=video]')).toHaveCount(0);
     expect(backend.events.filter((e) => e.type === 'segment_error')).toHaveLength(2);
     await page.reload();
     await expect(page.getByTestId('today')).toBeVisible();
@@ -1735,6 +1737,8 @@ test('погружение: без перевода, проверка и пох�
     },
   ];
   await openCollection(page);
+  // Проверяем язык самого урока, отдельно от русских подсказок навигации в комнате.
+  await page.evaluate(() => ((window as unknown as { __spoken: Spoken[] }).__spoken = []));
   await page.getByTestId('tile').first().click();
   for (let i = 0; i < 5; i++) await page.getByTestId('deck-next').click();
   await answering(page);
@@ -3160,7 +3164,16 @@ test.describe('игры', () => {
       const bounds = (await pieces.first().boundingBox())!;
       expect(bounds.x).toBeGreaterThanOrEqual(0);
       expect(bounds.y).toBeGreaterThanOrEqual(0);
-      for (let k = 0; k < 4; k++) {
+      // Убираем перемещённую деталь на её место: у края она может закрыть центр другого места.
+      const moved = pieces.first();
+      const movedIndex = Number(await moved.getAttribute('data-piece'));
+      await dragTo(
+        page,
+        await center(moved),
+        await center(page.getByTestId('puzzle-slot').nth(movedIndex)),
+      );
+      await expect(pieces).toHaveCount(3);
+      for (let k = 0; k < 3; k++) {
         const piece = pieces.first();
         const n = Number(await piece.getAttribute('data-piece'));
         await piece.click();
@@ -7629,7 +7642,7 @@ test.describe('звонки', () => {
     expect(server.calls.get(call.id)!.members.find((m) => m.id === ZAIKA)!.state).toBe('joined');
     await page.getByTestId('call-hangup').click();
     await expect(page.getByTestId('call-active')).toHaveCount(0);
-    await expect(page.getByTestId('home')).toBeVisible();
+    await expect(page.getByTestId('today')).toBeVisible();
   });
 
   test('отклонить входящий', async ({ page, backend }) => {
