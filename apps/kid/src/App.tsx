@@ -5,14 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { kidApi, NotPairedError, sendEvent } from './api';
 import { setErrorScreen } from './errors';
 import { playSequence, speechLanguages } from './audio';
-import {
-  categoriesOf,
-  isPathItem,
-  itemsOf,
-  needsCategoryPick,
-  pathLength,
-  restingIn,
-} from './categories';
+import { categoriesOf, isPathItem, itemsOf, pathLength, restingIn } from './categories';
 import { useBattery } from './battery';
 import { BabyScreen } from './baby/BabyScreen';
 import { AlbumButton, AlbumScreen } from './screens/AlbumScreen';
@@ -62,7 +55,7 @@ import { GameScreen } from './games/GameScreen';
 import { fromKidQuestion } from './quiz/engine';
 import { QuizScreen } from './quiz/QuizScreen';
 import { DeckScreen } from './screens/DeckScreen';
-import { CategoryScreen, HomeScreen } from './screens/HomeScreen';
+import { HomeScreen } from './screens/HomeScreen';
 import { MagicRoomScreen } from './screens/MagicRoomScreen';
 import { ReviewScreen, type Check } from './screens/ReviewScreen';
 import { levelOf, REVIEW_TASKS, reviewed, reviewOf } from './review';
@@ -92,14 +85,14 @@ type Step = {
 const QUIZ_AFTER = 0.5;
 
 /**
- * category — выбранный раздел (null — экран разделов или раздел всего один).
+ * category — выбранный в комнате раздел; null бывает только в уроке или отложенном квизе.
  * lesson — урок по предмету дня (список пунктов — сам урок, идёт по кругу, пока не выйдет время).
  */
 type State =
   | { screen: 'loading' }
   | { screen: 'unpaired'; initialCode: string | null }
   | { screen: 'today'; playlist: KidPlaylist }
-  | { screen: 'home'; playlist: KidPlaylist; category: KidCategory | null }
+  | { screen: 'home'; playlist: KidPlaylist; category: KidCategory }
   | {
       screen: 'run';
       playlist: KidPlaylist;
@@ -171,13 +164,10 @@ type Run = Extract<State, { screen: 'run' }>;
 const isDue = (s: ScreenTime, t: KidToday | null) =>
   Boolean(t?.eyeBreak && !s.brk && s.used >= t.eyeBreak.every * 60);
 
-/** Из занятия — в меню: урок — на «Сегодня», раздел — к его пунктам. */
-function menuOf(s: Run, isPlan: boolean): State {
-  if (s.restored)
-    return isPlan
-      ? { screen: 'today', playlist: s.restored }
-      : { screen: 'home', playlist: s.restored, category: null };
-  if (s.lesson) return { screen: 'today', playlist: s.playlist };
+/** Из занятия — к его пунктам; из урока или отложенного квиза — в комнату. */
+function menuOf(s: Run): State {
+  if (s.restored) return { screen: 'today', playlist: s.restored };
+  if (s.lesson || !s.category) return { screen: 'today', playlist: s.playlist };
   return { screen: 'home', playlist: s.playlist, category: s.category };
 }
 
@@ -193,7 +183,7 @@ function nextStep(s: State): State {
   const resting = next && !s.lesson && restingIn(items.slice(pathLength(items)), next);
   return next && !path && !resting
     ? { ...s, step: { index: i, phase: firstPhase(next), seq: s.step.seq + 1 } }
-    : { screen: 'home', playlist: s.playlist, category: s.category };
+    : menuOf(s);
 }
 
 export function App() {
@@ -264,7 +254,7 @@ export function App() {
 
   const load = useCallback(async () => {
     try {
-      // Без ответа о расписании — работаем как без расписания (разделы на выбор).
+      // Без ответа о расписании сохраняем последнее известное; комната доступна и без плана.
       const [full, day] = await Promise.all([
         kidApi.playlist(),
         kidApi.today().catch(() => currentToday.current),
@@ -295,9 +285,13 @@ export function App() {
             lesson: due.lesson,
             restored: playlist,
           };
-        if (plan(day))
-          return s.screen === 'home' ? { ...s, playlist } : { screen: 'today', playlist };
-        return { screen: 'home', playlist, category: s.screen === 'home' ? s.category : null };
+        if (
+          s.screen === 'home' &&
+          (!plan(day) || day?.free.open) &&
+          categoriesOf(playlist.items).includes(s.category)
+        )
+          return { ...s, playlist };
+        return { screen: 'today', playlist };
       });
     } catch (err) {
       if (err instanceof NotPairedError) setState({ screen: 'unpaired', initialCode: null });
@@ -511,7 +505,7 @@ export function App() {
     const s = current.current;
     if (s.screen === 'run') {
       stop.current = false;
-      setState(menuOf(s, plan(currentToday.current)));
+      setState(menuOf(s));
     }
     const now = Date.now();
     putEye({
@@ -548,7 +542,7 @@ export function App() {
   const goHome = useCallback(() => {
     fx.whoosh();
     stop.current = false;
-    setState((s) => (s.screen === 'run' ? menuOf(s, plan(currentToday.current)) : s));
+    setState((s) => (s.screen === 'run' ? menuOf(s) : s));
     void load();
   }, [load]);
 
@@ -560,7 +554,7 @@ export function App() {
     // Восстановленные вопросы пройдены или пора отдохнуть глазкам — в меню, не к следующему пункту.
     if (s.restored || isDue(eye.current, currentToday.current)) {
       fx.whoosh();
-      setState(menuOf(s, plan(currentToday.current)));
+      setState(menuOf(s));
       void load();
       return;
     }
@@ -844,11 +838,14 @@ export function App() {
       return (
         <>
           <MagicRoomScreen
-            today={today!}
+            today={today}
             categories={categoriesOf(state.playlist.items)}
             onSubject={(subject) => void startLesson(subject)}
             onCategory={(category) => {
-              if (today?.free.open && categoriesOf(state.playlist.items).includes(category)) {
+              if (
+                (!isPlan || today?.free.open) &&
+                categoriesOf(state.playlist.items).includes(category)
+              ) {
                 setState({ screen: 'home', playlist: state.playlist, category });
               }
             }}
@@ -878,36 +875,15 @@ export function App() {
             <ParentCorner onUnlock={() => setParentMenu(true)} />
           </>
         );
-      // В режиме плана — назад к «Сегодня».
-      const toToday = isPlan
-        ? () => {
-            fx.whoosh();
-            setState({ screen: 'today', playlist });
-          }
-        : undefined;
-      if (needsCategoryPick(playlist.items, category)) {
-        return (
-          <>
-            <CategoryScreen
-              items={playlist.items}
-              onPick={(c) => setState({ screen: 'home', playlist, category: c })}
-              onBack={toToday}
-            />
-            {selectionCorner}
-          </>
-        );
-      }
       const items = itemsOf(playlist.items, category);
       return (
         <>
           <HomeScreen
             items={items}
-            onBack={
-              toToday ??
-              (categoriesOf(playlist.items).length > 1
-                ? () => setState({ screen: 'home', playlist, category: null })
-                : undefined)
-            }
+            onBack={() => {
+              fx.whoosh();
+              setState({ screen: 'today', playlist });
+            }}
             onPick={(index) =>
               setState({
                 screen: 'run',

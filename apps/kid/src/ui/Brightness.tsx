@@ -1,6 +1,6 @@
-// Яркость экрана (этап 12в): кнопка-солнышко в доке и три больших солнца — тусклее, средне,
+// Яркость экрана (этап 12в): кнопка-солнышко и три больших солнца — тусклее, средне,
 // ярче. Меняет системную яркость через киоск (владелец устройства); вне киоска кнопки нет.
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { fx } from '../fx';
 import { brightnessSupported, setBrightness } from '../kiosk';
@@ -32,6 +32,57 @@ function Sun({ size }: { size: number }) {
   );
 }
 
+function BrightnessPicker({ onClose }: { onClose: () => void }) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const node = dialog.current!;
+    node.showModal();
+    return () => node.close();
+  }, []);
+  // Native modal stays above the room's tools dialog and keeps its controls interactive.
+  return createPortal(
+    <dialog
+      ref={dialog}
+      className="brightness-dialog"
+      data-testid="brightness"
+      aria-label="Яркость экрана"
+      onCancel={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onClose();
+      }}
+    >
+      <div className="sheet-backdrop" onClick={onClose} role="presentation">
+        <div className="sheet">
+          <div className="brightness-levels">
+            {LEVELS.map((l) => (
+              <button
+                key={l.level}
+                type="button"
+                className="brightness-level"
+                aria-label={l.label}
+                data-testid="brightness-level"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  fx.drop();
+                  setBrightness(l.level);
+                  onClose();
+                }}
+              >
+                <Sun size={l.size} />
+              </button>
+            ))}
+          </div>
+          <button type="button" className="sheet-close" aria-label="Закрыть" onClick={onClose}>
+            <Icon name="back" size={28} stroke={2.6} />
+          </button>
+        </div>
+      </div>
+    </dialog>,
+    document.body,
+  );
+}
+
 export function BrightnessButton() {
   const [open, setOpen] = useState(false);
   if (!brightnessSupported()) return null;
@@ -46,47 +97,7 @@ export function BrightnessButton() {
       >
         <Sun size={40} />
       </button>
-      {open &&
-        // Поверх всей страницы: док сдвинут transform-ом и «держал» бы панель внутри себя.
-        createPortal(
-          <div
-            className="sheet-backdrop"
-            data-testid="brightness"
-            onClick={() => setOpen(false)}
-            role="presentation"
-          >
-            <div className="sheet" role="dialog" aria-label="Яркость экрана">
-              <div className="brightness-levels">
-                {LEVELS.map((l) => (
-                  <button
-                    key={l.level}
-                    type="button"
-                    className="brightness-level"
-                    aria-label={l.label}
-                    data-testid="brightness-level"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      fx.drop();
-                      setBrightness(l.level);
-                      setOpen(false);
-                    }}
-                  >
-                    <Sun size={l.size} />
-                  </button>
-                ))}
-              </div>
-              <button
-                type="button"
-                className="sheet-close"
-                aria-label="Закрыть"
-                onClick={() => setOpen(false)}
-              >
-                <Icon name="back" size={28} stroke={2.6} />
-              </button>
-            </div>
-          </div>,
-          document.body,
-        )}
+      {open && <BrightnessPicker onClose={() => setOpen(false)} />}
     </>
   );
 }

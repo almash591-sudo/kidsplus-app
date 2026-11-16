@@ -834,6 +834,22 @@ body {
 }
 
 /* Панель снизу (как «шторка» на iPhone). */
+.brightness-dialog {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+.brightness-dialog::backdrop {
+  background: transparent;
+}
 .sheet-backdrop {
   position: fixed;
   inset: 0;

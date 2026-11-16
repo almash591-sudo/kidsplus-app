@@ -94,7 +94,7 @@ export function MagicRoomScreen({
   onAlbum,
   tools,
 }: {
-  today: KidToday;
+  today: KidToday | null;
   categories: KidCategory[];
   onSubject: (subject: Subject) => void;
   onCategory: (category: KidCategory) => void;
@@ -115,10 +115,11 @@ export function MagicRoomScreen({
   const navigationTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const reactionTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const busy = useRef(false);
-  const next = today.subjects.find((subject) => !subject.done)?.subject ?? null;
+  const subjects = today?.mode === 'plan' ? today.subjects : [];
+  const next = subjects.find((subject) => !subject.done)?.subject ?? null;
   const time = chosenTime ?? automaticTime;
-  const freeCategories = today.free.open ? categories : [];
-  const greeting = useRef(next || today.free.open ? ROOM_PHRASES.welcome : ROOM_PHRASES.done);
+  const freeCategories = today?.mode !== 'plan' || today.free.open ? categories : [];
+  const greeting = useRef(next || freeCategories.length ? ROOM_PHRASES.welcome : ROOM_PHRASES.done);
 
   useEffect(() => {
     const update = () => {
@@ -170,7 +171,7 @@ export function MagicRoomScreen({
 
   function canOpen(category: KidCategory) {
     return (
-      today.subjects.some((subject) => subject.subject === category && !subject.done) ||
+      subjects.some((subject) => subject.subject === category && !subject.done) ||
       freeCategories.includes(category)
     );
   }
@@ -181,7 +182,7 @@ export function MagicRoomScreen({
       respond('owl', ROOM_PHRASES.later);
       return;
     }
-    const lesson = today.subjects.find((subject) => subject.subject === category && !subject.done);
+    const lesson = subjects.find((subject) => subject.subject === category && !subject.done);
     const book = category === 'english' || category === 'chinese' ? category : null;
     if (book) {
       setSheet(null);
@@ -204,7 +205,7 @@ export function MagicRoomScreen({
 
   const directSubjects = ['math', 'english', 'chinese'] as const;
   const hint = next && directSubjects.some((subject) => subject === next) ? next : 'chest';
-  const starCount = today.subjects.length;
+  const starCount = subjects.length;
 
   return (
     <main
@@ -231,21 +232,23 @@ export function MagicRoomScreen({
             setChosenTime(TIMES[(TIMES.indexOf(time) + 1) % TIMES.length]!);
           }}
         />
-        <div
-          className="room-progress"
-          role="img"
-          aria-label={`Завершено занятий: ${today.subjects.filter((subject) => subject.done).length} из ${starCount}`}
-        >
-          {today.subjects.map((subject) => (
-            <img
-              key={subject.subject}
-              src="/games/robot-star.webp"
-              className={subject.done ? 'earned' : ''}
-              alt=""
-              draggable={false}
-            />
-          ))}
-        </div>
+        {starCount > 0 && (
+          <div
+            className="room-progress"
+            role="img"
+            aria-label={`Завершено занятий: ${subjects.filter((subject) => subject.done).length} из ${starCount}`}
+          >
+            {subjects.map((subject) => (
+              <img
+                key={subject.subject}
+                src="/games/robot-star.webp"
+                className={subject.done ? 'earned' : ''}
+                alt=""
+                draggable={false}
+              />
+            ))}
+          </div>
+        )}
         <button
           type="button"
           className={`room-object room-house${next === 'math' ? ' room-next' : ''}`}
@@ -263,7 +266,9 @@ export function MagicRoomScreen({
           data-praising={Boolean(praise)}
           data-testid="room-owl"
           aria-label="Поговорить с совёнком"
-          onClick={() => respond('owl', next ? ROOM_PHRASES.hint : ROOM_PHRASES.done)}
+          onClick={() =>
+            respond('owl', next || freeCategories.length ? ROOM_PHRASES.hint : ROOM_PHRASES.done)
+          }
         >
           <img className="character-idle" src={asset('owl')} alt="" draggable={false} />
           <img className="character-blink" src={asset('owl-blink')} alt="" draggable={false} />
@@ -406,7 +411,7 @@ export function MagicRoomScreen({
           }}
         >
           <div className="room-lessons" aria-label="Занятия на сегодня">
-            {today.subjects.map((subject) => (
+            {subjects.map((subject) => (
               <button
                 key={subject.subject}
                 type="button"
@@ -458,7 +463,7 @@ export function MagicRoomScreen({
               </div>
             </>
           )}
-          {!today.subjects.length && !freeCategories.length && <p>{ROOM_PHRASES.done}</p>}
+          {!subjects.length && !freeCategories.length && <p>{ROOM_PHRASES.done}</p>}
         </RoomSheet>
       )}
       {sheet === 'tools' && (

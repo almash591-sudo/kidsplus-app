@@ -522,9 +522,23 @@ const test = base.extend<{ backend: Backend; iosTab: boolean }>({
 const yt = <T>(page: Page, fn: string) =>
   page.evaluate(`(() => window.__yt?.${fn})()`) as Promise<T>;
 
+/** Тесты самих занятий входят в назначенный раздел через настоящую комнату. */
+async function enterCollection(page: Page) {
+  await page.getByTestId('room-chest').click();
+  const choices = page.getByTestId('category');
+  await expect(choices).toHaveCount(1);
+  await choices.click();
+  await expect(page.getByTestId('home')).toBeVisible();
+}
+
+async function openCollection(page: Page) {
+  await page.goto('/');
+  await enterCollection(page);
+}
+
 /** Открывает первую карточку и ждёт, пока видео заиграет. */
 async function startFirst(page: Page) {
-  await page.goto('/');
+  await openCollection(page);
   await page.getByTestId('tile').first().click();
   await expect(page.getByTestId('pause')).toBeVisible();
 }
@@ -533,7 +547,7 @@ test.describe('привязка устройства', () => {
   test('по QR-ссылке привязывается сам и убирает код из адреса', async ({ page, backend }) => {
     backend.paired = false;
     await page.goto('/pair?code=ABCD2345');
-    await expect(page.getByTestId('home')).toBeVisible();
+    await expect(page.getByTestId('today')).toBeVisible();
     expect(new URL(page.url()).pathname).toBe('/');
     expect(new URL(page.url()).search).toBe('');
   });
@@ -550,7 +564,7 @@ test.describe('привязка устройства', () => {
       await expect(page.getByTestId('pair-install')).toBeVisible();
       await expect(page.getByTestId('pair-install-code')).toHaveText('ABCD2345');
       await page.getByRole('button', { name: 'Продолжить в Safari' }).click();
-      await expect(page.getByTestId('home')).toBeVisible();
+      await expect(page.getByTestId('today')).toBeVisible();
     });
   });
 
@@ -564,7 +578,7 @@ test.describe('привязка устройства', () => {
 
     await page.getByTestId('pair-code').fill('abcd-2345');
     await page.getByRole('button', { name: 'Привязать' }).click();
-    await expect(page.getByTestId('home')).toBeVisible();
+    await expect(page.getByTestId('today')).toBeVisible();
   });
 });
 
@@ -589,7 +603,7 @@ test.describe('пульт родителя (этап 29)', () => {
     await page.getByTestId('called').click();
     await expect(page.getByTestId('called')).toHaveCount(0);
     await page.reload();
-    await expect(page.getByTestId('tile').first()).toBeVisible();
+    await expect(page.getByTestId('today')).toBeVisible();
     await expect(page.getByTestId('called')).toHaveCount(0);
   });
 });
@@ -617,7 +631,7 @@ test.describe('мои дела (этап 30)', () => {
 
   test('без дел кнопки нет', async ({ page, backend: _ }) => {
     await page.goto('/');
-    await expect(page.getByTestId('tile').first()).toBeVisible();
+    await page.getByTestId('room-tools').click();
     await expect(page.getByTestId('habits-open')).toHaveCount(0);
   });
 
@@ -625,6 +639,7 @@ test.describe('мои дела (этап 30)', () => {
     await page.clock.install({ time: new Date('2026-10-18T08:00:00') });
     backend.habits = habits([habit('a'), habit('b', { preset: 'bed', done: true })]);
     await page.goto('/');
+    await page.getByTestId('room-tools').click();
     await expect(page.getByTestId('habits-stars')).toHaveText('3');
     await shot(page, 'habits-dock');
     await page.getByTestId('habits-open').click();
@@ -646,6 +661,7 @@ test.describe('мои дела (этап 30)', () => {
     await first.click();
     expect(backend.habitsDone).toEqual(['a']);
     await page.getByTestId('go-home').click();
+    await page.getByTestId('room-tools').click();
     await expect(page.getByTestId('habits-stars')).toHaveText('4');
   });
 
@@ -656,6 +672,7 @@ test.describe('мои дела (этап 30)', () => {
       habit('m', { slot: 'morning' }),
     ]);
     await page.goto('/');
+    await page.getByTestId('room-tools').click();
     await page.getByTestId('habits-open').click();
     // Вечер — вечерние дела; утро — вкладкой.
     await expect(page.getByTestId('slot-evening')).toHaveAttribute('aria-selected', 'true');
@@ -699,7 +716,7 @@ test.describe('мои дела (этап 30)', () => {
     await page.getByTestId('habit-remind').dispatchEvent('pointerdown');
     await expect(page.getByTestId('habit-remind')).toHaveCount(0);
     await page.reload();
-    await expect(page.getByTestId('tile').first()).toBeVisible();
+    await expect(page.getByTestId('today')).toBeVisible();
     await expect(page.getByTestId('habit-remind')).toHaveCount(0);
   });
 
@@ -712,7 +729,7 @@ test.describe('мои дела (этап 30)', () => {
     await page.getByTestId('habit-grant').dispatchEvent('pointerdown');
     await expect(page.getByTestId('habit-grant')).toHaveCount(0);
     await page.reload();
-    await expect(page.getByTestId('tile').first()).toBeVisible();
+    await expect(page.getByTestId('today')).toBeVisible();
     await expect(page.getByTestId('habit-grant')).toHaveCount(0);
   });
 });
@@ -735,7 +752,7 @@ test.describe('живой совёнок (этап 32)', () => {
     page,
     backend: _,
   }) => {
-    await page.goto('/');
+    await openCollection(page);
     await expect(page.getByTestId('tile').first()).toBeVisible();
     const owl = page.getByTestId('fairy-guide');
     await owl.click();
@@ -751,7 +768,7 @@ test.describe('живой совёнок (этап 32)', () => {
     page,
     backend: _,
   }) => {
-    await page.goto('/');
+    await openCollection(page);
     await expect(page.getByTestId('tile').first()).toBeVisible();
     const hand = page.getByTestId('hint-hand').locator('span');
     for (let i = 0; i < 20 && !(await hand.isVisible()); i++) await run(page, 1_000);
@@ -763,7 +780,7 @@ test.describe('живой совёнок (этап 32)', () => {
     );
   });
 
-  test('все дела сделаны — совёнок в меню машет и хвалит', async ({ page, backend }) => {
+  test('все дела сделаны — совёнок в комнате машет и хвалит', async ({ page, backend }) => {
     backend.habits = {
       date: '2026-10-18',
       habits: [
@@ -783,11 +800,12 @@ test.describe('живой совёнок (этап 32)', () => {
       lastGrant: null,
     };
     await page.goto('/');
+    await page.getByTestId('room-tools').click();
     await page.getByTestId('habits-open').click();
     await page.getByTestId('habit').first().click();
     await page.getByTestId('go-home').click();
     await run(page, 3_000);
-    await expect(page.getByTestId('fairy-guide')).toHaveAttribute('data-praising', 'true');
+    await expect(page.getByTestId('room-owl')).toHaveAttribute('data-praising', 'true');
     await expect.poll(() => said(page)).toContain('Ты молодец!');
   });
 });
@@ -968,6 +986,7 @@ test.describe('пора спать (этап 31)', () => {
     await expect(page.getByTestId('habits')).toBeVisible();
     await expect(page.getByTestId('bedtime-soon')).toHaveCount(0);
     await page.reload();
+    await page.getByTestId('room-tools').click();
     await expect(page.getByTestId('habits-open')).toBeVisible();
     await expect(page.getByTestId('bedtime-soon')).toHaveCount(0);
   });
@@ -982,14 +1001,14 @@ test.describe('пора спать (этап 31)', () => {
       .toContain('Доброе утро! Новый день начинается!');
     await page.getByTestId('bedtime-morning').dispatchEvent('pointerdown');
     await page.reload();
-    await expect(page.getByTestId('tile').first()).toBeVisible();
+    await expect(page.getByTestId('today')).toBeVisible();
     await expect(page.getByTestId('bedtime-morning')).toHaveCount(0);
   });
 });
 
 test.describe('главный экран', () => {
   test('показывает ровно фрагменты из API, без текста и ссылок', async ({ page, backend: _ }) => {
-    await page.goto('/');
+    await openCollection(page);
     await expect(page.getByTestId('tile')).toHaveCount(SEGMENTS.length);
     await expect(page.locator('a')).toHaveCount(0);
   });
@@ -1106,7 +1125,7 @@ test.describe('плеер', () => {
     await page.addInitScript(() => {
       (window as unknown as { __ytBlockAutoplay: boolean }).__ytBlockAutoplay = true;
     });
-    await page.goto('/');
+    await openCollection(page);
     await page.getByTestId('tile').first().click();
     await expect(page.getByTestId('play')).toBeVisible({ timeout: 3000 });
     await page.getByTestId('play').click();
@@ -1120,7 +1139,7 @@ test.describe('плеер', () => {
     await page.addInitScript(() => {
       (window as unknown as { __ytNeedsFrameTap: boolean }).__ytNeedsFrameTap = true;
     });
-    await page.goto('/');
+    await openCollection(page);
     await page.getByTestId('tile').first().click();
     await page.getByTestId('play').click({ timeout: 4000 });
     await expect(page.getByTestId('tap-video')).toBeVisible({ timeout: 4000 });
@@ -1171,7 +1190,7 @@ test.describe('плеер', () => {
     await expect(tiles).toHaveCount(0);
     expect(backend.events.filter((e) => e.type === 'segment_error')).toHaveLength(2);
     await page.reload();
-    await expect(page.getByTestId('home').or(page.getByTestId('empty'))).toBeVisible();
+    await expect(page.getByTestId('today')).toBeVisible();
     await expect(tiles).toHaveCount(0);
   });
 
@@ -1180,7 +1199,7 @@ test.describe('плеер', () => {
     backend,
   }) => {
     backend.items = backend.items.map((it, i) => (i === 0 ? { ...it, rest: 'today' } : it));
-    await page.goto('/');
+    await openCollection(page);
     const tiles = page.getByTestId('tile');
     await expect(tiles.last()).toHaveAttribute('data-rest', 'today');
     await expect(tiles.first()).not.toHaveAttribute('data-rest', /.+/);
@@ -1194,6 +1213,7 @@ test.describe('плеер', () => {
     // Всё пройдено — повторять можно (без тупика).
     backend.items = backend.items.map((it) => ({ ...it, rest: 'learned' }));
     await page.reload();
+    await enterCollection(page);
     await expect(tiles.first()).not.toHaveAttribute('data-rest', /.+/);
     await tiles.first().click();
     await expect(page.getByTestId('pause')).toBeVisible();
@@ -1205,7 +1225,7 @@ test.describe('плеер', () => {
   }) => {
     // Первое видео смотрели чаще всех — уходит в конец; остальные — в прежнем порядке.
     backend.items = backend.items.map((it, i) => ({ ...it, plays: i === 0 ? 7 : 0 }));
-    await page.goto('/');
+    await openCollection(page);
     const videos = page.locator('[data-testid=tile][data-kind=segment] img');
     await expect(videos.last()).toHaveAttribute('src', SEGMENTS[0]!.thumbnailUrl!);
     await expect(videos.first()).not.toHaveAttribute('src', SEGMENTS[0]!.thumbnailUrl!);
@@ -1292,7 +1312,7 @@ test.describe('цикл видео → квиз → видео', () => {
     backend,
   }) => {
     withQuiz(backend, 4, 2);
-    await page.goto('/');
+    await openCollection(page);
     await page.getByTestId('tile').first().click();
     await finishVideo(page);
 
@@ -1324,7 +1344,7 @@ test.describe('цикл видео → квиз → видео', () => {
     backend,
   }) => {
     withQuiz(backend, 2, 1);
-    await page.goto('/');
+    await openCollection(page);
     await page.getByTestId('tile').first().click();
     await finishVideo(page);
     await expect(page.getByTestId('quiz-option')).toHaveCount(2);
@@ -1342,7 +1362,7 @@ test.describe('цикл видео → квиз → видео', () => {
 
   test('пока звучит вопрос, касания не принимаются', async ({ page, backend }) => {
     withQuiz(backend, 4, 2);
-    await page.goto('/');
+    await openCollection(page);
     await page.getByTestId('tile').first().click();
     await finishVideo(page);
     await expect(page.getByTestId('quiz-round')).toHaveAttribute('data-phase', 'asking');
@@ -1356,7 +1376,7 @@ test.describe('цикл видео → квиз → видео', () => {
     backend,
   }) => {
     withQuiz(backend, 4, 1);
-    await page.goto('/');
+    await openCollection(page);
     await page.getByTestId('tile').first().click();
     await finishVideo(page);
     await answering(page);
@@ -1381,7 +1401,7 @@ test.describe('цикл видео → квиз → видео', () => {
     backend,
   }) => {
     withQuiz(backend, 4, 1);
-    await page.goto('/');
+    await openCollection(page);
     await page.getByTestId('tile').first().click();
     await finishVideo(page);
     await answering(page);
@@ -1433,7 +1453,7 @@ test.describe('карточки', () => {
         ],
       },
     ];
-    await page.goto('/');
+    await openCollection(page);
     await expect(page.locator('[data-testid=tile][data-kind=deck]')).toHaveCount(2);
     await page.getByTestId('tile').first().click();
 
@@ -1486,6 +1506,7 @@ test('разделы: видео, английский, математика; в
     deck('88888888-8888-4888-8888-888888888883', 'math', 'm2'),
   ];
   await page.goto('/');
+  await page.getByTestId('room-chest').click();
   const categories = page.getByTestId('category');
   await expect(categories).toHaveCount(3);
   expect(await categories.evaluateAll((els) => els.map((e) => e.dataset.category))).toEqual([
@@ -1501,17 +1522,18 @@ test('разделы: видео, английский, математика; в
     'data-src',
     '/api/media/m2',
   );
-  // «Домой» из набора — к пунктам раздела, оттуда — к разделам.
+  // «Домой» из набора — к пунктам раздела, оттуда — в комнату.
   await page.getByTestId('go-home').click();
   await expect(page.getByTestId('tile')).toHaveCount(2);
   await page.getByTestId('to-categories').click();
-  await expect(page.getByTestId('categories')).toBeVisible();
+  await expect(page.getByTestId('today')).toBeVisible();
 });
 
 test.describe('озвучка голосом телефона', () => {
   test('вопрос и похвала произносятся по-русски, медленно', async ({ page, backend }) => {
     withQuiz(backend, 2, 1);
-    await page.goto('/');
+    await openCollection(page);
+    await page.evaluate(() => ((window as unknown as { __spoken: Spoken[] }).__spoken = []));
     await page.getByTestId('tile').first().click();
     await finishVideo(page);
     await answering(page);
@@ -1543,7 +1565,8 @@ test.describe('озвучка голосом телефона', () => {
         ],
       },
     ];
-    await page.goto('/');
+    await openCollection(page);
+    await page.evaluate(() => ((window as unknown as { __spoken: Spoken[] }).__spoken = []));
     await page.getByTestId('tile').first().click();
     await expect
       .poll(async () => (await spoken(page)).map((s) => `${s.lang}:${s.text}:${s.voice}`))
@@ -1571,7 +1594,8 @@ test('английская карточка: слово английским г�
       ],
     },
   ];
-  await page.goto('/');
+  await openCollection(page);
+  await page.evaluate(() => ((window as unknown as { __spoken: Spoken[] }).__spoken = []));
   await page.getByTestId('tile').first().click();
   // Голоса появляются с задержкой — озвучка ждёт их и задаёт голос явно.
   await expect
@@ -1581,7 +1605,7 @@ test('английская карточка: слово английским г�
 
 test('телефон сообщает родителю языки своих голосов (только коды)', async ({ page, backend }) => {
   await page.goto('/');
-  await expect(page.getByTestId('home')).toBeVisible();
+  await expect(page.getByTestId('today')).toBeVisible();
   await expect.poll(() => backend.voices).toEqual(['en', 'ru', 'zh']);
 });
 
@@ -1604,7 +1628,7 @@ test.describe('карточки: проверки и стрелки', () => {
     backend,
   }) => {
     backend.items = [deckOf(6)];
-    await page.goto('/');
+    await openCollection(page);
     await page.getByTestId('tile').first().click();
     for (let i = 0; i < 5; i++) await page.getByTestId('deck-next').click();
 
@@ -1644,7 +1668,7 @@ test.describe('карточки: проверки и стрелки', () => {
       () => ((window as unknown as { __speechMs: number }).__speechMs = 2500),
     );
     backend.items = [deckOf(3)];
-    await page.goto('/');
+    await openCollection(page);
     await page.getByTestId('tile').first().click();
     const deck = page.getByTestId('deck');
     await expect(deck).toHaveAttribute('data-speaking', 'true');
@@ -1674,7 +1698,7 @@ test.describe('карточки: проверки и стрелки', () => {
     backend,
   }) => {
     backend.items = [deckOf(3)];
-    await page.goto('/');
+    await openCollection(page);
     await page.getByTestId('tile').first().click();
     await page.getByTestId('deck-next').click();
     const card = (await page.getByTestId('deck-card').boundingBox())!;
@@ -1710,7 +1734,7 @@ test('погружение: без перевода, проверка и пох�
       })),
     },
   ];
-  await page.goto('/');
+  await openCollection(page);
   await page.getByTestId('tile').first().click();
   for (let i = 0; i < 5; i++) await page.getByTestId('deck-next').click();
   await answering(page);
@@ -1774,7 +1798,7 @@ async function solveMemory(page: Page) {
 
 async function openGame(page: Page) {
   await gameMedia(page);
-  await page.goto('/');
+  await openCollection(page);
   await page.getByTestId('tile').first().click();
   await expect(page.getByTestId('game')).toBeVisible();
   // Экран появляется с анимацией — ждём, пока встанет на место (координаты для перетаскивания).
@@ -2796,6 +2820,7 @@ test.describe('игры', () => {
     ];
     await gameMedia(page);
     await page.goto('/');
+    await page.getByTestId('room-chest').click();
     await page.locator('[data-category=games]').click();
     await expect(page.getByTestId('tile')).toHaveCount(4);
     await shot(page, 'games-home');
@@ -3733,7 +3758,7 @@ test.describe('игры', () => {
         ? route.abort('failed')
         : route.fulfill({ contentType: 'image/png', body: PIXEL }),
     );
-    await page.goto('/');
+    await openCollection(page);
     await page.getByTestId('tile').first().click();
     const sticker = page.getByTestId('sticker');
     await expect(sticker).toHaveAccessibleName('Загрузить наклейку 1 ещё раз');
@@ -3790,17 +3815,18 @@ const sounds = (page: Page) =>
   page.evaluate(() => (window as unknown as { __sounds: number }).__sounds);
 
 test.describe('отклик интерфейса', () => {
-  test('приветствие на экране разделов, раздел называется вслух', async ({ page, backend }) => {
+  test('приветствие в комнате, раздел называется вслух', async ({ page, backend }) => {
     backend.items = [
       { ...SEGMENTS[0]!, kind: 'segment', questions: [] },
       game(1, { kind: 'balloons', count: 3 }),
     ];
     await gameMedia(page);
     await page.goto('/');
-    await expect(page.getByTestId('categories')).toBeVisible();
+    await page.getByTestId('room-chest').click();
+    await expect(page.getByRole('dialog')).toBeVisible();
     await expect
       .poll(async () => (await spoken(page)).map((s) => s.text))
-      .toContain('Привет! Что будем делать?');
+      .toContain('Привет! Это наша волшебная комната. Нажми на сундучок — выберем игру!');
     await page.locator('[data-category=games]').click();
     await expect.poll(async () => (await spoken(page)).map((s) => s.text)).toContain('Игры!');
   });
@@ -3857,7 +3883,7 @@ test('нейроголос: фразы приложения звучат фай�
   backend.serverVoice = true;
   backend.items = [game(1, { kind: 'balloons', count: 3 })];
   await gameMedia(page);
-  await page.goto('/');
+  await openCollection(page);
   await expect.poll(() => backend.speechRequests ?? 0).toBeGreaterThan(0);
   await page.getByTestId('tile').first().click();
   await expect
@@ -3886,6 +3912,7 @@ test.describe('новые игры', () => {
     ];
     await gameMedia(page);
     await page.goto('/');
+    await page.getByTestId('room-chest').click();
     await page.locator('[data-category=nature]').click();
     await expect(page.getByTestId('tile')).toHaveCount(1);
   });
@@ -6215,6 +6242,7 @@ test.describe('новые игры', () => {
     ];
     await gameMedia(page);
     await page.goto('/');
+    await page.getByTestId('room-chest').click();
     // Свой раздел; плитка стиха — обложка из первой картинки.
     await page.locator('[data-category=poems]').click();
     await expect(page.locator('.poem-tile > img')).toHaveAttribute('src', '/poems/rooster-1.webp');
@@ -6356,6 +6384,7 @@ test.describe('новые игры', () => {
       ];
       await gameMedia(page);
       await page.goto('/');
+      await page.getByTestId('room-chest').click();
       await page.locator('[data-category=poems]').click();
       // Голос «говорит» долго — части листаем сами, до самой длинной.
       await slowSpeech(page, 8000);
@@ -6412,6 +6441,7 @@ test.describe('новые игры', () => {
     ];
     await gameMedia(page);
     await page.goto('/');
+    await page.getByTestId('room-chest').click();
     expect(await page.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches)).toBe(
       true,
     );
@@ -6444,6 +6474,7 @@ test.describe('новые игры', () => {
     await shot(page, 'poem-dark');
 
     await page.goto('/');
+    await page.getByTestId('room-chest').click();
     await page.locator('[data-category=books]').click();
     await page.getByTestId('tile').first().click();
     const g = page.getByTestId('game-book');
@@ -6476,6 +6507,7 @@ test.describe('новые игры', () => {
     await gameMedia(page);
     await page.clock.install();
     await page.goto('/');
+    await page.getByTestId('room-chest').click();
     await page.locator('[data-category=poems]').click();
     // Объявление и первая часть — по 4 с: вместе дольше, чем ждёт подсказка (6 с).
     await slowSpeech(page, 4000);
@@ -6507,6 +6539,7 @@ test.describe('новые игры', () => {
     ];
     await gameMedia(page);
     await page.goto('/');
+    await page.getByTestId('room-chest').click();
     await page.locator('[data-category=poems]').click();
     await expect(page.getByTestId('tile')).toHaveCount(1);
   });
@@ -6531,6 +6564,7 @@ test.describe('новые игры', () => {
     ];
     await gameMedia(page);
     await page.goto('/');
+    await page.getByTestId('room-chest').click();
     // Свой раздел; на полке — обложка и «новая».
     await page.locator('[data-category=books]').click();
     const tile = page.locator('.book-tile');
@@ -6646,6 +6680,7 @@ test.describe('новые игры', () => {
     ];
     await gameMedia(page);
     await page.goto('/');
+    await page.getByTestId('room-chest').click();
     await page.locator('[data-category=books]').click();
     // Читаем — на обложке закладка.
     await expect(page.locator('.book-tile')).toHaveAttribute('data-shelf', 'reading');
@@ -6677,6 +6712,7 @@ test.describe('новые игры', () => {
     ];
     await gameMedia(page);
     await page.goto('/');
+    await page.getByTestId('room-chest').click();
     await page.locator('[data-category=books]').click();
     await page.getByTestId('tile').first().click();
     const g = page.getByTestId('game-book');
@@ -6762,6 +6798,7 @@ test.describe('новые игры', () => {
     ];
     await gameMedia(page);
     await page.goto('/');
+    await page.getByTestId('room-chest').click();
     await page.locator('[data-category=books]').click();
     await page.getByTestId('tile').first().click();
     const g = page.getByTestId('game-book');
@@ -6831,6 +6868,7 @@ test.describe('новые игры', () => {
           JSON.stringify({ [code]: { chapter, page: at } }),
         );
         await page.reload();
+        await page.getByTestId('room-chest').click();
         await page.locator('[data-category=books]').click();
         // Голос «говорит» долго — страница стоит, пока меряем.
         await slowSpeech(page, 8000);
@@ -7141,6 +7179,100 @@ const planDay = (o: Record<string, unknown> = {}) => ({
   free: { open: false, secondsLeft: 1200 },
   windowSecondsLeft: 30000,
   ...o,
+});
+
+test.describe('комната — общий вход', () => {
+  test('без расписания: планшет открывает назначенные видео, назад и перезапуск — в комнату', async ({
+    page,
+    backend,
+  }) => {
+    // free.open=false не ограничивает свободный режим без учебного плана.
+    await page.goto('/');
+    await expect(page.getByTestId('today')).toBeVisible();
+    await expect(page.getByTestId('tile')).toHaveCount(0);
+    await expect(page.getByTestId('room-video')).toHaveAttribute('aria-disabled', 'false');
+    await page.getByTestId('room-video').click();
+    await expect(page.getByTestId('tile')).toHaveCount(SEGMENTS.length);
+    await page.getByTestId('to-categories').click();
+    await expect(page.getByTestId('today')).toBeVisible();
+    await page.reload();
+    await expect(page.getByTestId('today')).toBeVisible();
+    expect(backend.beats ?? []).toEqual([]);
+  });
+
+  test('без расписания: игра из сундука и альбом возвращают к комнате', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [game(1, { kind: 'drawing', stickerIds: [] })];
+    await gameMedia(page);
+    await openCollection(page);
+    await page.getByTestId('tile').click();
+    await expect(page.getByTestId('game')).toBeVisible();
+    await page.getByTestId('go-home').click();
+    await expect(page.getByTestId('home')).toBeVisible();
+    await page.getByTestId('to-categories').click();
+    await expect(page.getByTestId('today')).toBeVisible();
+    await page.getByTestId('album-open').click();
+    await expect(page.getByTestId('album')).toBeVisible();
+    await page.getByTestId('album-close').click();
+    await expect(page.getByTestId('today')).toBeVisible();
+  });
+
+  test('нет назначений: комната остаётся, игрушки не открывают чужой контент', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = [];
+    await page.goto('/');
+    await expect(page.getByTestId('today')).toBeVisible();
+    for (const toy of ['video', 'math', 'english', 'chinese']) {
+      const button = page.getByTestId(`room-${toy}`);
+      await expect(button).toHaveAttribute('aria-disabled', 'true');
+      await button.dispatchEvent('click');
+    }
+    await expect(page.getByTestId('today')).toBeVisible();
+    await expect(page.getByTestId('tile')).toHaveCount(0);
+    await page.getByTestId('room-chest').click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(page.getByTestId('category')).toHaveCount(0);
+    await expect(page.getByTestId('subject')).toHaveCount(0);
+    await expect(page.locator('iframe, a')).toHaveCount(0);
+  });
+
+  test('ошибка расписания при входе: назначенные занятия доступны через комнату', async ({
+    page,
+    backend: _,
+  }) => {
+    await page.route('**/api/kid/today', (route) => route.fulfill({ status: 503 }));
+    await page.goto('/');
+    await expect(page.getByTestId('today')).toBeVisible();
+    await page.getByTestId('room-video').click();
+    await expect(page.getByTestId('tile')).toHaveCount(SEGMENTS.length);
+    await page.getByTestId('to-categories').click();
+    await expect(page.getByTestId('today')).toBeVisible();
+  });
+
+  test('план: ожидание в комнате не тратит свободное время; ошибка обновления сохраняет ограничения', async ({
+    page,
+    backend,
+  }) => {
+    backend.today = planDay();
+    await page.goto('/');
+    await expect(page.getByTestId('today')).toBeVisible();
+    await expect.poll(() => backend.beats?.length ?? 0).toBeGreaterThan(0);
+    expect(backend.beats!.every((beat) => beat.activity === null)).toBe(true);
+    const refreshed = page.waitForResponse('**/api/kid/today');
+    await page.route('**/api/kid/today', (route) => route.fulfill({ status: 503 }));
+    await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+    await refreshed;
+    await expect(page.getByTestId('room-video')).toHaveAttribute('aria-disabled', 'true');
+    await page.getByTestId('room-video').dispatchEvent('click');
+    await expect(page.getByTestId('today')).toBeVisible();
+    await page.getByTestId('room-chest').click();
+    await expect(page.getByTestId('subject')).toHaveCount(3);
+    await expect(page.getByTestId('category')).toHaveCount(0);
+  });
 });
 
 test.describe('расписание дня', () => {
@@ -7628,7 +7760,7 @@ test.describe('радионяня', () => {
       };
     });
     await page.goto('/');
-    await expect(page.getByTestId('home')).toBeVisible();
+    await expect(page.getByTestId('today')).toBeVisible();
     server.monitor(ZAIKA, true);
     await expect(page.getByTestId('monitor')).toBeVisible();
     await expect(page.getByTestId('monitor')).toHaveAttribute('data-listening', '0');
@@ -7687,6 +7819,7 @@ test.describe('главный экран', () => {
     page,
     backend,
   }) => {
+    test.setTimeout(60_000);
     backend.items = [
       ...seven(),
       game(1, { kind: 'loudness', rounds: 2 }, 'music'),
@@ -7699,6 +7832,7 @@ test.describe('главный экран', () => {
     ];
     await gameMedia(page);
     await page.goto('/');
+    await page.getByTestId('room-chest').click();
     await expect(page.getByTestId('category')).toHaveCount(10);
     await page.waitForTimeout(800);
     await shot(page, 'ten-categories');
@@ -7738,6 +7872,7 @@ test.describe('главный экран', () => {
       };
     });
     await page.goto('/');
+    await page.getByTestId('room-tools').click();
     await page.getByTestId('brightness-open').click();
     await expect(page.getByTestId('brightness-level')).toHaveCount(3);
     await page.getByTestId('brightness-level').first().click();
@@ -7745,6 +7880,14 @@ test.describe('главный экран', () => {
     expect(
       await page.evaluate(() => (window as unknown as { __levels: number[] }).__levels),
     ).toEqual([0.15]);
+    await expect(page.getByRole('dialog', { name: 'Мой уголок' })).toBeVisible();
+    await page.getByTestId('brightness-open').click();
+    await expect(page.getByTestId('brightness')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('brightness')).toHaveCount(0);
+    await expect(page.getByRole('dialog', { name: 'Мой уголок' })).toBeVisible();
+    await page.getByRole('button', { name: 'Вернуться в комнату' }).click();
+    await expect(page.getByTestId('today')).toBeVisible();
   });
 });
 
@@ -7972,7 +8115,7 @@ test.describe('музыка', () => {
       game(2, { kind: 'loudness', rounds: 2 }, 'music'),
     ];
     await gameMedia(page);
-    await page.goto('/');
+    await openCollection(page);
     const steps = page.getByTestId('lesson-path').getByTestId('tile');
     for (let i = 0; i < 2; i++) {
       await expect(steps.nth(0)).toHaveAttribute('data-hint', '', { timeout: 8000 });
@@ -7993,7 +8136,7 @@ test.describe('музыка', () => {
       game(2, { kind: 'loudness', rounds: 2 }, 'music'),
     ];
     await gameMedia(page);
-    await page.goto('/');
+    await openCollection(page);
     const path = page.getByTestId('lesson-path');
     await expect(path).toBeVisible();
     await shot(page, 'music-path');
@@ -8038,7 +8181,7 @@ test.describe('буквы', () => {
         'letters',
       ),
     ];
-    await page.goto('/');
+    await openCollection(page);
     await expect(page.getByTestId('lesson-path')).toBeVisible();
     const field = page.getByTestId('game-letters');
     const play = async () => {
@@ -8138,7 +8281,7 @@ test.describe('буквы', () => {
         'letters',
       ),
     ];
-    await page.goto('/');
+    await openCollection(page);
     await expect(page.getByTestId('lesson-path')).toBeVisible();
     const field = page.getByTestId('game-letters');
     const { width, height } = page.viewportSize()!;
@@ -8308,7 +8451,7 @@ test.describe('буквы О, А, У (этап 56)', () => {
         'letters',
       ),
     ];
-    await page.goto('/');
+    await openCollection(page);
     await expect(page.getByTestId('lesson-path')).toBeVisible();
     const field = page.getByTestId('game-letters');
     const play = async (check?: () => Promise<void>) => {
@@ -8348,7 +8491,7 @@ test.describe('буквы О, А, У (этап 56)', () => {
       game(1, lesson('с какой буквы?'), 'letters'),
       game(2, lesson('прочитай АУ и УА'), 'letters'),
     ];
-    await page.goto('/');
+    await openCollection(page);
     await expect(page.getByTestId('lesson-path')).toBeVisible();
     const field = page.getByTestId('game-letters');
     const play = async (check?: () => Promise<void>) => {
@@ -8425,7 +8568,7 @@ test.describe('счёт к школе', () => {
         'math',
       ),
     ];
-    await page.goto('/');
+    await openCollection(page);
     const path = page.getByTestId('lesson-path');
     await expect(path).toBeVisible();
     await expect(path.getByTestId('tile')).toHaveCount(4);
@@ -8473,7 +8616,7 @@ test.describe('счёт к школе', () => {
     backend.items = [
       game(1, { kind: 'compareSign', max: 10, equal: false, dots: false, rounds: 2 }, 'math'),
     ];
-    await page.goto('/');
+    await openCollection(page);
     await page.getByTestId('tile').first().click();
     const field = page.getByTestId('game-count');
     await expect(field).toBeVisible();
@@ -8500,7 +8643,7 @@ test.describe('без интернета', () => {
   }) => {
     backend.items = [game(1, { kind: 'memory', imageIds: [CAT, LION, RABBIT] })];
     await gameMedia(page);
-    await page.goto('/');
+    await openCollection(page);
     // Файлы занятий легли в кэш.
     await expect
       .poll(() =>
@@ -8520,7 +8663,7 @@ test.describe('без интернета', () => {
   test('событие без сети копится и уходит, когда связь вернулась', async ({ page, backend }) => {
     backend.items = [game(1, { kind: 'memory', imageIds: [CAT, LION] })];
     await gameMedia(page);
-    await page.goto('/');
+    await openCollection(page);
     await page.route('**/api/kid/events', (r) => r.abort('internetdisconnected'));
     await page.getByTestId('tile').first().click();
     await expect(page.getByTestId('memory-card')).toHaveCount(4);
@@ -8709,8 +8852,9 @@ test.describe('аудиотека', () => {
     backend,
   }) => {
     await page.goto('/');
-    await expect(page.getByTestId('home')).toBeVisible();
+    await expect(page.getByTestId('today')).toBeVisible();
     await expect(page.getByTestId('album-open')).toBeVisible();
+    await page.getByTestId('room-tools').click();
     await expect(page.getByTestId('audio-open')).toHaveCount(0);
 
     backend.audio = [
@@ -8724,6 +8868,7 @@ test.describe('аудиотека', () => {
       return r.fulfill({ status: 200, contentType: 'audio/mpeg', body: Buffer.alloc(0) });
     });
     await page.reload();
+    await page.getByTestId('room-tools').click();
     await page.getByTestId('audio-open').click();
     const tiles = page.getByTestId('audio-tile');
     await expect(tiles).toHaveCount(2);
@@ -8734,7 +8879,7 @@ test.describe('аудиотека', () => {
     await expect.poll(() => asked).toContain('/api/audio/a2/file');
     await page.getByTestId('audio-close').click();
     await expect(page.getByTestId('audio-library')).toHaveCount(0);
-    await expect(page.getByTestId('home')).toBeVisible();
+    await expect(page.getByTestId('today')).toBeVisible();
   });
 
   test('видео семьи (этап 42): плитка 🎬 открывает плеер на весь экран, ✕ — назад', async ({
@@ -8751,6 +8896,7 @@ test.describe('аудиотека', () => {
       return r.fulfill({ status: 200, contentType: 'video/mp4', body: Buffer.alloc(0) });
     });
     await page.goto('/');
+    await page.getByTestId('room-tools').click();
     await page.getByTestId('audio-open').click();
     const tiles = page.getByTestId('audio-tile');
     await expect(tiles.nth(1)).toHaveAttribute('data-kind', 'video');
@@ -8854,7 +9000,7 @@ test.describe('картинки не растягиваются (этап 35)', 
     );
     for (const [i, spec] of specs.entries()) {
       backend.items = [game(i + 1, spec)];
-      await page.goto('/');
+      await openCollection(page);
       await page.getByTestId('tile').first().click();
       await page.waitForTimeout(900);
       await check((spec as { kind: string }).kind);
@@ -8881,7 +9027,7 @@ test.describe('картинки не растягиваются (этап 35)', 
         ],
       },
     ];
-    await page.goto('/');
+    await openCollection(page);
     await check('home-deck');
     await page.getByTestId('tile').first().click();
     await page.waitForTimeout(900);
@@ -8916,10 +9062,10 @@ test.describe('вопросы после видео обязательны (эт
     await answering(page);
     await correct(page).dispatchEvent('pointerdown');
     await expect(page.getByTestId('quiz-done')).toBeVisible();
-    // Ответил — в меню, а не к следующему видео.
-    await expect(page.getByTestId('tile').first()).toBeVisible({ timeout: 6000 });
+    // Отложенный квиз завершён — снова комната, а не следующее видео.
+    await expect(page.getByTestId('today')).toBeVisible({ timeout: 6000 });
     await page.reload();
-    await expect(page.getByTestId('tile').first()).toBeVisible();
+    await expect(page.getByTestId('today')).toBeVisible();
     await expect(page.getByTestId('quiz')).toHaveCount(0);
   });
 
@@ -8957,7 +9103,7 @@ test.describe('перерыв для глаз (этап 50)', () => {
     await page.clock.install({ time: new Date('2026-10-18T10:00:00') });
     const eb = eyeToday(backend);
     await seedScreen(page, 880);
-    await page.goto('/');
+    await openCollection(page);
     await expect(page.getByTestId('tile').first()).toBeVisible();
     await page.clock.runFor(10_000);
     await expect(page.getByTestId('eye-break')).toHaveCount(0);
@@ -9027,7 +9173,7 @@ test.describe('перерыв для глаз (этап 50)', () => {
     await page.clock.install({ time: new Date('2026-10-18T10:00:00') });
     backend.today = { ...OFF_TODAY, eyeBreak: null };
     await seedScreen(page, 5000);
-    await page.goto('/');
+    await openCollection(page);
     await expect(page.getByTestId('tile').first()).toBeVisible();
     await page.clock.runFor(30_000);
     await expect(page.getByTestId('eye-break')).toHaveCount(0);
@@ -9040,7 +9186,7 @@ test.describe('сбои — родителю (этап 51)', () => {
     page,
     backend,
   }) => {
-    await page.goto('/');
+    await openCollection(page);
     await expect(page.getByTestId('tile').first()).toBeVisible();
     await page.evaluate(() =>
       setTimeout(() => {
@@ -9051,7 +9197,7 @@ test.describe('сбои — родителю (этап 51)', () => {
     expect(backend.appErrors![0]).toMatchObject({
       kind: 'error',
       message: 'TypeError: Проверка сбоя',
-      screen: 'home',
+      screen: 'home:video',
       count: 1,
     });
 
@@ -9151,7 +9297,7 @@ test.describe('плеер RuTube (этап 54)', () => {
         body: FAKE_RUTUBE.replace('const needsFrameTap = false;', 'const needsFrameTap = true;'),
       }),
     );
-    await page.goto('/');
+    await openCollection(page);
     await page.getByTestId('tile').first().click();
     await page.getByTestId('play').click({ timeout: 4000 });
     await expect(page.getByTestId('tap-video')).toBeVisible({ timeout: 4000 });
@@ -9194,7 +9340,7 @@ test.describe('повтор пройденного (этап 55)', () => {
       },
       { ...SEGMENTS[1]!, kind: 'segment', questions: [] },
     ];
-    await page.goto('/');
+    await openCollection(page);
     const rested = page.locator('[data-testid=tile][data-rest]');
     await expect(rested).toHaveCount(1);
     await rested.click();
@@ -9232,6 +9378,7 @@ test.describe('повтор пройденного (этап 55)', () => {
     await expect(page.getByTestId('home')).toBeVisible();
     await expect(page.locator('[data-rest]')).toHaveCount(0);
     await page.reload();
+    await enterCollection(page);
     await expect(page.getByTestId('tile')).toHaveCount(2);
     await expect(page.locator('[data-rest]')).toHaveCount(0);
   });
@@ -9241,7 +9388,7 @@ test.describe('повтор пройденного (этап 55)', () => {
       { ...SEGMENTS[0]!, kind: 'segment', questions: [question('q1', 2)], rest: 'learned' },
       { ...SEGMENTS[1]!, kind: 'segment', questions: [] },
     ];
-    await page.goto('/');
+    await openCollection(page);
     await page.locator('[data-testid=tile][data-rest]').click();
     await expect(page.getByTestId('review')).toBeVisible();
     await expect
@@ -9268,7 +9415,7 @@ test.describe('повтор пройденного (этап 55)', () => {
       game(2, { kind: 'balloons', count: 5, target: null }),
     ];
     await gameMedia(page);
-    await page.goto('/');
+    await openCollection(page);
     await page.locator('[data-testid=tile][data-rest]').click();
     await expect(page.getByTestId('game')).toHaveAttribute('data-level', '3');
     await expect
@@ -9308,7 +9455,7 @@ test.describe('повтор пройденного (этап 55)', () => {
       ),
     ];
     await gameMedia(page);
-    await page.goto('/');
+    await openCollection(page);
     // Фраза совёнка длится 3 с — успеваем увидеть, что он говорит.
     await slowSpeech(page, 3000);
     await page.locator('[data-testid=tile][data-rest]').click();
