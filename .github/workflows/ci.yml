@@ -71,6 +71,10 @@ jobs:
   # Сквозные тесты детского сценария (Playwright, эмуляция Galaxy S20+).
   e2e:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     # Тесты уже идут 35–39 мин вместе с установкой браузеров, а зеркало apt бывает медленным.
     timeout-minutes: 55
     env:
@@ -106,17 +110,24 @@ jobs:
       - if: steps.changed.outputs.run == 'true'
         run: bash .github/pw-install.sh @kidsplus/kid chromium
       - if: steps.changed.outputs.run == 'true'
-        run: pnpm --filter @kidsplus/kid e2e --project s20-portrait --project s20-landscape
+        run: pnpm --filter @kidsplus/kid e2e --project s20-portrait --project s20-landscape --shard=${{ matrix.shard }}/2
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: apps/kid/playwright-report
           retention-days: 7
 
   # Детское приложение на iPhone (этап 27): Safari-движок WebKit, iPhone 15 и iPhone SE.
   e2e-iphone:
     runs-on: ubuntu-latest
+    # Общий вход через комнату добавил навигацию ко всем тестам занятий.
+    # Каждый профиль разбит пополам: полный набор не упирается в лимит одного задания.
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [iphone-15, iphone-se]
+        shard: [1, 2]
     # Тесты уже идут 35–39 мин вместе с установкой браузеров, а зеркало apt бывает медленным.
     timeout-minutes: 55
     env:
@@ -152,11 +163,11 @@ jobs:
       - if: steps.changed.outputs.run == 'true'
         run: bash .github/pw-install.sh @kidsplus/kid webkit
       - if: steps.changed.outputs.run == 'true'
-        run: pnpm --filter @kidsplus/kid e2e --project iphone-15 --project iphone-se
+        run: pnpm --filter @kidsplus/kid e2e --project ${{ matrix.project }} --shard=${{ matrix.shard }}/2
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-report-iphone
+          name: playwright-report-${{ matrix.project }}-${{ matrix.shard }}
           path: apps/kid/playwright-report
           retention-days: 7
 

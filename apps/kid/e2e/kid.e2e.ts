@@ -524,11 +524,23 @@ const yt = <T>(page: Page, fn: string) =>
 
 /** Тесты самих занятий входят в назначенный раздел через настоящую комнату. */
 async function enterCollection(page: Page) {
-  await page.getByTestId('room-chest').click();
-  const choices = page.getByTestId('category');
-  await expect(choices).toHaveCount(1);
-  await choices.click();
-  await expect(page.getByTestId('home')).toBeVisible();
+  const started = Date.now();
+  const reducedMotion = await page.evaluate(
+    () => matchMedia('(prefers-reduced-motion: reduce)').matches,
+  );
+  // Эти сценарии проверяют занятие. Анимации комнаты проверяются отдельно, с обычным движением.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  try {
+    await page.getByTestId('room-chest').click();
+    const choices = page.getByTestId('category');
+    await expect(choices).toHaveCount(1);
+    await choices.click();
+    await expect(page.getByTestId('home')).toBeVisible();
+  } finally {
+    await page.emulateMedia({ reducedMotion: reducedMotion ? 'reduce' : 'no-preference' });
+    // Сохраняем прежний бюджет занятия, добавляя только фактически затраченный вход через комнату.
+    test.setTimeout(test.info().timeout + Date.now() - started);
+  }
 }
 
 async function openCollection(page: Page) {
