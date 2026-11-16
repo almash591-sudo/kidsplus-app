@@ -525,6 +525,9 @@ const yt = <T>(page: Page, fn: string) =>
 /** Тесты самих занятий входят в назначенный раздел через настоящую комнату. */
 async function enterCollection(page: Page) {
   const started = Date.now();
+  const timeout = test.info().timeout;
+  // Повторный вход тоже получает время навигации до начала действий, а не после дедлайна.
+  test.setTimeout(timeout + 60_000);
   const reducedMotion = await page.evaluate(
     () => matchMedia('(prefers-reduced-motion: reduce)').matches,
   );
@@ -537,9 +540,10 @@ async function enterCollection(page: Page) {
     await choices.click();
     await expect(page.getByTestId('home')).toBeVisible();
   } finally {
-    await page.emulateMedia({ reducedMotion: reducedMotion ? 'reduce' : 'no-preference' });
+    if (!page.isClosed())
+      await page.emulateMedia({ reducedMotion: reducedMotion ? 'reduce' : 'no-preference' });
     // Сохраняем прежний бюджет занятия, добавляя только фактически затраченный вход через комнату.
-    test.setTimeout(test.info().timeout + Date.now() - started);
+    test.setTimeout(timeout + Date.now() - started);
   }
 }
 
@@ -9126,9 +9130,13 @@ test.describe('перерыв для глаз (этап 50)', () => {
     backend,
   }) => {
     await page.clock.install({ time: new Date('2026-10-18T10:00:00') });
+    // Время навигации зависит от скорости WebKit; отсчёт проверяем только явным runFor.
+    await page.clock.pauseAt(new Date('2026-10-18T10:01:00'));
     const eb = eyeToday(backend);
     await seedScreen(page, 880);
-    await openCollection(page);
+    await page.goto('/');
+    // Планшет открывает видео без таймера анимации сундука, пока часы остановлены.
+    await page.getByTestId('room-video').click();
     await expect(page.getByTestId('tile').first()).toBeVisible();
     await page.clock.runFor(10_000);
     await expect(page.getByTestId('eye-break')).toHaveCount(0);
