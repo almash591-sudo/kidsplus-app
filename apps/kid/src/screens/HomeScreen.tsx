@@ -1,4 +1,5 @@
 import type { KidCategory, KidItem } from '@kidsplus/shared/api';
+import { GAME_KINDS } from '@kidsplus/shared/games';
 import { useEffect } from 'react';
 import { playSequence } from '../audio';
 import { categoriesOf, pathLength, restingIn } from '../categories';
@@ -16,7 +17,7 @@ import {
 import { IdleHint } from '../ui/IdleHint';
 import { Icon } from '../ui/icons';
 import { LessonPath } from './LessonPath';
-import { CachedImg } from '../ui/CachedImg';
+import { DeckPreview } from '../ui/DeckPreview';
 import { CHILD_CATEGORY } from '../ui/childCategories';
 import { FairyHeader } from '../ui/FairyGuide';
 
@@ -173,9 +174,12 @@ export function HomeScreen({
               data-hint={i === 0 ? '' : undefined}
               aria-label={
                 item.kind === 'deck'
-                  ? `Набор карточек ${j + 1}`
+                  ? `Карточки: ${item.cards
+                      .slice(0, 3)
+                      .map((card) => card.translation?.text || card.word.text)
+                      .join(', ')}`
                   : item.kind === 'interactive'
-                    ? `Игра ${j + 1}`
+                    ? GAME_KINDS[item.spec.kind]
                     : `${item.title?.trim() || `Видео ${j + 1}`}${item.subject ? `, ${CATEGORY_SHORT[item.subject]}` : ''}`
               }
             >
@@ -183,7 +187,7 @@ export function HomeScreen({
                 {item.kind === 'interactive' ? (
                   <GameTile spec={item.spec} />
                 ) : item.kind === 'deck' ? (
-                  <CachedImg src={item.coverUrl} alt="" draggable={false} />
+                  <DeckPreview deck={item} />
                 ) : item.thumbnailUrl ? (
                   <img
                     src={item.thumbnailUrl}

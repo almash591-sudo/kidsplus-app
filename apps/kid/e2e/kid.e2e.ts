@@ -6615,18 +6615,24 @@ test.describe('новые игры', () => {
     });
     expect(w).toBe(artW);
     expect(h).toBe(artH);
-    // Нарисованная обложка загрузилась и закрывает плитку целиком, а не как значок игры.
+    // Обложка видна целиком внутри книжной рамки, без обрезки широких сцен под квадрат.
     const cover = tile.locator('.poem-pic-img');
     await expect
       .poll(() => cover.evaluate((el) => (el as HTMLImageElement).naturalWidth))
       .toBeGreaterThan(0);
-    expect(
-      await cover.evaluate((el) => [
-        (el as HTMLElement).offsetWidth,
-        (el as HTMLElement).offsetHeight,
-        getComputedStyle(el).objectFit,
-      ]),
-    ).toEqual([w, h, 'cover']);
+    const [coverW, coverH, fit] = await cover.evaluate(
+      (el) =>
+        [
+          (el as HTMLElement).offsetWidth,
+          (el as HTMLElement).offsetHeight,
+          getComputedStyle(el).objectFit,
+        ] as const,
+    );
+    expect(fit).toBe('contain');
+    expect(coverW).toBeGreaterThan(w / 2);
+    expect(coverW).toBeLessThanOrEqual(w);
+    expect(coverH).toBeGreaterThan(h / 2);
+    expect(coverH).toBeLessThanOrEqual(h);
     await shot(page, 'book-shelf');
     await page.getByTestId('tile').first().click();
     const g = page.getByTestId('game-book');
@@ -9016,6 +9022,93 @@ test.describe('картинки не растягиваются (этап 35)', 
     },
     { kind: 'sudoku', imageIds: [CAT, LION, RABBIT], size: 3, blanks: 2, rounds: 1 },
   ];
+  test('превью занятий: картинки целиком, разные действия и содержимое набора', async ({
+    page,
+    backend,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    backend.items = [
+      ...specs.map((spec, i) => game(i + 1, spec, 'english')),
+      game(50, { kind: 'puzzle', imageIds: [CAT], cols: 2, rows: 2 }, 'english'),
+      game(51, { kind: 'coloring', picture: 'flower', tasks: false }, 'english'),
+      game(52, { kind: 'tracing', shapes: ['А'] }, 'english'),
+      game(
+        53,
+        { kind: 'poem', poem: 'ladushki', repeat: true, blanks: true, questions: true },
+        'english',
+      ),
+      game(
+        54,
+        { kind: 'book', book: 'kotPetuh', autoTurn: false, questions: true, choices: 3 },
+        'english',
+      ),
+      game(55, { kind: 'balloons', count: 5, target: null }, 'english'),
+      {
+        kind: 'deck',
+        id: ID(99),
+        category: 'english',
+        coverUrl: `/api/media/${CAT}`,
+        cards: [RABBIT, LION].map((id, i) => ({
+          id: `preview-${i}`,
+          imageUrl: `/api/media/${id}`,
+          word: { text: i ? 'Lion' : 'Rabbit', lang: 'en', audioUrl: null },
+          translation: null,
+          question: null,
+        })),
+      },
+    ];
+    // Sources deliberately have different shapes and are larger than the tile.
+    await page.route('**/api/media/**', (route) => {
+      const tall = route.request().url().endsWith(RABBIT);
+      return route.fulfill({
+        contentType: 'image/svg+xml',
+        body: `<svg xmlns="http://www.w3.org/2000/svg" width="${tall ? 200 : 600}" height="${tall ? 600 : 200}" viewBox="0 0 100 100"><rect x="2" y="2" width="96" height="96" rx="10" fill="#f6c665" stroke="#665142" stroke-width="4"/><circle cx="50" cy="50" r="25" fill="#80b8a4"/></svg>`,
+      });
+    });
+    await openCollection(page);
+    await expect(page.getByTestId('tile')).toHaveCount(backend.items.length);
+    const bad: string[] = [];
+    for (const tile of await page.getByTestId('tile').all()) {
+      await tile.scrollIntoViewIfNeeded();
+      await tile
+        .locator('img')
+        .evaluateAll((images) =>
+          Promise.all(images.map((img) => (img as HTMLImageElement).decode())),
+        );
+      bad.push(
+        ...(await tile.evaluate((el) => {
+          const art = el.querySelector('.fairy-item-art')!.getBoundingClientRect();
+          return [...el.querySelectorAll('img')].flatMap((img) => {
+            const r = img.getBoundingClientRect();
+            if (!r.width || !r.height) return [];
+            const clipped =
+              r.left < art.left - 1 ||
+              r.top < art.top - 1 ||
+              r.right > art.right + 1 ||
+              r.bottom > art.bottom + 1;
+            return clipped || getComputedStyle(img).objectFit !== 'contain'
+              ? [
+                  `${el.getAttribute('aria-label')}: ${img.className} ${Math.round(r.width)}×${Math.round(r.height)}`,
+                ]
+              : [];
+          });
+        })),
+      );
+    }
+    expect(bad).toEqual([]);
+    const deck = page.getByRole('button', { name: 'Карточки: Rabbit, Lion', exact: true });
+    await expect(deck.locator('img')).toHaveCount(2);
+    expect(
+      await deck
+        .locator('img')
+        .evaluateAll((images) => images.map((img) => (img as HTMLImageElement).dataset.src)),
+    ).toEqual([`/api/media/${RABBIT}`, `/api/media/${LION}`]);
+    const memory = page.getByRole('button', { name: 'Найди пару', exact: true });
+    await expect(memory.locator('img')).toHaveCount(2);
+    await memory.click();
+    await expect(page.getByTestId('memory-card').first()).toBeVisible();
+  });
+
   test('картинки 3:2 нигде не растянуты: игры, плитка и экран карточек', async ({
     page,
     backend,

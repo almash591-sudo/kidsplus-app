@@ -1,0 +1,81 @@
+.deck-preview {
+  position: absolute;
+  inset: 0;
+  display: block;
+  background: radial-gradient(ellipse at 50% 35%, #fffdf5, #e3ecdf);
+}
+.deck-preview-card,
+.deck-preview-back {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 43%;
+  height: 67%;
+  top: 20%;
+  left: 5%;
+  padding: 5% 2% 14%;
+  border: 2px solid #fffdf5;
+  border-radius: 12px;
+  background: #fffcf2;
+  box-shadow:
+    0 3px 0 #b4c7aa,
+    0 6px 8px #53714920;
+  transform: rotate(-9deg);
+}
+.deck-preview-card:nth-of-type(3) {
+  left: auto;
+  right: 5%;
+  top: 14%;
+  transform: rotate(9deg);
+}
+.deck-preview-back {
+  left: 30%;
+  top: 15%;
+  height: 70%;
+  width: 42%;
+  padding: 0;
+  background: #bbd6c4;
+  box-shadow: 0 3px 0 #91ad99;
+  transform: rotate(0);
+}
+.deck-preview-card > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: contain;
+}
+.deck-preview-voice {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 4%;
+  display: grid;
+  place-items: center;
+  height: 18%;
+}
+.deck-preview-voice svg {
+  width: 100%;
+  height: 100%;
+  fill: #bbd5c3;
+  stroke: #6b9a7f;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.deck-preview[data-cards='1'] .deck-preview-card {
+  left: 20%;
+  top: 13%;
+  width: 60%;
+  height: 75%;
+  padding-bottom: 16%;
+  transform: rotate(-5deg);
+}
+.deck-preview[data-cards='1'] .deck-preview-back {
+  left: 24%;
+  top: 16%;
+  width: 60%;
+  height: 75%;
+  transform: rotate(5deg);
+}
