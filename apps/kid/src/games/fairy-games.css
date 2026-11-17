@@ -252,6 +252,12 @@
   box-shadow: inset 0 0 0 4px #769e65;
 }
 @media (orientation: landscape) {
+  .fairy-game-screen[data-kind='counting'] > .ear {
+    top: auto;
+    right: auto;
+    left: max(16px, env(safe-area-inset-left));
+    bottom: max(16px, env(safe-area-inset-bottom));
+  }
   .game-table-header {
     height: 70px;
     grid-template-columns: auto minmax(0, 1fr) 64px;

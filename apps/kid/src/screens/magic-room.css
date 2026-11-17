@@ -3,36 +3,42 @@
   position: fixed;
   inset: 0;
   z-index: 2;
-  display: grid;
-  justify-items: center;
-  align-content: start;
-  overflow: auto;
+  overflow: hidden;
+  overflow: clip;
   overscroll-behavior: contain;
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
-    env(safe-area-inset-left);
   box-sizing: border-box;
-  background: #916348;
-  scrollbar-width: thin;
-  scrollbar-color: #c79768 #916348;
+  background: #916348 var(--room-art) center / cover no-repeat;
 }
 .room-stage {
-  position: relative;
-  flex: none;
-  width: min(
-    100%,
-    max(320px, calc((100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * 390 / 844))
-  );
-  max-width: 560px;
-  aspect-ratio: 852 / 1846;
+  position: absolute;
+  inset: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
   isolation: isolate;
+  overflow: hidden;
+  overflow: clip;
+}
+.room-world {
+  position: absolute;
+  top: 50%;
+  width: 100%;
+  /* Short phones crop the unused ceiling/floor, keeping every toy in view. Tall phones
+     extend the backdrop slightly; the separate toys retain their own proportions. */
+  height: max(
+    100%,
+    calc((100vw - env(safe-area-inset-left) - env(safe-area-inset-right)) * 1846 / 852)
+  );
+  transform: translateY(-50%);
 }
 .room-background {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: fill;
   pointer-events: none;
+}
+.room-wide-symbol {
+  display: none;
 }
 .room-object,
 .room-window,
@@ -193,14 +199,14 @@
 }
 .room-window {
   left: 82%;
-  top: 4%;
+  top: max(4%, calc((100% - 100dvh) / 2 + env(safe-area-inset-top) + 8px));
   width: 17%;
   height: 17%;
   z-index: 1;
 }
 .room-lantern {
   left: 11%;
-  top: 8%;
+  top: max(8%, calc((100% - 100dvh) / 2 + env(safe-area-inset-top) + 8px));
   width: 15%;
   height: 7%;
   z-index: 1;
@@ -450,8 +456,115 @@
     display: none;
   }
 }
-@media (orientation: landscape) {
-  .room-stage {
-    width: min(100%, 390px);
+/* Keep the light switch below the adult's hold corner when the window is cropped. */
+@media (max-height: 680px) {
+  .room-window {
+    left: auto;
+    right: 8px;
+    top: max(4%, calc((100% - 100dvh) / 2 + env(safe-area-inset-top) + 80px));
+    width: 48px;
+    height: 48px;
+    color: #f5bd45;
+    background: #fff3d6;
+    font-size: 36px;
+  }
+  .room-window > .room-wide-symbol {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+}
+/* A wide screen looks across the table, with two rows of toys instead of a tall page. */
+@media (min-aspect-ratio: 3/5) {
+  .room-world {
+    inset: 0;
+    height: 100%;
+    transform: none;
+    display: grid;
+    grid-template: repeat(2, minmax(0, 1fr)) / repeat(5, minmax(0, 1fr));
+    gap: 12px;
+    padding: 56px 16px 16px;
+    box-sizing: border-box;
+  }
+  .room-background {
+    object-fit: cover;
+    object-position: center 55%;
+  }
+  .room-object {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+  }
+  .room-chest > img,
+  .room-book > img {
+    height: 100%;
+  }
+  .room-owl {
+    grid-area: 1 / 1;
+  }
+  .room-house {
+    grid-area: 1 / 2;
+  }
+  .room-chest {
+    grid-area: 1 / 3;
+  }
+  .room-book-english {
+    grid-area: 1 / 4;
+  }
+  .room-book-chinese {
+    grid-area: 1 / 5;
+  }
+  .room-camera {
+    grid-area: 2 / 1;
+  }
+  .room-basket {
+    grid-area: 2 / 2;
+  }
+  .room-tablet {
+    grid-area: 2 / 3;
+  }
+  .room-bunny {
+    grid-area: 2 / 4;
+  }
+  .room-phone {
+    grid-area: 2 / 5;
+  }
+  .room-progress {
+    left: 30%;
+    top: 8px;
+    width: 40%;
+    height: 28px;
+  }
+  .room-window,
+  .room-lantern {
+    top: 4px;
+    width: 48px;
+    height: 48px;
+    z-index: 10;
+  }
+  .room-lantern {
+    left: 16px;
+  }
+  .room-window {
+    left: auto;
+    right: 84px;
+    color: #f5bd45;
+    background: #fff3d6;
+    font-size: 36px;
+  }
+  .room-wide-symbol {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+  .room-speech,
+  .room-speech.speech-bunny {
+    top: 42%;
+    left: 4%;
+    right: auto;
   }
 }

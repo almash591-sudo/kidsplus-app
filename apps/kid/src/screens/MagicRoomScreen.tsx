@@ -1,6 +1,6 @@
 import type { KidCategory } from '@kidsplus/shared/api';
 import type { KidToday, Subject } from '@kidsplus/shared/schedule';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { playSequence } from '../audio';
 import { fx } from '../fx';
 import { ru } from '../games/common';
@@ -213,193 +213,207 @@ export function MagicRoomScreen({
       data-testid="today"
       data-room-time={time}
       data-paused-motion={hidden}
+      style={{ '--room-art': `url(${asset(`room-${time}`)})` } as CSSProperties}
     >
       <div className="room-stage" aria-label="Волшебная комната">
-        <img
-          className="room-background"
-          src={asset(`room-${time}`)}
-          alt=""
-          fetchPriority="high"
-          draggable={false}
-        />
-        <h1 className="adventure-sr-only">Волшебная комната. Поиграем?</h1>
-        <button
-          className="room-window"
-          type="button"
-          aria-label={`Окно: ${TIME_NAMES[time]}. Поменять освещение`}
-          onClick={() => {
-            fx.soft();
-            setChosenTime(TIMES[(TIMES.indexOf(time) + 1) % TIMES.length]!);
-          }}
-        />
-        {starCount > 0 && (
-          <div
-            className="room-progress"
-            role="img"
-            aria-label={`Завершено занятий: ${subjects.filter((subject) => subject.done).length} из ${starCount}`}
+        <div className="room-world">
+          <img
+            className="room-background"
+            src={asset(`room-${time}`)}
+            alt=""
+            fetchPriority="high"
+            draggable={false}
+          />
+          <h1 className="adventure-sr-only">Волшебная комната. Поиграем?</h1>
+          <button
+            className="room-window"
+            type="button"
+            aria-label={`Окно: ${TIME_NAMES[time]}. Поменять освещение`}
+            onClick={() => {
+              fx.soft();
+              setChosenTime(TIMES[(TIMES.indexOf(time) + 1) % TIMES.length]!);
+            }}
           >
-            {subjects.map((subject) => (
+            <span className="room-wide-symbol" aria-hidden="true">
+              {time === 'evening' ? '☾' : '☀'}
+            </span>
+          </button>
+          {starCount > 0 && (
+            <div
+              className="room-progress"
+              role="img"
+              aria-label={`Завершено занятий: ${subjects.filter((subject) => subject.done).length} из ${starCount}`}
+            >
+              {subjects.map((subject) => (
+                <img
+                  key={subject.subject}
+                  src="/games/robot-star.webp"
+                  className={subject.done ? 'earned' : ''}
+                  alt=""
+                  draggable={false}
+                />
+              ))}
+            </div>
+          )}
+          <button
+            type="button"
+            className={`room-object room-house${next === 'math' ? ' room-next' : ''}`}
+            data-testid="room-math"
+            data-hint={hint === 'math' ? '' : undefined}
+            aria-label="Домик: математика"
+            aria-disabled={!canOpen('math')}
+            onClick={() => enter('math')}
+          >
+            <img src={asset('math-house')} alt="" draggable={false} />
+          </button>
+          <button
+            type="button"
+            className={`room-object room-owl${reaction === 'owl' || praise ? ' is-reacting' : ''}`}
+            data-praising={Boolean(praise)}
+            data-testid="room-owl"
+            aria-label="Поговорить с совёнком"
+            onClick={() =>
+              respond('owl', next || freeCategories.length ? ROOM_PHRASES.hint : ROOM_PHRASES.done)
+            }
+          >
+            <img className="character-idle" src={asset('owl')} alt="" draggable={false} />
+            <img className="character-blink" src={asset('owl-blink')} alt="" draggable={false} />
+            <img className="character-wave" src={asset('owl-wave')} alt="" draggable={false} />
+          </button>
+          <button
+            type="button"
+            className={`room-object room-chest${chestOpen ? ' is-open' : ''}${hint === 'chest' ? ' room-next' : ''}`}
+            data-testid="room-chest"
+            data-hint={hint === 'chest' && !sheet ? '' : undefined}
+            aria-label="Сундучок: игры и занятия"
+            aria-expanded={sheet === 'chest'}
+            onClick={() => {
+              if (busy.current) return;
+              fx.sparkle();
+              setChestOpen(true);
+              busy.current = true;
+              navigationTimer.current = setTimeout(
+                () => {
+                  busy.current = false;
+                  setSheet('chest');
+                },
+                matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 620,
+              );
+            }}
+          >
+            <img className="object-closed" src={asset('chest')} alt="" draggable={false} />
+            <img className="object-open" src={asset('chest-open')} alt="" draggable={false} />
+          </button>
+          {(['english', 'chinese'] as const).map((subject) => (
+            <button
+              key={subject}
+              type="button"
+              className={`room-object room-book room-book-${subject}${openingBook === subject ? ' is-open' : ''}${next === subject ? ' room-next' : ''}`}
+              data-testid={`room-${subject}`}
+              data-hint={hint === subject ? '' : undefined}
+              aria-label={`Книжка: ${CATEGORY_LABELS[subject]}`}
+              aria-disabled={!canOpen(subject)}
+              onClick={() => enter(subject)}
+            >
               <img
-                key={subject.subject}
-                src="/games/robot-star.webp"
-                className={subject.done ? 'earned' : ''}
+                className="object-closed"
+                src={asset(`book-${subject}`)}
                 alt=""
                 draggable={false}
               />
-            ))}
-          </div>
-        )}
-        <button
-          type="button"
-          className={`room-object room-house${next === 'math' ? ' room-next' : ''}`}
-          data-testid="room-math"
-          data-hint={hint === 'math' ? '' : undefined}
-          aria-label="Домик: математика"
-          aria-disabled={!canOpen('math')}
-          onClick={() => enter('math')}
-        >
-          <img src={asset('math-house')} alt="" draggable={false} />
-        </button>
-        <button
-          type="button"
-          className={`room-object room-owl${reaction === 'owl' || praise ? ' is-reacting' : ''}`}
-          data-praising={Boolean(praise)}
-          data-testid="room-owl"
-          aria-label="Поговорить с совёнком"
-          onClick={() =>
-            respond('owl', next || freeCategories.length ? ROOM_PHRASES.hint : ROOM_PHRASES.done)
-          }
-        >
-          <img className="character-idle" src={asset('owl')} alt="" draggable={false} />
-          <img className="character-blink" src={asset('owl-blink')} alt="" draggable={false} />
-          <img className="character-wave" src={asset('owl-wave')} alt="" draggable={false} />
-        </button>
-        <button
-          type="button"
-          className={`room-object room-chest${chestOpen ? ' is-open' : ''}${hint === 'chest' ? ' room-next' : ''}`}
-          data-testid="room-chest"
-          data-hint={hint === 'chest' && !sheet ? '' : undefined}
-          aria-label="Сундучок: игры и занятия"
-          aria-expanded={sheet === 'chest'}
-          onClick={() => {
-            if (busy.current) return;
-            fx.sparkle();
-            setChestOpen(true);
-            busy.current = true;
-            navigationTimer.current = setTimeout(
-              () => {
-                busy.current = false;
-                setSheet('chest');
-              },
-              matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 620,
-            );
-          }}
-        >
-          <img className="object-closed" src={asset('chest')} alt="" draggable={false} />
-          <img className="object-open" src={asset('chest-open')} alt="" draggable={false} />
-        </button>
-        {(['english', 'chinese'] as const).map((subject) => (
+              <img
+                className="object-open"
+                src={asset(`book-${subject}-open`)}
+                alt=""
+                draggable={false}
+              />
+            </button>
+          ))}
           <button
-            key={subject}
             type="button"
-            className={`room-object room-book room-book-${subject}${openingBook === subject ? ' is-open' : ''}${next === subject ? ' room-next' : ''}`}
-            data-testid={`room-${subject}`}
-            data-hint={hint === subject ? '' : undefined}
-            aria-label={`Книжка: ${CATEGORY_LABELS[subject]}`}
-            aria-disabled={!canOpen(subject)}
-            onClick={() => enter(subject)}
+            className="room-object room-tablet"
+            data-testid="room-video"
+            aria-label="Планшет: видео"
+            aria-disabled={!canOpen('video')}
+            onClick={() => enter('video')}
+          >
+            <img src={asset('tablet')} alt="" draggable={false} />
+          </button>
+          <button
+            type="button"
+            className={`room-object room-bunny${reaction === 'bunny' ? ' is-reacting' : ''}`}
+            data-testid="room-bunny"
+            aria-label="Поиграть с зайчиком"
+            onClick={() => respond('bunny', ROOM_PHRASES.bunny)}
+          >
+            <img className="character-idle" src={asset('bunny')} alt="" draggable={false} />
+            <img className="character-blink" src={asset('bunny-blink')} alt="" draggable={false} />
+            <img className="character-wave" src={asset('bunny-wave')} alt="" draggable={false} />
+          </button>
+          <button
+            type="button"
+            className="room-object room-camera"
+            data-testid="camera-open"
+            aria-label="Фотоаппарат: камера"
+            disabled={!onCamera}
+            onClick={() => {
+              fx.tap();
+              onCamera?.();
+            }}
+          >
+            <img src={asset('camera')} alt="" draggable={false} />
+          </button>
+          <button
+            type="button"
+            className="room-object room-basket"
+            data-testid="album-open"
+            aria-label="Корзинка: мои наклейки"
+            onClick={() => {
+              fx.sparkle();
+              onAlbum();
+            }}
+          >
+            <img src={asset('basket')} alt="" draggable={false} />
+          </button>
+          <button
+            type="button"
+            className="room-object room-phone"
+            data-testid="calls-open"
+            aria-label="Телефон: позвонить родным"
+            disabled={!onCalls}
+            onClick={() => {
+              fx.tap();
+              onCalls?.();
+            }}
+          >
+            <img src={asset('phone')} alt="" draggable={false} />
+          </button>
+          <button
+            type="button"
+            className="room-lantern"
+            data-testid="room-tools"
+            aria-label="Звёздочка: мой уголок"
+            onClick={() => {
+              fx.bell(0);
+              setSheet('tools');
+            }}
           >
             <img
-              className="object-closed"
-              src={asset(`book-${subject}`)}
-              alt=""
-              draggable={false}
-            />
-            <img
-              className="object-open"
-              src={asset(`book-${subject}-open`)}
+              className="room-wide-symbol"
+              src="/games/robot-star.webp"
               alt=""
               draggable={false}
             />
           </button>
-        ))}
-        <button
-          type="button"
-          className="room-object room-tablet"
-          data-testid="room-video"
-          aria-label="Планшет: видео"
-          aria-disabled={!canOpen('video')}
-          onClick={() => enter('video')}
-        >
-          <img src={asset('tablet')} alt="" draggable={false} />
-        </button>
-        <button
-          type="button"
-          className={`room-object room-bunny${reaction === 'bunny' ? ' is-reacting' : ''}`}
-          data-testid="room-bunny"
-          aria-label="Поиграть с зайчиком"
-          onClick={() => respond('bunny', ROOM_PHRASES.bunny)}
-        >
-          <img className="character-idle" src={asset('bunny')} alt="" draggable={false} />
-          <img className="character-blink" src={asset('bunny-blink')} alt="" draggable={false} />
-          <img className="character-wave" src={asset('bunny-wave')} alt="" draggable={false} />
-        </button>
-        <button
-          type="button"
-          className="room-object room-camera"
-          data-testid="camera-open"
-          aria-label="Фотоаппарат: камера"
-          disabled={!onCamera}
-          onClick={() => {
-            fx.tap();
-            onCamera?.();
-          }}
-        >
-          <img src={asset('camera')} alt="" draggable={false} />
-        </button>
-        <button
-          type="button"
-          className="room-object room-basket"
-          data-testid="album-open"
-          aria-label="Корзинка: мои наклейки"
-          onClick={() => {
-            fx.sparkle();
-            onAlbum();
-          }}
-        >
-          <img src={asset('basket')} alt="" draggable={false} />
-        </button>
-        <button
-          type="button"
-          className="room-object room-phone"
-          data-testid="calls-open"
-          aria-label="Телефон: позвонить родным"
-          disabled={!onCalls}
-          onClick={() => {
-            fx.tap();
-            onCalls?.();
-          }}
-        >
-          <img src={asset('phone')} alt="" draggable={false} />
-        </button>
-        <button
-          type="button"
-          className="room-lantern"
-          data-testid="room-tools"
-          aria-label="Звёздочка: мой уголок"
-          onClick={() => {
-            fx.bell(0);
-            setSheet('tools');
-          }}
-        />
-        {(speech || praise) && (
-          <p className={`room-speech speech-${praise ? 'owl' : reaction}`} aria-hidden="true">
-            {praise ? 'Молодец!' : reaction === 'bunny' ? 'Дай пять!' : 'Я рядом!'}
-          </p>
-        )}
-        <span className="adventure-sr-only" aria-live="polite">
-          {praise || speech}
-        </span>
+          {(speech || praise) && (
+            <p className={`room-speech speech-${praise ? 'owl' : reaction}`} aria-hidden="true">
+              {praise ? 'Молодец!' : reaction === 'bunny' ? 'Дай пять!' : 'Я рядом!'}
+            </p>
+          )}
+          <span className="adventure-sr-only" aria-live="polite">
+            {praise || speech}
+          </span>
+        </div>
       </div>
       {!sheet && <IdleHint first={12_000} onIdle={() => respond('owl', ROOM_PHRASES.hint)} />}
       {sheet === 'chest' && (

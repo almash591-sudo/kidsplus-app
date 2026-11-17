@@ -370,6 +370,27 @@
     padding-inline: 6px;
   }
 }
+/* On a short upright phone the voice button shares the heading, freeing the paper. */
+@media (max-height: 720px) and (orientation: portrait) {
+  .game.fairy-drawing {
+    grid-template-rows: 56px minmax(0, 1fr) auto;
+  }
+  .drawing-guide {
+    position: absolute;
+    top: max(8px, env(safe-area-inset-top));
+    right: max(8px, env(safe-area-inset-right));
+    z-index: 1;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 18px;
+  }
+  .drawing-guide-content,
+  .drawing-owl {
+    display: none;
+  }
+}
 @media (min-width: 480px) and (orientation: landscape) {
   .game.fairy-drawing {
     padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right))

@@ -1025,6 +1025,116 @@ test.describe('пора спать (этап 31)', () => {
 });
 
 test.describe('главный экран', () => {
+  test('комната во весь экран: все игрушки доступны без прокрутки, в том числе после поворота', async ({
+    page,
+    backend: _,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/');
+    await expect(page.getByTestId('room-chest')).toBeVisible();
+    const initial = page.viewportSize()!;
+    for (const size of [
+      initial,
+      { width: initial.height, height: initial.width },
+      { width: initial.width, height: Math.max(320, initial.height - 80) },
+    ]) {
+      await page.setViewportSize(size);
+      await expect
+        .poll(async () =>
+          page.locator('.magic-room').evaluate((room) => {
+            const bounds = room.getBoundingClientRect();
+            const issues: string[] = [];
+            if (
+              Math.abs(bounds.width - innerWidth) >= 1 ||
+              Math.abs(bounds.height - innerHeight) >= 1 ||
+              room.scrollHeight !== room.clientHeight ||
+              room.scrollWidth !== room.clientWidth
+            )
+              issues.push(
+                `room ${JSON.stringify(bounds)} scroll ${room.scrollWidth}×${room.scrollHeight}`,
+              );
+            for (const toy of room.querySelectorAll('.room-object, .room-lantern, .room-window')) {
+              const r = toy.getBoundingClientRect();
+              const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+              if (!(
+                r.width >= 48 &&
+                r.height >= 48 &&
+                r.x >= -1 &&
+                r.y >= -1 &&
+                r.right <= innerWidth + 1 &&
+                r.bottom <= innerHeight + 1 &&
+                hit !== null &&
+                toy.contains(hit)
+              ))
+                issues.push(`${toy.className} ${JSON.stringify(r)} hit ${hit?.className}`);
+            }
+            return issues;
+          }),
+        )
+        .toEqual([]);
+    }
+    await page.getByTestId('room-tools').click();
+    await expect(page.getByRole('dialog', { name: 'Мой уголок' })).toBeVisible();
+  });
+
+  test('игры во весь экран: последняя плитка не под доком, ответы не под подсказкой', async ({
+    page,
+    backend,
+  }) => {
+    backend.items = Array.from({ length: 12 }, (_, i) =>
+      game(i + 1, { kind: 'counting', imageIds: [CAT], max: 10, rounds: 2 }),
+    );
+    await gameMedia(page);
+    await openCollection(page);
+    await page.getByTestId('home').evaluate((el) => {
+      el.scrollTop = el.scrollHeight;
+    });
+    await page.getByTestId('tile').last().click({ timeout: 5000 });
+    await expect
+      .poll(() => page.getByTestId('game').boundingBox())
+      .toEqual({ x: 0, y: 0, ...page.viewportSize()! });
+    for (const option of await page.getByTestId('count-option').all()) {
+      expect(
+        await option.evaluate((el) => {
+          const r = el.getBoundingClientRect();
+          const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+          return (
+            hit !== null && el.contains(hit) && r.bottom <= innerHeight && r.right <= innerWidth
+          );
+        }),
+      ).toBe(true);
+    }
+    for (const item of await page.getByTestId('count-item').all()) {
+      const bounds = (await item.boundingBox())!;
+      expect(bounds.width).toBeGreaterThanOrEqual(48);
+      expect(bounds.y + bounds.height).toBeLessThanOrEqual(page.viewportSize()!.height);
+    }
+    await page.getByTestId('go-home').click();
+    await expect(page.getByTestId('home')).toBeVisible();
+  });
+
+  test('полный экран браузера сохраняется между комнатой, меню и игрой', async ({
+    page,
+    backend,
+    browserName,
+  }) => {
+    test.skip(browserName !== 'chromium', 'Safari использует окно установленного PWA');
+    backend.items = [game(1, { kind: 'memory', imageIds: [CAT, LION], pairs: 2 })];
+    await page.addInitScript(() =>
+      Object.defineProperty(navigator, 'standalone', { value: false, configurable: true }),
+    );
+    await page.goto('/');
+    await page.getByTestId('room-chest').tap();
+    await expect.poll(() => page.evaluate(() => document.fullscreenElement?.tagName)).toBe('HTML');
+    await page.locator('[data-testid=category][data-category=games]').tap();
+    await page.getByTestId('tile').tap();
+    await expect(page.getByTestId('game')).toBeVisible();
+    await page.getByTestId('go-home').tap();
+    await page.getByTestId('to-categories').tap();
+    await expect(page.getByTestId('room-chest')).toBeVisible();
+    expect(await page.evaluate(() => document.fullscreenElement?.tagName)).toBe('HTML');
+  });
+
   test('показывает ровно фрагменты из API, без текста и ссылок', async ({ page, backend: _ }) => {
     await openCollection(page);
     await expect(page.getByTestId('tile')).toHaveCount(SEGMENTS.length);

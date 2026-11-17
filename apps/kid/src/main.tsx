@@ -12,6 +12,7 @@ import { unlockAudio } from './audio';
 import { startOutbox } from './offline';
 import { startErrorReports } from './errors';
 import { dropServiceWorker, inAndroidWebView } from './kiosk';
+import { installTouchFullscreen } from './fullscreen';
 import './styles.css';
 import './motion.css';
 // Новый вид (этап 12): шрифт Nunito — файлы внутри приложения (правила безопасности не пускают Google Fonts).
@@ -34,6 +35,7 @@ import './games/fairy-games.css';
 // Сбои — на сервер, родителю в «Устройства» (этап 51).
 startErrorReports();
 installTapFeedback();
+installTouchFullscreen();
 // iPhone: звук и голос разрешены только после касания — первое касание их «будит».
 addEventListener('pointerdown', unlockAudio, { capture: true, once: true });
 // События прогресса, накопленные без сети, — на сервер, когда связь появится.

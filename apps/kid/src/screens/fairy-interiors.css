@@ -20,6 +20,10 @@
   margin-left: auto;
   margin-right: auto;
 }
+/* The dock has its own space, so the last activity can scroll fully above it. */
+.fairy-page:has(~ .dock) {
+  padding-bottom: calc(max(16px, env(safe-area-inset-bottom)) + 112px);
+}
 .fairy-header {
   position: relative;
   display: grid;
