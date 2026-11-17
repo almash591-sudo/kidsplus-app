@@ -535,6 +535,8 @@ async function enterCollection(page: Page) {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   try {
     await page.getByTestId('room-chest').click();
+    // На программном WebKit первый paint диалога может занять больше стандартных 5 с.
+    await expect(page.getByRole('dialog', { name: 'Поиграем!' })).toBeVisible({ timeout: 15_000 });
     const choices = page.getByTestId('category');
     await expect(choices).toHaveCount(1);
     await choices.click();
@@ -7444,15 +7446,21 @@ test.describe('расписание дня', () => {
     test.setTimeout(60_000);
     backend.today = planDay();
     backend.pin = '2580';
+    await page.clock.install({ time: new Date('2026-10-18T10:00:00') });
+    await page.clock.pauseAt(new Date('2026-10-18T10:01:00'));
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/');
     const corner = page.getByTestId('parent-corner');
     // Короткое касание ничего не открывает.
     await corner.dispatchEvent('pointerdown');
-    await page.waitForTimeout(500);
+    await page.clock.runFor(500);
     await corner.dispatchEvent('pointerup');
-    await page.waitForTimeout(3000);
+    await page.clock.runFor(3000);
     await expect(page.getByTestId('pin-pad')).toHaveCount(0);
     await corner.dispatchEvent('pointerdown');
+    await page.clock.runFor(2999);
+    await expect(page.getByTestId('pin-pad')).toHaveCount(0);
+    await page.clock.runFor(1);
     await expect(page.getByTestId('pin-pad')).toBeVisible({ timeout: 5000 });
     const key = (k: string) => page.locator(`.pin-key[data-key="${k}"]`).click();
     for (const k of '1111') await key(k);
@@ -8054,22 +8062,34 @@ test.describe('музыка', () => {
   }) => {
     test.slow(); // шесть раз слушаем образец
     backend.items = [game(1, { kind: 'rhythm', beats: 3, timing: true, rounds: 2 }, 'music')];
+    await page.clock.install();
     await openGame(page);
     const field = page.getByTestId('game-rhythm');
     const drum = page.getByTestId('rhythm-drum');
+    // Задержки команд CI не должны менять соотношение интервалов между ударами.
+    await page.clock.pauseAt(new Date((await page.evaluate(() => Date.now())) + 1000));
     for (let round = 0; round < 2; round++) {
       // Образец — «ти-ти-та» (ровно); стучим неровно — ритм не тот; после второго раза — засчитано.
       for (let attempt = 0; attempt < 3; attempt++) {
-        await expect(field).toHaveAttribute('data-phase', 'play', { timeout: 15_000 });
+        await expect
+          .poll(
+            async () => {
+              await page.clock.runFor(250);
+              return field.getAttribute('data-phase');
+            },
+            { timeout: 15_000 },
+          )
+          .toBe('play');
         await press(drum);
-        await page.waitForTimeout(40);
+        await page.clock.runFor(40);
         await press(drum);
-        await page.waitForTimeout(500);
+        await page.clock.runFor(500);
         await press(drum);
         if (attempt < 2) await expect(field).toHaveAttribute('data-phase', 'listen');
         else if (round === 0) await expect(field).toHaveAttribute('data-phase', 'done');
       }
     }
+    await page.clock.runFor(2500);
     await expectFinished(page, backend);
     expect((await spoken(page)).map((s) => s.text)).toContain(
       'Стучи столько раз, сколько огоньков!',
@@ -9168,9 +9188,20 @@ test.describe('перерыв для глаз (этап 50)', () => {
     backend,
   }) => {
     await page.clock.install({ time: new Date('2026-10-18T10:00:00') });
+    await page.clock.pauseAt(new Date('2026-10-18T10:01:00'));
     const eb = eyeToday(backend);
     await seedScreen(page, 880);
-    await startFirst(page);
+    await page.goto('/');
+    await page.getByTestId('room-video').click();
+    await page.getByTestId('tile').first().click();
+    // Загрузка API и onReady поддельного плеера тоже используют таймеры.
+    await expect
+      .poll(async () => {
+        await page.clock.runFor(100);
+        return yt(page, 'state');
+      })
+      .toBe(1);
+    await expect(page.getByTestId('pause')).toBeVisible();
     await page.clock.runFor(60_000);
     // Посреди мультика не прерываем.
     await expect(page.getByTestId('pause')).toBeVisible();
