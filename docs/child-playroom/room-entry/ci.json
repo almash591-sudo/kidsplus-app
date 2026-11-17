@@ -1,0 +1,65 @@
+{
+  "run": 44035118942,
+  "url": "https://github.com/almash591-sudo/kidsplus-app/actions/runs/44035118942",
+  "commit": "fa7f9faa92b1b8a8a16c974190f21df6538e0c69",
+  "status": "completed",
+  "conclusion": "cancelled",
+  "reason": "Owner explicitly requested stopping checks and publishing as is.",
+  "jobs": [
+    {
+      "name": "e2e (1)",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "url": "https://github.com/almash591-sudo/kidsplus-app/actions/runs/44035118942/job/133876041405"
+    },
+    {
+      "name": "e2e-iphone (iphone-se, 2)",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "url": "https://github.com/almash591-sudo/kidsplus-app/actions/runs/44035118942/job/133876041648"
+    },
+    {
+      "name": "e2e-phone",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/almash591-sudo/kidsplus-app/actions/runs/44035118942/job/133876041692"
+    },
+    {
+      "name": "e2e-iphone (iphone-15, 2)",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "url": "https://github.com/almash591-sudo/kidsplus-app/actions/runs/44035118942/job/133876041714"
+    },
+    {
+      "name": "kiosk",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/almash591-sudo/kidsplus-app/actions/runs/44035118942/job/133876041734"
+    },
+    {
+      "name": "e2e-iphone (iphone-15, 1)",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "url": "https://github.com/almash591-sudo/kidsplus-app/actions/runs/44035118942/job/133876041780"
+    },
+    {
+      "name": "e2e (2)",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "url": "https://github.com/almash591-sudo/kidsplus-app/actions/runs/44035118942/job/133876041820"
+    },
+    {
+      "name": "check",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/almash591-sudo/kidsplus-app/actions/runs/44035118942/job/133876041841"
+    },
+    {
+      "name": "e2e-iphone (iphone-se, 1)",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "url": "https://github.com/almash591-sudo/kidsplus-app/actions/runs/44035118942/job/133876042006"
+    }
+  ],
+  "note": "e2e-phone and kiosk were skipped internally because their sources did not change. check ran successfully. All six child browser shards were cancelled before completion."
+}
