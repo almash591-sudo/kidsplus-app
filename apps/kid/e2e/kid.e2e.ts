@@ -6386,7 +6386,10 @@ test.describe('новые игры', () => {
     await page.getByTestId('room-chest').click();
     // Свой раздел; плитка стиха — обложка из первой картинки.
     await page.locator('[data-category=poems]').click();
-    await expect(page.locator('.poem-tile > img')).toHaveAttribute('src', '/poems/rooster-1.webp');
+    await expect(page.locator('.poem-tile .preview-story > img')).toHaveAttribute(
+      'src',
+      '/poems/rooster-1.webp',
+    );
     await shot(page, 'poem-tile');
     // Пока проверяем «Дальше» — фраза длится 4 с: сама часть не сменится.
     await slowSpeech(page, 4000);
