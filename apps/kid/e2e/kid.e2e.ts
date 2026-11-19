@@ -8,6 +8,15 @@ import type { BookPlayed, KidBedtime } from '@kidsplus/shared/bedtime';
 import type { KidHabit, KidHabits } from '@kidsplus/shared/habits';
 import type { EyeBreak } from '@kidsplus/shared/schedule';
 import {
+  APP_PHRASE_VARIANTS,
+  CATEGORY_DONE,
+  HABITS_ALL_DONE,
+  HINT_PICK,
+  LESSON_DONE,
+  OWL_PRAISE,
+  ROOM_PHRASES,
+} from '../src/phrases';
+import {
   callStatus,
   type CallEvent,
   type CallInfo,
@@ -163,6 +172,9 @@ const spoken = (page: Page) =>
   page.evaluate(() =>
     (window as unknown as { __spoken: Spoken[] }).__spoken.filter((s) => s.text.trim()),
   );
+
+const saidVariant = async (page: Page, base: string) =>
+  (await spoken(page)).some((line) => APP_PHRASE_VARIANTS.get(base)!.includes(line.text));
 
 /** Сколько поддельный голос «говорит» фразу — с этой минуты. */
 const slowSpeech = (page: Page, ms: number) =>
@@ -671,9 +683,7 @@ test.describe('мои дела (этап 30)', () => {
     await expect(page.getByTestId('jar-stars')).toContainText('4');
     await shot(page, 'habits');
     expect(backend.habitsDone).toEqual(['a']);
-    await expect
-      .poll(async () => (await spoken(page)).map((s) => s.text))
-      .toContain('Все дела сделаны! Совёнок тобой гордится!');
+    await expect.poll(() => saidVariant(page, HABITS_ALL_DONE)).toBe(true);
 
     // Уже сделанное — звёздочку второй раз не даёт.
     await first.click();
@@ -775,7 +785,7 @@ test.describe('живой совёнок (этап 32)', () => {
     const owl = page.getByTestId('fairy-guide');
     await owl.click();
     await expect(owl).toHaveClass(/is-waving/);
-    await expect.poll(() => said(page)).toContain('Нажми на любую картинку!');
+    await expect.poll(() => saidVariant(page, HINT_PICK)).toBe(true);
     await run(page, 2_000);
     await expect(owl).not.toHaveClass(/is-waving/);
     await expect(owl.locator('img').first()).toHaveAttribute('src', '/playroom/owl.webp');
@@ -791,11 +801,13 @@ test.describe('живой совёнок (этап 32)', () => {
     const hand = page.getByTestId('hint-hand').locator('span');
     for (let i = 0; i < 20 && !(await hand.isVisible()); i++) await run(page, 1_000);
     await expect(hand).toBeVisible();
-    await expect.poll(() => said(page)).toContain('Нажми на любую картинку!');
+    await expect.poll(() => saidVariant(page, HINT_PICK)).toBe(true);
     await run(page, 92_000);
-    expect((await said(page)).filter((text) => text === 'Нажми на любую картинку!')).toHaveLength(
-      3,
+    const hints = (await said(page)).filter((text) =>
+      APP_PHRASE_VARIANTS.get(HINT_PICK)!.includes(text),
     );
+    expect(hints).toHaveLength(3);
+    expect(new Set(hints).size).toBe(3);
   });
 
   test('все дела сделаны — совёнок в комнате машет и хвалит', async ({ page, backend }) => {
@@ -824,7 +836,9 @@ test.describe('живой совёнок (этап 32)', () => {
     await page.getByTestId('go-home').click();
     await run(page, 3_000);
     await expect(page.getByTestId('room-owl')).toHaveAttribute('data-praising', 'true');
-    await expect.poll(() => said(page)).toContain('Ты молодец!');
+    await expect
+      .poll(async () => (await said(page)).some((text) => OWL_PRAISE.includes(text)))
+      .toBe(true);
   });
 });
 
@@ -3965,9 +3979,7 @@ test.describe('отклик интерфейса', () => {
     await page.goto('/');
     await page.getByTestId('room-chest').click();
     await expect(page.getByRole('dialog')).toBeVisible();
-    await expect
-      .poll(async () => (await spoken(page)).map((s) => s.text))
-      .toContain('Привет! Это наша волшебная комната. Нажми на сундучок — выберем игру!');
+    await expect.poll(() => saidVariant(page, ROOM_PHRASES.welcome)).toBe(true);
     await page.locator('[data-category=games]').click();
     await expect.poll(async () => (await spoken(page)).map((s) => s.text)).toContain('Игры!');
   });
@@ -4003,10 +4015,46 @@ test.describe('отклик интерфейса', () => {
     await openGame(page);
     await page.getByTestId('game-done').click();
     await expect(page.getByTestId('home')).toBeVisible({ timeout: 6000 });
-    await expect
-      .poll(async () => (await spoken(page)).map((s) => s.text))
-      .toContain('Молодец, выбирай, что дальше.');
+    await expect.poll(() => saidVariant(page, CATEGORY_DONE)).toBe(true);
   });
+});
+
+test('разнообразие реплик: герои и меню не повторяются, доступная подпись совпадает с голосом', async ({
+  page,
+  backend,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  backend.items = [game(1, { kind: 'drawing', stickerIds: [] })];
+  await gameMedia(page);
+  await page.goto('/');
+  await expect.poll(() => saidVariant(page, ROOM_PHRASES.welcome)).toBe(true);
+  for (const [actor, base] of [
+    ['room-owl', ROOM_PHRASES.hint],
+    ['room-bunny', ROOM_PHRASES.bunny],
+  ]) {
+    let previous = '';
+    for (let i = 0; i < 5; i++) {
+      await page.getByTestId(actor!).click();
+      await expect(page.locator('.room-speech')).toBeVisible();
+      const bubble = (await page.locator('.adventure-sr-only[aria-live=polite]').textContent())!;
+      expect(APP_PHRASE_VARIANTS.get(base!)!).toContain(bubble);
+      expect(bubble).not.toBe(previous);
+      await expect.poll(async () => (await spoken(page)).at(-1)?.text).toBe(bubble);
+      previous = bubble;
+    }
+  }
+  await page.getByTestId('room-chest').click();
+  await page.locator('[data-category=games]').click();
+  let previous = '';
+  for (let i = 0; i < 4; i++) {
+    const before = (await spoken(page)).length;
+    await page.getByTestId('fairy-guide').click();
+    await expect.poll(async () => (await spoken(page)).length).toBeGreaterThan(before);
+    const hint = (await spoken(page)).at(-1)!.text;
+    expect(APP_PHRASE_VARIANTS.get(HINT_PICK)!).toContain(hint);
+    expect(hint).not.toBe(previous);
+    previous = hint;
+  }
 });
 
 test('нейроголос: фразы приложения звучат файлами с сервера, а не голосом телефона', async ({
@@ -4026,6 +4074,17 @@ test('нейроголос: фразы приложения звучат фай�
   await gameMedia(page);
   await openCollection(page);
   await expect.poll(() => backend.speechRequests ?? 0).toBeGreaterThan(0);
+  for (let i = 0; i < 4; i++) await page.getByTestId('fairy-guide').click();
+  await expect
+    .poll(async () => {
+      const played = await page.evaluate(
+        () => (window as unknown as { __played: string[] }).__played,
+      );
+      return APP_PHRASE_VARIANTS.get(HINT_PICK)!.filter((text) =>
+        played.some((url) => url.includes(`tts-${text}`)),
+      ).length;
+    })
+    .toBeGreaterThan(1);
   await page.getByTestId('tile').first().click();
   await expect
     .poll(() => page.evaluate(() => (window as unknown as { __played: string[] }).__played))
@@ -7437,9 +7496,7 @@ test.describe('расписание дня', () => {
     await expect(page.getByTestId('free')).toHaveCount(0);
     await page.waitForTimeout(800);
     await shot(page, 'today');
-    await expect
-      .poll(async () => (await spoken(page)).map((s) => s.text))
-      .toContain('Привет! Это наша волшебная комната. Нажми на сундучок — выберем игру!');
+    await expect.poll(() => saidVariant(page, ROOM_PHRASES.welcome)).toBe(true);
   });
 
   test('комната: состояния предметов с сервера; подписи в сундуке не обрезаются и лёжа', async ({
@@ -7495,9 +7552,7 @@ test.describe('расписание дня', () => {
     for (let i = 0; i < 3; i++)
       await page.locator('.balloon:not(.popped)').first().dispatchEvent('pointerdown');
     await expect(page.getByTestId('today')).toBeVisible({ timeout: 8000 });
-    await expect
-      .poll(async () => (await spoken(page)).map((s) => s.text))
-      .toContain('Молодец, на сегодня этот урок закончен.');
+    await expect.poll(() => saidVariant(page, LESSON_DONE)).toBe(true);
   });
 
   test('игра в уроке — открытие с пометкой «урок» (этап 44)', async ({ page, backend }) => {

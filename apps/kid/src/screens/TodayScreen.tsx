@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { kidApi } from '../api';
 import { inKiosk, openPhoneSettings } from '../kiosk';
 import { playSequence } from '../audio';
+import { voiceLine } from '../voiceLines';
 import { fx } from '../fx';
 import { ru } from '../games/common';
 import {
@@ -63,7 +64,7 @@ export function TodayScreen({
   useEffect(() => {
     if (greeted) return;
     greeted = true;
-    void playSequence([ru(greeting.current)]);
+    void playSequence([voiceLine(greeting.current)]);
   }, []);
   // Куда нажать: первый непройденный предмет, а после уроков — свободное время.
   const next = today.subjects.find((s) => !s.done)?.subject ?? null;
@@ -187,7 +188,7 @@ export function TodayScreen({
             style={{ '--i': today.subjects.length } as React.CSSProperties}
             onClick={() => {
               fx.whoosh();
-              void playSequence([ru(FREE_TIME)]);
+              void playSequence([voiceLine(FREE_TIME)]);
               onFree();
             }}
             data-testid="free"

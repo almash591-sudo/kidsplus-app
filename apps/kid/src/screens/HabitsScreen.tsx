@@ -31,6 +31,7 @@ import { owlBus } from '../owl/bus';
 import { Icon } from '../ui/icons';
 import { FairyHeader } from '../ui/FairyGuide';
 import { vary } from '../variety';
+import { voiceLine } from '../voiceLines';
 
 const picture = (h: Pick<KidHabit, 'preset'>) => `/habits/${h.preset ?? 'custom'}.webp`;
 const minuteNow = () => {
@@ -173,7 +174,7 @@ export function HabitsScreen({ onExit }: { onExit: () => void }) {
 
   useEffect(() => {
     const goal = habits?.goal;
-    void playSequence([ru(HABITS_INTRO), ...(goal ? [ru(HABIT_GOAL), goal.title] : [])]);
+    void playSequence([voiceLine(HABITS_INTRO), ...(goal ? [ru(HABIT_GOAL), goal.title] : [])]);
     return () => stopAudio();
     // Приветствие — один раз при открытии.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -196,7 +197,7 @@ export function HabitsScreen({ onExit }: { onExit: () => void }) {
     const left = habits.habits.filter((x) => x.slot === h.slot && !x.done && x.id !== h.id);
     const said: Speech[] = [vary('habit-done', HABIT_DONE.map(ru))!];
     if (!left.length) {
-      said.push(ru(HABITS_ALL_DONE));
+      said.push(voiceLine(HABITS_ALL_DONE));
       burst(undefined, 30);
       // Вернётся в меню — совёнок подлетит похвалить (этап 32).
       owlBus.praise();
@@ -207,7 +208,7 @@ export function HabitsScreen({ onExit }: { onExit: () => void }) {
   const tap = (h: KidHabit, el: Element) => {
     if (h.done) {
       fx.soft();
-      void playSequence([h.title, ru(HABIT_ALREADY)]);
+      void playSequence([h.title, voiceLine(HABIT_ALREADY)]);
       return;
     }
     if (h.timerSec) {

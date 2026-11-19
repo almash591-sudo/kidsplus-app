@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { playSequence } from '../audio';
+import { voiceLine } from '../voiceLines';
 import { fx } from '../fx';
 import { ru } from '../games/common';
 import { ROOM_PHRASES, stickerName } from '../phrases';
@@ -132,7 +133,7 @@ export function AlbumScreen({ onExit }: { onExit: () => void }) {
                 onClick={() => {
                   if (!n) {
                     fx.soft();
-                    void playSequence([ru(ROOM_PHRASES.stickers)]);
+                    void playSequence([voiceLine(ROOM_PHRASES.stickers)]);
                     return;
                   }
                   setSelected(s);

@@ -5,6 +5,7 @@ import { playSequence } from '../audio';
 import { fx } from '../fx';
 import { ru } from '../games/common';
 import { CATEGORY_LABELS, categoryPhrase, ROOM_PHRASES } from '../phrases';
+import { voiceLine } from '../voiceLines';
 import { CHILD_CATEGORY } from '../ui/childCategories';
 import { Icon } from '../ui/icons';
 import { IdleHint } from '../ui/IdleHint';
@@ -154,19 +155,20 @@ export function MagicRoomScreen({
   useEffect(() => {
     if (greeted) return;
     greeted = true;
-    void playSequence([ru(greeting.current)]);
+    void playSequence([voiceLine(greeting.current)]);
   }, []);
 
   function respond(character: 'owl' | 'bunny', phrase: string) {
+    const line = voiceLine(phrase);
     setReaction(character);
-    setSpeech(phrase);
+    setSpeech(line.text);
     clearTimeout(reactionTimer.current);
     reactionTimer.current = setTimeout(() => {
       setReaction(null);
       setSpeech('');
     }, 2200);
     fx.bell(character === 'owl' ? 0 : 1);
-    void playSequence([ru(phrase)]);
+    void playSequence([line]);
   }
 
   function canOpen(category: KidCategory) {

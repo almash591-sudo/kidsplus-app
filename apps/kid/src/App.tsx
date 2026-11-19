@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { kidApi, NotPairedError, sendEvent } from './api';
 import { setErrorScreen } from './errors';
 import { playSequence, speechLanguages } from './audio';
+import { voiceLine } from './voiceLines';
 import { categoriesOf, isPathItem, itemsOf, pathLength, restingIn } from './categories';
 import { useBattery } from './battery';
 import { BabyScreen } from './baby/BabyScreen';
@@ -562,7 +563,7 @@ export function App() {
     if (plan(currentToday.current) && (await beat())) {
       stop.current = false;
       fx.whoosh();
-      void playSequence([ru(s.lesson ? LESSON_DONE : CATEGORY_DONE)]);
+      void playSequence([voiceLine(s.lesson ? LESSON_DONE : CATEGORY_DONE)]);
       // Урок пройден — совёнок подлетит похвалить, как только «Сегодня» откроется.
       if (s.lesson) owlBus.praise();
       setState({ screen: 'today', playlist: s.playlist });
@@ -571,7 +572,7 @@ export function App() {
     }
     if (nextStep(s).screen === 'home') {
       fx.whoosh();
-      void playSequence([ru(CATEGORY_DONE)]);
+      void playSequence([voiceLine(CATEGORY_DONE)]);
     }
     setState(nextStep);
   }, [load, beat]);

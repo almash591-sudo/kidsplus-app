@@ -20,6 +20,7 @@ import { LessonPath } from './LessonPath';
 import { DeckPreview } from '../ui/DeckPreview';
 import { CHILD_CATEGORY } from '../ui/childCategories';
 import { FairyHeader } from '../ui/FairyGuide';
+import { voiceLine } from '../voiceLines';
 
 let greeted = false;
 export const CATEGORY_SHORT: Record<KidCategory, string> = {
@@ -75,7 +76,7 @@ export function CategoryScreen({
   useEffect(() => {
     if (greeted) return;
     greeted = true;
-    void playSequence([ru(GREETING)]);
+    void playSequence([voiceLine(GREETING)]);
   }, []);
   return (
     <div className="screen fairy-page fairy-categories" data-testid="categories">
@@ -109,7 +110,7 @@ export function CategoryScreen({
           </button>
         ))}
       </div>
-      <IdleHint onIdle={() => void playSequence([ru(HINT_PICK)])} first={9000} />
+      <IdleHint onIdle={() => void playSequence([voiceLine(HINT_PICK)])} first={9000} />
     </div>
   );
 }
@@ -166,7 +167,7 @@ export function HomeScreen({
                 }
                 if (onReview?.(i)) return;
                 fx.soft();
-                void playSequence([ru(item.rest === 'learned' ? REST_LEARNED : REST_TODAY)]);
+                void playSequence([voiceLine(item.rest === 'learned' ? REST_LEARNED : REST_TODAY)]);
               }}
               data-testid="tile"
               data-kind={item.kind}
@@ -223,7 +224,7 @@ export function HomeScreen({
           );
         })}
       </div>
-      <IdleHint onIdle={() => void playSequence([ru(HINT_PICK)])} first={8000} />
+      <IdleHint onIdle={() => void playSequence([voiceLine(HINT_PICK)])} first={8000} />
     </div>
   );
 }

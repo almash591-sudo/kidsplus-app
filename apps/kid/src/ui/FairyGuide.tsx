@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { playSequence } from '../audio';
 import { fx } from '../fx';
-import { ru } from '../games/common';
+import { voiceLine } from '../voiceLines';
 import { Icon } from './icons';
 import { useOwlPraise } from './useOwlPraise';
 
@@ -23,7 +23,7 @@ export function FairyGuide({ hint, celebrate = false }: { hint: string; celebrat
         clearTimeout(timer.current);
         setWaving(true);
         fx.soft();
-        void playSequence([ru(hint)]);
+        void playSequence([voiceLine(hint)]);
         timer.current = setTimeout(() => setWaving(false), 1400);
       }}
     >

@@ -18,6 +18,7 @@ import {
   OWL_YAWN,
 } from '../phrases';
 import { useHabits } from '../screens/HabitsScreen';
+import { vary } from '../variety';
 import { owlBus } from './bus';
 import { AWAY_KNOCK_MS, pick, pickScene, type OwlScene, type PerchTarget } from './director';
 
@@ -193,7 +194,10 @@ export function LiveOwl({ evening }: { evening: boolean }) {
         await fly(perchOn(r));
         setFrame('point');
         document.querySelector(TARGET[target])?.classList.add('owl-poked');
-        await say(target === 'habits' ? OWL_HABITS : pick(OWL_LESSON), 'point');
+        await say(
+          target === 'habits' ? OWL_HABITS : vary('owl-lesson', OWL_LESSON.map(ru))!.text,
+          'point',
+        );
         await wait(2500);
         document.querySelectorAll('.owl-poked').forEach((e) => e.classList.remove('owl-poked'));
         await leave();
@@ -212,7 +216,7 @@ export function LiveOwl({ evening }: { evening: boolean }) {
           );
           await wait(330);
         }
-        await say(pick(OWL_KNOCK), 'happy');
+        await say(vary('owl-knock', OWL_KNOCK.map(ru))!.text, 'happy');
         await leave();
       },
       peek: async () => {
@@ -236,7 +240,7 @@ export function LiveOwl({ evening }: { evening: boolean }) {
           fx.success();
           setMode('perch');
           await say(OWL_PEEK, 'happy');
-          await say(pick(OWL_FOUND), 'happy');
+          await say(vary('owl-found', OWL_FOUND.map(ru))!.text, 'happy');
           await leave();
         } else {
           setMode('away');
@@ -249,7 +253,7 @@ export function LiveOwl({ evening }: { evening: boolean }) {
         await fly(center(3), 1300);
         burst(undefined, 30);
         fx.success();
-        await say(pick(OWL_PRAISE), 'closeup');
+        await say(vary('owl-praise', OWL_PRAISE.map(ru))!.text, 'closeup');
         await wait(600);
         await leave();
       },
@@ -327,8 +331,9 @@ export function LiveOwl({ evening }: { evening: boolean }) {
     if (busy.current && mode !== 'perch') return;
     fx.sparkle();
     setFrame('happy');
-    setBubble(pick(OWL_TAP));
-    void playSequence([ru(pick(OWL_TAP))]);
+    const line = vary('owl-tap', OWL_TAP.map(ru))!;
+    setBubble(line.text);
+    void playSequence([line]);
     el.current?.animate([{ rotate: '0deg' }, { rotate: '360deg' }], {
       duration: calm() ? 1 : 700,
       easing: 'cubic-bezier(0.3, 1.4, 0.5, 1)',
